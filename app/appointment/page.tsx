@@ -32,7 +32,7 @@ export default function AppointmentPage() {
         justifyContent: "center",
         alignItems: "center",
         backgroundImage: "url('/pattern.png')",
-        backgroundSize: "200px",
+        backgroundSize: "100px",
         backgroundRepeat: "repeat",
       }}
     >
@@ -51,7 +51,7 @@ export default function AppointmentPage() {
           src="/logo.png"
           alt="OrisAlign"
           style={{
-            width: "120px",
+            width: "130px",
             marginBottom: "15px",
           }}
         />
