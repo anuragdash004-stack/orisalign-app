@@ -139,6 +139,8 @@ const inputStyle = {
   marginBottom: "12px",
   borderRadius: "10px",
   border: "1px solid #ddd",
+  color: "#000",              // 👈 text black
+  backgroundColor: "#fff",    // 👈 ensure white bg
 };
 
 const buttonStyle = {
