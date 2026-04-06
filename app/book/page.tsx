@@ -66,7 +66,7 @@ export default function BookPage() {
           backgroundImage: "url('/pattern-icon.png')",
           backgroundRepeat: "repeat",
           backgroundSize: "70px", // 👈 controls spacing
-          opacity: 0.16, // 👈 luxury subtle feel
+          opacity: 0.30, // 👈 luxury subtle feel
         }}
       />
 
