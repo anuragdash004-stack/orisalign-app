@@ -18,7 +18,6 @@ export default function BookPage() {
 
     setSent(true);
 
-    // 🔥 your API call here
     const res = await fetch("/api/sms/send", {
       method: "POST",
       body: JSON.stringify({ phone }),
@@ -59,15 +58,15 @@ export default function BookPage() {
         backgroundColor: "#faf7f2",
       }}
     >
-      {/* 🔥 PATTERN BACKGROUND */}
+      {/* 🔥 ICON GRID BACKGROUND */}
       <div
         style={{
           position: "absolute",
           inset: 0,
-          backgroundImage: "url('/pattern.png')",
-          backgroundSize: "250px",
+          backgroundImage: "url('/pattern-icon.png')",
           backgroundRepeat: "repeat",
-          opacity: 0.6,
+          backgroundSize: "120px", // 👈 controls spacing
+          opacity: 0.08, // 👈 luxury subtle feel
         }}
       />
 
@@ -84,27 +83,20 @@ export default function BookPage() {
         }}
       >
         {/* 🔥 LOGO */}
-        <div
+        <img
+          src="/logo.png"
+          alt="OrisAlign"
           style={{
-            display: "flex",
-            justifyContent: "center",
-            marginBottom: "10px",
+            width: "140px",
+            display: "block",
+            margin: "0 auto 10px auto",
           }}
-        >
-          <img
-            src="/logo.png"
-            alt="OrisAlign"
-            style={{
-              width: "140px",
-            }}
-          />
-        </div>
+        />
 
         <h3 style={{ marginBottom: "20px", color: "#333" }}>
           Book Consultation
         </h3>
 
-        {/* PHONE */}
         <input
           placeholder="Enter phone number"
           value={phone}
