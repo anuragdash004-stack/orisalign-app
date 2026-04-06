@@ -65,7 +65,7 @@ export default function BookPage() {
           position: "absolute",
           inset: 0,
           backgroundImage: "url('/pattern.png')",
-          backgroundSize: "180px",
+          backgroundSize: "250px",
           backgroundRepeat: "repeat",
           opacity: 0.6,
         }}
