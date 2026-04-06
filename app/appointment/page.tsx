@@ -36,10 +36,14 @@ export default function AppointmentPage() {
 
     backgroundImage: "url('/pattern.png')",
 
-    // ✅ 50% zoom effect (less dense, more premium)
+    // ✅ Good spacing
     backgroundSize: "180px",
 
+    // ✅ Keep pattern visible
     backgroundRepeat: "repeat",
+
+    // 🔥 ADD THIS (IMPORTANT)
+    backgroundColor: "#faf7f2", // warm premium base
   }}
 >
       <div
