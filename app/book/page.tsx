@@ -8,174 +8,154 @@ export default function BookPage() {
 
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
-  const [otpSent, setOtpSent] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [sent, setSent] = useState(false);
 
-  // 👉 SEND OTP
   const sendOTP = async () => {
     if (!phone) {
       alert("Enter phone number");
       return;
     }
 
-    setLoading(true);
+    setSent(true);
 
-    try {
-      const res = await fetch("/api/sms/send", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ phone }),
-      });
+    // 🔥 your API call here
+    const res = await fetch("/api/sms/send", {
+      method: "POST",
+      body: JSON.stringify({ phone }),
+    });
 
-      const data = await res.json();
+    const data = await res.json();
 
-      if (data.success) {
-        alert("OTP sent");
-        setOtpSent(true);
-      } else {
-        alert("Failed to send OTP");
-      }
-    } catch (err) {
-      console.error(err);
+    if (!data.success) {
       alert("Error sending OTP");
+      setSent(false);
     }
-
-    setLoading(false);
   };
 
-  // 👉 VERIFY OTP + REDIRECT
   const verifyOTP = async () => {
-    if (!otp) {
-      alert("Enter OTP");
-      return;
+    const res = await fetch("/api/sms/verify", {
+      method: "POST",
+      body: JSON.stringify({ phone, otp }),
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      alert("Login successful ✅");
+      router.push("/appointment");
+    } else {
+      alert("Invalid OTP ❌");
     }
-
-    setLoading(true);
-
-    try {
-      const res = await fetch("/api/sms/verify", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ phone, otp }),
-      });
-
-      const data = await res.json();
-
-      if (data.success) {
-        alert("Login successful");
-
-        // 🔥 REDIRECT FIX
-        router.push("/appointment");
-      } else {
-        alert("Invalid OTP");
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Error verifying OTP");
-    }
-
-    setLoading(false);
   };
 
   return (
     <div
       style={{
+        position: "relative",
         minHeight: "100vh",
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        background: "#f5f5f5",
+        backgroundColor: "#faf7f2",
       }}
     >
+      {/* 🔥 PATTERN BACKGROUND */}
       <div
         style={{
-          background: "white",
-          padding: "30px",
-          borderRadius: "16px",
-          width: "320px",
+          position: "absolute",
+          inset: 0,
+          backgroundImage: "url('/pattern.png')",
+          backgroundSize: "180px",
+          backgroundRepeat: "repeat",
+          opacity: 0.6,
+        }}
+      />
+
+      {/* 🔥 CARD */}
+      <div
+        style={{
+          position: "relative",
+          background: "rgba(255,255,255,0.95)",
+          padding: "35px 30px",
+          borderRadius: "20px",
+          width: "360px",
+          boxShadow: "0 10px 30px rgba(0,0,0,0.1)",
           textAlign: "center",
         }}
       >
-        <h2>Book Consultation</h2>
+        {/* 🔥 LOGO */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            marginBottom: "10px",
+          }}
+        >
+          <img
+            src="/logo.png"
+            alt="OrisAlign"
+            style={{
+              width: "140px",
+            }}
+          />
+        </div>
 
-        {/* PHONE INPUT */}
+        <h3 style={{ marginBottom: "20px", color: "#333" }}>
+          Book Consultation
+        </h3>
+
+        {/* PHONE */}
         <input
-          type="text"
           placeholder="Enter phone number"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
-          style={{
-            width: "100%",
-            padding: "10px",
-            marginBottom: "10px",
-            borderRadius: "8px",
-            border: "1px solid #ccc",
-          }}
+          style={inputStyle}
         />
 
-        {/* SEND OTP */}
-        <button
-          onClick={sendOTP}
-          style={{
-            width: "100%",
-            padding: "12px",
-            background: "#b9925b",
-            color: "white",
-            border: "none",
-            borderRadius: "8px",
-            marginBottom: "10px",
-            cursor: "pointer",
-          }}
-        >
-          {loading ? "Sending..." : "Send OTP"}
-        </button>
+        {!sent && (
+          <button onClick={sendOTP} style={buttonStyle}>
+            Send OTP
+          </button>
+        )}
 
-        {/* OTP FIELD */}
-        {otpSent && (
+        {sent && (
           <>
             <input
-              type="text"
               placeholder="Enter OTP"
               value={otp}
               onChange={(e) => setOtp(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "10px",
-                marginBottom: "10px",
-                borderRadius: "8px",
-                border: "1px solid #ccc",
-              }}
+              style={inputStyle}
             />
 
-            {/* VERIFY OTP */}
-            <button
-              onClick={verifyOTP}
-              style={{
-                width: "100%",
-                padding: "12px",
-                background: "#b9925b",
-                color: "white",
-                border: "none",
-                borderRadius: "8px",
-                cursor: "pointer",
-              }}
-            >
-              {loading ? "Verifying..." : "Verify OTP"}
+            <button onClick={verifyOTP} style={buttonStyle}>
+              Verify OTP
             </button>
           </>
         )}
 
-        <p style={{ fontSize: "12px", color: "#666", marginTop: "10px" }}>
+        <p style={{ marginTop: "10px", fontSize: "12px", color: "#777" }}>
           Trusted by 1000+ patients
         </p>
       </div>
-
-      {/* 🔴 REQUIRED FOR FIREBASE */}
-      <div id="recaptcha-container"></div>
     </div>
   );
 }
+
+const inputStyle = {
+  width: "100%",
+  padding: "12px",
+  marginBottom: "12px",
+  borderRadius: "10px",
+  border: "1px solid #ddd",
+};
+
+const buttonStyle = {
+  width: "100%",
+  padding: "14px",
+  background: "#b9925b",
+  color: "white",
+  border: "none",
+  borderRadius: "10px",
+  cursor: "pointer",
+  fontWeight: "600",
+};
