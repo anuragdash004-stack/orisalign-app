@@ -1,53 +1,42 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import {
-  RecaptchaVerifier,
-  signInWithPhoneNumber,
-} from "firebase/auth";
-import { auth } from "@/app/lib/firebase";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function BookPage() {
+  const router = useRouter();
+
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // ✅ INIT RECAPTCHA (FIXED)
-  useEffect(() => {
-    if (!(window as any).recaptchaVerifier) {
-      (window as any).recaptchaVerifier = new RecaptchaVerifier(
-        auth,
-        "recaptcha-container",
-        {
-          size: "invisible",
-        }
-      );
-    }
-  }, []);
-
-  // ✅ SEND OTP
+  // 👉 SEND OTP
   const sendOTP = async () => {
-    if (!phone || phone.length < 10) {
-      alert("Enter valid phone number");
+    if (!phone) {
+      alert("Enter phone number");
       return;
     }
 
     setLoading(true);
 
     try {
-      const appVerifier = (window as any).recaptchaVerifier;
+      const res = await fetch("/api/sms/send", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ phone }),
+      });
 
-      const confirmation = await signInWithPhoneNumber(
-        auth,
-        "+91" + phone.trim(),
-        appVerifier
-      );
+      const data = await res.json();
 
-      (window as any).confirmationResult = confirmation;
-
-      setOtpSent(true);
-      alert("OTP sent successfully");
+      if (data.success) {
+        alert("OTP sent");
+        setOtpSent(true);
+      } else {
+        alert("Failed to send OTP");
+      }
     } catch (err) {
       console.error(err);
       alert("Error sending OTP");
@@ -56,7 +45,7 @@ export default function BookPage() {
     setLoading(false);
   };
 
-  // ✅ VERIFY OTP
+  // 👉 VERIFY OTP + REDIRECT
   const verifyOTP = async () => {
     if (!otp) {
       alert("Enter OTP");
@@ -66,93 +55,82 @@ export default function BookPage() {
     setLoading(true);
 
     try {
-      await (window as any).confirmationResult.confirm(otp);
-      alert("Login successful 🎉");
+      const res = await fetch("/api/sms/verify", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ phone, otp }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        alert("Login successful");
+
+        // 🔥 REDIRECT FIX
+        router.push("/appointment");
+      } else {
+        alert("Invalid OTP");
+      }
     } catch (err) {
-      alert("Invalid OTP");
+      console.error(err);
+      alert("Error verifying OTP");
     }
 
     setLoading(false);
   };
 
-  // 🎨 STYLES
-  const inputStyle = {
-    width: "100%",
-    padding: "14px",
-    borderRadius: "12px",
-    border: "1px solid #e5e5e5",
-    fontSize: "14px",
-    outline: "none",
-    background: "#ffffff",
-    boxShadow: "inset 0 1px 3px rgba(0,0,0,0.05)",
-  };
-
-  const buttonStyle = {
-    width: "100%",
-    padding: "14px",
-    borderRadius: "12px",
-    border: "none",
-    background: "linear-gradient(135deg, #c9a86a, #b8904f)",
-    color: "white",
-    fontWeight: "600",
-    cursor: "pointer",
-    boxShadow: "0 8px 20px rgba(201,168,106,0.4)",
-  };
-
   return (
     <div
       style={{
-        height: "100vh",
+        minHeight: "100vh",
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-
-        // 🟡 YOUR PATTERN BACKGROUND
-        backgroundImage: "url('/pattern.png')",
-        backgroundSize: "cover",
-        backgroundPosition: "center",
+        background: "#f5f5f5",
       }}
     >
-      {/* 💎 CARD */}
       <div
         style={{
-          width: "360px",
-          padding: "35px",
-          borderRadius: "24px",
-
-          background: "rgba(255,255,255,0.8)",
-          backdropFilter: "blur(20px)",
-          border: "1px solid rgba(200,200,200,0.3)",
-
-          boxShadow: "0 20px 60px rgba(0,0,0,0.15)",
+          background: "white",
+          padding: "30px",
+          borderRadius: "16px",
+          width: "320px",
           textAlign: "center",
-
-          display: "flex",
-          flexDirection: "column",
-          gap: "12px",
         }}
       >
-        {/* 🦷 LOGO */}
-        <img
-          src="/logo.png"
-          alt="OrisAlign"
-          style={{
-            width: "140px",
-            margin: "0 auto 10px",
-          }}
-        />
-
-        <h2 style={{ marginBottom: "10px" }}>Book Consultation</h2>
+        <h2>Book Consultation</h2>
 
         {/* PHONE INPUT */}
         <input
-          style={inputStyle}
+          type="text"
           placeholder="Enter phone number"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
+          style={{
+            width: "100%",
+            padding: "10px",
+            marginBottom: "10px",
+            borderRadius: "8px",
+            border: "1px solid #ccc",
+          }}
         />
 
-        <button style={buttonStyle} onClick={sendOTP}>
+        {/* SEND OTP */}
+        <button
+          onClick={sendOTP}
+          style={{
+            width: "100%",
+            padding: "12px",
+            background: "#b9925b",
+            color: "white",
+            border: "none",
+            borderRadius: "8px",
+            marginBottom: "10px",
+            cursor: "pointer",
+          }}
+        >
           {loading ? "Sending..." : "Send OTP"}
         </button>
 
@@ -160,29 +138,44 @@ export default function BookPage() {
         {otpSent && (
           <>
             <input
-              style={inputStyle}
+              type="text"
               placeholder="Enter OTP"
               value={otp}
               onChange={(e) => setOtp(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "10px",
+                marginBottom: "10px",
+                borderRadius: "8px",
+                border: "1px solid #ccc",
+              }}
             />
 
-            <button style={buttonStyle} onClick={verifyOTP}>
+            {/* VERIFY OTP */}
+            <button
+              onClick={verifyOTP}
+              style={{
+                width: "100%",
+                padding: "12px",
+                background: "#b9925b",
+                color: "white",
+                border: "none",
+                borderRadius: "8px",
+                cursor: "pointer",
+              }}
+            >
               {loading ? "Verifying..." : "Verify OTP"}
             </button>
           </>
         )}
 
-        <p style={{ fontSize: "12px", color: "#666" }}>
+        <p style={{ fontSize: "12px", color: "#666", marginTop: "10px" }}>
           Trusted by 1000+ patients
         </p>
       </div>
 
       {/* 🔴 REQUIRED FOR FIREBASE */}
-      <div
-        id="recaptcha-container"
-        style={{ position: "fixed", bottom: "0px" }}
-      ></div>
+      <div id="recaptcha-container"></div>
     </div>
   );
 }
-// trigger deploy
