@@ -8,7 +8,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false });
     }
 
-    // 👉 TEMP MOCK SUCCESS (for testing flow)
+    // ✅ MOCK SUCCESS
     return NextResponse.json({
       success: true,
       message: "OTP verified (mock)",
