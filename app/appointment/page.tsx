@@ -36,7 +36,7 @@ export default function AppointmentPage() {
 
         // 🔥 BIGGER PATTERN (CLEARLY VISIBLE NOW)
         backgroundImage: "url('/pattern.png')",
-        backgroundSize: "180px", // 👈 STRONG zoom (change to 80 if you want even bigger)
+        backgroundSize: "40px", // 👈 STRONG zoom (change to 80 if you want even bigger)
         backgroundRepeat: "repeat",
       }}
     >
