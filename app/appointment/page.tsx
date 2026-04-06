@@ -9,10 +9,12 @@ export default function AppointmentPage() {
   const [slot, setSlot] = useState("");
 
   const slots = [
-    "09:00 AM",
+    "10:00 AM",
     "11:00 AM",
-    "04:00 PM",
-    "06:00 PM",
+    "12:00 PM",
+    "2:00 PM",
+    "3:00 PM",
+    "4:00 PM",
   ];
 
   const handleBooking = () => {
@@ -31,8 +33,10 @@ export default function AppointmentPage() {
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
+
+        // 🔥 ZOOMED PATTERN
         backgroundImage: "url('/pattern.png')",
-        backgroundSize: "100px",
+        backgroundSize: "120px", // 👈 smaller value = bigger icons
         backgroundRepeat: "repeat",
       }}
     >
@@ -43,16 +47,21 @@ export default function AppointmentPage() {
           borderRadius: "20px",
           width: "360px",
           boxShadow: "0 10px 30px rgba(0,0,0,0.1)",
-          textAlign: "center",
+
+          // 🔥 FORCE PERFECT CENTER ALIGNMENT
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
         }}
       >
-        {/* LOGO */}
+        {/* LOGO FIXED CENTER */}
         <img
           src="/logo.png"
           alt="OrisAlign"
           style={{
             width: "130px",
-            marginBottom: "15px",
+            marginBottom: "10px",
+            display: "block",
           }}
         />
 
@@ -60,7 +69,7 @@ export default function AppointmentPage() {
           Book Appointment
         </h2>
 
-        {/* NAME */}
+        {/* INPUTS */}
         <input
           placeholder="Full Name"
           value={name}
@@ -68,7 +77,6 @@ export default function AppointmentPage() {
           style={inputStyle}
         />
 
-        {/* AGE */}
         <input
           placeholder="Age"
           value={age}
@@ -76,7 +84,6 @@ export default function AppointmentPage() {
           style={inputStyle}
         />
 
-        {/* DATE */}
         <input
           type="date"
           value={date}
@@ -84,7 +91,6 @@ export default function AppointmentPage() {
           style={inputStyle}
         />
 
-        {/* SLOT */}
         <select
           value={slot}
           onChange={(e) => setSlot(e.target.value)}
@@ -98,7 +104,6 @@ export default function AppointmentPage() {
           ))}
         </select>
 
-        {/* BUTTON */}
         <button onClick={handleBooking} style={buttonStyle}>
           Confirm Booking
         </button>
