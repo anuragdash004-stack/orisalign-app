@@ -36,7 +36,7 @@ export default function AppointmentPage() {
           backgroundImage: "url('/pattern-icon.png')",
           backgroundRepeat: "repeat",
           backgroundSize: "70px",   // 👈 smaller icons
-          opacity: 0.16,            // 👈 more visible
+          opacity: 0.30,            // 👈 more visible
         }}
       />
 
