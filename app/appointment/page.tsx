@@ -6,20 +6,11 @@ export default function AppointmentPage() {
   const [name, setName] = useState("");
   const [age, setAge] = useState("");
   const [date, setDate] = useState("");
-  const [slot, setSlot] = useState("");
-
-  const slots = [
-    "10:00 AM",
-    "11:00 AM",
-    "12:00 PM",
-    "2:00 PM",
-    "3:00 PM",
-    "4:00 PM",
-  ];
+  const [time, setTime] = useState("");
 
   const handleBooking = () => {
-    if (!name || !age || !date || !slot) {
-      alert("Please fill all details");
+    if (!name || !age || !date || !time) {
+      alert("Please fill all fields");
       return;
     }
 
@@ -27,27 +18,32 @@ export default function AppointmentPage() {
   };
 
   return (
-   <div
-  style={{
-    minHeight: "100vh",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-
-    backgroundImage: "url('/pattern.png')",
-
-    // ✅ Good spacing
-    backgroundSize: "180px",
-
-    // ✅ Keep pattern visible
-    backgroundRepeat: "repeat",
-
-    // 🔥 ADD THIS (IMPORTANT)
-    backgroundColor: "#faf7f2", // warm premium base
-  }}
->
+    <div
+      style={{
+        position: "relative",
+        minHeight: "100vh",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        backgroundColor: "#faf7f2",
+      }}
+    >
+      {/* 🔥 SAME ICON PATTERN */}
       <div
         style={{
+          position: "absolute",
+          inset: 0,
+          backgroundImage: "url('/pattern-icon.png')",
+          backgroundRepeat: "repeat",
+          backgroundSize: "70px",   // 👈 smaller icons
+          opacity: 0.16,            // 👈 more visible
+        }}
+      />
+
+      {/* 🔥 CARD */}
+      <div
+        style={{
+          position: "relative",
           background: "rgba(255,255,255,0.95)",
           padding: "35px 30px",
           borderRadius: "20px",
@@ -56,29 +52,21 @@ export default function AppointmentPage() {
           textAlign: "center",
         }}
       >
-        {/* 🔥 LOGO PERFECT CENTER FIX */}
-        <div
+        {/* 🔥 LOGO */}
+        <img
+          src="/logo.png"
+          alt="OrisAlign"
           style={{
-            display: "flex",
-            justifyContent: "center",
-            marginBottom: "10px",
+            width: "140px",
+            display: "block",
+            margin: "0 auto 10px auto",
           }}
-        >
-          <img
-            src="/logo.png"
-            alt="OrisAlign"
-            style={{
-              width: "140px",
-              objectFit: "contain",
-            }}
-          />
-        </div>
+        />
 
-        <h2 style={{ marginBottom: "20px", color: "#333" }}>
+        <h3 style={{ marginBottom: "20px", color: "#333" }}>
           Book Appointment
-        </h2>
+        </h3>
 
-        {/* INPUTS */}
         <input
           placeholder="Full Name"
           value={name}
@@ -101,16 +89,15 @@ export default function AppointmentPage() {
         />
 
         <select
-          value={slot}
-          onChange={(e) => setSlot(e.target.value)}
+          value={time}
+          onChange={(e) => setTime(e.target.value)}
           style={inputStyle}
         >
           <option value="">Select Time Slot</option>
-          {slots.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
+          <option>09:00 AM</option>
+          <option>11:00 AM</option>
+          <option>04:00 PM</option>
+          <option>06:00 PM</option>
         </select>
 
         <button onClick={handleBooking} style={buttonStyle}>
@@ -126,7 +113,7 @@ const inputStyle = {
   padding: "12px",
   marginBottom: "12px",
   borderRadius: "10px",
-  border: "1px solid #ddd",
+  border: "1px solid #0e0c0c",
 };
 
 const buttonStyle = {
