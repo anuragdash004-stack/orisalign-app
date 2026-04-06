@@ -22,8 +22,6 @@ export default function AppointmentPage() {
     }
 
     alert("Appointment Booked Successfully ✅");
-
-    // later we will save to database
   };
 
   return (
@@ -33,19 +31,32 @@ export default function AppointmentPage() {
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        background: "#0c0c0c",
-        color: "white",
+        backgroundImage: "url('/pattern.png')",
+        backgroundSize: "200px",
+        backgroundRepeat: "repeat",
       }}
     >
       <div
         style={{
-          background: "#1a1a1a",
+          background: "rgba(255,255,255,0.95)",
           padding: "30px",
-          borderRadius: "16px",
-          width: "350px",
+          borderRadius: "20px",
+          width: "360px",
+          boxShadow: "0 10px 30px rgba(0,0,0,0.1)",
+          textAlign: "center",
         }}
       >
-        <h2 style={{ textAlign: "center", marginBottom: "20px" }}>
+        {/* LOGO */}
+        <img
+          src="/logo.png"
+          alt="OrisAlign"
+          style={{
+            width: "120px",
+            marginBottom: "15px",
+          }}
+        />
+
+        <h2 style={{ marginBottom: "20px", color: "#333" }}>
           Book Appointment
         </h2>
 
@@ -98,18 +109,19 @@ export default function AppointmentPage() {
 
 const inputStyle = {
   width: "100%",
-  padding: "10px",
+  padding: "12px",
   marginBottom: "12px",
-  borderRadius: "8px",
-  border: "none",
+  borderRadius: "10px",
+  border: "1px solid #ddd",
 };
 
 const buttonStyle = {
   width: "100%",
-  padding: "12px",
+  padding: "14px",
   background: "#b9925b",
   color: "white",
   border: "none",
-  borderRadius: "8px",
+  borderRadius: "10px",
   cursor: "pointer",
+  fontWeight: "600",
 };
