@@ -27,19 +27,21 @@ export default function AppointmentPage() {
   };
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
+   <div
+  style={{
+    minHeight: "100vh",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
 
-        // 🔥 BIGGER PATTERN (CLEARLY VISIBLE NOW)
-        backgroundImage: "url('/pattern.png')",
-        backgroundSize: "30px", // 👈 STRONG zoom (change to 80 if you want even bigger)
-        backgroundRepeat: "repeat",
-      }}
-    >
+    backgroundImage: "url('/pattern.png')",
+
+    // ✅ 50% zoom effect (less dense, more premium)
+    backgroundSize: "180px",
+
+    backgroundRepeat: "repeat",
+  }}
+>
       <div
         style={{
           background: "rgba(255,255,255,0.95)",
