@@ -34,36 +34,39 @@ export default function AppointmentPage() {
         justifyContent: "center",
         alignItems: "center",
 
-        // 🔥 ZOOMED PATTERN
+        // 🔥 BIGGER PATTERN (CLEARLY VISIBLE NOW)
         backgroundImage: "url('/pattern.png')",
-        backgroundSize: "120px", // 👈 smaller value = bigger icons
+        backgroundSize: "90px", // 👈 STRONG zoom (change to 80 if you want even bigger)
         backgroundRepeat: "repeat",
       }}
     >
       <div
         style={{
           background: "rgba(255,255,255,0.95)",
-          padding: "30px",
+          padding: "35px 30px",
           borderRadius: "20px",
           width: "360px",
           boxShadow: "0 10px 30px rgba(0,0,0,0.1)",
-
-          // 🔥 FORCE PERFECT CENTER ALIGNMENT
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
+          textAlign: "center",
         }}
       >
-        {/* LOGO FIXED CENTER */}
-        <img
-          src="/logo.png"
-          alt="OrisAlign"
+        {/* 🔥 LOGO PERFECT CENTER FIX */}
+        <div
           style={{
-            width: "130px",
+            display: "flex",
+            justifyContent: "center",
             marginBottom: "10px",
-            display: "block",
           }}
-        />
+        >
+          <img
+            src="/logo.png"
+            alt="OrisAlign"
+            style={{
+              width: "140px",
+              objectFit: "contain",
+            }}
+          />
+        </div>
 
         <h2 style={{ marginBottom: "20px", color: "#333" }}>
           Book Appointment
