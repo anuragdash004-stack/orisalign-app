@@ -8,14 +8,27 @@ export default function AppointmentPage() {
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
 
-  const handleBooking = () => {
-    if (!name || !age || !date || !time) {
-      alert("Please fill all fields");
-      return;
-    }
+  const handleBooking = async () => {
+  const res = await fetch("/api/book", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name,
+      age,
+      date,
+      time,
+      phone,
+    }),
+  });
 
+  const data = await res.json();
+
+  if (data.success) {
     alert("Appointment Booked Successfully ✅");
-  };
+  } else {
+    alert("Booking Failed ❌");
+  }
+};
 
   return (
     <div

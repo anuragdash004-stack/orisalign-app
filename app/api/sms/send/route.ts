@@ -1,40 +1,36 @@
 import { NextResponse } from "next/server";
-import { saveOTP } from "@/lib/otpstore";
+import { db } from "@/lib/firebase";
+import { collection, addDoc } from "firebase/firestore";
+
+// generate 6 digit OTP
+function generateOTP() {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
 
 export async function POST(req: Request) {
   try {
     const { phone } = await req.json();
 
     if (!phone) {
-      return NextResponse.json({ success: false });
+      return NextResponse.json({ success: false, message: "Phone required" });
     }
 
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otp = generateOTP();
 
-    // Save OTP
-    saveOTP(phone, otp);
-
-    // Send SMS via Fast2SMS
-    const response = await fetch("https://www.fast2sms.com/dev/bulkV2", {
-      method: "POST",
-      headers: {
-        authorization: process.env.FAST2SMS_API_KEY!,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        route: "q",
-        message: `Your OrisAlign OTP is ${otp}`,
-        language: "english",
-        flash: 0,
-        numbers: phone,
-      }),
+    // 🔥 Save OTP to Firestore
+    await addDoc(collection(db, "otps"), {
+      phone,
+      otp,
+      createdAt: Date.now(), // important for expiry
     });
 
-    const data = await response.json();
+    console.log("OTP:", otp); // for testing (remove later)
 
-    console.log("SMS Response:", data);
+    return NextResponse.json({
+      success: true,
+      message: "OTP sent",
+    });
 
-    return NextResponse.json({ success: true });
   } catch (err) {
     console.error(err);
     return NextResponse.json({ success: false });

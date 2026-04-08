@@ -1,24 +1,29 @@
 import { NextResponse } from "next/server";
+import { db } from "@/lib/firebase";
+import { collection, addDoc } from "firebase/firestore";
 
 export async function POST(req: Request) {
-  const body = await req.json();
+  try {
+    const { name, age, date, time, phone } = await req.json();
 
-  const { phone, date, time } = body;
+    if (!name || !age || !date || !time || !phone) {
+      return NextResponse.json({ success: false, message: "Missing fields" });
+    }
 
-  // 🔥 WHATSAPP MESSAGE (Twilio example)
-  await fetch("https://api.twilio.com/2010-04-01/Accounts/YOUR_SID/Messages.json", {
-    method: "POST",
-    headers: {
-      Authorization:
-        "Basic " + Buffer.from("YOUR_SID:YOUR_AUTH_TOKEN").toString("base64"),
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: new URLSearchParams({
-      From: "whatsapp:+14155238886",
-      To: "whatsapp:" + phone,
-      Body: `✅ Appointment Confirmed\nDate: ${date}\nTime: ${time}\n\n- OrisAlign`,
-    }),
-  });
+    await addDoc(collection(db, "appointments"), {
+      name,
+      age,
+      date,
+      time,
+      phone,
+      createdAt: Date.now(),
+      status: "booked",
+    });
 
-  return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true });
+
+  } catch (err) {
+    console.error(err);
+    return NextResponse.json({ success: false });
+  }
 }
