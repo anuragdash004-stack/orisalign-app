@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/firebase";
-import { collection, addDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase-admin";
 
 function generateOTP() {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -10,16 +9,20 @@ export async function POST(req: Request) {
   try {
     const { phone } = await req.json();
 
+    if (!phone) {
+      return NextResponse.json({ success: false, message: "Phone required" });
+    }
+
     const otp = generateOTP();
 
-    // 🔥 Save OTP
-    await addDoc(collection(db, "otps"), {
+    // ✅ Save OTP using ADMIN SDK
+    await db.collection("otps").add({
       phone,
       otp,
       createdAt: Date.now(),
     });
 
-    // 📲 Send SMS via Fast2SMS
+    // ✅ Send SMS via Fast2SMS
     await fetch("https://www.fast2sms.com/dev/bulkV2", {
       method: "POST",
       headers: {
@@ -34,7 +37,6 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ success: true });
-
   } catch (err) {
     console.error(err);
     return NextResponse.json({ success: false });
