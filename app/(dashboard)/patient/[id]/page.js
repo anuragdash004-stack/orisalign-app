@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabaseClient";
 import { useParams } from "next/navigation";
+
+const supabase = getSupabaseClient();
 
 export default function PatientProfile() {
   const { id } = useParams();

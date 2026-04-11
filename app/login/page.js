@@ -2,15 +2,11 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { createClient } from "@supabase/supabase-js"
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-)
+import { getSupabaseClient } from "@/lib/supabaseClient"
 
 export default function LoginPage() {
   const router = useRouter()
+  const supabase = getSupabaseClient()
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -21,7 +17,7 @@ export default function LoginPage() {
 
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
-      password
+      password,
     })
 
     if (error) {
@@ -32,37 +28,63 @@ export default function LoginPage() {
 
     const user = data.user
 
-    // 🔥 role check (from metadata)
-    const role = user.user_metadata?.role
+    // 🔍 Debug - check user in console
+    console.log("FULL USER:", user)
 
-    if (role === "admin") router.push("/admin")
-    else if (role === "dentist") router.push("/dentist")
-    else if (role === "orthodontist") router.push("/ortho")
-    else router.push("/")
+    // ✅ Get role safely
+    const role =
+      user?.user_metadata?.role ||
+      user?.app_metadata?.role ||
+      "user"
+
+    console.log("ROLE:", role)
+
+    // ✅ Role-based routing
+    if (role === "admin") {
+      router.push("/admin")
+    } else if (role === "dentist") {
+      router.push("/dentist")
+    } else if (role === "orthodontist") {
+      router.push("/orthodontist")
+    } else {
+      router.push("/dashboard") // fallback
+    }
 
     setLoading(false)
   }
 
   return (
-    <div style={{ padding: 40 }}>
-      <h2>Login</h2>
+    <div className="flex min-h-screen items-center justify-center bg-gray-100">
+      <div className="bg-white p-8 rounded-2xl shadow-md w-full max-w-md">
+        
+        <h1 className="text-2xl font-bold mb-6 text-center">
+          Login
+        </h1>
 
-      <input
-        placeholder="Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-      />
+        <input
+          type="email"
+          placeholder="Enter email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="w-full p-3 mb-4 border rounded-lg"
+        />
 
-      <input
-        type="password"
-        placeholder="Password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-      />
+        <input
+          type="password"
+          placeholder="Enter password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="w-full p-3 mb-4 border rounded-lg"
+        />
 
-      <button onClick={handleLogin} disabled={loading}>
-        {loading ? "Loading..." : "Login"}
-      </button>
+        <button
+          onClick={handleLogin}
+          disabled={loading}
+          className="w-full bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700"
+        >
+          {loading ? "Logging in..." : "Login"}
+        </button>
+      </div>
     </div>
   )
 }

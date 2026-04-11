@@ -1,83 +1,96 @@
-"use client";
+"use client"
 
-import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { getSupabaseClient } from "@/lib/supabaseClient"
 
-export default function AppointmentPage() {
-  const [appointments, setAppointments] = useState([]);
+export default function LoginPage() {
+  const router = useRouter()
 
-  useEffect(() => {
-    fetchAppointments();
-  }, []);
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [loading, setLoading] = useState(false)
 
-  const fetchAppointments = async () => {
-    const { data } = await supabase.from("appointments").select("*").order("created_at", { ascending: false });
-    setAppointments(data || []);
-  };
+  const handleLogin = async () => {
+    setLoading(true)
 
-  const updateStatus = async (id, status) => {
-    await supabase.from("appointments").update({ status }).eq("id", id);
-    fetchAppointments();
-  };
+    const supabase = getSupabaseClient()
 
-  const cardStyle = {
-    background: "rgba(15, 23, 42, 0.9)",
-    padding: "20px",
-    borderRadius: "14px",
-    marginBottom: "15px",
-    border: "1px solid #1e293b",
-    backdropFilter: "blur(10px)"
-  };
+    if (!supabase) {
+      alert("Server not ready. Please try again.")
+      setLoading(false)
+      return
+    }
 
-  const statusColor = (status) => {
-    if (status === "new") return "#facc15";
-    if (status === "assigned") return "#60a5fa";
-    if (status === "completed") return "#22c55e";
-    if (status === "cancelled") return "#ef4444";
-    return "#94a3b8";
-  };
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+
+    if (error) {
+      alert(error.message)
+      setLoading(false)
+      return
+    }
+
+    const user = data.user
+
+    // 🔥 ROLE-BASED REDIRECT (from metadata)
+    const role = user?.user_metadata?.role
+
+    if (role === "admin") {
+      router.push("/admin")
+    } else if (role === "dentist") {
+      router.push("/dentist")
+    } else if (role === "orthodontist") {
+      router.push("/orthodontist")
+    } else {
+      alert("No role assigned to this user")
+    }
+
+    setLoading(false)
+  }
 
   return (
-    <div>
-      <h1 style={{ marginBottom: "20px" }}>Appointments 📅</h1>
+    <div className="flex items-center justify-center min-h-screen bg-white">
+      <div className="bg-white p-8 rounded-2xl shadow-lg w-[350px] text-center">
+        
+        {/* Logo */}
+        <img
+          src="/onlylogo.png"
+          alt="OrisAlign"
+          className="mx-auto mb-6 w-[180px]"
+        />
 
-      {appointments.map((a) => (
-        <div key={a.id} style={cardStyle}>
+        <h2 className="text-xl font-semibold mb-4">Login</h2>
 
-          {/* HEADER */}
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <h3>{a.name} ({a.age})</h3>
-            <span style={{
-              padding: "4px 10px",
-              borderRadius: "8px",
-              background: statusColor(a.status),
-              color: "#000",
-              fontWeight: "600"
-            }}>
-              {a.status || "new"}
-            </span>
-          </div>
+        {/* Email */}
+        <input
+          type="email"
+          placeholder="Enter email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="w-full mb-3 p-3 border rounded-lg"
+        />
 
-          <p>📞 {a.phone}</p>
-          <p>📝 {a.complaint}</p>
+        {/* Password */}
+        <input
+          type="password"
+          placeholder="Enter password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="w-full mb-4 p-3 border rounded-lg"
+        />
 
-          {/* ACTIONS */}
-          <div style={{ marginTop: "10px", display: "flex", gap: "10px" }}>
-            <button onClick={() => updateStatus(a.id, "assigned")}>
-              Assign
-            </button>
-
-            <button onClick={() => updateStatus(a.id, "completed")} style={{ background: "#22c55e" }}>
-              Complete
-            </button>
-
-            <button onClick={() => updateStatus(a.id, "cancelled")} style={{ background: "#ef4444" }}>
-              Cancel
-            </button>
-          </div>
-
-        </div>
-      ))}
+        {/* Button */}
+        <button
+          onClick={handleLogin}
+          disabled={loading}
+          className="w-full bg-[#C69C6D] text-white p-3 rounded-lg font-semibold"
+        >
+          {loading ? "Logging in..." : "Login"}
+        </button>
+      </div>
     </div>
-  );
+  )
 }
