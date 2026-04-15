@@ -9,13 +9,21 @@ export default function Dashboard() {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    getUser();
-  }, []);
+    let active = true;
 
-  const getUser = async () => {
-    const { data } = await supabase.auth.getUser();
-    setUser(data.user);
-  };
+    async function loadUser() {
+      const { data } = await supabase.auth.getUser();
+      if (active) {
+        setUser(data.user);
+      }
+    }
+
+    loadUser();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   return (
     <div>

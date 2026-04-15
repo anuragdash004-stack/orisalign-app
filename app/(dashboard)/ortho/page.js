@@ -10,17 +10,25 @@ export default function OrthoPage() {
   const [appointments, setAppointments] = useState([]);
 
   useEffect(() => {
-    fetchOrthos();
+    let active = true;
+
+    async function loadOrthos() {
+      const { data } = await supabase
+        .from("users")
+        .select("*")
+        .eq("role", "orthodontist");
+
+      if (active) {
+        setOrthos(data || []);
+      }
+    }
+
+    loadOrthos();
+
+    return () => {
+      active = false;
+    };
   }, []);
-
-  const fetchOrthos = async () => {
-    const { data } = await supabase
-      .from("users")
-      .select("*")
-      .eq("role", "orthodontist");
-
-    setOrthos(data);
-  };
 
   const loadAppointments = async (id) => {
     const { data } = await supabase
@@ -28,7 +36,7 @@ export default function OrthoPage() {
       .select("*")
       .eq("orthodontist_id", id);
 
-    setAppointments(data);
+    setAppointments(data || []);
   };
 
   return (

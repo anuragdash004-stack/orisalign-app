@@ -1,96 +1,91 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { getSupabaseClient } from "@/lib/supabaseClient"
+import { useEffect, useState } from "react";
+import { getSupabaseClient } from "@/lib/supabaseClient";
 
-export default function LoginPage() {
-  const router = useRouter()
+const supabase = getSupabaseClient();
 
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [loading, setLoading] = useState(false)
+export default function AppointmentPage() {
+  const [appointments, setAppointments] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const handleLogin = async () => {
-    setLoading(true)
+  useEffect(() => {
+    let active = true;
 
-    const supabase = getSupabaseClient()
+    async function loadAppointments() {
+      const { data, error } = await supabase
+        .from("appointments")
+        .select("*")
+        .order("created_at", { ascending: false });
 
-    if (!supabase) {
-      alert("Server not ready. Please try again.")
-      setLoading(false)
-      return
+      if (!active) {
+        return;
+      }
+
+      if (error) {
+        console.error("Failed to load appointments:", error);
+        setAppointments([]);
+      } else {
+        setAppointments(data || []);
+      }
+
+      setLoading(false);
     }
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+    loadAppointments();
 
-    if (error) {
-      alert(error.message)
-      setLoading(false)
-      return
-    }
-
-    const user = data.user
-
-    // 🔥 ROLE-BASED REDIRECT (from metadata)
-    const role = user?.user_metadata?.role
-
-    if (role === "admin") {
-      router.push("/admin")
-    } else if (role === "dentist") {
-      router.push("/dentist")
-    } else if (role === "orthodontist") {
-      router.push("/orthodontist")
-    } else {
-      alert("No role assigned to this user")
-    }
-
-    setLoading(false)
-  }
+    return () => {
+      active = false;
+    };
+  }, []);
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-white">
-      <div className="bg-white p-8 rounded-2xl shadow-lg w-[350px] text-center">
-        
-        {/* Logo */}
-        <img
-          src="/onlylogo.png"
-          alt="OrisAlign"
-          className="mx-auto mb-6 w-[180px]"
-        />
+    <div>
+      <h1 style={{ marginBottom: "20px" }}>Appointments</h1>
 
-        <h2 className="text-xl font-semibold mb-4">Login</h2>
+      {loading ? (
+        <p>Loading appointments...</p>
+      ) : appointments.length === 0 ? (
+        <p>No appointments found.</p>
+      ) : (
+        <div style={{ display: "grid", gap: "14px" }}>
+          {appointments.map((appointment) => (
+            <div
+              key={appointment.id}
+              style={{
+                background: "#0f172a",
+                border: "1px solid #334155",
+                borderRadius: "12px",
+                padding: "16px",
+                color: "white",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  gap: "12px",
+                  flexWrap: "wrap",
+                }}
+              >
+                <strong>{appointment.name || "Unnamed patient"}</strong>
+                <span>{appointment.status || "pending"}</span>
+              </div>
 
-        {/* Email */}
-        <input
-          type="email"
-          placeholder="Enter email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full mb-3 p-3 border rounded-lg"
-        />
-
-        {/* Password */}
-        <input
-          type="password"
-          placeholder="Enter password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full mb-4 p-3 border rounded-lg"
-        />
-
-        {/* Button */}
-        <button
-          onClick={handleLogin}
-          disabled={loading}
-          className="w-full bg-[#C69C6D] text-white p-3 rounded-lg font-semibold"
-        >
-          {loading ? "Logging in..." : "Login"}
-        </button>
-      </div>
+              <p style={{ marginTop: "10px" }}>
+                Phone: {appointment.phone || "N/A"}
+              </p>
+              <p>Email: {appointment.email || "N/A"}</p>
+              <p>Doctor: {appointment.doctor || "N/A"}</p>
+              <p>
+                Time: {[appointment.date, appointment.time]
+                  .filter(Boolean)
+                  .join(" ") || "N/A"}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
-  )
+  );
 }

@@ -45,9 +45,9 @@ export default function LoginPage() {
     } else if (role === "dentist") {
       router.push("/dentist")
     } else if (role === "orthodontist") {
-      router.push("/orthodontist")
+      router.push("/ortho")
     } else {
-      router.push("/dashboard") // fallback
+      router.push("/doctor") // fallback
     }
 
     setLoading(false)

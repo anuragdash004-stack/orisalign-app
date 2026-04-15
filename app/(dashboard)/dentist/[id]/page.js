@@ -25,7 +25,7 @@ export default function DentistCase() {
     };
 
     fetch();
-  }, []);
+  }, [id]);
 
   const submitCase = async () => {
     await supabase

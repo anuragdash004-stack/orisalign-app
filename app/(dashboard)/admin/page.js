@@ -9,13 +9,21 @@ export default function AdminDashboard() {
   const [appointments, setAppointments] = useState([]);
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    let active = true;
 
-  const fetchData = async () => {
-    const { data } = await supabase.from("appointments").select("*");
-    setAppointments(data || []);
-  };
+    async function loadAppointments() {
+      const { data } = await supabase.from("appointments").select("*");
+      if (active) {
+        setAppointments(data || []);
+      }
+    }
+
+    loadAppointments();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const stats = {
     total: appointments.length,
@@ -25,7 +33,7 @@ export default function AdminDashboard() {
     cancelled: appointments.filter(a => a.status === "cancelled").length,
   };
 
-  const card = (title, value, color) => ({
+  const card = (color) => ({
     flex: "1",
     minWidth: "180px",
     background: "#0f172a",
@@ -46,27 +54,27 @@ export default function AdminDashboard() {
         flexWrap: "wrap"
       }}>
 
-        <div style={card("Total", stats.total, "#38bdf8")}>
+        <div style={card("#38bdf8")}>
           <h4>Total</h4>
           <h2>{stats.total}</h2>
         </div>
 
-        <div style={card("Pending", stats.pending, "#facc15")}>
+        <div style={card("#facc15")}>
           <h4>Pending</h4>
           <h2>{stats.pending}</h2>
         </div>
 
-        <div style={card("Assigned", stats.assigned, "#60a5fa")}>
+        <div style={card("#60a5fa")}>
           <h4>Assigned</h4>
           <h2>{stats.assigned}</h2>
         </div>
 
-        <div style={card("Completed", stats.completed, "#22c55e")}>
+        <div style={card("#22c55e")}>
           <h4>Completed</h4>
           <h2>{stats.completed}</h2>
         </div>
 
-        <div style={card("Cancelled", stats.cancelled, "#ef4444")}>
+        <div style={card("#ef4444")}>
           <h4>Cancelled</h4>
           <h2>{stats.cancelled}</h2>
         </div>

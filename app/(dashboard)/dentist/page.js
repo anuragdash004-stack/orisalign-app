@@ -10,17 +10,25 @@ export default function DentistPage() {
   const [appointments, setAppointments] = useState([]);
 
   useEffect(() => {
-    fetchDentists();
+    let active = true;
+
+    async function loadDentists() {
+      const { data } = await supabase
+        .from("users")
+        .select("*")
+        .eq("role", "dentist");
+
+      if (active) {
+        setDentists(data || []);
+      }
+    }
+
+    loadDentists();
+
+    return () => {
+      active = false;
+    };
   }, []);
-
-  const fetchDentists = async () => {
-    const { data } = await supabase
-      .from("users")
-      .select("*")
-      .eq("role", "dentist");
-
-    setDentists(data);
-  };
 
   const loadAppointments = async (id) => {
     const { data } = await supabase
@@ -28,7 +36,7 @@ export default function DentistPage() {
       .select("*")
       .eq("assigned_to", id);
 
-    setAppointments(data);
+    setAppointments(data || []);
   };
 
   return (

@@ -20,7 +20,7 @@ export default function Home() {
     }
 
     checkUser()
-  }, [])
+  }, [router])
 
   return <div>Loading...</div>
 }

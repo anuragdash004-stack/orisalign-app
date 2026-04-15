@@ -23,7 +23,7 @@ export default function OrthoCase() {
     };
 
     fetch();
-  }, []);
+  }, [id]);
 
   const submitPlan = async () => {
     await supabase

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { FormEvent } from "react";
 
 export default function BookPage() {
   const [name, setName] = useState("");
@@ -10,7 +11,7 @@ export default function BookPage() {
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
 
-  const handleSubmit = async (e: any) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     try {
