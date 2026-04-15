@@ -47,7 +47,7 @@ export async function POST(req: Request) {
 
     // 7️⃣ Insert into DB
     const { data, error } = await supabase
-      .from("appointments")
+      .from("appointments_booking")
       .insert([
         {
           name,
