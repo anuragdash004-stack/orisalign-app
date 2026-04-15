@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import type { FormEvent } from "react";
 
 export default function BookPage() {
   const [name, setName] = useState("");
@@ -10,11 +9,18 @@ export default function BookPage() {
   const [doctor, setDoctor] = useState("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  // ✅ SUBMIT FUNCTION (CONNECTED TO YOUR API)
+  const handleSubmit = async () => {
+    if (!name || !phone) {
+      alert("Name and phone are required");
+      return;
+    }
 
     try {
+      setLoading(true);
+
       const res = await fetch("/api/book", {
         method: "POST",
         headers: {
@@ -31,66 +37,117 @@ export default function BookPage() {
       });
 
       const data = await res.json();
-      console.log(data);
 
-      if (data.success) {
-        alert("Appointment booked ✅");
-      } else {
-        alert("Error: " + data.error);
+      if (!res.ok) {
+        alert(data.error || "Something went wrong");
+        return;
       }
+
+      alert("Appointment booked successfully ✅");
+
+      // ✅ RESET FORM AFTER SUCCESS
+      setName("");
+      setPhone("");
+      setEmail("");
+      setDoctor("");
+      setDate("");
+      setTime("");
+
     } catch (err) {
       console.error(err);
-      alert("Failed to connect to server");
+      alert("Network error");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div style={{ display: "flex", justifyContent: "center", marginTop: 100 }}>
-      <form onSubmit={handleSubmit} style={{ width: 300 }}>
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        background: "#0f172a",
+      }}
+    >
+      <div
+        style={{
+          background: "#1e293b",
+          padding: "30px",
+          borderRadius: "12px",
+          width: "350px",
+          display: "flex",
+          flexDirection: "column",
+          gap: "12px",
+        }}
+      >
         <input
           placeholder="Name"
           value={name}
           onChange={(e) => setName(e.target.value)}
+          style={inputStyle}
         />
-        <br /><br />
 
         <input
           placeholder="Phone"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
+          style={inputStyle}
         />
-        <br /><br />
 
         <input
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          style={inputStyle}
         />
-        <br /><br />
 
         <input
           placeholder="Doctor"
           value={doctor}
           onChange={(e) => setDoctor(e.target.value)}
+          style={inputStyle}
         />
-        <br /><br />
 
         <input
           type="date"
           value={date}
           onChange={(e) => setDate(e.target.value)}
+          style={inputStyle}
         />
-        <br /><br />
 
         <input
           type="time"
           value={time}
           onChange={(e) => setTime(e.target.value)}
+          style={inputStyle}
         />
-        <br /><br />
 
-        <button type="submit">Book Appointment</button>
-      </form>
+        <button
+          onClick={handleSubmit}
+          disabled={loading}
+          style={{
+            padding: "12px",
+            borderRadius: "8px",
+            border: "none",
+            background: loading ? "#64748b" : "#22c55e",
+            color: "white",
+            fontWeight: "bold",
+            cursor: "pointer",
+          }}
+        >
+          {loading ? "Booking..." : "Book Appointment"}
+        </button>
+      </div>
     </div>
   );
 }
+
+// ✅ SIMPLE INPUT STYLE
+const inputStyle: React.CSSProperties = {
+  padding: "10px",
+  borderRadius: "6px",
+  border: "none",
+  outline: "none",
+};

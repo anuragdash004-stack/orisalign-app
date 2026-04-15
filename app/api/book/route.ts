@@ -1,3 +1,4 @@
+// FORCE Node runtime (important for env variables)
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
@@ -5,12 +6,12 @@ import { createClient } from "@supabase/supabase-js";
 
 export async function POST(req: Request) {
   try {
-    // ✅ Parse request body
+    // 1️⃣ Parse request body
     const body = await req.json();
 
     const { name, phone, email, doctor, date, time } = body;
 
-    // ✅ Basic validation
+    // 2️⃣ Basic validation
     if (!name || !phone) {
       return NextResponse.json(
         { error: "Missing required fields" },
@@ -18,28 +19,33 @@ export async function POST(req: Request) {
       );
     }
 
-    // ✅ Debug: Check ENV variables
+    // 3️⃣ Get ENV variables (CORRECT WAY)
+    const supabaseUrl =
+      process.env.SUPABASE_URL ||
+      process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+    const supabaseKey =
+      process.env.SUPABASE_SERVICE_ROLE_KEY ||
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    // 4️⃣ DEBUG (this will appear in Vercel logs)
     console.log("ENV CHECK:", {
-      url: process.env.SUPABASE_URL,
-      key: process.env.SUPABASE_SERVICE_ROLE_KEY ? "present" : "missing",
+      urlExists: !!supabaseUrl,
+      keyExists: !!supabaseKey,
     });
 
-    // ❌ Stop execution if ENV missing
-    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      console.error("❌ Supabase ENV missing");
+    // 5️⃣ Stop if ENV missing
+    if (!supabaseUrl || !supabaseKey) {
       return NextResponse.json(
         { error: "Server configuration error" },
         { status: 500 }
       );
     }
 
-    // ✅ Create Supabase client (SERVER ONLY)
-    const supabase = createClient(
-      process.env.SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
+    // 6️⃣ Create Supabase client (SERVER SIDE ONLY)
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // ✅ Insert into database
+    // 7️⃣ Insert into DB
     const { data, error } = await supabase
       .from("appointments")
       .insert([
@@ -53,25 +59,25 @@ export async function POST(req: Request) {
           status: "pending",
         },
       ])
-      .select(); // optional: returns inserted row
+      .select();
 
-    // ❌ Handle Supabase error
+    // 8️⃣ Handle DB error
     if (error) {
-      console.error("❌ Supabase error:", error);
+      console.error("Supabase error:", error);
       return NextResponse.json(
         { error: error.message },
         { status: 500 }
       );
     }
 
-    // ✅ Success
+    // 9️⃣ Success response
     return NextResponse.json({
       success: true,
       data,
     });
 
   } catch (err: any) {
-    console.error("❌ API crash:", err);
+    console.error("API crash:", err);
 
     return NextResponse.json(
       { error: "Server crashed" },
