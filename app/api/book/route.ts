@@ -23,7 +23,7 @@ export async function POST(req: Request) {
       ]);
 
     if (error) {
-      console.error("Supabase error:", error);
+      console.error(error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
