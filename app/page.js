@@ -71,15 +71,14 @@ export default function LandingPage() {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur border-b border-[#F0E4B8] shadow-sm">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center">
-            {/* Logo image — save your logo as /public/logo.png */}
             <img
-              src="/logo.png"
+              src="/logo2.png"
               alt="OrisAlign"
               className="h-10 w-auto"
               style={{ mixBlendMode: 'multiply' }}
               onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex' }}
             />
-            {/* Fallback text if logo.png not yet uploaded */}
+            {/* Fallback text if logo2.png not yet uploaded */}
             <span className="items-center gap-1 hidden" style={{display:'none'}}>
               <span className="text-2xl font-black tracking-tight" style={{ color: NAVY }}>Oris</span>
               <span className="text-2xl font-black tracking-tight" style={{ color: GOLD }}>Align</span>
@@ -441,7 +440,7 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto px-4">
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-10 mb-12">
             <div className="lg:col-span-2">
-              <img src="/logo.png" alt="OrisAlign" className="h-10 w-auto mb-3 brightness-0 invert" />
+              <img src="/logo2.png" alt="OrisAlign" className="h-10 w-auto mb-3 brightness-0 invert" />
               <p className="text-sm text-gray-400 mb-4 leading-relaxed">Clear aligners designed and supervised by Dr. Anurag Dash. Helping Bhubaneswar smile better — affordably.</p>
               <div className="flex gap-3">
                 {['Facebook', 'Instagram', 'YouTube'].map(s => (
