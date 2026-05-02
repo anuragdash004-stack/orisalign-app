@@ -99,6 +99,7 @@ export default function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [membershipOpen, setMembershipOpen] = useState(false)
   const [freebiesOpen, setFreebiesOpen] = useState(false)
+  const [callbackOpen, setCallbackOpen] = useState(false)
   const [callbackForm, setCallbackForm] = useState({ name: '', phone: '' })
   const [callbackSubmitted, setCallbackSubmitted] = useState(false)
   const [callbackLoading, setCallbackLoading] = useState(false)
@@ -327,56 +328,74 @@ export default function LandingPage() {
             <div className="px-8 py-8 bg-white">
               {!callbackSubmitted ? (
                 <>
-                  {/* Callback form */}
-                  <p className="text-sm font-semibold mb-5 text-center" style={{ color: NAVY }}>Request a free callback</p>
-                  <form onSubmit={handleCallbackSubmit} className="space-y-4">
-                    <div>
-                      <label className="block text-xs font-semibold mb-1.5" style={{ color: NAVY }}>Your Name</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Priya Sharma"
-                        value={callbackForm.name}
-                        onChange={e => setCallbackForm(f => ({ ...f, name: e.target.value }))}
-                        required
-                        className="w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all"
-                        style={{ borderColor: '#E8D5A0', background: '#FFFDF5' }}
-                        onFocus={e => e.target.style.borderColor = GOLD}
-                        onBlur={e => e.target.style.borderColor = '#E8D5A0'}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold mb-1.5" style={{ color: NAVY }}>Phone Number</label>
-                      <input
-                        type="tel"
-                        placeholder="e.g. 98765 43210"
-                        value={callbackForm.phone}
-                        onChange={e => setCallbackForm(f => ({ ...f, phone: e.target.value }))}
-                        required
-                        className="w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all"
-                        style={{ borderColor: '#E8D5A0', background: '#FFFDF5' }}
-                        onFocus={e => e.target.style.borderColor = GOLD}
-                        onBlur={e => e.target.style.borderColor = '#E8D5A0'}
-                      />
-                    </div>
-                    <button
-                      type="submit"
-                      disabled={callbackLoading}
-                      className="w-full py-3.5 rounded-xl font-bold text-sm transition-all"
-                      style={{ background: NAVY, color: '#fff', opacity: callbackLoading ? 0.7 : 1 }}
-                    >
-                      {callbackLoading ? 'Submitting…' : 'Request Callback →'}
-                    </button>
-                  </form>
+                  {/* Collapsible callback trigger */}
+                  <button
+                    onClick={() => setCallbackOpen(o => !o)}
+                    className="w-full flex items-center justify-between px-5 py-4 rounded-xl border-2 font-semibold text-sm transition-all mb-4"
+                    style={{
+                      borderColor: callbackOpen ? NAVY : '#E8D5A0',
+                      background: callbackOpen ? NAVY : '#FFFDF5',
+                      color: callbackOpen ? '#fff' : NAVY,
+                    }}
+                  >
+                    <span className="flex items-center gap-2">
+                      <span>📞</span>
+                      Request a free callback
+                    </span>
+                    <span className="text-lg leading-none" style={{ transform: callbackOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>⌄</span>
+                  </button>
+
+                  {/* Expandable form */}
+                  {callbackOpen && (
+                    <form onSubmit={handleCallbackSubmit} className="space-y-4 mb-6 pt-1">
+                      <div>
+                        <label className="block text-xs font-semibold mb-1.5" style={{ color: NAVY }}>Your Name</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Priya Sharma"
+                          value={callbackForm.name}
+                          onChange={e => setCallbackForm(f => ({ ...f, name: e.target.value }))}
+                          required
+                          className="w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all"
+                          style={{ borderColor: '#E8D5A0', background: '#FFFDF5' }}
+                          onFocus={e => e.target.style.borderColor = GOLD}
+                          onBlur={e => e.target.style.borderColor = '#E8D5A0'}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold mb-1.5" style={{ color: NAVY }}>Phone Number</label>
+                        <input
+                          type="tel"
+                          placeholder="e.g. 98765 43210"
+                          value={callbackForm.phone}
+                          onChange={e => setCallbackForm(f => ({ ...f, phone: e.target.value }))}
+                          required
+                          className="w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all"
+                          style={{ borderColor: '#E8D5A0', background: '#FFFDF5' }}
+                          onFocus={e => e.target.style.borderColor = GOLD}
+                          onBlur={e => e.target.style.borderColor = '#E8D5A0'}
+                        />
+                      </div>
+                      <button
+                        type="submit"
+                        disabled={callbackLoading}
+                        className="w-full py-3.5 rounded-xl font-bold text-sm transition-all"
+                        style={{ background: GOLD, color: NAVY, opacity: callbackLoading ? 0.7 : 1 }}
+                      >
+                        {callbackLoading ? 'Submitting…' : 'Submit →'}
+                      </button>
+                    </form>
+                  )}
 
                   {/* Divider */}
-                  <div className="flex items-center gap-3 my-6">
+                  <div className="flex items-center gap-3 my-2">
                     <div className="flex-1 h-px" style={{ background: '#E8D5A0' }} />
                     <span className="text-xs text-gray-400 font-medium">or reach us directly</span>
                     <div className="flex-1 h-px" style={{ background: '#E8D5A0' }} />
                   </div>
 
                   {/* Direct contact buttons */}
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-3 mt-4">
                     <a
                       href="mailto:hello@orisalign.com"
                       className="flex items-center justify-center gap-2 py-3 rounded-xl border font-semibold text-sm transition-all hover:shadow-md"
