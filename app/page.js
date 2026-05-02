@@ -21,6 +21,7 @@ const COMPARISON = [
   { feature: 'Food restrictions', orisalign: 'None', braces: 'Many', invisalign: 'None' },
   { feature: 'Made in India', orisalign: '✓ Yes', braces: '✓ Yes', invisalign: '✗ Imported' },
   { feature: 'Doctor supervised', orisalign: '✓ Always', braces: '✓ Always', invisalign: '✓ Always' },
+  { feature: 'Transparency', orisalign: '✓ Yes', braces: '✗ No', invisalign: '✗ No' },
   { feature: 'Clinic in Odisha', orisalign: '✓ Yes', braces: 'Varies', invisalign: '✗ No' },
   { feature: '24/7 Support', orisalign: '✓ Yes', braces: '✗ No', invisalign: '✗ No' },
   { feature: 'Treatment begins in', orisalign: '10 days', braces: '15 days', invisalign: '1.5–2 months' },
@@ -253,9 +254,12 @@ export default function LandingPage() {
               <thead>
                 <tr className="bg-gray-50">
                   <th className="text-left px-5 py-4 font-bold text-gray-500 w-1/4">Feature</th>
-                  <th className="px-5 py-4 font-black border-x-2" style={{ color: GOLD, background: '#FBF7EE', borderColor: '#E8D5A0' }}>OrisAlign ✓</th>
-                  <th className="px-5 py-4 font-semibold text-gray-600">Metal Braces</th>
-                  <th className="px-5 py-4 font-semibold text-gray-600">Other Aligner Brands</th>
+                  <th className="px-5 py-4 border-x-2" style={{ color: GOLD, background: '#FBF7EE', borderColor: '#E8D5A0' }}>
+                    <span className="block text-xl font-black tracking-tight">OrisAlign</span>
+                    <span className="block text-base font-black" style={{ color: '#C9A84C' }}>✓</span>
+                  </th>
+                  <th className="px-5 py-4 text-xs font-medium text-gray-400">Metal Braces</th>
+                  <th className="px-5 py-4 text-xs font-medium text-gray-400">Other Aligner Brands</th>
                 </tr>
               </thead>
               <tbody>
@@ -469,7 +473,6 @@ export default function LandingPage() {
           <div className="rounded-3xl border-2 overflow-hidden shadow-lg" style={{ borderColor: GOLD }}>
             {/* Header */}
             <div className="px-8 py-8 text-center" style={{ background: `linear-gradient(135deg, ${NAVY}, #0F1E33)` }}>
-              <p className="text-sm font-semibold uppercase tracking-widest mb-3" style={{ color: GOLD }}>Complete Treatment</p>
               <div className="flex items-end justify-center gap-2 mb-1">
                 <span className="text-lg font-semibold" style={{ color: '#E8D9A0' }}>Starts at</span>
                 <span className="text-5xl font-black" style={{ color: GOLD }}>₹44,999</span>
@@ -564,6 +567,7 @@ export default function LandingPage() {
                 Book Your ₹199 Scan →
               </a>
               <p className="text-xs text-gray-400 mt-3">Exact pricing shared after consultation — your case may cost less.</p>
+              <p className="text-xs mt-1.5 font-semibold" style={{ color: NAVY }}>Other solutions available — <a href="https://wa.me/918280837370" target="_blank" rel="noopener noreferrer" style={{ color: GOLD, textDecoration: 'underline' }}>contact us to know more</a></p>
             </div>
           </div>
 
@@ -574,18 +578,42 @@ export default function LandingPage() {
             </p>
           </div>
 
-          {/* Trust Badge */}
-          <div className="mt-6 rounded-2xl p-6 text-center" style={{ background: `linear-gradient(135deg, ${NAVY}, #0f2027)`, color: 'white' }}>
-            <div className="text-3xl mb-3">🛡️</div>
-            <h3 className="text-lg font-black mb-2" style={{ color: GOLD }}>You trust us — we take your responsibility</h3>
-            <p className="text-sm leading-relaxed" style={{ color: '#E8D9A0' }}>
-              Any extension of treatment beyond the committed timeline will be entirely on us.
-              <strong style={{ color: 'white' }}> No additional charges. Ever.</strong>
-            </p>
-            <div className="mt-4 flex flex-wrap justify-center gap-4 text-xs font-semibold" style={{ color: '#94a3b8' }}>
-              <span>✅ Treatment guarantee</span>
-              <span>✅ No hidden charges</span>
-              <span>✅ Extension covered by us</span>
+          {/* OrisPromise */}
+          <div className="mt-6 rounded-3xl overflow-hidden" style={{ background: `linear-gradient(135deg, ${NAVY} 0%, #0f2027 100%)`, boxShadow: `0 8px 32px ${NAVY}88` }}>
+            {/* Badge header */}
+            <div className="px-6 pt-7 pb-4 text-center border-b" style={{ borderColor: 'rgba(201,168,76,0.2)' }}>
+              <div className="inline-flex items-center justify-center w-14 h-14 rounded-full mb-3" style={{ background: 'rgba(201,168,76,0.12)', border: `2px solid ${GOLD}` }}>
+                <span className="text-2xl">🛡️</span>
+              </div>
+              <div className="text-xs font-black uppercase tracking-[0.25em] mb-1" style={{ color: GOLD }}>OrisPromise</div>
+              <h3 className="text-xl font-black" style={{ color: '#fff' }}>You trust us.</h3>
+              <h3 className="text-xl font-black mb-1" style={{ color: '#fff' }}>We take your responsibility.</h3>
+            </div>
+
+            {/* Promise body */}
+            <div className="px-6 py-5 space-y-4">
+              {/* Condition */}
+              <div className="flex items-start gap-3 rounded-xl px-4 py-3" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <span className="mt-0.5 text-base flex-shrink-0">📋</span>
+                <p className="text-sm leading-relaxed" style={{ color: '#CBD5E1' }}>
+                  Just <strong style={{ color: '#fff' }}>follow our instructions</strong> and complete the treatment as per the doctor's advice.
+                </p>
+              </div>
+
+              {/* Guarantee */}
+              <div className="flex items-start gap-3 rounded-xl px-4 py-3" style={{ background: 'rgba(201,168,76,0.08)', border: `1px solid ${GOLD}33` }}>
+                <span className="mt-0.5 text-base flex-shrink-0">✨</span>
+                <p className="text-sm leading-relaxed" style={{ color: '#E8D9A0' }}>
+                  Any extension of treatment beyond the committed timeline will be <strong style={{ color: '#fff' }}>entirely on us — no additional charges, ever.</strong>
+                </p>
+              </div>
+
+              {/* Pills */}
+              <div className="flex flex-wrap justify-center gap-2 pt-1">
+                {['✅ Treatment guarantee', '✅ No hidden charges', '✅ Extension covered by us'].map((t, i) => (
+                  <span key={i} className="text-xs font-semibold px-3 py-1.5 rounded-full" style={{ background: 'rgba(255,255,255,0.06)', color: '#94a3b8', border: '1px solid rgba(255,255,255,0.1)' }}>{t}</span>
+                ))}
+              </div>
             </div>
           </div>
         </div>
