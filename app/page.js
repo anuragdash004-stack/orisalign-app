@@ -328,26 +328,30 @@ export default function LandingPage() {
             <div className="px-8 py-8 bg-white">
               {!callbackSubmitted ? (
                 <>
-                  {/* Collapsible callback trigger */}
-                  <button
-                    onClick={() => setCallbackOpen(o => !o)}
-                    className="w-full flex items-center justify-between px-5 py-4 rounded-xl border-2 font-semibold text-sm transition-all mb-4"
-                    style={{
-                      borderColor: callbackOpen ? NAVY : '#E8D5A0',
-                      background: callbackOpen ? NAVY : '#FFFDF5',
-                      color: callbackOpen ? '#fff' : NAVY,
-                    }}
-                  >
-                    <span className="flex items-center gap-2">
-                      <span>📞</span>
-                      Request a free callback
-                    </span>
-                    <span className="text-lg leading-none" style={{ transform: callbackOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>⌄</span>
-                  </button>
+                  {/* Collapsible callback trigger — attractive box */}
+                  <div className="rounded-2xl overflow-hidden mb-4" style={{ border: `1.5px solid ${callbackOpen ? GOLD : '#E8D5A0'}`, boxShadow: callbackOpen ? `0 4px 20px ${GOLD}33` : 'none', transition: 'box-shadow 0.3s' }}>
+                    <button
+                      onClick={() => setCallbackOpen(o => !o)}
+                      className="w-full flex items-center justify-between px-5 py-4 transition-all"
+                      style={{ background: callbackOpen ? `linear-gradient(135deg, ${NAVY}, #0F1E33)` : 'linear-gradient(135deg, #FBF7EE, #FFF8E7)' }}
+                    >
+                      <span className="flex items-center gap-3">
+                        <span className="inline-flex items-center justify-center w-9 h-9 rounded-full flex-shrink-0" style={{ background: callbackOpen ? 'rgba(201,168,76,0.2)' : GOLD }}>
+                          <span className="text-base">📞</span>
+                        </span>
+                        <span>
+                          <span className="block font-black text-sm" style={{ color: callbackOpen ? '#fff' : NAVY }}>Request a free callback</span>
+                          <span className="block text-xs mt-0.5" style={{ color: callbackOpen ? '#94a3b8' : '#6b7280' }}>We'll call you within 24 hours</span>
+                        </span>
+                      </span>
+                      <span className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center" style={{ background: callbackOpen ? 'rgba(255,255,255,0.1)' : '#E8D5A0' }}>
+                        <svg className="w-3.5 h-3.5 transition-transform" style={{ transform: callbackOpen ? 'rotate(180deg)' : 'none', fill: callbackOpen ? '#fff' : NAVY }} viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+                      </span>
+                    </button>
 
                   {/* Expandable form */}
                   {callbackOpen && (
-                    <form onSubmit={handleCallbackSubmit} className="space-y-4 mb-6 pt-1">
+                    <form onSubmit={handleCallbackSubmit} className="space-y-4 px-5 pb-5 pt-4" style={{ background: '#FFFDF5', borderTop: `1px solid ${GOLD}44` }}>
                       <div>
                         <label className="block text-xs font-semibold mb-1.5" style={{ color: NAVY }}>Your Name</label>
                         <input
@@ -386,6 +390,7 @@ export default function LandingPage() {
                       </button>
                     </form>
                   )}
+                  </div>
 
                   {/* Divider */}
                   <div className="flex items-center gap-3 my-2">
