@@ -314,40 +314,47 @@ export default function LandingPage() {
             </div>
 
             {/* Freebies */}
-            <div className="px-8 py-6" style={{ background: '#FBF7EE' }}>
-              {/* Header row with i button next to ₹9,999 */}
-              <div className="flex items-center justify-center gap-2 mb-5 flex-wrap">
-                <span className="text-lg">🎁</span>
-                <span className="font-black text-base" style={{ color: NAVY }}>Freebies worth ₹9,999</span>
-                <button
-                  onClick={() => setFreebiesOpen(!freebiesOpen)}
-                  className="w-5 h-5 rounded-full border-2 flex items-center justify-center text-xs font-black transition-colors flex-shrink-0"
-                  style={{ borderColor: NAVY, background: freebiesOpen ? NAVY : 'transparent' }}
-                  aria-label="What's included in freebies"
-                >
-                  <span style={{ color: freebiesOpen ? '#fff' : NAVY }}>i</span>
-                </button>
-                <span className="font-black text-base" style={{ color: NAVY }}>— included with every treatment</span>
-              </div>
+            <div className="px-8 py-6 space-y-3" style={{ background: '#FBF7EE' }}>
+              {/* Freebies header — styled as a card row, i button tight after ₹9,999 */}
+              <div className="rounded-xl bg-white border overflow-hidden" style={{ borderColor: '#E8D5A0' }}>
+                <div className="flex items-center justify-between px-4 py-3">
+                  <span className="flex items-center gap-3 text-sm font-medium" style={{ color: NAVY }}>
+                    <span className="text-base">🎁</span>
+                    <span>
+                      Freebies worth{' '}
+                      <span className="font-black">₹9,999</span>
+                      <button
+                        onClick={() => setFreebiesOpen(!freebiesOpen)}
+                        className="inline-flex items-center justify-center w-4 h-4 rounded-full border-2 text-xs font-black transition-colors align-middle ml-1"
+                        style={{ borderColor: NAVY, background: freebiesOpen ? NAVY : 'transparent' }}
+                        aria-label="What's included in freebies"
+                      >
+                        <span style={{ color: freebiesOpen ? '#fff' : NAVY, fontSize: '10px' }}>i</span>
+                      </button>
+                    </span>
+                  </span>
+                  <span className="text-xs text-gray-400 italic">included with every treatment</span>
+                </div>
 
-              {/* 3 freebies — visible only when i is tapped */}
-              {freebiesOpen && (
-                <ul className="space-y-3 mb-3">
-                  {[
-                    { icon: '✨', label: 'Scaling & polishing' },
-                    { icon: '💎', label: '1 set transparent retainer' },
-                    { icon: '🦷', label: '1 set metal retainer' },
-                  ].map((item, i) => (
-                    <li key={i} className="flex items-center justify-between rounded-xl px-4 py-3 bg-white border" style={{ borderColor: '#E8D5A0' }}>
-                      <span className="flex items-center gap-3 text-sm font-medium" style={{ color: NAVY }}>
-                        <span className="text-base">{item.icon}</span>
-                        {item.label}
-                      </span>
-                      <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background: GOLD, color: NAVY }}>Free</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
+                {/* 3 freebies — expand when i is tapped */}
+                {freebiesOpen && (
+                  <div className="border-t" style={{ borderColor: '#F0E4B8' }}>
+                    {[
+                      { icon: '✨', label: 'Scaling & polishing' },
+                      { icon: '💎', label: '1 set transparent retainer' },
+                      { icon: '🦷', label: '1 set metal retainer' },
+                    ].map((item, i) => (
+                      <div key={i} className="flex items-center justify-between px-4 py-2.5 border-b last:border-b-0" style={{ borderColor: '#F0E4B8', background: '#FFFDF5' }}>
+                        <span className="flex items-center gap-3 text-sm font-medium" style={{ color: NAVY }}>
+                          <span className="text-base">{item.icon}</span>
+                          {item.label}
+                        </span>
+                        <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background: GOLD, color: NAVY }}>Free</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               {/* Lifetime membership card — always visible, i button before Free badge */}
               <ul className="space-y-3">
