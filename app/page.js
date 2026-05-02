@@ -585,7 +585,7 @@ export default function LandingPage() {
               <div className="inline-flex items-center justify-center w-14 h-14 rounded-full mb-3" style={{ background: 'rgba(201,168,76,0.12)', border: `2px solid ${GOLD}` }}>
                 <span className="text-2xl">🛡️</span>
               </div>
-              <div className="text-xs font-black uppercase tracking-[0.25em] mb-1" style={{ color: GOLD }}>OrisPromise</div>
+              <div className="text-2xl font-black uppercase tracking-widest mb-1" style={{ color: GOLD }}>OrisPromise</div>
               <h3 className="text-xl font-black" style={{ color: '#fff' }}>You trust us.</h3>
               <h3 className="text-xl font-black mb-1" style={{ color: '#fff' }}>We take your responsibility.</h3>
             </div>
