@@ -97,6 +97,7 @@ const serviceSchema = {
 export default function LandingPage() {
   const [openFaq, setOpenFaq] = useState(null)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [membershipOpen, setMembershipOpen] = useState(false)
 
   return (
     <div className="min-h-screen bg-white text-gray-900 font-sans">
@@ -319,19 +320,52 @@ export default function LandingPage() {
               </div>
               <ul className="space-y-3">
                 {[
-                  { icon: '✨', label: 'Scaling & polishing', tag: 'Free' },
-                  { icon: '💎', label: '1 set transparent retainer', tag: 'Free' },
-                  { icon: '🦷', label: '1 set metal retainer', tag: 'Free' },
-                  { icon: '🪪', label: 'Lifetime membership card', tag: 'Free' },
+                  { icon: '✨', label: 'Scaling & polishing' },
+                  { icon: '💎', label: '1 set transparent retainer' },
+                  { icon: '🦷', label: '1 set metal retainer' },
                 ].map((item, i) => (
                   <li key={i} className="flex items-center justify-between rounded-xl px-4 py-3 bg-white border" style={{ borderColor: '#E8D5A0' }}>
                     <span className="flex items-center gap-3 text-sm font-medium" style={{ color: NAVY }}>
                       <span className="text-base">{item.icon}</span>
                       {item.label}
                     </span>
-                    <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background: GOLD, color: NAVY }}>{item.tag}</span>
+                    <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background: GOLD, color: NAVY }}>Free</span>
                   </li>
                 ))}
+
+                {/* Lifetime membership card — expandable */}
+                <li className="rounded-xl bg-white border overflow-hidden" style={{ borderColor: '#E8D5A0' }}>
+                  <div className="flex items-center justify-between px-4 py-3">
+                    <span className="flex items-center gap-3 text-sm font-medium" style={{ color: NAVY }}>
+                      <span className="text-base">🪪</span>
+                      Lifetime membership card
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background: GOLD, color: NAVY }}>Free</span>
+                      <button
+                        onClick={() => setMembershipOpen(!membershipOpen)}
+                        className="w-5 h-5 rounded-full border-2 flex items-center justify-center text-xs font-black transition-colors flex-shrink-0"
+                        style={{ borderColor: NAVY, color: NAVY, background: membershipOpen ? NAVY : 'transparent' }}
+                        aria-label="Membership card details"
+                      >
+                        <span style={{ color: membershipOpen ? '#fff' : NAVY }}>i</span>
+                      </button>
+                    </div>
+                  </div>
+                  {membershipOpen && (
+                    <div className="px-4 pb-4 pt-1 text-xs leading-relaxed space-y-1.5 border-t" style={{ borderColor: '#F0E4B8', background: '#FFFDF5' }}>
+                      <p className="font-bold text-sm mb-2" style={{ color: NAVY }}>What's included in your Lifetime Membership:</p>
+                      <div className="flex items-start gap-2">
+                        <span style={{ color: GOLD }}>✦</span>
+                        <span style={{ color: '#374151' }}><strong>30% off</strong> on any dental treatment or surgery — for the lifetime of the card holder</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span style={{ color: GOLD }}>✦</span>
+                        <span style={{ color: '#374151' }}>Benefit also applies to <strong>+1 person</strong> of the card holder's choice</span>
+                      </div>
+                    </div>
+                  )}
+                </li>
               </ul>
             </div>
 
