@@ -98,6 +98,7 @@ export default function LandingPage() {
   const [openFaq, setOpenFaq] = useState(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [membershipOpen, setMembershipOpen] = useState(false)
+  const [freebiesOpen, setFreebiesOpen] = useState(false)
 
   return (
     <div className="min-h-screen bg-white text-gray-900 font-sans">
@@ -314,26 +315,42 @@ export default function LandingPage() {
 
             {/* Freebies */}
             <div className="px-8 py-6" style={{ background: '#FBF7EE' }}>
-              <div className="flex items-center justify-center gap-2 mb-5">
+              {/* Header row with i button next to ₹9,999 */}
+              <div className="flex items-center justify-center gap-2 mb-5 flex-wrap">
                 <span className="text-lg">🎁</span>
-                <span className="font-black text-base" style={{ color: NAVY }}>Freebies worth ₹9,999 — included with every treatment</span>
+                <span className="font-black text-base" style={{ color: NAVY }}>Freebies worth ₹9,999</span>
+                <button
+                  onClick={() => setFreebiesOpen(!freebiesOpen)}
+                  className="w-5 h-5 rounded-full border-2 flex items-center justify-center text-xs font-black transition-colors flex-shrink-0"
+                  style={{ borderColor: NAVY, background: freebiesOpen ? NAVY : 'transparent' }}
+                  aria-label="What's included in freebies"
+                >
+                  <span style={{ color: freebiesOpen ? '#fff' : NAVY }}>i</span>
+                </button>
+                <span className="font-black text-base" style={{ color: NAVY }}>— included with every treatment</span>
               </div>
-              <ul className="space-y-3">
-                {[
-                  { icon: '✨', label: 'Scaling & polishing' },
-                  { icon: '💎', label: '1 set transparent retainer' },
-                  { icon: '🦷', label: '1 set metal retainer' },
-                ].map((item, i) => (
-                  <li key={i} className="flex items-center justify-between rounded-xl px-4 py-3 bg-white border" style={{ borderColor: '#E8D5A0' }}>
-                    <span className="flex items-center gap-3 text-sm font-medium" style={{ color: NAVY }}>
-                      <span className="text-base">{item.icon}</span>
-                      {item.label}
-                    </span>
-                    <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background: GOLD, color: NAVY }}>Free</span>
-                  </li>
-                ))}
 
-                {/* Lifetime membership card — expandable */}
+              {/* 3 freebies — visible only when i is tapped */}
+              {freebiesOpen && (
+                <ul className="space-y-3 mb-3">
+                  {[
+                    { icon: '✨', label: 'Scaling & polishing' },
+                    { icon: '💎', label: '1 set transparent retainer' },
+                    { icon: '🦷', label: '1 set metal retainer' },
+                  ].map((item, i) => (
+                    <li key={i} className="flex items-center justify-between rounded-xl px-4 py-3 bg-white border" style={{ borderColor: '#E8D5A0' }}>
+                      <span className="flex items-center gap-3 text-sm font-medium" style={{ color: NAVY }}>
+                        <span className="text-base">{item.icon}</span>
+                        {item.label}
+                      </span>
+                      <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background: GOLD, color: NAVY }}>Free</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {/* Lifetime membership card — always visible, i button before Free badge */}
+              <ul className="space-y-3">
                 <li className="rounded-xl bg-white border overflow-hidden" style={{ borderColor: '#E8D5A0' }}>
                   <div className="flex items-center justify-between px-4 py-3">
                     <span className="flex items-center gap-3 text-sm font-medium" style={{ color: NAVY }}>
@@ -341,15 +358,15 @@ export default function LandingPage() {
                       Lifetime membership card
                     </span>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background: GOLD, color: NAVY }}>Free</span>
                       <button
                         onClick={() => setMembershipOpen(!membershipOpen)}
                         className="w-5 h-5 rounded-full border-2 flex items-center justify-center text-xs font-black transition-colors flex-shrink-0"
-                        style={{ borderColor: NAVY, color: NAVY, background: membershipOpen ? NAVY : 'transparent' }}
+                        style={{ borderColor: NAVY, background: membershipOpen ? NAVY : 'transparent' }}
                         aria-label="Membership card details"
                       >
                         <span style={{ color: membershipOpen ? '#fff' : NAVY }}>i</span>
                       </button>
+                      <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background: GOLD, color: NAVY }}>Free</span>
                     </div>
                   </div>
                   {membershipOpen && (
