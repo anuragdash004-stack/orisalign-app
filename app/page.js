@@ -415,7 +415,7 @@ export default function LandingPage() {
                       WhatsApp
                     </a>
                   </div>
-                  <p className="text-center text-xs text-gray-400 mt-3">hello@orisalign.com &nbsp;·&nbsp; +91 82808 37370</p>
+                  <p className="text-center text-xs text-gray-400 mt-3">hello@orisalign.com</p>
                 </>
               ) : (
                 /* Success state */
@@ -524,7 +524,7 @@ export default function LandingPage() {
                       <span className="text-base">🪪</span>
                       Lifetime membership card
                     </span>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
                       <button
                         onClick={() => setMembershipOpen(!membershipOpen)}
                         className="w-5 h-5 rounded-full border-2 flex items-center justify-center text-xs font-black transition-colors flex-shrink-0"
