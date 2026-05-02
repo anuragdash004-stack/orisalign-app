@@ -9,6 +9,7 @@ const NAV_LINKS = [
   { label: 'How It Works', href: '#how-it-works' },
   { label: 'Pricing', href: '#pricing' },
   { label: 'Before & After', href: '#gallery' },
+  { label: 'OrisPromise', href: '#orispromise' },
   { label: 'FAQs', href: '#faq' },
 ]
 
@@ -21,7 +22,7 @@ const COMPARISON = [
   { feature: 'Food restrictions', orisalign: 'None', braces: 'Many', invisalign: 'None' },
   { feature: 'Made in India', orisalign: '✓ Yes', braces: '✓ Yes', invisalign: '✗ Imported' },
   { feature: 'Doctor supervised', orisalign: '✓ Always', braces: '✓ Always', invisalign: '✓ Always' },
-  { feature: 'Transparency', orisalign: '✓ Yes', braces: '✗ No', invisalign: '✗ No' },
+  { feature: 'Transparent Pricing', orisalign: '✓ Yes', braces: '✗ No', invisalign: '✗ No' },
   { feature: 'Clinic in Odisha', orisalign: '✓ Yes', braces: 'Varies', invisalign: '✗ No' },
   { feature: '24/7 Support', orisalign: '✓ Yes', braces: '✗ No', invisalign: '✗ No' },
   { feature: 'Treatment begins in', orisalign: '10 days', braces: '15 days', invisalign: '1.5–2 months' },
@@ -254,12 +255,12 @@ export default function LandingPage() {
               <thead>
                 <tr className="bg-gray-50">
                   <th className="text-left px-5 py-4 font-bold text-gray-500 w-1/4">Feature</th>
-                  <th className="px-5 py-4 border-x-2" style={{ color: GOLD, background: '#FBF7EE', borderColor: '#E8D5A0' }}>
-                    <span className="block text-xl font-black tracking-tight">OrisAlign</span>
-                    <span className="block text-base font-black" style={{ color: '#C9A84C' }}>✓</span>
+                  <th className="px-5 py-5 border-x-2" style={{ color: GOLD, background: '#FBF7EE', borderColor: '#E8D5A0' }}>
+                    <span className="block text-2xl font-black tracking-tight leading-tight" style={{ color: GOLD }}>OrisAlign</span>
+                    <span className="block text-lg font-black mt-0.5" style={{ color: GOLD }}>✓</span>
                   </th>
-                  <th className="px-5 py-4 text-xs font-medium text-gray-400">Metal Braces</th>
-                  <th className="px-5 py-4 text-xs font-medium text-gray-400">Other Aligner Brands</th>
+                  <th className="px-5 py-5 text-[11px] font-medium text-gray-400 leading-tight">Metal<br/>Braces</th>
+                  <th className="px-5 py-5 text-[11px] font-medium text-gray-400 leading-tight">Other<br/>Aligner Brands</th>
                 </tr>
               </thead>
               <tbody>
@@ -493,11 +494,11 @@ export default function LandingPage() {
                       <span className="font-black">₹9,999</span>
                       <button
                         onClick={() => setFreebiesOpen(!freebiesOpen)}
-                        className="inline-flex items-center justify-center w-4 h-4 rounded-full border-2 text-xs font-black transition-colors align-middle ml-1"
-                        style={{ borderColor: NAVY, background: freebiesOpen ? NAVY : 'transparent' }}
+                        className="inline-flex items-center justify-center w-5 h-5 rounded-full border-2 font-black transition-colors align-middle ml-1 flex-shrink-0"
+                        style={{ borderColor: NAVY, background: freebiesOpen ? NAVY : '#FBF7EE', fontSize: '11px', fontStyle: 'italic', lineHeight: 1 }}
                         aria-label="What's included in freebies"
                       >
-                        <span style={{ color: freebiesOpen ? '#fff' : NAVY, fontSize: '10px' }}>i</span>
+                        <span style={{ color: freebiesOpen ? '#fff' : NAVY }}>i</span>
                       </button>
                     </span>
                   </span>
@@ -532,11 +533,11 @@ export default function LandingPage() {
                       <span className="text-base">🪪</span>
                       Lifetime membership card
                     </span>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => setMembershipOpen(!membershipOpen)}
-                        className="w-5 h-5 rounded-full border-2 flex items-center justify-center text-xs font-black transition-colors flex-shrink-0"
-                        style={{ borderColor: NAVY, background: membershipOpen ? NAVY : 'transparent' }}
+                        className="w-5 h-5 rounded-full border-2 flex items-center justify-center font-black transition-colors flex-shrink-0"
+                        style={{ borderColor: NAVY, background: membershipOpen ? NAVY : '#FBF7EE', fontSize: '11px', fontStyle: 'italic', lineHeight: 1 }}
                         aria-label="Membership card details"
                       >
                         <span style={{ color: membershipOpen ? '#fff' : NAVY }}>i</span>
@@ -579,7 +580,7 @@ export default function LandingPage() {
           </div>
 
           {/* OrisPromise */}
-          <div className="mt-6 rounded-3xl overflow-hidden" style={{ background: `linear-gradient(135deg, ${NAVY} 0%, #0f2027 100%)`, boxShadow: `0 8px 32px ${NAVY}88` }}>
+          <div id="orispromise" className="mt-6 rounded-3xl overflow-hidden" style={{ background: `linear-gradient(135deg, ${NAVY} 0%, #0f2027 100%)`, boxShadow: `0 8px 32px ${NAVY}88` }}>
             {/* Badge header */}
             <div className="px-6 pt-7 pb-4 text-center border-b" style={{ borderColor: 'rgba(201,168,76,0.2)' }}>
               <div className="inline-flex items-center justify-center w-14 h-14 rounded-full mb-3" style={{ background: 'rgba(201,168,76,0.12)', border: `2px solid ${GOLD}` }}>
