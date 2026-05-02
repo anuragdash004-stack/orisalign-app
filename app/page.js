@@ -99,6 +99,24 @@ export default function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [membershipOpen, setMembershipOpen] = useState(false)
   const [freebiesOpen, setFreebiesOpen] = useState(false)
+  const [callbackForm, setCallbackForm] = useState({ name: '', phone: '' })
+  const [callbackSubmitted, setCallbackSubmitted] = useState(false)
+  const [callbackLoading, setCallbackLoading] = useState(false)
+
+  const handleCallbackSubmit = async (e) => {
+    e.preventDefault()
+    if (!callbackForm.name.trim() || !callbackForm.phone.trim()) return
+    setCallbackLoading(true)
+    try {
+      await fetch('/api/notify-booking', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'callback', name: callbackForm.name, phone: callbackForm.phone }),
+      })
+    } catch (_) {}
+    setCallbackLoading(false)
+    setCallbackSubmitted(true)
+  }
 
   return (
     <div className="min-h-screen bg-white text-gray-900 font-sans">
@@ -288,6 +306,129 @@ export default function LandingPage() {
             <a href="https://app.orisalign.com/book" className="font-bold px-8 py-4 rounded-full transition-all shadow-lg inline-block" style={{ background: GOLD, color: NAVY, boxShadow: `0 8px 24px ${GOLD}44` }}>
               Start Step 1 — Book Free Consult →
             </a>
+          </div>
+        </div>
+      </section>
+
+      {/* ── CALLBACK / CONTACT ── */}
+      <section className="py-16" style={{ background: 'linear-gradient(135deg, #FBF7EE 0%, #ffffff 100%)' }}>
+        <div className="max-w-2xl mx-auto px-4">
+          <div className="rounded-3xl overflow-hidden shadow-md border" style={{ borderColor: '#E8D5A0' }}>
+
+            {/* Header */}
+            <div className="px-8 pt-8 pb-6 text-center" style={{ background: `linear-gradient(135deg, ${NAVY}, #0F1E33)` }}>
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full mb-4" style={{ background: 'rgba(201,168,76,0.15)', border: `1.5px solid ${GOLD}` }}>
+                <span className="text-2xl">🤔</span>
+              </div>
+              <h2 className="text-2xl font-black mb-1" style={{ color: '#fff' }}>Still in doubt?</h2>
+              <p className="text-sm" style={{ color: '#94a3b8' }}>Let our expert team reach out to you — no pressure, just answers.</p>
+            </div>
+
+            <div className="px-8 py-8 bg-white">
+              {!callbackSubmitted ? (
+                <>
+                  {/* Callback form */}
+                  <p className="text-sm font-semibold mb-5 text-center" style={{ color: NAVY }}>Request a free callback</p>
+                  <form onSubmit={handleCallbackSubmit} className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-semibold mb-1.5" style={{ color: NAVY }}>Your Name</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Priya Sharma"
+                        value={callbackForm.name}
+                        onChange={e => setCallbackForm(f => ({ ...f, name: e.target.value }))}
+                        required
+                        className="w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all"
+                        style={{ borderColor: '#E8D5A0', background: '#FFFDF5' }}
+                        onFocus={e => e.target.style.borderColor = GOLD}
+                        onBlur={e => e.target.style.borderColor = '#E8D5A0'}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold mb-1.5" style={{ color: NAVY }}>Phone Number</label>
+                      <input
+                        type="tel"
+                        placeholder="e.g. 98765 43210"
+                        value={callbackForm.phone}
+                        onChange={e => setCallbackForm(f => ({ ...f, phone: e.target.value }))}
+                        required
+                        className="w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all"
+                        style={{ borderColor: '#E8D5A0', background: '#FFFDF5' }}
+                        onFocus={e => e.target.style.borderColor = GOLD}
+                        onBlur={e => e.target.style.borderColor = '#E8D5A0'}
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={callbackLoading}
+                      className="w-full py-3.5 rounded-xl font-bold text-sm transition-all"
+                      style={{ background: NAVY, color: '#fff', opacity: callbackLoading ? 0.7 : 1 }}
+                    >
+                      {callbackLoading ? 'Submitting…' : 'Request Callback →'}
+                    </button>
+                  </form>
+
+                  {/* Divider */}
+                  <div className="flex items-center gap-3 my-6">
+                    <div className="flex-1 h-px" style={{ background: '#E8D5A0' }} />
+                    <span className="text-xs text-gray-400 font-medium">or reach us directly</span>
+                    <div className="flex-1 h-px" style={{ background: '#E8D5A0' }} />
+                  </div>
+
+                  {/* Direct contact buttons */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <a
+                      href="mailto:hello@orisalign.com"
+                      className="flex items-center justify-center gap-2 py-3 rounded-xl border font-semibold text-sm transition-all hover:shadow-md"
+                      style={{ borderColor: '#E8D5A0', color: NAVY, background: '#FFFDF5' }}
+                    >
+                      <span className="text-base">✉️</span>
+                      Mail Us
+                    </a>
+                    <a
+                      href={WA_LINK}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm transition-all hover:shadow-md"
+                      style={{ background: '#25D366', color: '#fff' }}
+                    >
+                      <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d={WA_ICON}/></svg>
+                      WhatsApp
+                    </a>
+                  </div>
+                  <p className="text-center text-xs text-gray-400 mt-3">hello@orisalign.com &nbsp;·&nbsp; +91 82808 37370</p>
+                </>
+              ) : (
+                /* Success state */
+                <div className="text-center py-6">
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4" style={{ background: '#F0FDF4', border: '2px solid #86efac' }}>
+                    <span className="text-3xl">✅</span>
+                  </div>
+                  <h3 className="text-lg font-black mb-2" style={{ color: NAVY }}>Request received!</h3>
+                  <p className="text-sm text-gray-500 mb-6">We'll call you within <strong>24 hours</strong>. Our team looks forward to speaking with you.</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <a
+                      href="mailto:hello@orisalign.com"
+                      className="flex items-center justify-center gap-2 py-3 rounded-xl border font-semibold text-sm"
+                      style={{ borderColor: '#E8D5A0', color: NAVY, background: '#FFFDF5' }}
+                    >
+                      <span className="text-base">✉️</span>
+                      Mail Us
+                    </a>
+                    <a
+                      href={WA_LINK}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm"
+                      style={{ background: '#25D366', color: '#fff' }}
+                    >
+                      <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d={WA_ICON}/></svg>
+                      WhatsApp
+                    </a>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </section>
