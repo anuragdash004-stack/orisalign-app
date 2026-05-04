@@ -316,152 +316,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── CALLBACK / CONTACT ── */}
-      <section className="py-16" style={{ background: 'linear-gradient(135deg, #FBF7EE 0%, #ffffff 100%)' }}>
-        <div className="max-w-2xl mx-auto px-4">
-          <div className="rounded-3xl overflow-hidden shadow-md border" style={{ borderColor: '#E8D5A0' }}>
-
-            {/* Header */}
-            <div className="px-8 pt-8 pb-6 text-center" style={{ background: `linear-gradient(135deg, ${NAVY}, #0F1E33)` }}>
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full mb-4" style={{ background: 'rgba(201,168,76,0.15)', border: `1.5px solid ${GOLD}` }}>
-                <span className="text-2xl">🤔</span>
-              </div>
-              <h2 className="text-2xl font-black mb-1" style={{ color: '#fff' }}>Still in doubt?</h2>
-              <p className="text-sm" style={{ color: '#94a3b8' }}>Let our expert team reach out to you — no pressure, just answers.</p>
-            </div>
-
-            <div className="px-8 py-8 bg-white">
-              {!callbackSubmitted ? (
-                <>
-                  {/* Collapsible callback trigger — attractive box */}
-                  <div className="rounded-2xl overflow-hidden mb-4" style={{ border: `1.5px solid ${callbackOpen ? GOLD : '#E8D5A0'}`, boxShadow: callbackOpen ? `0 4px 20px ${GOLD}33` : 'none', transition: 'box-shadow 0.3s' }}>
-                    <button
-                      onClick={() => setCallbackOpen(o => !o)}
-                      className="w-full flex items-center justify-between px-5 py-4 transition-all"
-                      style={{ background: callbackOpen ? `linear-gradient(135deg, ${NAVY}, #0F1E33)` : 'linear-gradient(135deg, #FBF7EE, #FFF8E7)' }}
-                    >
-                      <span className="flex items-center gap-3">
-                        <span className="inline-flex items-center justify-center w-9 h-9 rounded-full flex-shrink-0" style={{ background: callbackOpen ? 'rgba(201,168,76,0.2)' : GOLD }}>
-                          <span className="text-base">📞</span>
-                        </span>
-                        <span>
-                          <span className="block font-black text-sm" style={{ color: callbackOpen ? '#fff' : NAVY }}>Request a free callback</span>
-                          <span className="block text-xs mt-0.5" style={{ color: callbackOpen ? '#94a3b8' : '#6b7280' }}>We'll call you within 24 hours</span>
-                        </span>
-                      </span>
-                      <span className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center" style={{ background: callbackOpen ? 'rgba(255,255,255,0.1)' : '#E8D5A0' }}>
-                        <svg className="w-3.5 h-3.5 transition-transform" style={{ transform: callbackOpen ? 'rotate(180deg)' : 'none', fill: callbackOpen ? '#fff' : NAVY }} viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
-                      </span>
-                    </button>
-
-                  {/* Expandable form */}
-                  {callbackOpen && (
-                    <form onSubmit={handleCallbackSubmit} className="space-y-4 px-5 pb-5 pt-4" style={{ background: '#FFFDF5', borderTop: `1px solid ${GOLD}44` }}>
-                      <div>
-                        <label className="block text-xs font-semibold mb-1.5" style={{ color: NAVY }}>Your Name</label>
-                        <input
-                          type="text"
-                          placeholder="e.g. Priya Sharma"
-                          value={callbackForm.name}
-                          onChange={e => setCallbackForm(f => ({ ...f, name: e.target.value }))}
-                          required
-                          className="w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all"
-                          style={{ borderColor: '#E8D5A0', background: '#FFFDF5' }}
-                          onFocus={e => e.target.style.borderColor = GOLD}
-                          onBlur={e => e.target.style.borderColor = '#E8D5A0'}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold mb-1.5" style={{ color: NAVY }}>Phone Number</label>
-                        <input
-                          type="tel"
-                          placeholder="e.g. 98765 43210"
-                          value={callbackForm.phone}
-                          onChange={e => setCallbackForm(f => ({ ...f, phone: e.target.value }))}
-                          required
-                          className="w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all"
-                          style={{ borderColor: '#E8D5A0', background: '#FFFDF5' }}
-                          onFocus={e => e.target.style.borderColor = GOLD}
-                          onBlur={e => e.target.style.borderColor = '#E8D5A0'}
-                        />
-                      </div>
-                      <button
-                        type="submit"
-                        disabled={callbackLoading}
-                        className="w-full py-3.5 rounded-xl font-bold text-sm transition-all"
-                        style={{ background: GOLD, color: NAVY, opacity: callbackLoading ? 0.7 : 1 }}
-                      >
-                        {callbackLoading ? 'Submitting…' : 'Submit →'}
-                      </button>
-                    </form>
-                  )}
-                  </div>
-
-                  {/* Divider */}
-                  <div className="flex items-center gap-3 my-2">
-                    <div className="flex-1 h-px" style={{ background: '#E8D5A0' }} />
-                    <span className="text-xs text-gray-400 font-medium">or reach us directly</span>
-                    <div className="flex-1 h-px" style={{ background: '#E8D5A0' }} />
-                  </div>
-
-                  {/* Direct contact buttons */}
-                  <div className="grid grid-cols-2 gap-3 mt-4">
-                    <a
-                      href="mailto:hello@orisalign.com"
-                      className="flex items-center justify-center gap-2 py-3 rounded-xl border font-semibold text-sm transition-all hover:shadow-md"
-                      style={{ borderColor: '#E8D5A0', color: NAVY, background: '#FFFDF5' }}
-                    >
-                      <span className="text-base">✉️</span>
-                      Mail Us
-                    </a>
-                    <a
-                      href={WA_LINK}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm transition-all hover:shadow-md"
-                      style={{ background: '#25D366', color: '#fff' }}
-                    >
-                      <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d={WA_ICON}/></svg>
-                      WhatsApp
-                    </a>
-                  </div>
-                  <p className="text-center text-xs text-gray-400 mt-3">hello@orisalign.com</p>
-                </>
-              ) : (
-                /* Success state */
-                <div className="text-center py-6">
-                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4" style={{ background: '#F0FDF4', border: '2px solid #86efac' }}>
-                    <span className="text-3xl">✅</span>
-                  </div>
-                  <h3 className="text-lg font-black mb-2" style={{ color: NAVY }}>Request received!</h3>
-                  <p className="text-sm text-gray-500 mb-6">We'll call you within <strong>24 hours</strong>. Our team looks forward to speaking with you.</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <a
-                      href="mailto:hello@orisalign.com"
-                      className="flex items-center justify-center gap-2 py-3 rounded-xl border font-semibold text-sm"
-                      style={{ borderColor: '#E8D5A0', color: NAVY, background: '#FFFDF5' }}
-                    >
-                      <span className="text-base">✉️</span>
-                      Mail Us
-                    </a>
-                    <a
-                      href={WA_LINK}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm"
-                      style={{ background: '#25D366', color: '#fff' }}
-                    >
-                      <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d={WA_ICON}/></svg>
-                      WhatsApp
-                    </a>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* ── PRICING ── */}
       <section className="py-20 bg-white" id="pricing">
         <div className="max-w-2xl mx-auto px-4">
@@ -615,6 +469,152 @@ export default function LandingPage() {
                   <span key={i} className="text-xs font-semibold px-3 py-1.5 rounded-full" style={{ background: 'rgba(255,255,255,0.06)', color: '#94a3b8', border: '1px solid rgba(255,255,255,0.1)' }}>{t}</span>
                 ))}
               </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── CALLBACK / CONTACT ── */}
+      <section className="py-16" style={{ background: 'linear-gradient(135deg, #FBF7EE 0%, #ffffff 100%)' }}>
+        <div className="max-w-2xl mx-auto px-4">
+          <div className="rounded-3xl overflow-hidden shadow-md border" style={{ borderColor: '#E8D5A0' }}>
+
+            {/* Header */}
+            <div className="px-8 pt-8 pb-6 text-center" style={{ background: `linear-gradient(135deg, ${NAVY}, #0F1E33)` }}>
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full mb-4" style={{ background: 'rgba(201,168,76,0.15)', border: `1.5px solid ${GOLD}` }}>
+                <span className="text-2xl">🤔</span>
+              </div>
+              <h2 className="text-2xl font-black mb-1" style={{ color: '#fff' }}>Still in doubt?</h2>
+              <p className="text-sm" style={{ color: '#94a3b8' }}>Let our expert team reach out to you — no pressure, just answers.</p>
+            </div>
+
+            <div className="px-8 py-8 bg-white">
+              {!callbackSubmitted ? (
+                <>
+                  {/* Collapsible callback trigger — attractive box */}
+                  <div className="rounded-2xl overflow-hidden mb-4" style={{ border: `1.5px solid ${callbackOpen ? GOLD : '#E8D5A0'}`, boxShadow: callbackOpen ? `0 4px 20px ${GOLD}33` : 'none', transition: 'box-shadow 0.3s' }}>
+                    <button
+                      onClick={() => setCallbackOpen(o => !o)}
+                      className="w-full flex items-center justify-between px-5 py-4 transition-all"
+                      style={{ background: callbackOpen ? `linear-gradient(135deg, ${NAVY}, #0F1E33)` : 'linear-gradient(135deg, #FBF7EE, #FFF8E7)' }}
+                    >
+                      <span className="flex items-center gap-3">
+                        <span className="inline-flex items-center justify-center w-9 h-9 rounded-full flex-shrink-0" style={{ background: callbackOpen ? 'rgba(201,168,76,0.2)' : GOLD }}>
+                          <span className="text-base">📞</span>
+                        </span>
+                        <span>
+                          <span className="block font-black text-sm" style={{ color: callbackOpen ? '#fff' : NAVY }}>Request a free callback</span>
+                          <span className="block text-xs mt-0.5" style={{ color: callbackOpen ? '#94a3b8' : '#6b7280' }}>We'll call you within 24 hours</span>
+                        </span>
+                      </span>
+                      <span className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center" style={{ background: callbackOpen ? 'rgba(255,255,255,0.1)' : '#E8D5A0' }}>
+                        <svg className="w-3.5 h-3.5 transition-transform" style={{ transform: callbackOpen ? 'rotate(180deg)' : 'none', fill: callbackOpen ? '#fff' : NAVY }} viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+                      </span>
+                    </button>
+
+                  {/* Expandable form */}
+                  {callbackOpen && (
+                    <form onSubmit={handleCallbackSubmit} className="space-y-4 px-5 pb-5 pt-4" style={{ background: '#FFFDF5', borderTop: `1px solid ${GOLD}44` }}>
+                      <div>
+                        <label className="block text-xs font-semibold mb-1.5" style={{ color: NAVY }}>Your Name</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Priya Sharma"
+                          value={callbackForm.name}
+                          onChange={e => setCallbackForm(f => ({ ...f, name: e.target.value }))}
+                          required
+                          className="w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all"
+                          style={{ borderColor: '#E8D5A0', background: '#FFFDF5' }}
+                          onFocus={e => e.target.style.borderColor = GOLD}
+                          onBlur={e => e.target.style.borderColor = '#E8D5A0'}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold mb-1.5" style={{ color: NAVY }}>Phone Number</label>
+                        <input
+                          type="tel"
+                          placeholder="e.g. 98765 43210"
+                          value={callbackForm.phone}
+                          onChange={e => setCallbackForm(f => ({ ...f, phone: e.target.value }))}
+                          required
+                          className="w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all"
+                          style={{ borderColor: '#E8D5A0', background: '#FFFDF5' }}
+                          onFocus={e => e.target.style.borderColor = GOLD}
+                          onBlur={e => e.target.style.borderColor = '#E8D5A0'}
+                        />
+                      </div>
+                      <button
+                        type="submit"
+                        disabled={callbackLoading}
+                        className="w-full py-3.5 rounded-xl font-bold text-sm transition-all"
+                        style={{ background: GOLD, color: NAVY, opacity: callbackLoading ? 0.7 : 1 }}
+                      >
+                        {callbackLoading ? 'Submitting…' : 'Submit →'}
+                      </button>
+                    </form>
+                  )}
+                  </div>
+
+                  {/* Divider */}
+                  <div className="flex items-center gap-3 my-2">
+                    <div className="flex-1 h-px" style={{ background: '#E8D5A0' }} />
+                    <span className="text-xs text-gray-400 font-medium">or reach us directly</span>
+                    <div className="flex-1 h-px" style={{ background: '#E8D5A0' }} />
+                  </div>
+
+                  {/* Direct contact buttons */}
+                  <div className="grid grid-cols-2 gap-3 mt-4">
+                    <a
+                      href="mailto:hello@orisalign.com"
+                      className="flex items-center justify-center gap-2 py-3 rounded-xl border font-semibold text-sm transition-all hover:shadow-md"
+                      style={{ borderColor: '#E8D5A0', color: NAVY, background: '#FFFDF5' }}
+                    >
+                      <span className="text-base">✉️</span>
+                      Mail Us
+                    </a>
+                    <a
+                      href={WA_LINK}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm transition-all hover:shadow-md"
+                      style={{ background: '#25D366', color: '#fff' }}
+                    >
+                      <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d={WA_ICON}/></svg>
+                      WhatsApp
+                    </a>
+                  </div>
+                  <p className="text-center text-xs text-gray-400 mt-3">hello@orisalign.com</p>
+                </>
+              ) : (
+                /* Success state */
+                <div className="text-center py-6">
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4" style={{ background: '#F0FDF4', border: '2px solid #86efac' }}>
+                    <span className="text-3xl">✅</span>
+                  </div>
+                  <h3 className="text-lg font-black mb-2" style={{ color: NAVY }}>Request received!</h3>
+                  <p className="text-sm text-gray-500 mb-6">We'll call you within <strong>24 hours</strong>. Our team looks forward to speaking with you.</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <a
+                      href="mailto:hello@orisalign.com"
+                      className="flex items-center justify-center gap-2 py-3 rounded-xl border font-semibold text-sm"
+                      style={{ borderColor: '#E8D5A0', color: NAVY, background: '#FFFDF5' }}
+                    >
+                      <span className="text-base">✉️</span>
+                      Mail Us
+                    </a>
+                    <a
+                      href={WA_LINK}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm"
+                      style={{ background: '#25D366', color: '#fff' }}
+                    >
+                      <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d={WA_ICON}/></svg>
+                      WhatsApp
+                    </a>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
