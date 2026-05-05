@@ -440,7 +440,7 @@ export default function LandingPage() {
               <div className="inline-flex items-center justify-center w-14 h-14 rounded-full mb-3" style={{ background: 'rgba(201,168,76,0.12)', border: `2px solid ${GOLD}` }}>
                 <span className="text-2xl">🛡️</span>
               </div>
-              <div className="text-2xl font-black uppercase tracking-widest mb-1" style={{ color: GOLD }}>OrisPromise</div>
+              <div className="text-2xl font-black uppercase tracking-widest mb-1" style={{ color: GOLD }}>ORIS-PROMISE</div>
               <h3 className="text-xl font-black" style={{ color: '#fff' }}>You trust us.</h3>
               <h3 className="text-xl font-black mb-1" style={{ color: '#fff' }}>We take your responsibility.</h3>
             </div>
@@ -451,7 +451,7 @@ export default function LandingPage() {
               <div className="flex items-start gap-3 rounded-xl px-4 py-3" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
                 <span className="mt-0.5 text-base flex-shrink-0">📋</span>
                 <p className="text-sm leading-relaxed" style={{ color: '#CBD5E1' }}>
-                  Just <strong style={{ color: '#fff' }}>follow our instructions</strong> and complete the treatment as per the doctor's advice.
+                  Just follow our instructions and complete the treatment as per our doctor's advice.
                 </p>
               </div>
 
