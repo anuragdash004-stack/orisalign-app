@@ -27,7 +27,7 @@ export default function Dashboard() {
 
   return (
     <div>
-      <h1>Dashboard</h1>
+      <h1 style={{ color: "#111827" }}>Dashboard</h1>
       <p>Welcome: {user?.email}</p>
     </div>
   );

@@ -13,7 +13,7 @@ export async function POST(req: Request) {
 
   // 🔴 CHECK IF SLOT ALREADY BOOKED
   const { data: existing } = await supabase
-    .from("appointments")
+    .from("appointments_booking")
     .select("*")
     .eq("date", date)
     .eq("time", time)
@@ -26,7 +26,7 @@ export async function POST(req: Request) {
   }
 
   // ✅ INSERT NEW BOOKING
-  const { error } = await supabase.from("appointments").insert([
+  const { error } = await supabase.from("appointments_booking").insert([
     {
       name,
       phone,

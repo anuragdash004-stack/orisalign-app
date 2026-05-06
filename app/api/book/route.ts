@@ -7,41 +7,71 @@ const supabase = createClient(
 )
 
 export async function POST(req: Request) {
-  const body = await req.json()
+  try {
+    const body = await req.json()
 
-  const { name, phone, age, sex, address, date, time } = body
+    const { name, phone, age, sex, address, date, time } = body
 
-  // 🔴 CHECK IF SLOT ALREADY BOOKED
-  const { data: existing } = await supabase
-    .from("appointments")
-    .select("*")
-    .eq("date", date)
-    .eq("time", time)
+    // ✅ BASIC VALIDATION
+    if (!name || !phone || !date || !time) {
+      return NextResponse.json({
+        success: false,
+        message: "Missing required fields",
+      })
+    }
 
-  if (existing && existing.length > 0) {
+    // 🔴 CHECK IF SLOT ALREADY BOOKED
+    const { data: existing, error: checkError } = await supabase
+      .from("appointments_booking")
+      .select("id")
+      .eq("date", date)
+      .eq("time", time)
+
+    if (checkError) {
+      console.error(checkError)
+      return NextResponse.json({
+        success: false,
+        message: "Error checking slot",
+      })
+    }
+
+    if (existing && existing.length > 0) {
+      return NextResponse.json({
+        success: false,
+        message: "Slot already booked",
+      })
+    }
+
+    // ✅ INSERT NEW BOOKING
+    const { error: insertError } = await supabase
+      .from("appointments_booking")
+      .insert([
+        {
+          name,
+          phone,
+          age,
+          sex,
+          address,
+          date,
+          time,
+          status: "pending",
+        },
+      ])
+
+    if (insertError) {
+      console.error(insertError)
+      return NextResponse.json({
+        success: false,
+        message: "Failed to save booking",
+      })
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (err) {
+    console.error(err)
     return NextResponse.json({
       success: false,
-      message: "Slot already booked",
+      message: "Server error",
     })
   }
-
-  // ✅ INSERT NEW BOOKING
-  const { error } = await supabase.from("appointments").insert([
-    {
-      name,
-      phone,
-      age,
-      sex,
-      address,
-      date,
-      time,
-      status: "pending",
-    },
-  ])
-
-  if (error) {
-    return NextResponse.json({ success: false })
-  }
-
-  return NextResponse.json({ success: true })
 }

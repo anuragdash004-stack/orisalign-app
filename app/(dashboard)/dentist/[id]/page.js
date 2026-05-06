@@ -16,7 +16,7 @@ export default function DentistCase() {
   useEffect(() => {
     const fetch = async () => {
       const { data } = await supabase
-        .from("appointments")
+        .from("appointments_booking")
         .select("*")
         .eq("id", id)
         .single();
@@ -29,7 +29,7 @@ export default function DentistCase() {
 
   const submitCase = async () => {
     await supabase
-      .from("appointments")
+      .from("appointments_booking")
       .update({
         notes,
         history,

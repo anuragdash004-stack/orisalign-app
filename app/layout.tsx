@@ -3,21 +3,35 @@ import "./globals.css";
 import Script from "next/script";
 
 export const metadata: Metadata = {
-  title: "OrisAlign – Clear Aligners in Bhubaneswar | Starting ₹2,499/month",
-  description: "Get straighter teeth in 6 months with OrisAlign clear aligners. Designed by Dr. Anurag Dash in Bhubaneswar. Nearly invisible, Made in India, starting at ₹2,499/month. Book your free consultation today.",
-  keywords: "clear aligners Bhubaneswar, teeth aligners Odisha, OrisAlign, invisible braces Bhubaneswar, affordable aligners India, Dr Anurag Dash dentist",
+  title: "OrisAlign – #1 Clear Aligners in Bhubaneswar, Odisha | OrisAlign.com",
+  description: "OrisAlign offers affordable clear aligners in Bhubaneswar, Odisha. Get straighter teeth in 6 months with OrisAlign's expert dentists. Starting ₹2,499/month. Book your consultation at OrisAlign today.",
+  keywords: "OrisAlign, Orisalign clear aligners, Orisalign Bhubaneswar, clear aligners Bhubaneswar, teeth aligners Odisha, invisible braces Bhubaneswar, affordable aligners Odisha, OrisAlign.com, clear aligners India, OrisAlign dental",
+  icons: {
+    icon: "/pattern-icon.png",
+    shortcut: "/pattern-icon.png",
+    apple: "/pattern-icon.png",
+  },
   openGraph: {
-    title: "OrisAlign – Clear Aligners in Bhubaneswar",
-    description: "Straighter teeth in 6 months. Clear aligners starting at ₹2,499/month. Free consultation with Dr. Anurag Dash, Bhubaneswar.",
+    title: "OrisAlign – #1 Clear Aligners in Bhubaneswar, Odisha",
+    description: "OrisAlign: Straighter teeth in 6 months. Affordable clear aligners starting at ₹2,499/month. Expert dentists in Bhubaneswar, Odisha.",
     url: "https://orisalign.com",
     siteName: "OrisAlign",
+    images: [
+      {
+        url: "https://orisalign.com/smiles-collage.jpg",
+        width: 1200,
+        height: 630,
+        alt: "OrisAlign – 500+ Smiles Transformed in Bhubaneswar",
+      },
+    ],
     locale: "en_IN",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "OrisAlign – Clear Aligners in Bhubaneswar",
-    description: "Straighter teeth in 6 months. Starting at ₹2,499/month. Free consultation.",
+    title: "OrisAlign – Clear Aligners in Bhubaneswar, Odisha",
+    description: "OrisAlign: Straighter teeth in 6 months. Starting at ₹2,499/month. Expert dentists in Odisha.",
+    images: ["https://orisalign.com/smiles-collage.jpg"],
   },
   alternates: {
     canonical: "https://orisalign.com",
@@ -25,7 +39,110 @@ export const metadata: Metadata = {
   robots: {
     index: true,
     follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-snippet": -1,
+      "max-image-preview": "large",
+      "max-video-preview": -1,
+    },
   },
+  verification: {
+    google: "S-zL9XClUkdL5o2Wkmk4ZIl7lqHiHhtH4AgOWUwnBOc",
+  },
+  other: {
+    "geo.region": "IN-OR",
+    "geo.placename": "Bhubaneswar, Odisha",
+    "geo.position": "20.2961;85.8245",
+    "ICBM": "20.2961, 85.8245",
+    "DC.title": "OrisAlign – Clear Aligners Bhubaneswar",
+    "DC.description": "OrisAlign provides affordable clear aligner treatment in Bhubaneswar, Odisha.",
+    "rating": "General",
+    "language": "English",
+    "revisit-after": "7 days",
+    "author": "OrisAlign Private Limited",
+  },
+};
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://orisalign.com/#organization",
+      "name": "OrisAlign",
+      "legalName": "Orisalign Private Limited",
+      "url": "https://orisalign.com",
+      "logo": "https://orisalign.com/logo.png",
+      "description": "OrisAlign is Bhubaneswar's #1 clear aligner brand, providing affordable invisible teeth aligners in Odisha, India.",
+      "email": "hello@orisalign.com",
+      "telephone": "+918280837370",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "MIG-1, 43/5, Housing Board Colony, Chandrasekharpur",
+        "addressLocality": "Bhubaneswar",
+        "addressRegion": "Odisha",
+        "postalCode": "751016",
+        "addressCountry": "IN"
+      },
+      "sameAs": [
+        "https://www.instagram.com/orisalign",
+        "https://www.facebook.com/share/1Dn6whtfiS/"
+      ]
+    },
+    {
+      "@type": "MedicalBusiness",
+      "@id": "https://orisalign.com/#clinic",
+      "name": "OrisAlign Dental Clinic",
+      "url": "https://orisalign.com",
+      "image": "https://orisalign.com/smiles-collage.jpg",
+      "description": "OrisAlign provides clear aligner orthodontic treatment in Bhubaneswar, Odisha. Expert dentists, Made in India aligners, starting at ₹2,499/month.",
+      "telephone": "+918280837370",
+      "email": "hello@orisalign.com",
+      "priceRange": "₹₹",
+      "medicalSpecialty": "Dentistry",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "MIG-1, 43/5, Housing Board Colony, Chandrasekharpur",
+        "addressLocality": "Bhubaneswar",
+        "addressRegion": "Odisha",
+        "postalCode": "751016",
+        "addressCountry": "IN"
+      },
+      "geo": {
+        "@type": "GeoCoordinates",
+        "latitude": "20.2961",
+        "longitude": "85.8245"
+      },
+      "openingHoursSpecification": [
+        {
+          "@type": "OpeningHoursSpecification",
+          "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"],
+          "opens": "10:00",
+          "closes": "19:00"
+        }
+      ],
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.9",
+        "reviewCount": "50",
+        "bestRating": "5"
+      }
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://orisalign.com/#website",
+      "url": "https://orisalign.com",
+      "name": "OrisAlign",
+      "description": "OrisAlign – Clear Aligners in Bhubaneswar, Odisha",
+      "publisher": { "@id": "https://orisalign.com/#organization" },
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://orisalign.com/?s={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+  ]
 };
 
 export default function RootLayout({
