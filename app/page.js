@@ -14,7 +14,7 @@ const NAV_LINKS = [
 ]
 
 const COMPARISON = [
-  { feature: 'Visible?', orisalign: 'Invisible', braces: 'Very visible', invisalign: 'Nearly invisible' },
+  { feature: 'Visibility', orisalign: 'Invisible', braces: 'Very visible', invisalign: 'Nearly invisible' },
   { feature: 'Monthly cost', orisalign: '₹2,499/mo*', braces: '₹2,499/mo*', invisalign: '₹5,000–10,000/mo*' },
   { feature: 'Total cost', orisalign: '₹40–60K*', braces: '₹30–40K*', invisalign: '₹1.5L–3L*' },
   { feature: 'Treatment time', orisalign: '6–12 months*', braces: '12–36 months*', invisalign: '6–12 months*' },
@@ -23,14 +23,15 @@ const COMPARISON = [
   { feature: 'Made in India', orisalign: '✓ Yes', braces: '✓ Yes', invisalign: '✗ Imported' },
   { feature: 'Doctor supervised', orisalign: '✓ Always', braces: '✓ Always', invisalign: '✓ Always' },
   { feature: 'Transparent Pricing', orisalign: '✓ Yes', braces: '✗ No', invisalign: '✗ No' },
-  { feature: 'Clinic in Odisha', orisalign: '✓ Yes', braces: 'Varies', invisalign: '✗ No' },
+  { feature: 'Clinic', orisalign: 'Personal clinic', braces: 'Varies', invisalign: '✗ No' },
   { feature: '24/7 Support', orisalign: '✓ Yes', braces: '✗ No', invisalign: '✗ No' },
-  { feature: 'Treatment begins in', orisalign: '10 days', braces: '15 days', invisalign: '1.5–2 months' },
+  { feature: 'Waiting period', orisalign: '10 days', braces: '15 days', invisalign: '1.5–2 months' },
 ]
 
 const STEPS = [
   { icon: '🦷', title: 'Consultation', desc: 'Visit our clinic or book a home consultation. Our expert dentist reviews your teeth — at just ₹199 (regular price ₹599).' },
   { icon: '📡', title: '3D Scan', desc: 'A quick, painless 3D scan of your teeth. No moulds. Done in minutes.' },
+  { icon: '📋', title: 'Planning', desc: 'Your provisional plan and planning video are shared immediately. On enrolling, the final treatment plan and duration will be given within 48 hours.' },
   { icon: '📦', title: 'Aligners Delivered', desc: 'Your custom aligners are manufactured in India and delivered to you in just 10 days.' },
   { icon: '😁', title: 'Smile in 6 Months*', desc: 'Wear aligners 20–22 hrs/day, swap sets every 2 weeks. Track progress with monthly check-ins and 24/7 support.' },
 ]
@@ -184,7 +185,7 @@ export default function LandingPage() {
             </h1>
             <p className="text-xs text-gray-400 mb-4">*Terms & conditions apply</p>
             <p className="text-lg sm:text-xl text-gray-600 mb-4 leading-relaxed">
-              Clear aligners starting at <span className="font-bold" style={{ color: NAVY }}>₹2,499/month*</span>. Designed and supervised by expert dentists of Odisha.
+              Clear aligners starting at <span className="font-bold" style={{ color: NAVY }}>₹2,499/month*</span>. Designed and supervised by our team of expert dentists.
             </p>
             <p className="text-base font-semibold mb-8" style={{ color: GOLD }}>
               🇮🇳 Made in India &nbsp;·&nbsp; Invisible &nbsp;·&nbsp; No food restrictions
@@ -284,9 +285,9 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-3xl sm:text-4xl font-black mb-4" style={{ color: NAVY }}>How It Works</h2>
-            <p className="text-gray-500">4 simple steps to your new smile.</p>
+            <p className="text-gray-500">5 simple steps to your new smile.</p>
           </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-6">
             {STEPS.map((step, i) => (
               <div key={i} className="relative bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 text-center hover:shadow-md transition-shadow">
                 <div className="absolute top-3 left-3 z-10 text-white text-xs font-black w-8 h-8 rounded-full flex items-center justify-center" style={{ background: GOLD, color: NAVY }}>
@@ -297,6 +298,8 @@ export default function LandingPage() {
                 ) : i === 1 ? (
                   <img src="/step-scan.jpg" alt="3D Scan" className="w-full h-44 object-cover" />
                 ) : i === 2 ? (
+                  <div className="w-full h-44 flex items-center justify-center text-5xl" style={{ background: '#FBF7EE' }}>📋</div>
+                ) : i === 3 ? (
                   <img src="/alignerwear.png" alt="Aligners Delivered" className="w-full h-44 object-cover" />
                 ) : (
                   <img src="/girlsmile.png" alt="Smile in 6 Months" className="w-full h-44 object-cover" />
@@ -363,7 +366,7 @@ export default function LandingPage() {
                 {freebiesOpen && (
                   <div className="border-t" style={{ borderColor: '#F0E4B8' }}>
                     {[
-                      { icon: '✨', label: 'Scaling & polishing' },
+                      { icon: '✨', label: 'Scaling & polishing ×2' },
                       { icon: '💎', label: '1 set transparent retainer' },
                       { icon: '🦷', label: '1 set metal retainer' },
                     ].map((item, i) => (
@@ -409,6 +412,10 @@ export default function LandingPage() {
                       <div className="flex items-start gap-2">
                         <span style={{ color: GOLD }}>✦</span>
                         <span style={{ color: '#374151' }}>Benefit also applies to <strong>+1 person</strong> of the card holder's choice</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span style={{ color: GOLD }}>✦</span>
+                        <span style={{ color: '#374151' }}><strong>15% off</strong> for friends &amp; family <span className="text-gray-400">(on facility available)</span></span>
                       </div>
                     </div>
                   )}
