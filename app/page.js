@@ -388,7 +388,7 @@ export default function LandingPage() {
                   <div className="flex items-center justify-between px-4 py-3">
                     <span className="flex items-center gap-2 text-sm font-medium" style={{ color: NAVY }}>
                       <span className="text-base">🪪</span>
-                      Lifetime membership card
+                      Lifetime membership card <span className="text-xs font-semibold" style={{ color: GOLD }}>worth ₹4,999</span>
                       <button
                         onClick={() => setMembershipOpen(!membershipOpen)}
                         className="w-5 h-5 rounded-full border-2 inline-flex items-center justify-center font-black transition-colors flex-shrink-0"
@@ -427,6 +427,7 @@ export default function LandingPage() {
                 Book Your ₹199 Scan →
               </a>
               <p className="text-xs text-gray-400 mt-3">Exact pricing shared after consultation — your case may cost less.</p>
+              <p className="text-xs text-gray-400 mt-1">The lifetime membership card is provided by <span className="font-semibold">Kalp Dental Clinic</span>.</p>
               <p className="text-xs mt-1.5 font-semibold" style={{ color: NAVY }}>Other solutions available — <a href="https://wa.me/918280837370" target="_blank" rel="noopener noreferrer" style={{ color: GOLD, textDecoration: 'underline' }}>contact us to know more</a></p>
             </div>
           </div>
