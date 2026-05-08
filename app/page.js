@@ -411,11 +411,11 @@ export default function LandingPage() {
                       </div>
                       <div className="flex items-start gap-2">
                         <span style={{ color: GOLD }}>✦</span>
-                        <span style={{ color: '#374151' }}>Benefit also applies to <strong>+1 person</strong> of the card holder's choice</span>
+                        <span style={{ color: '#374151' }}>Benefit also applies to <strong>+1 person</strong> of the card holder's choice <span className="text-gray-400">(add-on facility available)</span></span>
                       </div>
                       <div className="flex items-start gap-2">
                         <span style={{ color: GOLD }}>✦</span>
-                        <span style={{ color: '#374151' }}><strong>15% off</strong> for friends &amp; family <span className="text-gray-400">(on facility available)</span></span>
+                        <span style={{ color: '#374151' }}><strong>15% off</strong> for friends &amp; family</span>
                       </div>
                     </div>
                   )}
