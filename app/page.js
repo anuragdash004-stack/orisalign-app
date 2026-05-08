@@ -386,21 +386,19 @@ export default function LandingPage() {
               <ul className="space-y-3">
                 <li className="rounded-xl bg-white border overflow-hidden" style={{ borderColor: '#E8D5A0' }}>
                   <div className="flex items-center justify-between px-4 py-3">
-                    <span className="flex items-center gap-3 text-sm font-medium" style={{ color: NAVY }}>
+                    <span className="flex items-center gap-2 text-sm font-medium" style={{ color: NAVY }}>
                       <span className="text-base">🪪</span>
                       Lifetime membership card
-                    </span>
-                    <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => setMembershipOpen(!membershipOpen)}
-                        className="w-5 h-5 rounded-full border-2 flex items-center justify-center font-black transition-colors flex-shrink-0"
+                        className="w-5 h-5 rounded-full border-2 inline-flex items-center justify-center font-black transition-colors flex-shrink-0"
                         style={{ borderColor: NAVY, background: membershipOpen ? NAVY : '#FBF7EE', fontSize: '11px', fontStyle: 'italic', lineHeight: 1 }}
                         aria-label="Membership card details"
                       >
                         <span style={{ color: membershipOpen ? '#fff' : NAVY }}>i</span>
                       </button>
-                      <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background: GOLD, color: NAVY }}>Free</span>
-                    </div>
+                    </span>
+                    <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background: GOLD, color: NAVY }}>Free</span>
                   </div>
                   {membershipOpen && (
                     <div className="px-4 pb-4 pt-1 text-xs leading-relaxed space-y-1.5 border-t" style={{ borderColor: '#F0E4B8', background: '#FFFDF5' }}>
