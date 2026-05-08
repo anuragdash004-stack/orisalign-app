@@ -298,7 +298,7 @@ export default function LandingPage() {
                 ) : i === 1 ? (
                   <img src="/step-scan.jpg" alt="3D Scan" className="w-full h-44 object-cover" />
                 ) : i === 2 ? (
-                  <div className="w-full h-44 flex items-center justify-center text-5xl" style={{ background: '#FBF7EE' }}>📋</div>
+                  <img src="/step-plan.jpg" alt="Planning" className="w-full h-44 object-cover" />
                 ) : i === 3 ? (
                   <img src="/alignerwear.png" alt="Aligners Delivered" className="w-full h-44 object-cover" />
                 ) : (
