@@ -427,7 +427,7 @@ export default function LandingPage() {
               </a>
               <p className="text-xs text-gray-400 mt-3">Exact pricing shared after consultation — your case may cost less.</p>
               <p className="text-xs text-gray-400 mt-1">The lifetime membership card is provided by <span className="font-semibold">Kalp Dental Clinic</span>.</p>
-              <p className="text-xs mt-1.5 font-semibold" style={{ color: NAVY }}>Other solutions available — <a href="https://wa.me/918280837370" target="_blank" rel="noopener noreferrer" style={{ color: GOLD, textDecoration: 'underline' }}>contact us to know more</a></p>
+              <p className="text-xs mt-1.5 font-semibold" style={{ color: NAVY }}>Other solutions available — <a href="#still-in-doubt" style={{ color: GOLD, textDecoration: 'underline' }}>contact us to know more</a></p>
             </div>
           </div>
 
@@ -480,7 +480,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── CALLBACK / CONTACT ── */}
-      <section className="py-16" style={{ background: 'linear-gradient(135deg, #FBF7EE 0%, #ffffff 100%)' }}>
+      <section id="still-in-doubt" className="py-16" style={{ background: 'linear-gradient(135deg, #FBF7EE 0%, #ffffff 100%)' }}>
         <div className="max-w-2xl mx-auto px-4">
           <div className="rounded-3xl overflow-hidden shadow-md border" style={{ borderColor: '#E8D5A0' }}>
 
