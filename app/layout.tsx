@@ -164,6 +164,7 @@ export default function RootLayout({
             function gtag(){dataLayer.push(arguments);}
             gtag('js', new Date());
             gtag('config', 'G-44CDZK652L');
+            gtag('config', 'AW-18138830467');
           `}
         </Script>
 
