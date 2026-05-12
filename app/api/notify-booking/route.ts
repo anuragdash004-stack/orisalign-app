@@ -92,6 +92,11 @@ export async function POST(req: Request) {
                 <p style="margin:0 0 4px;font-size:11px;color:#9ca3af;font-weight:700;letter-spacing:1px;text-transform:uppercase;">YOUR PATIENT ID</p>
                 <p style="margin:0;font-size:28px;font-weight:900;color:#1B2A4A;letter-spacing:4px;">${shortId}</p>
               </div>
+              <div style="text-align:center;margin:0 0 16px;">
+                <a href="https://app.orisalign.com/patient/${patientId}" style="display:inline-block;background:#1B2A4A;color:#C9A84C;font-weight:700;font-size:14px;padding:12px 28px;border-radius:8px;text-decoration:none;letter-spacing:0.5px;">
+                  Track Your Progress →
+                </a>
+              </div>
               <div style="background:white;border-radius:8px;padding:16px;margin-bottom:16px;">
                 <table style="width:100%;font-size:14px;border-collapse:collapse;">
                   <tr><td style="padding:6px 0;color:#6b7280;width:130px;">Date</td><td style="padding:6px 0;font-weight:bold;color:#111;">${date}</td></tr>
