@@ -153,6 +153,9 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full antialiased">
       <head>
+        <link rel="icon" type="image/png" href="/pattern-icon.png" />
+        <link rel="shortcut icon" type="image/png" href="/pattern-icon.png" />
+        <link rel="apple-touch-icon" href="/pattern-icon.png" />
         {/* Google Analytics */}
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-44CDZK652L"
