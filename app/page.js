@@ -196,35 +196,36 @@ export default function LandingPage() {
               <span className="block text-xs mt-1 font-medium" style={{ color: '#92400e' }}>✅ No prior payment &nbsp;·&nbsp; Pay on spot &nbsp;·&nbsp; ⚡ Hurry up — limited slots!</span>
             </div>
             <div className="flex flex-col sm:flex-row gap-4 items-center">
-              <div className="flex items-center gap-2">
+              {/* Book button + i button inline like pricing section */}
+              <div className="flex items-center gap-2 flex-wrap">
                 <a href="https://app.orisalign.com/book" className="text-base font-bold px-8 py-4 rounded-full transition-all shadow-lg text-center" style={{ background: GOLD, color: NAVY, boxShadow: `0 8px 24px ${GOLD}55` }}>
                   Book your smile assessment →
                 </a>
                 <button
                   onClick={() => setAssessmentOpen(o => !o)}
-                  className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 transition-all"
-                  style={{ background: assessmentOpen ? NAVY : '#FBF7EE', border: `2px solid ${NAVY}` }}
+                  className="w-5 h-5 rounded-full border-2 inline-flex items-center justify-center font-black transition-colors flex-shrink-0"
+                  style={{ borderColor: NAVY, background: assessmentOpen ? NAVY : '#FBF7EE', fontSize: '11px', fontStyle: 'italic', lineHeight: 1 }}
                   aria-label="What's included in the smile assessment"
                 >
-                  <span style={{ fontSize: '18px' }}>👁️</span>
+                  <span style={{ color: assessmentOpen ? '#fff' : NAVY }}>i</span>
                 </button>
               </div>
               {assessmentOpen && (
-                <div className="w-full rounded-2xl overflow-hidden border" style={{ borderColor: '#E8D5A0', background: '#FFFDF5' }}>
-                  <div className="px-4 py-2 text-xs font-black uppercase tracking-widest" style={{ background: NAVY, color: GOLD }}>Your ₹199 Smile Assessment Includes</div>
-                  <ul className="divide-y" style={{ borderColor: '#F0E4B8' }}>
-                    {[
-                      { label: 'Expert dentist consultation', value: 'worth ₹499' },
-                      { label: '3D dental scan', value: 'worth ₹7,999' },
-                      { label: 'Provisional diagnosis & planning', value: 'Included' },
-                      { label: 'Provisional 3D planning video', value: 'Included' },
-                    ].map((item, i) => (
-                      <li key={i} className="flex items-center justify-between px-4 py-2.5 text-sm">
-                        <span style={{ color: NAVY }} className="font-medium">✦ {item.label}</span>
-                        <span className="text-xs font-bold px-2.5 py-1 rounded-full ml-2 flex-shrink-0" style={{ background: '#F5EDD6', color: NAVY }}>{item.value}</span>
-                      </li>
-                    ))}
-                  </ul>
+                <div className="w-full rounded-xl overflow-hidden border" style={{ borderColor: '#E8D5A0' }}>
+                  <div className="flex items-center justify-between px-4 py-2" style={{ background: NAVY }}>
+                    <span className="text-xs font-black uppercase tracking-widest" style={{ color: GOLD }}>Your ₹199 Smile Assessment Includes</span>
+                  </div>
+                  {[
+                    { label: 'Expert dentist consultation', value: 'worth ₹499' },
+                    { label: '3D dental scan', value: 'worth ₹7,999' },
+                    { label: 'Provisional diagnosis & planning', value: 'Included' },
+                    { label: 'Provisional 3D planning video', value: 'Included' },
+                  ].map((item, idx) => (
+                    <div key={idx} className="flex items-center justify-between px-4 py-2.5 border-b last:border-b-0 text-sm" style={{ borderColor: '#F0E4B8', background: '#FFFDF5' }}>
+                      <span className="font-medium" style={{ color: NAVY }}>✦ {item.label}</span>
+                      <span className="text-xs font-bold px-2.5 py-1 rounded-full ml-2 flex-shrink-0" style={{ background: GOLD, color: NAVY }}>{item.value}</span>
+                    </div>
+                  ))}
                 </div>
               )}
               <a href={WA_LINK} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 border-2 text-base font-semibold px-8 py-4 rounded-full hover:border-green-500 hover:text-green-700 transition-all" style={{ borderColor: '#e5e7eb', color: '#374151' }}>
