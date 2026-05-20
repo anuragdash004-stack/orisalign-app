@@ -15,7 +15,7 @@ const NAV_LINKS = [
 
 const COMPARISON = [
   { feature: 'Visibility', orisalign: 'Invisible', braces: 'Very visible', invisalign: 'Nearly invisible' },
-  { feature: 'Monthly cost', orisalign: '₹3,___/mo*', braces: '₹2,499/mo*', invisalign: '₹5,000–10,000/mo*' },
+  { feature: 'Monthly cost', orisalign: '₹3,_ _ _/mo*', braces: '₹2,499/mo*', invisalign: '₹5,000–10,000/mo*' },
   { feature: 'Total cost', orisalign: '₹40–60K*', braces: '₹30–40K*', invisalign: '₹1.5L–3L*' },
   { feature: 'Treatment time', orisalign: '6–12 months*', braces: '12–36 months*', invisalign: '6–12 months*' },
   { feature: 'Removable', orisalign: '✓ Yes', braces: '✗ No', invisalign: '✓ Yes' },
@@ -37,7 +37,7 @@ const STEPS = [
 ]
 
 const FAQS = [
-  { q: 'How much do OrisAlign aligners cost?', a: 'Treatment starts at ₹44,___ (EMI available from ₹3,___/month*). Final cost depends on complexity. We give a full quote after the consultation — no surprises.' },
+  { q: 'How much do OrisAlign aligners cost?', a: 'Treatment starts at ₹44,_ _ _ (EMI available from ₹3,_ _ _/month*). Final cost depends on complexity. We give a full quote after the consultation — no surprises.' },
   { q: 'Are OrisAlign aligners as effective as other imported brands?', a: 'OrisAlign uses the most advanced clear aligner technology, manufactured in India to international standards, supervised by expert dentists. OrisAlign uses the most premium materials to manufacture its aligners and is completely transparent about its cost.' },
   { q: 'How long does treatment take?', a: 'Most cases: 6–12 months. Mild cases can finish in as little as 5 months. Complex cases may take up to 18 months or more. Our expert dentist will give you an honest timeline at consultation.' },
   { q: 'Why is the consultation not free?', a: 'Our experienced dentist will visit your home or assess you at our clinic. The consultation and 3D scanning normally costs upwards of ₹3,999, but is offered to you at a minimal cost of ₹199. The fee is simply to keep things fair and maintain quality of service.' },
@@ -186,7 +186,7 @@ export default function LandingPage() {
             </h1>
             <p className="text-xs text-gray-400 mb-4">*Terms & conditions apply</p>
             <p className="text-lg sm:text-xl text-gray-600 mb-4 leading-relaxed">
-              Clear aligners starting at <span className="font-bold" style={{ color: NAVY }}>₹3,___/- per month EMI*</span>. Designed and supervised by our team of expert dentists.
+              Clear aligners starting at <span className="font-bold" style={{ color: NAVY }}>₹3,_ _ _/- per month EMI*</span>. Designed and supervised by our team of expert dentists.
             </p>
             <p className="text-base font-semibold mb-8" style={{ color: GOLD }}>
               🇮🇳 Made in India &nbsp;·&nbsp; Invisible &nbsp;·&nbsp; No food restrictions
@@ -363,10 +363,10 @@ export default function LandingPage() {
             <div className="px-8 py-8 text-center" style={{ background: `linear-gradient(135deg, ${NAVY}, #0F1E33)` }}>
               <div className="flex items-end justify-center gap-2 mb-1">
                 <span className="text-lg font-semibold" style={{ color: '#E8D9A0' }}>Starts at</span>
-                <span className="text-5xl font-black" style={{ color: GOLD }}>₹44,___</span>
+                <span className="text-5xl font-black" style={{ color: GOLD }}>₹44,_ _ _</span>
                 <span className="text-base font-semibold mb-1" style={{ color: '#E8D9A0' }}>*</span>
               </div>
-              <p className="text-sm mt-2" style={{ color: '#94a3b8' }}>or ₹3,___/month* — No cost EMI available*</p>
+              <p className="text-sm mt-2" style={{ color: '#94a3b8' }}>or ₹3,_ _ _/month* — No cost EMI available*</p>
             </div>
 
             {/* Freebies */}
