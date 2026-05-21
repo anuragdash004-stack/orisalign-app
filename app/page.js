@@ -194,8 +194,8 @@ export default function LandingPage() {
             {/* Yellow banner with i button inline after text */}
             <div className="mb-4 rounded-2xl overflow-hidden" style={{ border: '1.5px solid #f59e0b' }}>
               <div className="px-4 py-3 text-sm font-semibold" style={{ background: '#FFF3CD', color: '#92400e' }}>
-                <span className="flex items-center gap-1.5 flex-wrap">
-                  🎯 Book your smile assessment for <span style={{ textDecoration: 'line-through', opacity: 0.6 }}>₹599</span>&nbsp;<span className="font-black text-base" style={{ color: '#b45309' }}>₹199</span>&nbsp;— offer valid till end of this month!
+                <span className="flex items-center gap-1 flex-wrap">
+                  🎯 Book your smile assessment for
                   <button
                     onClick={() => setAssessmentOpen(o => !o)}
                     className="w-5 h-5 rounded-full border-2 inline-flex items-center justify-center font-black transition-colors flex-shrink-0"
@@ -204,6 +204,7 @@ export default function LandingPage() {
                   >
                     <span style={{ color: assessmentOpen ? '#fff' : '#92400e' }}>i</span>
                   </button>
+                  <span style={{ textDecoration: 'line-through', opacity: 0.6 }}>₹599</span>&nbsp;<span className="font-black text-base" style={{ color: '#b45309' }}>₹199</span>&nbsp;— offer valid till end of this month!
                 </span>
                 <span className="block text-xs mt-1 font-medium" style={{ color: '#92400e' }}>✅ No prior payment &nbsp;·&nbsp; Pay on spot &nbsp;·&nbsp; ⚡ Hurry up — limited slots!</span>
               </div>
