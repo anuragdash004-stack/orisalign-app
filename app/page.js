@@ -15,7 +15,7 @@ const NAV_LINKS = [
 
 const COMPARISON = [
   { feature: 'Visibility', orisalign: 'Invisible', braces: 'Very visible', invisalign: 'Nearly invisible' },
-  { feature: 'Monthly cost', orisalign: '₹3,_ _ _/mo*', braces: '₹2,499/mo*', invisalign: '₹5,000–10,000/mo*' },
+  { feature: 'Monthly cost', orisalign: '₹3,999/mo*', braces: '₹2,499/mo*', invisalign: '₹5,000–10,000/mo*' },
   { feature: 'Total cost', orisalign: '₹40–60K*', braces: '₹30–40K*', invisalign: '₹1.5L–3L*' },
   { feature: 'Treatment time', orisalign: '6–12 months*', braces: '12–36 months*', invisalign: '6–12 months*' },
   { feature: 'Removable', orisalign: '✓ Yes', braces: '✗ No', invisalign: '✓ Yes' },
@@ -37,7 +37,7 @@ const STEPS = [
 ]
 
 const FAQS = [
-  { q: 'How much do OrisAlign aligners cost?', a: 'Treatment starts at ₹44,_ _ _ (EMI available from ₹3,_ _ _/month*). Final cost depends on complexity. We give a full quote after the consultation — no surprises.' },
+  { q: 'How much do OrisAlign aligners cost?', a: 'Treatment starts at ₹47,999 (EMI available from ₹3,999/month*). Final cost depends on complexity. We give a full quote after the consultation — no surprises.' },
   { q: 'Are OrisAlign aligners as effective as other imported brands?', a: 'OrisAlign uses the most advanced clear aligner technology, manufactured in India to international standards, supervised by expert dentists. OrisAlign uses the most premium materials to manufacture its aligners and is completely transparent about its cost.' },
   { q: 'How long does treatment take?', a: 'Most cases: 6–12 months. Mild cases can finish in as little as 5 months. Complex cases may take up to 18 months or more. Our expert dentist will give you an honest timeline at consultation.' },
   { q: 'Why is the consultation not free?', a: 'Our experienced dentist will visit your home or assess you at our clinic. The consultation and 3D scanning normally costs upwards of ₹3,999, but is offered to you at a minimal cost of ₹199. The fee is simply to keep things fair and maintain quality of service.' },
@@ -186,48 +186,47 @@ export default function LandingPage() {
             </h1>
             <p className="text-xs text-gray-400 mb-4">*Terms & conditions apply</p>
             <p className="text-lg sm:text-xl text-gray-600 mb-4 leading-relaxed">
-              Clear aligners starting at <span className="font-bold" style={{ color: NAVY }}>₹3,_ _ _/- per month EMI*</span>. Designed and supervised by our team of expert dentists.
+              Clear aligners starting with an easy EMI of <span className="font-bold" style={{ color: NAVY }}>₹3,999/- per month*</span>. Designed and supervised by our team of expert dentists.
             </p>
             <p className="text-base font-semibold mb-8" style={{ color: GOLD }}>
               🇮🇳 Made in India &nbsp;·&nbsp; Invisible &nbsp;·&nbsp; No food restrictions
             </p>
-            <div className="mb-4 px-4 py-3 rounded-2xl text-sm font-semibold" style={{ background: '#FFF3CD', border: '1.5px solid #f59e0b', color: '#92400e' }}>
-              🎯 Book your scan for <span style={{ textDecoration: 'line-through', opacity: 0.6 }}>₹599</span>&nbsp;<span className="font-black text-base" style={{ color: '#b45309' }}>₹199</span>&nbsp;— offer valid till end of this month!
-              <span className="block text-xs mt-1 font-medium" style={{ color: '#92400e' }}>✅ No prior payment &nbsp;·&nbsp; Pay on spot &nbsp;·&nbsp; ⚡ Hurry up — limited slots!</span>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-4 items-center">
-              {/* Book button + i button inline like pricing section */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <a href="https://app.orisalign.com/book" className="text-base font-bold px-8 py-4 rounded-full transition-all shadow-lg text-center" style={{ background: GOLD, color: NAVY, boxShadow: `0 8px 24px ${GOLD}55` }}>
-                  Book your smile assessment →
-                </a>
-                <button
-                  onClick={() => setAssessmentOpen(o => !o)}
-                  className="w-5 h-5 rounded-full border-2 inline-flex items-center justify-center font-black transition-colors flex-shrink-0"
-                  style={{ borderColor: NAVY, background: assessmentOpen ? NAVY : '#FBF7EE', fontSize: '11px', fontStyle: 'italic', lineHeight: 1 }}
-                  aria-label="What's included in the smile assessment"
-                >
-                  <span style={{ color: assessmentOpen ? '#fff' : NAVY }}>i</span>
-                </button>
+            {/* Yellow banner with i button inline after text */}
+            <div className="mb-4 rounded-2xl overflow-hidden" style={{ border: '1.5px solid #f59e0b' }}>
+              <div className="px-4 py-3 text-sm font-semibold" style={{ background: '#FFF3CD', color: '#92400e' }}>
+                <span className="flex items-center gap-1.5 flex-wrap">
+                  🎯 Book your smile assessment for <span style={{ textDecoration: 'line-through', opacity: 0.6 }}>₹599</span>&nbsp;<span className="font-black text-base" style={{ color: '#b45309' }}>₹199</span>&nbsp;— offer valid till end of this month!
+                  <button
+                    onClick={() => setAssessmentOpen(o => !o)}
+                    className="w-5 h-5 rounded-full border-2 inline-flex items-center justify-center font-black transition-colors flex-shrink-0"
+                    style={{ borderColor: '#92400e', background: assessmentOpen ? '#92400e' : '#FFF3CD', fontSize: '11px', fontStyle: 'italic', lineHeight: 1 }}
+                    aria-label="What's included in the smile assessment"
+                  >
+                    <span style={{ color: assessmentOpen ? '#fff' : '#92400e' }}>i</span>
+                  </button>
+                </span>
+                <span className="block text-xs mt-1 font-medium" style={{ color: '#92400e' }}>✅ No prior payment &nbsp;·&nbsp; Pay on spot &nbsp;·&nbsp; ⚡ Hurry up — limited slots!</span>
               </div>
               {assessmentOpen && (
-                <div className="w-full rounded-xl overflow-hidden border" style={{ borderColor: '#E8D5A0' }}>
-                  <div className="flex items-center justify-between px-4 py-2" style={{ background: NAVY }}>
-                    <span className="text-xs font-black uppercase tracking-widest" style={{ color: GOLD }}>Your ₹199 Smile Assessment Includes</span>
-                  </div>
+                <div className="border-t" style={{ borderColor: '#f59e0b' }}>
                   {[
                     { label: 'Expert dentist consultation', value: 'worth ₹499' },
                     { label: '3D dental scan', value: 'worth ₹7,999' },
                     { label: 'Provisional diagnosis & planning', value: 'Included' },
                     { label: 'Provisional 3D planning video', value: 'Included' },
                   ].map((item, idx) => (
-                    <div key={idx} className="flex items-center justify-between px-4 py-2.5 border-b last:border-b-0 text-sm" style={{ borderColor: '#F0E4B8', background: '#FFFDF5' }}>
+                    <div key={idx} className="flex items-center justify-between px-4 py-2.5 border-b last:border-b-0 text-sm" style={{ borderColor: '#FDE68A', background: '#FFFDF5' }}>
                       <span className="font-medium" style={{ color: NAVY }}>✦ {item.label}</span>
-                      <span className="text-xs font-bold px-2.5 py-1 rounded-full ml-2 flex-shrink-0" style={{ background: GOLD, color: NAVY }}>{item.value}</span>
+                      <span className="text-xs font-bold px-2.5 py-1 rounded-full ml-2 flex-shrink-0" style={{ background: '#f59e0b', color: '#fff' }}>{item.value}</span>
                     </div>
                   ))}
                 </div>
               )}
+            </div>
+            <div className="flex flex-col sm:flex-row gap-4">
+              <a href="https://app.orisalign.com/book" className="text-base font-bold px-8 py-4 rounded-full transition-all shadow-lg text-center" style={{ background: GOLD, color: NAVY, boxShadow: `0 8px 24px ${GOLD}55` }}>
+                Book your smile assessment →
+              </a>
               <a href={WA_LINK} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 border-2 text-base font-semibold px-8 py-4 rounded-full hover:border-green-500 hover:text-green-700 transition-all" style={{ borderColor: '#e5e7eb', color: '#374151' }}>
                 <svg className="w-5 h-5 fill-current text-green-600" viewBox="0 0 24 24"><path d={WA_ICON}/></svg>
                 Chat on WhatsApp
@@ -364,10 +363,10 @@ export default function LandingPage() {
             <div className="px-8 py-8 text-center" style={{ background: `linear-gradient(135deg, ${NAVY}, #0F1E33)` }}>
               <div className="flex items-end justify-center gap-2 mb-1">
                 <span className="text-lg font-semibold" style={{ color: '#E8D9A0' }}>Starts at</span>
-                <span className="text-5xl font-black" style={{ color: GOLD }}>₹44,_ _ _</span>
+                <span className="text-5xl font-black" style={{ color: GOLD }}>₹47,999</span>
                 <span className="text-base font-semibold mb-1" style={{ color: '#E8D9A0' }}>*</span>
               </div>
-              <p className="text-sm mt-2" style={{ color: '#94a3b8' }}>or ₹3,_ _ _/month* — No cost EMI available*</p>
+              <p className="text-sm mt-2" style={{ color: '#94a3b8' }}>or ₹3,999/month* — No cost EMI available*</p>
             </div>
 
             {/* Freebies */}
