@@ -194,7 +194,7 @@ export default function LandingPage() {
             {/* Yellow banner with i button inline after text */}
             <div className="mb-4 rounded-2xl overflow-hidden" style={{ border: '1.5px solid #f59e0b' }}>
               <div className="px-4 py-3 font-semibold" style={{ background: '#FFF3CD', color: '#92400e' }}>
-                <div className="flex items-center gap-1 text-xs whitespace-nowrap overflow-x-auto">
+                <div className="flex items-center gap-1 text-xs flex-wrap">
                   🎯 Book your smile assessment for
                   <button
                     onClick={() => setAssessmentOpen(o => !o)}
