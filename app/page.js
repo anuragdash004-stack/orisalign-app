@@ -366,6 +366,7 @@ export default function LandingPage() {
             <div className="px-8 py-8 text-center" style={{ background: `linear-gradient(135deg, ${NAVY}, #0F1E33)` }}>
               <div className="flex items-end justify-center gap-2 mb-1">
                 <span className="text-lg font-semibold" style={{ color: '#E8D9A0' }}>Starts at</span>
+                <span className="text-2xl font-bold line-through mb-1" style={{ color: '#94a3b8' }}>₹54,999</span>
                 <span className="text-5xl font-black" style={{ color: GOLD }}>₹47,999</span>
                 <span className="text-base font-semibold mb-1" style={{ color: '#E8D9A0' }}>*</span>
               </div>
