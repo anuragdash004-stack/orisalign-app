@@ -248,6 +248,29 @@ export default function PatientJourney() {
                               <span style={{ fontSize: "13px", color: lbl === "Final Amount" ? "#16a34a" : "#111827", fontWeight: lbl === "Final Amount" ? "800" : "600" }}>{val}</span>
                             </div>
                           ))}
+
+                          {/* Pay Now CTA — opens /payment with appointment context */}
+                          {pd.pending_amount > 0 && (
+                            <a
+                              href={`/payment?id=${id}&amount=${pd.pending_amount}`}
+                              style={{
+                                marginTop: "8px",
+                                display: "block",
+                                padding: "12px",
+                                borderRadius: "10px",
+                                background: "linear-gradient(135deg, #b8905a, #f59e0b)",
+                                color: "white",
+                                fontWeight: "800",
+                                fontSize: "14px",
+                                textAlign: "center",
+                                textDecoration: "none",
+                                letterSpacing: "0.3px",
+                                boxShadow: "0 4px 10px rgba(184, 144, 90, 0.25)",
+                              }}
+                            >
+                              Pay Now · {fmt(pd.pending_amount)}
+                            </a>
+                          )}
                         </div>
                       )}
                     </div>
