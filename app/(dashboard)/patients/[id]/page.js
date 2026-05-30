@@ -120,20 +120,35 @@ const row = {
 };
 
 // ─── Payment Tab ─────────────────────────────────────────────────────────────
+const EMPTY_PAYMENT = {
+  full_amount: "",
+  discount: "",
+  coupon_code: "",
+  coupon_discount: "",
+  down_payment: "",
+  down_payment_mode: "Cash",
+  pending_mode: "Cash",
+  finance_provider: "Bajaj Finance",
+};
+
+const inr = (n) => `₹ ${(Number(n) || 0).toLocaleString("en-IN")}`;
+
+function PaymentSummaryRow({ label: lbl, value }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", gap: "16px", padding: "10px 0", borderBottom: "1px dashed #e5e7eb" }}>
+      <span style={{ fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>{lbl}</span>
+      <span style={{ fontSize: "14px", fontWeight: "700", color: "#111827", textAlign: "right" }}>{value}</span>
+    </div>
+  );
+}
+
 function PaymentTab({ appointmentId, initialData }) {
+  const hasSaved = !!(initialData && (initialData.full_amount || initialData.down_payment || initialData.final_amount));
+
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [data, setData] = useState({
-    full_amount: "",
-    discount: "",
-    coupon_code: "",
-    coupon_discount: "",
-    down_payment: "",
-    down_payment_mode: "Cash",
-    pending_mode: "Cash",
-    finance_provider: "Bajaj Finance",
-    ...initialData,
-  });
+  const [editing, setEditing] = useState(!hasSaved);
+  const [data, setData] = useState({ ...EMPTY_PAYMENT, ...initialData });
 
   const set = (key, val) => setData((prev) => ({ ...prev, [key]: val }));
 
@@ -154,16 +169,67 @@ function PaymentTab({ appointmentId, initialData }) {
     setSaving(false);
     if (!error) {
       setSaved(true);
+      setEditing(false);
       setTimeout(() => setSaved(false), 3000);
     } else {
       alert("Error saving payment: " + error.message);
     }
   };
 
+  const handleCancel = () => {
+    setData({ ...EMPTY_PAYMENT, ...initialData });
+    setEditing(false);
+  };
+
+  // ── Read-only summary view ────────────────────────────────────────────────
+  if (!editing && hasSaved) {
+    return (
+      <div>
+        <div style={card}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "10px" }}>
+            <h3 style={{ margin: 0, fontSize: "16px", color: "#111827" }}>Payment Details</h3>
+            <span style={{ fontSize: "11px", fontWeight: "700", padding: "4px 10px", borderRadius: "99px", background: "#dcfce7", color: "#16a34a", letterSpacing: "0.5px" }}>SAVED ✓</span>
+          </div>
+
+          <div style={{ marginBottom: "20px" }}>
+            <PaymentSummaryRow label="Full Amount" value={inr(data.full_amount)} />
+            {parseFloat(data.discount) > 0 && (
+              <PaymentSummaryRow label="Discount" value={`− ${inr(data.discount)}`} />
+            )}
+            {(data.coupon_code || parseFloat(data.coupon_discount) > 0) && (
+              <PaymentSummaryRow
+                label={data.coupon_code ? `Coupon (${data.coupon_code})` : "Coupon"}
+                value={`− ${inr(data.coupon_discount)}`}
+              />
+            )}
+            <PaymentSummaryRow label="Final Amount" value={inr(finalAmt)} />
+            <PaymentSummaryRow
+              label="Down Payment"
+              value={`${inr(data.down_payment)} · ${data.down_payment_mode}${data.down_payment_mode === "Finance" ? ` (${data.finance_provider})` : ""}`}
+            />
+            <PaymentSummaryRow
+              label="Pending Amount"
+              value={`${inr(pendingAmt)} · ${data.pending_mode}${data.pending_mode === "Finance" ? ` (${data.finance_provider})` : ""}`}
+            />
+          </div>
+
+          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+            <button style={btnGold} onClick={() => setEditing(true)}>
+              Edit Payment
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Edit / first-time form view ───────────────────────────────────────────
   return (
     <div>
       <div style={card}>
-        <h3 style={{ margin: "0 0 20px", fontSize: "16px", color: "#111827" }}>Payment Details</h3>
+        <h3 style={{ margin: "0 0 20px", fontSize: "16px", color: "#111827" }}>
+          {hasSaved ? "Edit Payment Details" : "Payment Details"}
+        </h3>
 
         <div style={row}>
           <div>
@@ -249,12 +315,18 @@ function PaymentTab({ appointmentId, initialData }) {
             onClick={handleSave} disabled={saving}>
             {saving ? "Saving..." : saved ? "Saved ✓" : "Save Payment"}
           </button>
+          {hasSaved && (
+            <button onClick={handleCancel}
+              style={{ padding: "10px 22px", borderRadius: "10px", border: "1px solid #e5e7eb", background: "white", color: "#374151", fontWeight: "700", fontSize: "13px", cursor: "pointer" }}>
+              Cancel
+            </button>
+          )}
           <button
             onClick={async () => {
               if (!window.confirm("Clear all payment data?")) return;
-              const empty = { full_amount: "", discount: "", coupon_code: "", coupon_discount: "", down_payment: "", down_payment_mode: "Cash", pending_mode: "Cash", finance_provider: "Bajaj Finance" };
-              setData(empty);
+              setData({ ...EMPTY_PAYMENT });
               await supabase.from("appointments_booking").update({ payment_data: {} }).eq("id", appointmentId);
+              setEditing(true);
             }}
             style={{ padding: "10px 22px", borderRadius: "10px", border: "1px solid #e5e7eb", background: "white", color: "#6b7280", fontWeight: "700", fontSize: "13px", cursor: "pointer" }}
           >
