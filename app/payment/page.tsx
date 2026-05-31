@@ -2,6 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
+import Script from "next/script";
 
 /**
  * /payment — Patient payment landing page.
@@ -10,9 +11,8 @@ import { Suspense, useState } from "react";
  *   ?id=<appointment_id>     The booking row this payment is for.
  *   ?amount=<rupees>          The amount due (pending_amount from payment_data).
  *
- * Currently every gateway is a placeholder ("Coming soon"). As each gateway is
- * integrated, replace the option's onSelect handler with the SDK call (e.g.
- * razorpay.open(), stripe.redirectToCheckout()) and remove its `comingSoon` flag.
+ * "cashfree" is the live gateway — it covers UPI / cards / net-banking / wallets
+ * / EMI under one checkout. Other options are placeholders until wired up.
  */
 
 const NAVY = "#1B2A4A";
@@ -27,14 +27,26 @@ interface PaymentOption {
   comingSoon: boolean;
 }
 
+// Cashfree drop-in JS — exposed on window after the next/script tag loads.
+declare global {
+  interface Window {
+    Cashfree?: (opts: { mode: "sandbox" | "production" }) => {
+      checkout: (opts: {
+        paymentSessionId: string;
+        redirectTarget?: "_self" | "_blank" | "_modal";
+      }) => Promise<unknown> | void;
+    };
+  }
+}
+
 const OPTIONS: PaymentOption[] = [
   {
-    key: "razorpay",
+    key: "cashfree",
     name: "UPI / Cards / Net Banking",
-    blurb: "Powered by Razorpay — GPay, PhonePe, Paytm, all cards",
+    blurb: "Powered by Cashfree — GPay, PhonePe, Paytm, all cards, EMI",
     emoji: "💳",
     bg: "#0a84ff",
-    comingSoon: true,
+    comingSoon: false,
   },
   {
     key: "upi-direct",
@@ -89,21 +101,63 @@ function PaymentInner() {
 
   const [selected, setSelected] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const startCashfree = async () => {
+    if (!id) {
+      setNotice("Missing appointment context. Please open this page from your patient dashboard.");
+      return;
+    }
+    setBusy(true);
+    setNotice(null);
+    try {
+      const res = await fetch("/api/cashfree/order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ appointmentId: id }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.paymentSessionId) {
+        setNotice(data.error || "Couldn't start the payment. Please try again or WhatsApp us.");
+        return;
+      }
+      if (typeof window === "undefined" || !window.Cashfree) {
+        setNotice("Payment SDK is still loading — please try again in a moment.");
+        return;
+      }
+      const mode = (data.mode === "production" ? "production" : "sandbox") as "production" | "sandbox";
+      const cashfree = window.Cashfree({ mode });
+      cashfree.checkout({
+        paymentSessionId: data.paymentSessionId,
+        redirectTarget: "_self",
+      });
+    } catch {
+      setNotice("Couldn't reach the payment service. Please check your connection and try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const handleSelect = (opt: PaymentOption) => {
     setSelected(opt.key);
+    if (opt.key === "cashfree") {
+      void startCashfree();
+      return;
+    }
     if (opt.comingSoon) {
       setNotice(
         `${opt.name} integration is coming soon. For now, please reach out on WhatsApp at +91 95838 25755 and we'll guide you through.`
       );
       return;
     }
-    // TODO: trigger the gateway SDK here as each one is integrated.
     setNotice(null);
   };
 
   return (
     <div style={{ minHeight: "100vh", background: "#faf7f2", fontFamily: "Arial, sans-serif" }}>
+      {/* Cashfree drop-in JS SDK */}
+      <Script src="https://sdk.cashfree.com/js/v3/cashfree.js" strategy="afterInteractive" />
+
       <div style={{ maxWidth: "720px", margin: "0 auto", padding: "32px 20px 80px" }}>
         {/* Header */}
         <div style={{ textAlign: "center", marginBottom: "24px" }}>
@@ -140,10 +194,12 @@ function PaymentInner() {
         <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
           {OPTIONS.map((opt) => {
             const isSelected = selected === opt.key;
+            const isBusyOption = busy && opt.key === "cashfree";
             return (
               <button
                 key={opt.key}
                 onClick={() => handleSelect(opt)}
+                disabled={isBusyOption}
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -153,10 +209,11 @@ function PaymentInner() {
                   borderRadius: "14px",
                   background: "white",
                   border: isSelected ? `2px solid ${GOLD}` : "1px solid #e5e7eb",
-                  cursor: "pointer",
+                  cursor: isBusyOption ? "wait" : "pointer",
                   boxShadow: isSelected ? "0 6px 16px rgba(201, 168, 76, 0.15)" : "0 2px 6px rgba(0,0,0,0.04)",
                   width: "100%",
                   fontFamily: "inherit",
+                  opacity: isBusyOption ? 0.7 : 1,
                 }}
               >
                 <span
@@ -185,7 +242,9 @@ function PaymentInner() {
                   </span>
                   <span style={{ display: "block", fontSize: "12px", color: "#6b7280", marginTop: "2px" }}>{opt.blurb}</span>
                 </span>
-                <span style={{ fontSize: "20px", color: "#cbd5e1" }}>›</span>
+                <span style={{ fontSize: "20px", color: "#cbd5e1" }}>
+                  {isBusyOption ? "…" : "›"}
+                </span>
               </button>
             );
           })}
