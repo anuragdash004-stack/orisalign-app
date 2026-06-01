@@ -20,11 +20,16 @@ import { createClient } from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
 
-const CF_ENV = (process.env.CASHFREE_ENV || "sandbox").toLowerCase();
+const CF_ENV = (process.env.CASHFREE_ENV || "sandbox").trim().toLowerCase();
 const CF_BASE =
   CF_ENV === "production"
     ? "https://api.cashfree.com/pg/orders"
     : "https://sandbox.cashfree.com/pg/orders";
+
+// Trim env vars defensively — copy-paste from dashboards often leaves
+// trailing whitespace that quietly breaks HMAC / header auth.
+const CF_APP_ID = (process.env.CASHFREE_APP_ID || "").trim();
+const CF_SECRET = (process.env.CASHFREE_SECRET_KEY || "").trim();
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -37,7 +42,7 @@ interface OrderRequest {
 
 export async function POST(req: Request) {
   try {
-    if (!process.env.CASHFREE_APP_ID || !process.env.CASHFREE_SECRET_KEY) {
+    if (!CF_APP_ID || !CF_SECRET) {
       return NextResponse.json(
         { error: "Payment gateway not configured" },
         { status: 500 },
@@ -92,8 +97,8 @@ export async function POST(req: Request) {
     const cfRes = await fetch(CF_BASE, {
       method: "POST",
       headers: {
-        "x-client-id": process.env.CASHFREE_APP_ID!,
-        "x-client-secret": process.env.CASHFREE_SECRET_KEY!,
+        "x-client-id": CF_APP_ID,
+        "x-client-secret": CF_SECRET,
         "x-api-version": "2023-08-01",
         "Content-Type": "application/json",
       },
@@ -114,9 +119,32 @@ export async function POST(req: Request) {
 
     const cfData = await cfRes.json();
     if (!cfRes.ok || !cfData.payment_session_id) {
-      console.error("Cashfree order failed", cfData);
+      // Log enough to debug without leaking secrets.
+      console.error("[cashfree/order] create failed", {
+        env: CF_ENV,
+        base: CF_BASE,
+        status: cfRes.status,
+        cfCode: cfData.code,
+        cfType: cfData.type,
+        cfMessage: cfData.message,
+      });
+      const isAuth =
+        cfData.code === "authentication_error" ||
+        cfData.type === "authentication_error" ||
+        /auth/i.test(cfData.message || "");
+      const hint = isAuth
+        ? ` (env=${CF_ENV}; verify CASHFREE_ENV matches the key type and that App ID/Secret aren't swapped)`
+        : "";
       return NextResponse.json(
-        { error: cfData.message || "Failed to create payment order" },
+        {
+          error: (cfData.message || "Failed to create payment order") + hint,
+          cashfree: {
+            code: cfData.code,
+            type: cfData.type,
+            status: cfRes.status,
+          },
+          env: CF_ENV,
+        },
         { status: 502 },
       );
     }
