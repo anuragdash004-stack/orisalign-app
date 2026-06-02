@@ -146,7 +146,7 @@ function PaymentInner() {
     }
     if (opt.comingSoon) {
       setNotice(
-        `${opt.name} integration is coming soon. For now, please reach out on WhatsApp at +91 95838 25755 and we'll guide you through.`
+        `${opt.name} integration is coming soon. For now, please reach out on WhatsApp at +91 80 6217 8511 and we'll guide you through.`
       );
       return;
     }
@@ -254,8 +254,8 @@ function PaymentInner() {
         <div style={{ marginTop: "28px", padding: "16px", background: "white", border: "1px solid #e5e7eb", borderRadius: "12px", textAlign: "center" }}>
           <p style={{ margin: 0, fontSize: "12px", color: "#6b7280", lineHeight: "1.7" }}>
             🔒 All payments are secured. Need help? WhatsApp{" "}
-            <a href="https://wa.me/919583825755" target="_blank" rel="noreferrer" style={{ color: GOLD, fontWeight: "700", textDecoration: "none" }}>
-              +91 95838 25755
+            <a href="https://wa.me/918062178511" target="_blank" rel="noreferrer" style={{ color: GOLD, fontWeight: "700", textDecoration: "none" }}>
+              +91 80 6217 8511
             </a>{" "}
             or email{" "}
             <a href="mailto:hello@orisalign.com" style={{ color: GOLD, fontWeight: "700", textDecoration: "none" }}>

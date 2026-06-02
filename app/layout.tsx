@@ -76,7 +76,7 @@ const jsonLd = {
       "logo": "https://orisalign.com/logo.png",
       "description": "OrisAlign is Bhubaneswar's #1 clear aligner brand, providing affordable invisible teeth aligners in Odisha, India.",
       "email": "hello@orisalign.com",
-      "telephone": "+918280837370",
+      "telephone": "+918062178511",
       "address": {
         "@type": "PostalAddress",
         "streetAddress": "MIG-1, 43/5, Housing Board Colony, Chandrasekharpur",
@@ -97,7 +97,7 @@ const jsonLd = {
       "url": "https://orisalign.com",
       "image": "https://orisalign.com/smiles-collage.jpg",
       "description": "OrisAlign provides clear aligner orthodontic treatment in Bhubaneswar, Odisha. Expert dentists, Made in India aligners, starting at ₹2,499/month.",
-      "telephone": "+918280837370",
+      "telephone": "+918062178511",
       "email": "hello@orisalign.com",
       "priceRange": "₹₹",
       "medicalSpecialty": "Dentistry",
