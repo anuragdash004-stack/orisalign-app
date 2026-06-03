@@ -181,7 +181,6 @@ function PaymentTab({ appointmentId, initialData }) {
     setEditing(false);
   };
 
-  // ── Read-only summary view ────────────────────────────────────────────────
   if (!editing && hasSaved) {
     return (
       <div>
@@ -190,7 +189,6 @@ function PaymentTab({ appointmentId, initialData }) {
             <h3 style={{ margin: 0, fontSize: "16px", color: "#111827" }}>Payment Details</h3>
             <span style={{ fontSize: "11px", fontWeight: "700", padding: "4px 10px", borderRadius: "99px", background: "#dcfce7", color: "#16a34a", letterSpacing: "0.5px" }}>SAVED ✓</span>
           </div>
-
           <div style={{ marginBottom: "20px" }}>
             <PaymentSummaryRow label="Full Amount" value={inr(data.full_amount)} />
             {parseFloat(data.discount) > 0 && (
@@ -212,25 +210,20 @@ function PaymentTab({ appointmentId, initialData }) {
               value={`${inr(pendingAmt)} · ${data.pending_mode}${data.pending_mode === "Finance" ? ` (${data.finance_provider})` : ""}`}
             />
           </div>
-
           <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-            <button style={btnGold} onClick={() => setEditing(true)}>
-              Edit Payment
-            </button>
+            <button style={btnGold} onClick={() => setEditing(true)}>Edit Payment</button>
           </div>
         </div>
       </div>
     );
   }
 
-  // ── Edit / first-time form view ───────────────────────────────────────────
   return (
     <div>
       <div style={card}>
         <h3 style={{ margin: "0 0 20px", fontSize: "16px", color: "#111827" }}>
           {hasSaved ? "Edit Payment Details" : "Payment Details"}
         </h3>
-
         <div style={row}>
           <div>
             <span style={label}>FULL AMOUNT (₹)</span>
@@ -243,7 +236,6 @@ function PaymentTab({ appointmentId, initialData }) {
               onChange={(e) => set("discount", e.target.value)} />
           </div>
         </div>
-
         <div style={row}>
           <div>
             <span style={label}>COUPON CODE</span>
@@ -256,12 +248,10 @@ function PaymentTab({ appointmentId, initialData }) {
               onChange={(e) => set("coupon_discount", e.target.value)} />
           </div>
         </div>
-
         <div style={{ marginBottom: "20px" }}>
           <span style={label}>FINAL AMOUNT (₹) — auto-calculated</span>
           <input style={readonlyInput} type="text" readOnly value={`₹ ${finalAmt.toLocaleString("en-IN")}`} />
         </div>
-
         <div style={{ ...row, marginBottom: "8px" }}>
           <div>
             <span style={label}>DOWN PAYMENT (₹)</span>
@@ -276,7 +266,6 @@ function PaymentTab({ appointmentId, initialData }) {
             </select>
           </div>
         </div>
-
         {data.down_payment_mode === "Finance" && (
           <div style={{ marginBottom: "16px" }}>
             <span style={label}>FINANCE PROVIDER</span>
@@ -286,12 +275,10 @@ function PaymentTab({ appointmentId, initialData }) {
             </select>
           </div>
         )}
-
         <div style={{ marginBottom: "20px" }}>
           <span style={label}>PENDING AMOUNT (₹) — auto-calculated</span>
           <input style={readonlyInput} type="text" readOnly value={`₹ ${pendingAmt.toLocaleString("en-IN")}`} />
         </div>
-
         <div style={{ marginBottom: "24px" }}>
           <span style={label}>PENDING AMOUNT MODE OF PAYMENT</span>
           <select style={select} value={data.pending_mode}
@@ -299,7 +286,6 @@ function PaymentTab({ appointmentId, initialData }) {
             {MODE_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
           </select>
         </div>
-
         {data.pending_mode === "Finance" && (
           <div style={{ marginBottom: "24px" }}>
             <span style={label}>PENDING FINANCE PROVIDER</span>
@@ -309,7 +295,6 @@ function PaymentTab({ appointmentId, initialData }) {
             </select>
           </div>
         )}
-
         <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
           <button style={saving ? { ...btnPrimary, opacity: 0.6 } : btnPrimary}
             onClick={handleSave} disabled={saving}>
@@ -355,7 +340,6 @@ function ManufacturingTab({ appointmentId, initialData }) {
       return { ...b, mfg_started: existing?.mfg_started || "", mfg_done: existing?.mfg_done || "", dispatched: existing?.dispatched || "" };
     });
     setBatches(merged);
-    // Save total_sets immediately so it persists on page reload
     await supabase.from("appointments_booking")
       .update({ manufacturing_data: { total_sets: n, batches: merged, aligner_delivered: alignerDelivered } })
       .eq("id", appointmentId);
@@ -410,7 +394,6 @@ function ManufacturingTab({ appointmentId, initialData }) {
           <button style={btnGold} onClick={handleSetupBatches}>Setup Batches</button>
         </div>
       </div>
-
       {batches.map((batch) => (
         <div key={batch.num} style={card}>
           <h4 style={{ margin: "0 0 16px", fontSize: "14px", color: "#b8905a", fontWeight: "800", letterSpacing: "0.5px" }}>
@@ -442,7 +425,6 @@ function ManufacturingTab({ appointmentId, initialData }) {
           </button>
         </div>
       ))}
-
       {batches.length > 0 && (
         <div style={card}>
           <h4 style={{ margin: "0 0 16px", fontSize: "14px", color: "#111827", fontWeight: "800", letterSpacing: "0.5px" }}>
@@ -485,12 +467,8 @@ function LogisticsTab({ appointmentId, manufacturingData, initialData }) {
     return mfgBatches.map((mb) => {
       const existing = (initialData?.batches || []).find((b) => b.num === mb.num);
       return {
-        num: mb.num,
-        start: mb.start,
-        end: mb.end,
-        mfg_started: mb.mfg_started || "",
-        mfg_done: mb.mfg_done || "",
-        dispatched: mb.dispatched || "",
+        num: mb.num, start: mb.start, end: mb.end,
+        mfg_started: mb.mfg_started || "", mfg_done: mb.mfg_done || "", dispatched: mb.dispatched || "",
         aligner_received: existing?.aligner_received || "",
         delivery_partner: existing?.delivery_partner || "",
         shipment_id: existing?.shipment_id || "",
@@ -541,23 +519,14 @@ function LogisticsTab({ appointmentId, manufacturingData, initialData }) {
           <h4 style={{ margin: "0 0 14px", fontSize: "14px", color: "#b8905a", fontWeight: "800", letterSpacing: "0.5px" }}>
             BATCH {batch.num} — Sets {batch.start} to {batch.end}
           </h4>
-
-          {/* Read-only manufacturing info */}
           <div style={{ marginBottom: "14px" }}>
-            {batch.mfg_started && (
-              <span style={infoPill}>Started: {batch.mfg_started}</span>
-            )}
-            {batch.mfg_done && (
-              <span style={infoPill}>Done: {batch.mfg_done}</span>
-            )}
-            {batch.dispatched && (
-              <span style={infoPill}>Dispatched: {batch.dispatched}</span>
-            )}
+            {batch.mfg_started && <span style={infoPill}>Started: {batch.mfg_started}</span>}
+            {batch.mfg_done && <span style={infoPill}>Done: {batch.mfg_done}</span>}
+            {batch.dispatched && <span style={infoPill}>Dispatched: {batch.dispatched}</span>}
             {!batch.mfg_started && !batch.mfg_done && !batch.dispatched && (
               <span style={{ ...infoPill, color: "#9ca3af" }}>No manufacturing dates yet</span>
             )}
           </div>
-
           <div style={row}>
             <div>
               <span style={label}>ALIGNER RECEIVED BY PATIENT</span>
@@ -570,13 +539,11 @@ function LogisticsTab({ appointmentId, manufacturingData, initialData }) {
                 onChange={(e) => updateBatch(batch.num, "delivery_partner", e.target.value)} />
             </div>
           </div>
-
           <div style={{ marginBottom: "16px" }}>
             <span style={label}>SHIPMENT ID</span>
             <input style={input} type="text" placeholder="Tracking number" value={batch.shipment_id}
               onChange={(e) => updateBatch(batch.num, "shipment_id", e.target.value)} />
           </div>
-
           <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
             <button
               style={saving === batch.num ? { ...btnPrimary, opacity: 0.6 } : btnPrimary}
@@ -586,9 +553,7 @@ function LogisticsTab({ appointmentId, manufacturingData, initialData }) {
               {saving === batch.num ? "Saving..." : savedBatch === batch.num ? "Saved ✓" : "Save Batch"}
             </button>
             <button
-              onClick={() => {
-                setBatches((prev) => prev.map((b) => b.num === batch.num ? { ...b, aligner_received: "", delivery_partner: "", shipment_id: "" } : b));
-              }}
+              onClick={() => setBatches((prev) => prev.map((b) => b.num === batch.num ? { ...b, aligner_received: "", delivery_partner: "", shipment_id: "" } : b))}
               style={{ padding: "10px 22px", borderRadius: "10px", border: "1px solid #e5e7eb", background: "white", color: "#6b7280", fontWeight: "700", fontSize: "13px", cursor: "pointer" }}
             >
               Clear
@@ -614,79 +579,7 @@ function LogisticsTab({ appointmentId, manufacturingData, initialData }) {
   );
 }
 
-// ─── Smile Journey Tab ────────────────────────────────────────────────────────
-function SmileJourneyTab({ appointmentId, journeySteps }) {
-  const steps = journeySteps || {};
-
-  const stepLabels = {
-    consultation: "Consultation",
-    scan: "Intraoral Scan",
-    treatment_plan: "Treatment Plan",
-    payment: "Payment",
-    manufacturing: "Manufacturing",
-    delivery: "Aligner Delivery",
-    followup: "Follow-up",
-  };
-
-  return (
-    <div>
-      <div style={card}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px" }}>
-          <div>
-            <h3 style={{ margin: "0 0 6px", fontSize: "16px", color: "#111827" }}>Smile Journey</h3>
-            <p style={{ margin: 0, fontSize: "13px", color: "#6b7280" }}>
-              Track the patient's full treatment journey
-            </p>
-          </div>
-          <a
-            href={`/patient/${appointmentId}`}
-            style={{
-              ...btnGold,
-              textDecoration: "none",
-              display: "inline-block",
-            }}
-          >
-            Open Smile Journey →
-          </a>
-        </div>
-      </div>
-
-      {Object.keys(steps).length > 0 ? (
-        <div style={card}>
-          <h4 style={{ margin: "0 0 16px", fontSize: "14px", color: "#111827", fontWeight: "800" }}>
-            CURRENT STATUS
-          </h4>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-            {Object.entries(steps).map(([key, val]) => (
-              <div
-                key={key}
-                style={{
-                  padding: "8px 14px",
-                  borderRadius: "10px",
-                  background: val ? "#dcfce7" : "#f3f4f6",
-                  border: `1px solid ${val ? "#bbf7d0" : "#e5e7eb"}`,
-                  fontSize: "13px",
-                  fontWeight: "600",
-                  color: val ? "#16a34a" : "#6b7280",
-                }}
-              >
-                {val ? "✓" : "○"} {stepLabels[key] || key}
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <div style={{ ...card, textAlign: "center", padding: "32px 24px" }}>
-          <p style={{ margin: 0, color: "#9ca3af", fontSize: "14px" }}>
-            No journey steps recorded yet. Open the Smile Journey to get started.
-          </p>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Derive steps same logic as patient page ──────────────────────────────────
+// ─── Derive steps ─────────────────────────────────────────────────────────────
 function deriveSteps(appt) {
   if (!appt) return {};
   const js = appt.journey_steps || {};
@@ -734,7 +627,6 @@ function JourneyTab({ appointmentId, appt, isAdmin }) {
     const updated = { ...steps, [key]: newVal };
     setSteps(updated);
     setSaving(key);
-    // Save the full journey_steps override to DB
     const js = appt.journey_steps || {};
     const newJs = { ...js, [key]: newVal };
     const { error } = await supabase
@@ -761,7 +653,6 @@ function JourneyTab({ appointmentId, appt, isAdmin }) {
         </div>
         {!isAdmin && <p style={{ margin: "10px 0 0", fontSize: "12px", color: "#9ca3af" }}>Only admins can approve steps.</p>}
       </div>
-
       <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
         {ALL_STEPS.map((step, i) => {
           const done = !!steps[step.key];
@@ -769,12 +660,11 @@ function JourneyTab({ appointmentId, appt, isAdmin }) {
           return (
             <div key={step.key} style={{
               display: "flex", alignItems: "center", gap: "12px",
-              background: "white", borderRadius: "12px", padding: "14px 16px",
+              borderRadius: "12px", padding: "14px 16px",
               border: `1px solid ${done ? "#bbf7d0" : "#e5e7eb"}`,
               background: done ? "linear-gradient(135deg, #f0fdf4, #dcfce7)" : "white",
               boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
             }}>
-              {/* Number / tick */}
               <div style={{
                 width: "36px", height: "36px", borderRadius: "8px", flexShrink: 0,
                 background: done ? "linear-gradient(135deg, #22c55e, #16a34a)" : "#f3f4f6",
@@ -783,13 +673,9 @@ function JourneyTab({ appointmentId, appt, isAdmin }) {
               }}>
                 {done ? "✓" : i + 1}
               </div>
-
-              {/* Label */}
               <p style={{ margin: 0, flex: 1, fontSize: "14px", fontWeight: done ? "700" : "500", color: done ? "#15803d" : "#374151" }}>
                 {step.label}
               </p>
-
-              {/* Toggle button — admin only */}
               {isAdmin && (
                 <button
                   onClick={() => toggle(step.key)}
@@ -840,11 +726,7 @@ export default function PatientDetailPage() {
   }, [id]);
 
   if (loading) {
-    return (
-      <div style={{ padding: "40px", textAlign: "center", color: "#6b7280" }}>
-        Loading patient data...
-      </div>
-    );
+    return <div style={{ padding: "40px", textAlign: "center", color: "#6b7280" }}>Loading patient data...</div>;
   }
 
   if (!appt) {
@@ -865,91 +747,41 @@ export default function PatientDetailPage() {
       <div style={{ marginBottom: "24px" }}>
         <button
           onClick={() => router.push("/patients")}
-          style={{
-            background: "none",
-            border: "none",
-            color: "#b8905a",
-            fontSize: "13px",
-            fontWeight: "700",
-            cursor: "pointer",
-            padding: 0,
-            marginBottom: "10px",
-            letterSpacing: "0.5px",
-          }}
+          style={{ background: "none", border: "none", color: "#b8905a", fontSize: "13px", fontWeight: "700", cursor: "pointer", padding: 0, marginBottom: "10px", letterSpacing: "0.5px" }}
         >
           ← Back to Patients
         </button>
-
-        <div style={{
-          background: "white",
-          borderRadius: "16px",
-          border: "1px solid #e5e7eb",
-          padding: "20px 24px",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
-          display: "flex",
-          alignItems: "center",
-          gap: "16px",
-          flexWrap: "wrap",
-        }}>
-          <div style={{
-            width: "52px", height: "52px", borderRadius: "50%",
-            background: "linear-gradient(135deg, #b8905a, #f59e0b)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            color: "white", fontWeight: "800", fontSize: "22px", flexShrink: 0,
-          }}>
+        <div style={{ background: "white", borderRadius: "16px", border: "1px solid #e5e7eb", padding: "20px 24px", boxShadow: "0 2px 8px rgba(0,0,0,0.04)", display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
+          <div style={{ width: "52px", height: "52px", borderRadius: "50%", background: "linear-gradient(135deg, #b8905a, #f59e0b)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: "800", fontSize: "22px", flexShrink: 0 }}>
             {(appt.name || "P")[0].toUpperCase()}
           </div>
           <div style={{ flex: 1 }}>
-            <h1 style={{ margin: "0 0 4px", fontSize: "20px", color: "#111827" }}>
-              {appt.name || "Unnamed Patient"}
-            </h1>
+            <h1 style={{ margin: "0 0 4px", fontSize: "20px", color: "#111827" }}>{appt.name || "Unnamed Patient"}</h1>
             <p style={{ margin: 0, fontSize: "13px", color: "#6b7280" }}>
               {appt.phone || "No phone"}
               {appt.email ? ` • ${appt.email}` : ""}
               {" • "}
-              <span style={{ fontFamily: "monospace", fontSize: "12px" }}>
-                {appt.id?.substring(0, 8).toUpperCase()}
-              </span>
+              <span style={{ fontFamily: "monospace", fontSize: "12px" }}>{appt.id?.substring(0, 8).toUpperCase()}</span>
             </p>
           </div>
-          <div style={{
-            padding: "6px 14px",
-            borderRadius: "99px",
-            background: "#f3f4f6",
-            fontSize: "12px",
-            fontWeight: "700",
-            color: "#374151",
-            letterSpacing: "0.5px",
-          }}>
+          <div style={{ padding: "6px 14px", borderRadius: "99px", background: "#f3f4f6", fontSize: "12px", fontWeight: "700", color: "#374151", letterSpacing: "0.5px" }}>
             {appt.status?.toUpperCase() || "PENDING"}
           </div>
         </div>
       </div>
 
       {/* Tab Pills */}
-      <div style={{
-        display: "flex",
-        gap: "8px",
-        flexWrap: "wrap",
-        marginBottom: "20px",
-      }}>
+      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "20px" }}>
         {TABS.map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
             style={{
-              padding: "9px 20px",
-              borderRadius: "99px",
-              border: "none",
+              padding: "9px 20px", borderRadius: "99px", border: "none",
               background: activeTab === tab ? "#111827" : "white",
               color: activeTab === tab ? "white" : "#374151",
-              fontWeight: "700",
-              fontSize: "13px",
-              cursor: "pointer",
-              letterSpacing: "0.5px",
-              boxShadow: activeTab === tab
-                ? "0 2px 8px rgba(17,24,39,0.18)"
-                : "0 1px 4px rgba(0,0,0,0.06)",
+              fontWeight: "700", fontSize: "13px", cursor: "pointer", letterSpacing: "0.5px",
+              boxShadow: activeTab === tab ? "0 2px 8px rgba(17,24,39,0.18)" : "0 1px 4px rgba(0,0,0,0.06)",
               border: activeTab === tab ? "none" : "1px solid #e5e7eb",
               transition: "all 0.15s ease",
             }}
@@ -959,7 +791,7 @@ export default function PatientDetailPage() {
         ))}
       </div>
 
-      {/* Tab Content — all mounted, CSS-hidden to preserve state on tab switch */}
+      {/* Tab Content */}
       <div style={{ display: activeTab === "Journey" ? "block" : "none" }}>
         <JourneyTab appointmentId={id} appt={appt} isAdmin={userRole === "admin"} />
       </div>
@@ -970,11 +802,7 @@ export default function PatientDetailPage() {
         <ManufacturingTab appointmentId={id} initialData={appt.manufacturing_data || null} />
       </div>
       <div style={{ display: activeTab === "Logistics" ? "block" : "none" }}>
-        <LogisticsTab
-          appointmentId={id}
-          manufacturingData={appt.manufacturing_data || null}
-          initialData={appt.logistics_data || null}
-        />
+        <LogisticsTab appointmentId={id} manufacturingData={appt.manufacturing_data || null} initialData={appt.logistics_data || null} />
       </div>
       <div style={{ display: activeTab === "Patient Page" ? "block" : "none" }}>
         <PatientPageTab appointmentId={id} />
