@@ -463,119 +463,10 @@ export default function OrthoCase() {
               </button>
             </div>
 
-            {/* ── Select Sheets ── */}
-            <div>
-              <label style={{ fontWeight: "600", fontSize: "14px", color: "#111827", display: "block", marginBottom: "12px" }}>
-                Select Sheets
-              </label>
-
-              {/* Category toggle buttons */}
-              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "16px" }}>
-                {Object.keys(SHEET_CATS).map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => setActiveSheetCat(activeSheetCat === cat ? null : cat)}
-                    style={{
-                      padding: "8px 18px", borderRadius: "99px", border: "none",
-                      background: activeSheetCat === cat ? "#111827" : "#f3f4f6",
-                      color: activeSheetCat === cat ? "white" : "#374151",
-                      fontWeight: "600", fontSize: "13px", cursor: "pointer",
-                      transition: "all 0.15s",
-                    }}
-                  >
-                    {cat}
-                  </button>
-                ))}
-              </div>
-
-              {/* Attachment Template */}
-              {activeSheetCat === "Attachment Template" && (
-                <div style={{ marginBottom: "12px" }}>
-                  <select
-                    style={inputStyle}
-                    value={attachmentSheet}
-                    onChange={(e) => setAttachmentSheet(e.target.value)}
-                  >
-                    <option value="">Select sheet...</option>
-                    {SHEET_CATS["Attachment Template"].map((n) => (
-                      <option key={n} value={String(n)}>{n}. {SHEETS[n]}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {/* Aligner Tray — dynamic rows */}
-              {activeSheetCat === "Aligner Tray" && (
-                <div style={{ marginBottom: "12px" }}>
-                  {alignerRows.map((row, idx) => (
-                    <div key={idx} style={{ display: "flex", gap: "8px", alignItems: "center", marginBottom: "8px" }}>
-                      <input
-                        type="number"
-                        placeholder="No. of trays"
-                        value={row.trays}
-                        onChange={(e) => setAlignerRows(alignerRows.map((r, i) => i === idx ? { ...r, trays: e.target.value } : r))}
-                        style={{ ...inputStyle, width: "130px", marginBottom: 0, flexShrink: 0 }}
-                      />
-                      <select
-                        value={row.sheet}
-                        onChange={(e) => setAlignerRows(alignerRows.map((r, i) => i === idx ? { ...r, sheet: e.target.value } : r))}
-                        style={{ ...inputStyle, flex: 1, marginBottom: 0 }}
-                      >
-                        <option value="">Select sheet...</option>
-                        {SHEET_CATS["Aligner Tray"].map((n) => (
-                          <option key={n} value={String(n)}>{n}. {SHEETS[n]}</option>
-                        ))}
-                      </select>
-                      <button
-                        onClick={() => setAlignerRows([...alignerRows, { trays: "", sheet: "" }])}
-                        style={{ padding: "10px 14px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "white", fontWeight: "700", fontSize: "18px", cursor: "pointer", flexShrink: 0, color: "#111827", lineHeight: 1 }}
-                      >
-                        +
-                      </button>
-                      {alignerRows.length > 1 && (
-                        <button
-                          onClick={() => setAlignerRows(alignerRows.filter((_, i) => i !== idx))}
-                          style={{ padding: "10px 12px", borderRadius: "8px", border: "1px solid #fecaca", background: "#fef2f2", fontWeight: "700", fontSize: "16px", cursor: "pointer", flexShrink: 0, color: "#dc2626", lineHeight: 1 }}
-                        >
-                          ×
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Retainer */}
-              {activeSheetCat === "Retainer" && (
-                <div style={{ marginBottom: "12px" }}>
-                  <select
-                    style={inputStyle}
-                    value={retainerSheet}
-                    onChange={(e) => setRetainerSheet(e.target.value)}
-                  >
-                    <option value="">Select sheet...</option>
-                    {SHEET_CATS["Retainer"].map((n) => (
-                      <option key={n} value={String(n)}>{n}. {SHEETS[n]}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {activeSheetCat && (
-                <button
-                  onClick={saveSheets}
-                  disabled={sheetsSaving}
-                  style={{ ...btnStyle(true), width: "auto", padding: "10px 24px", opacity: sheetsSaving ? 0.7 : 1 }}
-                >
-                  {sheetsSaving ? "Saving..." : sheetsSaved ? "Saved ✓" : "Save Sheet Selection"}
-                </button>
-              )}
-            </div>
-
-            {/* ── Upload Plan PDF ── */}
+            {/* ── Planning PDF ── */}
             <div>
               <label style={{ fontWeight: "600", fontSize: "14px", color: "#111827", display: "block", marginBottom: "8px" }}>
-                Upload Plan PDF
+                Planning PDF
               </label>
               {pdfSubmitted ? (
                 <div style={{
@@ -609,6 +500,103 @@ export default function OrthoCase() {
                     {pdfUploading ? "Uploading..." : "Upload PDF"}
                   </button>
                 </div>
+              )}
+            </div>
+
+            {/* ── Select Sheets ── */}
+            <div>
+              <label style={{ fontWeight: "600", fontSize: "14px", color: "#111827", display: "block", marginBottom: "12px" }}>
+                Select Sheets
+              </label>
+
+              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "16px" }}>
+                {Object.keys(SHEET_CATS).map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setActiveSheetCat(activeSheetCat === cat ? null : cat)}
+                    style={{
+                      padding: "8px 18px", borderRadius: "99px", border: "none",
+                      background: activeSheetCat === cat ? "#111827" : "#f3f4f6",
+                      color: activeSheetCat === cat ? "white" : "#374151",
+                      fontWeight: "600", fontSize: "13px", cursor: "pointer",
+                      transition: "all 0.15s",
+                    }}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+
+              {activeSheetCat === "Attachment Template" && (
+                <div style={{ marginBottom: "12px" }}>
+                  <select style={inputStyle} value={attachmentSheet} onChange={(e) => setAttachmentSheet(e.target.value)}>
+                    <option value="">Select sheet...</option>
+                    {SHEET_CATS["Attachment Template"].map((n) => (
+                      <option key={n} value={String(n)}>{SHEETS[n]}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {activeSheetCat === "Aligner Tray" && (
+                <div style={{ marginBottom: "12px" }}>
+                  {alignerRows.map((row, idx) => (
+                    <div key={idx} style={{ display: "flex", gap: "8px", alignItems: "center", marginBottom: "8px" }}>
+                      <input
+                        type="number"
+                        placeholder="No. of trays"
+                        value={row.trays}
+                        onChange={(e) => setAlignerRows(alignerRows.map((r, i) => i === idx ? { ...r, trays: e.target.value } : r))}
+                        style={{ ...inputStyle, width: "130px", marginBottom: 0, flexShrink: 0 }}
+                      />
+                      <select
+                        value={row.sheet}
+                        onChange={(e) => setAlignerRows(alignerRows.map((r, i) => i === idx ? { ...r, sheet: e.target.value } : r))}
+                        style={{ ...inputStyle, flex: 1, marginBottom: 0 }}
+                      >
+                        <option value="">Select sheet...</option>
+                        {SHEET_CATS["Aligner Tray"].map((n) => (
+                          <option key={n} value={String(n)}>{SHEETS[n]}</option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={() => setAlignerRows([...alignerRows, { trays: "", sheet: "" }])}
+                        style={{ padding: "10px 14px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "white", fontWeight: "700", fontSize: "18px", cursor: "pointer", flexShrink: 0, color: "#111827", lineHeight: 1 }}
+                      >
+                        +
+                      </button>
+                      {alignerRows.length > 1 && (
+                        <button
+                          onClick={() => setAlignerRows(alignerRows.filter((_, i) => i !== idx))}
+                          style={{ padding: "10px 12px", borderRadius: "8px", border: "1px solid #fecaca", background: "#fef2f2", fontWeight: "700", fontSize: "16px", cursor: "pointer", flexShrink: 0, color: "#dc2626", lineHeight: 1 }}
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {activeSheetCat === "Retainer" && (
+                <div style={{ marginBottom: "12px" }}>
+                  <select style={inputStyle} value={retainerSheet} onChange={(e) => setRetainerSheet(e.target.value)}>
+                    <option value="">Select sheet...</option>
+                    {SHEET_CATS["Retainer"].map((n) => (
+                      <option key={n} value={String(n)}>{SHEETS[n]}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {activeSheetCat && (
+                <button
+                  onClick={saveSheets}
+                  disabled={sheetsSaving}
+                  style={{ ...btnStyle(true), width: "auto", padding: "10px 24px", opacity: sheetsSaving ? 0.7 : 1 }}
+                >
+                  {sheetsSaving ? "Saving..." : sheetsSaved ? "Saved ✓" : "Save Sheet Selection"}
+                </button>
               )}
             </div>
 
