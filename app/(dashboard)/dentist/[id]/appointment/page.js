@@ -31,7 +31,6 @@ const EMPTY_FORM = {
   missing_tooth: "", dental_caries: "", deciduous_tooth: "",
   stains: "", calculus: "", recession: "",
   mobile: "", pain: "", sensitivity: "", pregnancy: "",
-  notes: "",
 };
 
 export default function AppointmentWorkflow() {
@@ -47,9 +46,7 @@ export default function AppointmentWorkflow() {
 
   const [provisionalPlan, setProvisionalPlan] = useState("");
   const [provisionalPlanSubmitted, setProvisionalPlanSubmitted] = useState(false);
-
-  const [dentistNote, setDentistNote] = useState("");
-  const [noteSaving, setNoteSaving] = useState(false);
+  const [orthoNote, setOrthoNote] = useState("");
 
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [formDocs, setFormDocs] = useState([]);
@@ -90,7 +87,6 @@ export default function AppointmentWorkflow() {
           pain: pfd.pain || "",
           sensitivity: pfd.sensitivity || "",
           pregnancy: pfd.pregnancy || "",
-          notes: pfd.notes || "",
         });
         setFormDocs(pfd.documents || []);
         if (data.form_submitted) setFormSubmitted(true);
@@ -99,8 +95,8 @@ export default function AppointmentWorkflow() {
         if (data.provisional_plan_submitted) {
           setProvisionalPlanSubmitted(true);
           setProvisionalPlan(data.provisional_plan || "");
+          setOrthoNote(data.ortho_note || "");
         }
-        setDentistNote(data.dentist_note || "");
       }
     };
     load();
@@ -208,13 +204,6 @@ export default function AppointmentWorkflow() {
     setStlSaving(false);
     setStlSubmitted(true);
     setActiveSection(null);
-  };
-
-  // ─── DENTIST NOTE ────────────────────────────────────────────────
-  const saveDentistNote = async () => {
-    setNoteSaving(true);
-    await supabase.from("appointments_booking").update({ dentist_note: dentistNote }).eq("id", id);
-    setNoteSaving(false);
   };
 
   // ─── END APPOINTMENT ─────────────────────────────────────────────
@@ -383,12 +372,6 @@ export default function AppointmentWorkflow() {
             </div>
           </div>
 
-          {/* Notes */}
-          <div style={{ marginBottom: "16px" }}>
-            <span style={lbl}>Notes</span>
-            <textarea style={{ ...inp, minHeight: "100px", resize: "vertical" }} value={form.notes} onChange={sf("notes")} />
-          </div>
-
           {/* Upload Documents */}
           <div style={{ marginBottom: "16px" }}>
             <span style={lbl}>Upload Documents</span>
@@ -513,34 +496,20 @@ export default function AppointmentWorkflow() {
         </div>
         <div style={{ padding: "20px" }}>
           {provisionalPlanSubmitted ? (
-            <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "8px", padding: "14px", fontSize: "14px", color: "#111827", whiteSpace: "pre-wrap", lineHeight: "1.6" }}>
-              {provisionalPlan}
+            <div>
+              <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "8px", padding: "14px", fontSize: "14px", color: "#111827", whiteSpace: "pre-wrap", lineHeight: "1.6", marginBottom: orthoNote ? "12px" : 0 }}>
+                {provisionalPlan}
+              </div>
+              {orthoNote ? (
+                <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "8px", padding: "14px" }}>
+                  <p style={{ fontSize: "11px", fontWeight: "700", color: "#16a34a", textTransform: "uppercase", letterSpacing: "0.5px", margin: "0 0 6px" }}>Notes from Orthodontist</p>
+                  <p style={{ margin: 0, fontSize: "14px", color: "#111827", whiteSpace: "pre-wrap", lineHeight: "1.6" }}>{orthoNote}</p>
+                </div>
+              ) : null}
             </div>
           ) : (
             <p style={{ color: "gray", fontSize: "14px", margin: 0 }}>Waiting for orthodontist to submit the provisional plan...</p>
           )}
-        </div>
-      </div>
-
-      {/* ── SECTION 5: DENTIST NOTE ── */}
-      <div style={{ marginTop: "14px", background: "white", border: "1px solid #e5e7eb", borderRadius: "16px", overflow: "hidden", boxShadow: "0 4px 12px rgba(0,0,0,0.04)" }}>
-        <div style={{ padding: "18px 20px", background: "#fafafa", borderBottom: "1px solid #e5e7eb" }}>
-          <span style={{ fontWeight: "600", color: "#111827" }}>5. Note</span>
-        </div>
-        <div style={{ padding: "20px" }}>
-          <textarea
-            style={{ width: "100%", padding: "12px", borderRadius: "8px", border: "1px solid #e5e7eb", fontSize: "14px", outline: "none", boxSizing: "border-box", minHeight: "100px", resize: "vertical", marginBottom: "12px", color: "#111827" }}
-            placeholder="Add any notes or observations..."
-            value={dentistNote}
-            onChange={(e) => setDentistNote(e.target.value)}
-          />
-          <button
-            onClick={saveDentistNote}
-            disabled={noteSaving}
-            style={{ padding: "10px 24px", borderRadius: "8px", border: "none", background: "#111827", color: "white", fontWeight: "600", cursor: "pointer", opacity: noteSaving ? 0.7 : 1 }}
-          >
-            {noteSaving ? "Saving..." : "Save Note"}
-          </button>
         </div>
       </div>
 

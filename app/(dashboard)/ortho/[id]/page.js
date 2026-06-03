@@ -99,7 +99,7 @@ export default function OrthoCase() {
     load();
   }, [id]);
 
-  // ── PROVISIONAL PLAN ──────────────────────────────────────────
+  // ── PROVISIONAL PLAN + NOTE ───────────────────────────────────
   const submitProvisionalPlan = async () => {
     if (!provisionalPlan.trim()) {
       alert("Please write the provisional plan first.");
@@ -108,21 +108,15 @@ export default function OrthoCase() {
     setProvisionalSaving(true);
     const { error } = await supabase
       .from("appointments_booking")
-      .update({ provisional_plan: provisionalPlan, provisional_plan_submitted: true })
+      .update({
+        provisional_plan: provisionalPlan,
+        ortho_note: orthoNote,
+        provisional_plan_submitted: true,
+      })
       .eq("id", id);
     setProvisionalSaving(false);
     if (error) { alert("Failed to submit plan: " + error.message); return; }
     setProvisionalSubmitted(true);
-  };
-
-  // ── ORTHO NOTE ────────────────────────────────────────────────
-  const saveNote = async () => {
-    setNoteSaving(true);
-    await supabase
-      .from("appointments_booking")
-      .update({ ortho_note: orthoNote })
-      .eq("id", id);
-    setNoteSaving(false);
   };
 
   // ── FINAL PLAN ────────────────────────────────────────────────
@@ -334,21 +328,21 @@ export default function OrthoCase() {
 
           <div style={{ padding: "20px", display: "grid", gap: "24px" }}>
 
-            {/* ── Provisional Planning ── */}
+            {/* ── Provisional Planning + Notes ── */}
             <div>
               <label style={{ fontWeight: "600", fontSize: "14px", color: "#111827", display: "block", marginBottom: "8px" }}>
                 Provisional Planning
               </label>
               {provisionalSubmitted ? (
-                <div style={{
-                  background: "#f0fdf4", border: "1px solid #bbf7d0",
-                  borderRadius: "8px", padding: "14px",
-                  fontSize: "14px", color: "#111827", whiteSpace: "pre-wrap",
-                }}>
+                <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "8px", padding: "14px", fontSize: "14px", color: "#111827", whiteSpace: "pre-wrap" }}>
                   {provisionalPlan}
-                  <p style={{ margin: "8px 0 0", fontSize: "12px", color: "#16a34a", fontWeight: "600" }}>
-                    ✓ Submitted to dentist
-                  </p>
+                  {orthoNote ? (
+                    <div style={{ marginTop: "12px", paddingTop: "12px", borderTop: "1px solid #bbf7d0" }}>
+                      <p style={{ fontSize: "11px", fontWeight: "700", color: "#16a34a", textTransform: "uppercase", letterSpacing: "0.5px", margin: "0 0 4px" }}>Notes</p>
+                      <p style={{ margin: 0, fontSize: "14px", color: "#111827", whiteSpace: "pre-wrap" }}>{orthoNote}</p>
+                    </div>
+                  ) : null}
+                  <p style={{ margin: "10px 0 0", fontSize: "12px", color: "#16a34a", fontWeight: "600" }}>✓ Submitted to dentist</p>
                 </div>
               ) : (
                 <>
@@ -357,6 +351,15 @@ export default function OrthoCase() {
                     placeholder="Write the provisional treatment plan here..."
                     value={provisionalPlan}
                     onChange={(e) => setProvisionalPlan(e.target.value)}
+                  />
+                  <label style={{ fontWeight: "600", fontSize: "14px", color: "#111827", display: "block", margin: "4px 0 8px" }}>
+                    Notes
+                  </label>
+                  <textarea
+                    style={{ ...inputStyle, minHeight: "90px", resize: "vertical" }}
+                    placeholder="Add notes for the dentist..."
+                    value={orthoNote}
+                    onChange={(e) => setOrthoNote(e.target.value)}
                   />
                   <button
                     onClick={submitProvisionalPlan}
@@ -367,26 +370,6 @@ export default function OrthoCase() {
                   </button>
                 </>
               )}
-            </div>
-
-            {/* ── Note ── */}
-            <div>
-              <label style={{ fontWeight: "600", fontSize: "14px", color: "#111827", display: "block", marginBottom: "8px" }}>
-                Note
-              </label>
-              <textarea
-                style={{ ...inputStyle, minHeight: "90px", resize: "vertical" }}
-                placeholder="Add notes..."
-                value={orthoNote}
-                onChange={(e) => setOrthoNote(e.target.value)}
-              />
-              <button
-                onClick={saveNote}
-                disabled={noteSaving}
-                style={{ ...btnStyle(true), width: "auto", padding: "10px 24px", opacity: noteSaving ? 0.7 : 1 }}
-              >
-                {noteSaving ? "Saving..." : "Save Note"}
-              </button>
             </div>
 
             {/* ── Final Planning ── */}
