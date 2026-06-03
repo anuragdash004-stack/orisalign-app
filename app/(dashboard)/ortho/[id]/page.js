@@ -495,7 +495,7 @@ export default function OrthoCase() {
                   <button
                     onClick={uploadPdf}
                     disabled={!pdfFile || pdfUploading}
-                    style={btnStyle(!!pdfFile && !pdfUploading)}
+                    style={{ ...btnStyle(true), opacity: (!pdfFile || pdfUploading) ? 0.6 : 1 }}
                   >
                     {pdfUploading ? "Uploading..." : "Upload PDF"}
                   </button>
