@@ -25,6 +25,38 @@ const STL_SLOTS = [
   { key: "lower_scan",  label: "Lower Scan" },
 ];
 
+const SHEETS = {
+  1:  "Scheu® Duran+® - 0.500 mm",
+  2:  "Scheu® Duran+® - 0.750 mm",
+  3:  "Scheu® Duran+® - 1.000 mm",
+  4:  "Erkodent® Erkodur-al® - 0.600 mm",
+  5:  "Erkodent® Erkodur-al® - 1.000 mm",
+  6:  "Erkodent® Erkodur® - 0.600 mm",
+  7:  "Erkodent® Erkodur® - 0.800 mm",
+  8:  "Erkodent® Erkodur® - 1.000 mm",
+  9:  "Scheu® Duran+® - 0.625 mm",
+  10: "Zendura™ A - 0.762 mm",
+  11: "Zendura™ FLX - 0.762 mm",
+  12: "Zendura™ TRAK - 0.380 mm",
+  13: "Scheu® Duran+® - 1.500 mm",
+  14: "Erkodent® Erkolen® - 0.600 mm",
+  15: "Scheu® Copyplast® - 0.750 mm",
+  16: "Erkodent® Erkodur-al® - 0.800 mm",
+  17: "Scheu® Bioplast® with DURASOFT® seal - 2.000 mm",
+  18: "Scheu® DURASOFT® pd with DURASOFT® seal - 1.800 mm",
+  19: "Scheu® IMPRELON® S pd - 1.000 mm",
+  20: "Scheu® CA® Pro+ - 0.750 mm",
+  21: "Scheu® IMPRELON® S pd - 0.750 mm",
+  22: "Zendura™ A - 1.020 mm",
+  23: "Scheu® UNIQ+ pd - 0.750 mm",
+};
+
+const SHEET_CATS = {
+  "Attachment Template": [1, 4, 6, 12, 14, 15],
+  "Aligner Tray":        [2, 7, 9, 11, 16, 20, 23],
+  "Retainer":            [3, 5, 8, 10, 13, 17, 18, 19, 21, 22],
+};
+
 export default function OrthoCase() {
   const { id } = useParams();
   const router = useRouter();
@@ -51,6 +83,13 @@ export default function OrthoCase() {
   const [pdfUploading, setPdfUploading] = useState(false);
   const [pdfSubmitted, setPdfSubmitted] = useState(false);
 
+  const [activeSheetCat, setActiveSheetCat] = useState(null);
+  const [attachmentSheet, setAttachmentSheet] = useState("");
+  const [retainerSheet, setRetainerSheet] = useState("");
+  const [alignerRows, setAlignerRows] = useState([{ trays: "", sheet: "" }]);
+  const [sheetsSaving, setSheetsSaving] = useState(false);
+  const [sheetsSaved, setSheetsSaved] = useState(false);
+
   useEffect(() => {
     const load = async () => {
       const { data } = await supabase
@@ -71,6 +110,13 @@ export default function OrthoCase() {
       setFinalPlan(data.final_plan || "");
       setVideoLink(data.planning_video_link || "");
       if (data.plan_pdf_url) setPdfSubmitted(true);
+      if (data.sheet_selection) {
+        const ss = data.sheet_selection;
+        if (ss.activeCategory) setActiveSheetCat(ss.activeCategory);
+        if (ss.attachmentSheet !== undefined) setAttachmentSheet(ss.attachmentSheet);
+        if (ss.retainerSheet !== undefined) setRetainerSheet(ss.retainerSheet);
+        if (ss.alignerRows?.length) setAlignerRows(ss.alignerRows);
+      }
 
       // Load signed image URLs
       if (data.image_paths && typeof data.image_paths === "object") {
@@ -129,6 +175,17 @@ export default function OrthoCase() {
     setFinalSaving(false);
     if (error) { alert("Failed to save: " + error.message); return; }
     alert("Final plan saved.");
+  };
+
+  // ── SHEET SELECTION ───────────────────────────────────────────
+  const saveSheets = async () => {
+    setSheetsSaving(true);
+    await supabase.from("appointments_booking").update({
+      sheet_selection: { activeCategory: activeSheetCat, attachmentSheet, retainerSheet, alignerRows },
+    }).eq("id", id);
+    setSheetsSaving(false);
+    setSheetsSaved(true);
+    setTimeout(() => setSheetsSaved(false), 3000);
   };
 
   // ── PDF UPLOAD ────────────────────────────────────────────────
@@ -404,6 +461,115 @@ export default function OrthoCase() {
               >
                 {finalSaving ? "Saving..." : "Save Final Plan & Video"}
               </button>
+            </div>
+
+            {/* ── Select Sheets ── */}
+            <div>
+              <label style={{ fontWeight: "600", fontSize: "14px", color: "#111827", display: "block", marginBottom: "12px" }}>
+                Select Sheets
+              </label>
+
+              {/* Category toggle buttons */}
+              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "16px" }}>
+                {Object.keys(SHEET_CATS).map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setActiveSheetCat(activeSheetCat === cat ? null : cat)}
+                    style={{
+                      padding: "8px 18px", borderRadius: "99px", border: "none",
+                      background: activeSheetCat === cat ? "#111827" : "#f3f4f6",
+                      color: activeSheetCat === cat ? "white" : "#374151",
+                      fontWeight: "600", fontSize: "13px", cursor: "pointer",
+                      transition: "all 0.15s",
+                    }}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+
+              {/* Attachment Template */}
+              {activeSheetCat === "Attachment Template" && (
+                <div style={{ marginBottom: "12px" }}>
+                  <select
+                    style={inputStyle}
+                    value={attachmentSheet}
+                    onChange={(e) => setAttachmentSheet(e.target.value)}
+                  >
+                    <option value="">Select sheet...</option>
+                    {SHEET_CATS["Attachment Template"].map((n) => (
+                      <option key={n} value={String(n)}>{n}. {SHEETS[n]}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Aligner Tray — dynamic rows */}
+              {activeSheetCat === "Aligner Tray" && (
+                <div style={{ marginBottom: "12px" }}>
+                  {alignerRows.map((row, idx) => (
+                    <div key={idx} style={{ display: "flex", gap: "8px", alignItems: "center", marginBottom: "8px" }}>
+                      <input
+                        type="number"
+                        placeholder="No. of trays"
+                        value={row.trays}
+                        onChange={(e) => setAlignerRows(alignerRows.map((r, i) => i === idx ? { ...r, trays: e.target.value } : r))}
+                        style={{ ...inputStyle, width: "130px", marginBottom: 0, flexShrink: 0 }}
+                      />
+                      <select
+                        value={row.sheet}
+                        onChange={(e) => setAlignerRows(alignerRows.map((r, i) => i === idx ? { ...r, sheet: e.target.value } : r))}
+                        style={{ ...inputStyle, flex: 1, marginBottom: 0 }}
+                      >
+                        <option value="">Select sheet...</option>
+                        {SHEET_CATS["Aligner Tray"].map((n) => (
+                          <option key={n} value={String(n)}>{n}. {SHEETS[n]}</option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={() => setAlignerRows([...alignerRows, { trays: "", sheet: "" }])}
+                        style={{ padding: "10px 14px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "white", fontWeight: "700", fontSize: "18px", cursor: "pointer", flexShrink: 0, color: "#111827", lineHeight: 1 }}
+                      >
+                        +
+                      </button>
+                      {alignerRows.length > 1 && (
+                        <button
+                          onClick={() => setAlignerRows(alignerRows.filter((_, i) => i !== idx))}
+                          style={{ padding: "10px 12px", borderRadius: "8px", border: "1px solid #fecaca", background: "#fef2f2", fontWeight: "700", fontSize: "16px", cursor: "pointer", flexShrink: 0, color: "#dc2626", lineHeight: 1 }}
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Retainer */}
+              {activeSheetCat === "Retainer" && (
+                <div style={{ marginBottom: "12px" }}>
+                  <select
+                    style={inputStyle}
+                    value={retainerSheet}
+                    onChange={(e) => setRetainerSheet(e.target.value)}
+                  >
+                    <option value="">Select sheet...</option>
+                    {SHEET_CATS["Retainer"].map((n) => (
+                      <option key={n} value={String(n)}>{n}. {SHEETS[n]}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {activeSheetCat && (
+                <button
+                  onClick={saveSheets}
+                  disabled={sheetsSaving}
+                  style={{ ...btnStyle(true), width: "auto", padding: "10px 24px", opacity: sheetsSaving ? 0.7 : 1 }}
+                >
+                  {sheetsSaving ? "Saving..." : sheetsSaved ? "Saved ✓" : "Save Sheet Selection"}
+                </button>
+              )}
             </div>
 
             {/* ── Upload Plan PDF ── */}
