@@ -77,7 +77,6 @@ By making a payment to Orisalign and/or accepting our treatment proposal, you ac
                 bullets: [
                   "The patient submits a written refund request before the physical aligner sets have been dispatched or shipped;",
                   "The refund request is submitted prior to the Company's confirmation that fabrication of the aligner sets has commenced;",
-                  "The patient has not accepted delivery of any aligner sets.",
                 ]
               },
               {
