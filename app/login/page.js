@@ -10,9 +10,19 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   // ✅ FIX 3 — loading state so button disables during login
   const [loading, setLoading] = useState(false);
+  // ✅ Keep me logged in — checked = persist across browser restarts (localStorage),
+  // unchecked = session clears when the last tab closes (sessionStorage).
+  // Default true preserves the existing UX for users who don't notice the box.
+  const [rememberMe, setRememberMe] = useState(true);
 
   const handleLogin = async () => {
     setLoading(true);
+
+    // Tell the supabase storage adapter (lib/supabaseClient.ts) which backing
+    // store to route the new session into. Must happen BEFORE the auth call.
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("os_remember", rememberMe ? "1" : "0");
+    }
 
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
@@ -121,6 +131,34 @@ if (role === "admin") {
           onKeyDown={handleKeyDown}
           style={{ ...inputStyle, marginTop: "12px" }}
         />
+
+        {/* KEEP ME LOGGED IN */}
+        <label
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            marginTop: "14px",
+            fontSize: "13px",
+            color: "#374151",
+            cursor: "pointer",
+            userSelect: "none",
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={rememberMe}
+            onChange={(e) => setRememberMe(e.target.checked)}
+            style={{
+              width: "16px",
+              height: "16px",
+              accentColor: "#22c55e",
+              cursor: "pointer",
+              margin: 0,
+            }}
+          />
+          Keep me logged in
+        </label>
 
         {/* BUTTON */}
         <button
