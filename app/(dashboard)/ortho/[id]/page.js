@@ -534,13 +534,16 @@ export default function OrthoCase() {
               </div>
 
               {activeSheetCat === "Attachment Template" && (
-                <div style={{ marginBottom: "12px" }}>
-                  <select style={inputStyle} value={attachmentSheet} onChange={(e) => setAttachmentSheet(e.target.value)}>
+                <div style={{ marginBottom: "12px", display: "flex", gap: "8px", alignItems: "center" }}>
+                  <select style={{ ...inputStyle, marginBottom: 0, flex: 1 }} value={attachmentSheet} onChange={(e) => setAttachmentSheet(e.target.value)}>
                     <option value="">Select sheet...</option>
                     {SHEET_CATS["Attachment Template"].map((n) => (
                       <option key={n} value={String(n)}>{SHEETS[n]}</option>
                     ))}
                   </select>
+                  {attachmentSheet && (
+                    <button onClick={() => setAttachmentSheet("")} style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #fecaca", background: "#fef2f2", color: "#dc2626", fontWeight: "700", fontSize: "16px", cursor: "pointer", flexShrink: 0, lineHeight: 1 }}>×</button>
+                  )}
                 </div>
               )}
 
@@ -565,19 +568,21 @@ export default function OrthoCase() {
                           <option key={n} value={String(n)}>{SHEETS[n]}</option>
                         ))}
                       </select>
+                      {row.sheet && (
+                        <button
+                          onClick={() => setAlignerRows(alignerRows.map((r, i) => i === idx ? { ...r, sheet: "" } : r))}
+                          style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #fecaca", background: "#fef2f2", color: "#dc2626", fontWeight: "700", fontSize: "16px", cursor: "pointer", flexShrink: 0, lineHeight: 1 }}
+                        >×</button>
+                      )}
                       <button
                         onClick={() => setAlignerRows([...alignerRows, { trays: "", sheet: "" }])}
                         style={{ padding: "10px 14px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "white", fontWeight: "700", fontSize: "18px", cursor: "pointer", flexShrink: 0, color: "#111827", lineHeight: 1 }}
-                      >
-                        +
-                      </button>
+                      >+</button>
                       {alignerRows.length > 1 && (
                         <button
                           onClick={() => setAlignerRows(alignerRows.filter((_, i) => i !== idx))}
-                          style={{ padding: "10px 12px", borderRadius: "8px", border: "1px solid #fecaca", background: "#fef2f2", fontWeight: "700", fontSize: "16px", cursor: "pointer", flexShrink: 0, color: "#dc2626", lineHeight: 1 }}
-                        >
-                          ×
-                        </button>
+                          style={{ padding: "10px 12px", borderRadius: "8px", border: "1px solid #d1d5db", background: "#f3f4f6", fontWeight: "700", fontSize: "14px", cursor: "pointer", flexShrink: 0, color: "#6b7280", lineHeight: 1 }}
+                        >🗑</button>
                       )}
                     </div>
                   ))}
@@ -585,13 +590,16 @@ export default function OrthoCase() {
               )}
 
               {activeSheetCat === "Retainer" && (
-                <div style={{ marginBottom: "12px" }}>
-                  <select style={inputStyle} value={retainerSheet} onChange={(e) => setRetainerSheet(e.target.value)}>
+                <div style={{ marginBottom: "12px", display: "flex", gap: "8px", alignItems: "center" }}>
+                  <select style={{ ...inputStyle, marginBottom: 0, flex: 1 }} value={retainerSheet} onChange={(e) => setRetainerSheet(e.target.value)}>
                     <option value="">Select sheet...</option>
                     {SHEET_CATS["Retainer"].map((n) => (
                       <option key={n} value={String(n)}>{SHEETS[n]}</option>
                     ))}
                   </select>
+                  {retainerSheet && (
+                    <button onClick={() => setRetainerSheet("")} style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #fecaca", background: "#fef2f2", color: "#dc2626", fontWeight: "700", fontSize: "16px", cursor: "pointer", flexShrink: 0, lineHeight: 1 }}>×</button>
+                  )}
                 </div>
               )}
 
