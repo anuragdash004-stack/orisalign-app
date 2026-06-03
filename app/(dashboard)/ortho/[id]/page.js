@@ -488,9 +488,15 @@ export default function OrthoCase() {
                     style={{ display: "block", margin: "0 auto 12px" }}
                   />
                   {pdfFile && (
-                    <p style={{ fontSize: "13px", color: "#374151", marginBottom: "12px" }}>
-                      {pdfFile.name}
-                    </p>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", marginBottom: "12px" }}>
+                      <p style={{ fontSize: "13px", color: "#374151", margin: 0 }}>{pdfFile.name}</p>
+                      <button
+                        onClick={() => setPdfFile(null)}
+                        style={{ padding: "2px 8px", borderRadius: "6px", border: "1px solid #fecaca", background: "#fef2f2", color: "#dc2626", fontWeight: "700", fontSize: "13px", cursor: "pointer", lineHeight: 1 }}
+                      >
+                        ×
+                      </button>
+                    </div>
                   )}
                   <button
                     onClick={uploadPdf}
