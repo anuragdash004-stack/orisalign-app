@@ -253,6 +253,7 @@ export default function AppointmentWorkflow() {
     width: "100%", padding: "12px", borderRadius: "8px",
     border: "1px solid #e5e7eb", fontSize: "14px",
     outline: "none", boxSizing: "border-box", marginBottom: "12px",
+    background: "white", color: "#111827",
   };
 
   return (
