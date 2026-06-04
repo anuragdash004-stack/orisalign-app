@@ -92,6 +92,10 @@ export default function PatientJourney() {
   const progressPct = Math.round((completedCount / JOURNEY_STEPS.length) * 100);
   const pd = patient.payment_data || {};
 
+  const isPlanApprovalReady =
+    steps.booked && steps.confirmed && steps.scanning_done &&
+    steps.payment_done && steps.planning_done;
+
   const handleApprovePlan = async () => {
     const confirmed = window.confirm(
       "By clicking OK, you confirm that you have reviewed your 3D treatment plan and legally authorise Orisalign Private Limited to commence fabrication of your aligners."
@@ -227,13 +231,20 @@ export default function PatientJourney() {
                             <span style={{ flexShrink: 0, padding: "4px 10px", borderRadius: "99px", background: "#dcfce7", color: "#16a34a", fontSize: "12px", fontWeight: "700", whiteSpace: "nowrap" }}>
                               ✓ Approved
                             </span>
-                          ) : (
+                          ) : isPlanApprovalReady ? (
                             <button
                               onClick={(e) => { e.stopPropagation(); handleApprovePlan(); }}
                               disabled={approving}
                               style={{ flexShrink: 0, padding: "7px 14px", borderRadius: "8px", border: "none", background: approving ? "#d4a574" : "#b8905a", color: "white", fontWeight: "700", fontSize: "12px", cursor: approving ? "not-allowed" : "pointer", whiteSpace: "nowrap" }}
                             >
                               {approving ? "Approving..." : "Approve Plan"}
+                            </button>
+                          ) : (
+                            <button
+                              disabled
+                              style={{ flexShrink: 0, padding: "7px 14px", borderRadius: "8px", border: "none", background: "#e5e7eb", color: "#9ca3af", fontWeight: "700", fontSize: "12px", cursor: "not-allowed", whiteSpace: "nowrap" }}
+                            >
+                              Approve Plan
                             </button>
                           )
                         )}
