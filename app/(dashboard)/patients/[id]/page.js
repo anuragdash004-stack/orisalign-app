@@ -6,7 +6,7 @@ import { logAudit } from "@/lib/logAudit";
 
 const supabase = getSupabaseClient();
 
-const TABS = ["Payment", "Manufacturing", "Logistics", "Journey", "Patient Page", "Audit"];
+const TABS = ["Payment", "Manufacturing", "Logistics", "Journey", "Patient Page"];
 
 const ALL_STEPS = [
   { key: "booked",                  label: "Appointment Booked" },
@@ -660,6 +660,25 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
     }
   };
 
+  const deleteStep = async (key) => {
+    if (!isAdmin) return;
+    const stepLabel = ALL_STEPS.find((s) => s.key === key)?.label || key;
+    if (!window.confirm(`Delete "${stepLabel}" from this patient's journey? This removes it from the record entirely.`)) return;
+    setSaving(key);
+    const js = { ...(appt.journey_steps || {}) };
+    delete js[key];
+    const { error } = await supabase
+      .from("appointments_booking")
+      .update({ journey_steps: js })
+      .eq("id", appointmentId);
+    setSaving(null);
+    if (error) { alert("Delete failed: " + error.message); return; }
+    const newSteps = { ...steps };
+    delete newSteps[key];
+    setSteps(newSteps);
+    logAudit({ appointmentId, actor, action: `Step Deleted: ${stepLabel}`, entity: "journey_steps", newData: { [key]: null } });
+  };
+
   const doneCount = ALL_STEPS.filter((s) => !!steps[s.key]).length;
 
   return (
@@ -700,97 +719,34 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                 {step.label}
               </p>
               {isAdmin && (
-                <button
-                  onClick={() => toggle(step.key)}
-                  disabled={isSaving}
-                  style={{
-                    padding: "6px 14px", borderRadius: "8px", border: "none", cursor: isSaving ? "not-allowed" : "pointer",
-                    background: done ? "#fee2e2" : "#111827",
-                    color: done ? "#dc2626" : "white",
-                    fontWeight: "700", fontSize: "12px", flexShrink: 0,
-                    opacity: isSaving ? 0.6 : 1,
-                  }}
-                >
-                  {isSaving ? "..." : done ? "Undo" : "Mark Done"}
-                </button>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// ─── Audit Tab ────────────────────────────────────────────────────────────────
-function AuditTab({ appointmentId }) {
-  const [logs, setLogs] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [expanded, setExpanded] = useState(null);
-
-  useEffect(() => {
-    fetch(`/api/audit-log?appointmentId=${appointmentId}`)
-      .then((r) => r.json())
-      .then((d) => { setLogs(d.logs || []); setLoading(false); })
-      .catch(() => setLoading(false));
-  }, [appointmentId]);
-
-  if (loading) return <div style={card}><p style={{ color: "#6b7280", textAlign: "center", padding: "20px 0", margin: 0 }}>Loading audit trail...</p></div>;
-  if (logs.length === 0) return <div style={card}><p style={{ color: "#9ca3af", textAlign: "center", padding: "20px 0", margin: 0, fontStyle: "italic" }}>No audit entries yet. Entries appear whenever data is saved.</p></div>;
-
-  return (
-    <div>
-      <div style={{ ...card, marginBottom: "16px" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <h3 style={{ margin: 0, fontSize: "16px", color: "#111827" }}>Audit Trail</h3>
-          <span style={{ fontSize: "12px", fontWeight: "700", padding: "4px 10px", borderRadius: "99px", background: "#fef3c7", color: "#92400e", letterSpacing: "0.5px" }}>
-            ADMIN ONLY · {logs.length} {logs.length === 1 ? "entry" : "entries"}
-          </span>
-        </div>
-        <p style={{ margin: "6px 0 0", fontSize: "12px", color: "#9ca3af" }}>Complete immutable record of every save action on this patient.</p>
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-        {logs.map((log, i) => {
-          const isOpen = expanded === log.id;
-          const ts = new Date(log.created_at);
-          const tsStr = ts.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" });
-          return (
-            <div key={log.id} style={{ background: "white", borderRadius: "12px", border: "1px solid #e5e7eb", boxShadow: "0 1px 4px rgba(0,0,0,0.04)", overflow: "hidden" }}>
-              <div onClick={() => setExpanded(isOpen ? null : log.id)} style={{ padding: "14px 16px", display: "flex", alignItems: "center", gap: "12px", cursor: "pointer" }}>
-                <div style={{ width: "36px", height: "36px", borderRadius: "8px", background: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px", fontWeight: "800", color: "#6b7280", flexShrink: 0 }}>
-                  {logs.length - i}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ margin: 0, fontSize: "14px", fontWeight: "700", color: "#111827" }}>{log.action}</p>
-                  <p style={{ margin: "3px 0 0", fontSize: "12px", color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    <span style={{ fontWeight: "600", color: "#374151" }}>{log.actor_email || "Unknown"}</span>
-                    {" · "}
-                    <span style={{ background: "#f3f4f6", padding: "1px 6px", borderRadius: "4px", fontWeight: "600", textTransform: "uppercase", fontSize: "10px", letterSpacing: "0.5px" }}>{log.actor_role || "—"}</span>
-                    {" · "}
-                    {tsStr}
-                  </p>
-                </div>
-                <span style={{ fontSize: "12px", color: "#9ca3af", flexShrink: 0 }}>{isOpen ? "▲" : "▼"}</span>
-              </div>
-              {isOpen && (
-                <div style={{ borderTop: "1px solid #f3f4f6", padding: "14px 16px", background: "#fafafa" }}>
-                  {log.entity && <p style={{ margin: "0 0 10px", fontSize: "11px", fontWeight: "700", color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.5px" }}>Field: {log.entity}</p>}
-                  {log.new_data && (
-                    <div style={{ marginBottom: log.old_data ? "12px" : 0 }}>
-                      <p style={{ margin: "0 0 6px", fontSize: "11px", fontWeight: "700", color: "#374151", textTransform: "uppercase", letterSpacing: "0.5px" }}>Saved Data</p>
-                      <pre style={{ margin: 0, background: "white", borderRadius: "8px", padding: "10px 12px", fontSize: "11px", color: "#374151", border: "1px solid #e5e7eb", overflow: "auto", maxHeight: "220px", fontFamily: "monospace", lineHeight: "1.6" }}>
-                        {JSON.stringify(log.new_data, null, 2)}
-                      </pre>
-                    </div>
-                  )}
-                  {log.old_data && (
-                    <div>
-                      <p style={{ margin: "0 0 6px", fontSize: "11px", fontWeight: "700", color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.5px" }}>Previous Data</p>
-                      <pre style={{ margin: 0, background: "white", borderRadius: "8px", padding: "10px 12px", fontSize: "11px", color: "#9ca3af", border: "1px solid #e5e7eb", overflow: "auto", maxHeight: "220px", fontFamily: "monospace", lineHeight: "1.6" }}>
-                        {JSON.stringify(log.old_data, null, 2)}
-                      </pre>
-                    </div>
-                  )}
+                <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
+                  <button
+                    onClick={() => toggle(step.key)}
+                    disabled={isSaving}
+                    style={{
+                      padding: "6px 14px", borderRadius: "8px", border: "none", cursor: isSaving ? "not-allowed" : "pointer",
+                      background: done ? "#fee2e2" : "#111827",
+                      color: done ? "#dc2626" : "white",
+                      fontWeight: "700", fontSize: "12px",
+                      opacity: isSaving ? 0.6 : 1,
+                    }}
+                  >
+                    {isSaving ? "..." : done ? "Undo" : "Mark Done"}
+                  </button>
+                  <button
+                    onClick={() => deleteStep(step.key)}
+                    disabled={isSaving}
+                    title="Delete this step"
+                    style={{
+                      padding: "6px 10px", borderRadius: "8px",
+                      border: "1px solid #fecaca", background: "#fff",
+                      color: "#dc2626", fontWeight: "700", fontSize: "13px",
+                      cursor: isSaving ? "not-allowed" : "pointer",
+                      opacity: isSaving ? 0.4 : 1, lineHeight: 1,
+                    }}
+                  >
+                    🗑
+                  </button>
                 </div>
               )}
             </div>
@@ -911,12 +867,6 @@ export default function PatientDetailPage() {
       </div>
       <div style={{ display: activeTab === "Patient Page" ? "block" : "none" }}>
         <PatientPageTab appointmentId={id} />
-      </div>
-      <div style={{ display: activeTab === "Audit" ? "block" : "none" }}>
-        {userRole === "admin"
-          ? <AuditTab appointmentId={id} />
-          : <div style={card}><p style={{ margin: 0, color: "#dc2626", textAlign: "center", padding: "20px 0", fontWeight: "600" }}>Access restricted to admins only.</p></div>
-        }
       </div>
     </div>
   );
