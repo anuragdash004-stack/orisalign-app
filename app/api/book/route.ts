@@ -10,7 +10,7 @@ export async function POST(req: Request) {
   try {
     const body = await req.json()
 
-    const { name, phone, age, sex, address, date, time } = body
+    const { name, phone, email, age, sex, address, date, time } = body
 
     // ✅ BASIC VALIDATION
     if (!name || !phone || !date || !time) {
@@ -49,6 +49,7 @@ export async function POST(req: Request) {
         {
           name,
           phone,
+          email: email || null,
           age,
           sex,
           address,

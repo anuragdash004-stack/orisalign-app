@@ -182,7 +182,7 @@ function buildEmailHtml(params: {
 
 export async function POST(req: Request) {
   try {
-    const { appointmentId, stepKey } = await req.json()
+    const { appointmentId, stepKey, email: emailOverride } = await req.json()
 
     if (!appointmentId || !stepKey) {
       return NextResponse.json({ error: "Missing appointmentId or stepKey" }, { status: 400 })
@@ -203,7 +203,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Appointment not found" }, { status: 404 })
     }
 
-    if (!appt.email) {
+    const recipientEmail = appt.email || emailOverride || null
+    if (!recipientEmail) {
       return NextResponse.json({ skipped: true, reason: "No email on record" })
     }
 
@@ -218,7 +219,7 @@ export async function POST(req: Request) {
       },
       body: JSON.stringify({
         from: "OrisAlign <no-reply@orisalign.com>",
-        to: [appt.email],
+        to: [recipientEmail],
         subject: content.subject,
         html,
       }),

@@ -643,8 +643,11 @@ function JourneyTab({ appointmentId, appt, isAdmin }) {
       fetch("/api/notify-step", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ appointmentId, stepKey: key }),
-      }).catch(() => {});
+        body: JSON.stringify({ appointmentId, stepKey: key, email: appt.email || null }),
+      })
+        .then((r) => r.json())
+        .then((j) => { if (j.skipped) console.warn("notify-step skipped:", j.reason); })
+        .catch(() => {});
     }
   };
 
