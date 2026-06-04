@@ -660,25 +660,6 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
     }
   };
 
-  const deleteStep = async (key) => {
-    if (!isAdmin) return;
-    const stepLabel = ALL_STEPS.find((s) => s.key === key)?.label || key;
-    if (!window.confirm(`Delete "${stepLabel}" from this patient's journey? This removes it from the record entirely.`)) return;
-    setSaving(key);
-    const js = { ...(appt.journey_steps || {}) };
-    delete js[key];
-    const { error } = await supabase
-      .from("appointments_booking")
-      .update({ journey_steps: js })
-      .eq("id", appointmentId);
-    setSaving(null);
-    if (error) { alert("Delete failed: " + error.message); return; }
-    const newSteps = { ...steps };
-    delete newSteps[key];
-    setSteps(newSteps);
-    logAudit({ appointmentId, actor, action: `Step Deleted: ${stepLabel}`, entity: "journey_steps", newData: { [key]: null } });
-  };
-
   const doneCount = ALL_STEPS.filter((s) => !!steps[s.key]).length;
 
   return (
@@ -719,35 +700,19 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                 {step.label}
               </p>
               {isAdmin && (
-                <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
-                  <button
-                    onClick={() => toggle(step.key)}
-                    disabled={isSaving}
-                    style={{
-                      padding: "6px 14px", borderRadius: "8px", border: "none", cursor: isSaving ? "not-allowed" : "pointer",
-                      background: done ? "#fee2e2" : "#111827",
-                      color: done ? "#dc2626" : "white",
-                      fontWeight: "700", fontSize: "12px",
-                      opacity: isSaving ? 0.6 : 1,
-                    }}
-                  >
-                    {isSaving ? "..." : done ? "Undo" : "Mark Done"}
-                  </button>
-                  <button
-                    onClick={() => deleteStep(step.key)}
-                    disabled={isSaving}
-                    title="Delete this step"
-                    style={{
-                      padding: "6px 10px", borderRadius: "8px",
-                      border: "1px solid #fecaca", background: "#fff",
-                      color: "#dc2626", fontWeight: "700", fontSize: "13px",
-                      cursor: isSaving ? "not-allowed" : "pointer",
-                      opacity: isSaving ? 0.4 : 1, lineHeight: 1,
-                    }}
-                  >
-                    🗑
-                  </button>
-                </div>
+                <button
+                  onClick={() => toggle(step.key)}
+                  disabled={isSaving}
+                  style={{
+                    padding: "6px 14px", borderRadius: "8px", border: "none", cursor: isSaving ? "not-allowed" : "pointer",
+                    background: done ? "#fee2e2" : "#111827",
+                    color: done ? "#dc2626" : "white",
+                    fontWeight: "700", fontSize: "12px", flexShrink: 0,
+                    opacity: isSaving ? 0.6 : 1,
+                  }}
+                >
+                  {isSaving ? "..." : done ? "Undo" : "Mark Done"}
+                </button>
               )}
             </div>
           );

@@ -14,6 +14,26 @@ export default function PatientAuditPage() {
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(null);
   const [search, setSearch] = useState("");
+  const [deleting, setDeleting] = useState(null);
+
+  const deleteEntry = async (logId, action) => {
+    if (!window.confirm(`Delete this audit entry?\n\n"${action}"\n\nThis cannot be undone.`)) return;
+    setDeleting(logId);
+    try {
+      const res = await fetch(`/api/audit-log?id=${logId}`, { method: "DELETE" });
+      const json = await res.json();
+      if (json.success) {
+        setLogs((prev) => prev.filter((l) => l.id !== logId));
+        if (expanded === logId) setExpanded(null);
+      } else {
+        alert("Delete failed: " + (json.error || "Unknown error"));
+      }
+    } catch {
+      alert("Network error. Please try again.");
+    } finally {
+      setDeleting(null);
+    }
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -145,7 +165,7 @@ export default function PatientAuditPage() {
                 {/* Row */}
                 <div
                   onClick={() => setExpanded(isOpen ? null : log.id)}
-                  style={{ padding: "14px 18px", display: "flex", alignItems: "center", gap: "14px", cursor: "pointer" }}
+                  style={{ padding: "14px 18px", display: "flex", alignItems: "center", gap: "14px", cursor: "pointer", position: "relative" }}
                 >
                   {/* Index */}
                   <div style={{
@@ -185,6 +205,20 @@ export default function PatientAuditPage() {
                     </span>
                   )}
 
+                  <button
+                    onClick={(e) => { e.stopPropagation(); deleteEntry(log.id, log.action); }}
+                    disabled={deleting === log.id}
+                    title="Delete this entry"
+                    style={{
+                      flexShrink: 0, padding: "5px 9px", borderRadius: "7px",
+                      border: "1px solid #fecaca", background: "#fff",
+                      color: "#dc2626", fontWeight: "700", fontSize: "13px",
+                      cursor: deleting === log.id ? "not-allowed" : "pointer",
+                      opacity: deleting === log.id ? 0.5 : 1, lineHeight: 1,
+                    }}
+                  >
+                    {deleting === log.id ? "…" : "🗑"}
+                  </button>
                   <span style={{ fontSize: "12px", color: "#9ca3af", flexShrink: 0 }}>{isOpen ? "▲" : "▼"}</span>
                 </div>
 
