@@ -634,7 +634,18 @@ function JourneyTab({ appointmentId, appt, isAdmin }) {
       .update({ journey_steps: newJs })
       .eq("id", appointmentId);
     setSaving(null);
-    if (error) { alert("Save failed: " + error.message); setSteps((prev) => ({ ...prev, [key]: currentVal })); }
+    if (error) {
+      alert("Save failed: " + error.message);
+      setSteps((prev) => ({ ...prev, [key]: currentVal }));
+      return;
+    }
+    if (newVal) {
+      fetch("/api/notify-step", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ appointmentId, stepKey: key }),
+      }).catch(() => {});
+    }
   };
 
   const doneCount = ALL_STEPS.filter((s) => !!steps[s.key]).length;
