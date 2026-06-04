@@ -1,11 +1,12 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { useParams, useRouter } from "next/navigation";
+import { logAudit } from "@/lib/logAudit";
 
 const supabase = getSupabaseClient();
 
-const TABS = ["Payment", "Manufacturing", "Logistics", "Journey", "Patient Page"];
+const TABS = ["Payment", "Manufacturing", "Logistics", "Journey", "Patient Page", "Audit"];
 
 const ALL_STEPS = [
   { key: "booked",                  label: "Appointment Booked" },
@@ -142,13 +143,14 @@ function PaymentSummaryRow({ label: lbl, value }) {
   );
 }
 
-function PaymentTab({ appointmentId, initialData }) {
+function PaymentTab({ appointmentId, initialData, actor }) {
   const hasSaved = !!(initialData && (initialData.full_amount || initialData.down_payment || initialData.final_amount));
 
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [editing, setEditing] = useState(!hasSaved);
   const [data, setData] = useState({ ...EMPTY_PAYMENT, ...initialData });
+  const lastSaved = useRef({ ...EMPTY_PAYMENT, ...initialData });
 
   const set = (key, val) => setData((prev) => ({ ...prev, [key]: val }));
 
@@ -168,6 +170,8 @@ function PaymentTab({ appointmentId, initialData }) {
       .eq("id", appointmentId);
     setSaving(false);
     if (!error) {
+      logAudit({ appointmentId, actor, action: "Payment Details Saved", entity: "payment_data", newData: payload, oldData: lastSaved.current });
+      lastSaved.current = payload;
       setSaved(true);
       setEditing(false);
       setTimeout(() => setSaved(false), 3000);
@@ -324,7 +328,7 @@ function PaymentTab({ appointmentId, initialData }) {
 }
 
 // ─── Manufacturing Tab ────────────────────────────────────────────────────────
-function ManufacturingTab({ appointmentId, initialData }) {
+function ManufacturingTab({ appointmentId, initialData, actor }) {
   const [totalSets, setTotalSets] = useState(initialData?.total_sets ?? "");
   const [batches, setBatches] = useState(initialData?.batches || []);
   const [alignerDelivered, setAlignerDelivered] = useState(initialData?.aligner_delivered || "");
@@ -358,6 +362,7 @@ function ManufacturingTab({ appointmentId, initialData }) {
       .eq("id", appointmentId);
     setSaving(null);
     if (!error) {
+      logAudit({ appointmentId, actor, action: `Manufacturing Batch ${num} Saved`, entity: "manufacturing_data", newData: payload });
       setSavedBatch(num);
       setTimeout(() => setSavedBatch(null), 3000);
     } else {
@@ -374,6 +379,7 @@ function ManufacturingTab({ appointmentId, initialData }) {
       .eq("id", appointmentId);
     setSaving(null);
     if (!error) {
+      logAudit({ appointmentId, actor, action: "Aligner Delivery Date Saved", entity: "manufacturing_data", newData: { aligner_delivered: alignerDelivered } });
       setSavedBatch("delivered");
       setTimeout(() => setSavedBatch(null), 3000);
     } else {
@@ -461,7 +467,7 @@ function ManufacturingTab({ appointmentId, initialData }) {
 }
 
 // ─── Logistics Tab ────────────────────────────────────────────────────────────
-function LogisticsTab({ appointmentId, manufacturingData, initialData }) {
+function LogisticsTab({ appointmentId, manufacturingData, initialData, actor }) {
   const mfgBatches = manufacturingData?.batches || [];
   const [batches, setBatches] = useState(() => {
     return mfgBatches.map((mb) => {
@@ -505,6 +511,7 @@ function LogisticsTab({ appointmentId, manufacturingData, initialData }) {
       .eq("id", appointmentId);
     setSaving(null);
     if (!error) {
+      logAudit({ appointmentId, actor, action: `Logistics Batch ${num} Saved`, entity: "logistics_data", newData: payload.batches.find((b) => b.num === num) });
       setSavedBatch(num);
       setTimeout(() => setSavedBatch(null), 3000);
     } else {
@@ -616,7 +623,7 @@ function PatientPageTab({ appointmentId }) {
 }
 
 // ─── Journey Tab (admin only) ─────────────────────────────────────────────────
-function JourneyTab({ appointmentId, appt, isAdmin }) {
+function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
   const [steps, setSteps] = useState(() => deriveSteps(appt));
   const [saving, setSaving] = useState(null);
 
@@ -639,6 +646,8 @@ function JourneyTab({ appointmentId, appt, isAdmin }) {
       setSteps((prev) => ({ ...prev, [key]: currentVal }));
       return;
     }
+    const stepLabel = ALL_STEPS.find((s) => s.key === key)?.label || key;
+    logAudit({ appointmentId, actor, action: newVal ? `Step Marked Done: ${stepLabel}` : `Step Undone: ${stepLabel}`, entity: "journey_steps", newData: { [key]: newVal } });
     if (newVal) {
       fetch("/api/notify-step", {
         method: "POST",
@@ -713,6 +722,85 @@ function JourneyTab({ appointmentId, appt, isAdmin }) {
   );
 }
 
+// ─── Audit Tab ────────────────────────────────────────────────────────────────
+function AuditTab({ appointmentId }) {
+  const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState(null);
+
+  useEffect(() => {
+    fetch(`/api/audit-log?appointmentId=${appointmentId}`)
+      .then((r) => r.json())
+      .then((d) => { setLogs(d.logs || []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [appointmentId]);
+
+  if (loading) return <div style={card}><p style={{ color: "#6b7280", textAlign: "center", padding: "20px 0", margin: 0 }}>Loading audit trail...</p></div>;
+  if (logs.length === 0) return <div style={card}><p style={{ color: "#9ca3af", textAlign: "center", padding: "20px 0", margin: 0, fontStyle: "italic" }}>No audit entries yet. Entries appear whenever data is saved.</p></div>;
+
+  return (
+    <div>
+      <div style={{ ...card, marginBottom: "16px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <h3 style={{ margin: 0, fontSize: "16px", color: "#111827" }}>Audit Trail</h3>
+          <span style={{ fontSize: "12px", fontWeight: "700", padding: "4px 10px", borderRadius: "99px", background: "#fef3c7", color: "#92400e", letterSpacing: "0.5px" }}>
+            ADMIN ONLY · {logs.length} {logs.length === 1 ? "entry" : "entries"}
+          </span>
+        </div>
+        <p style={{ margin: "6px 0 0", fontSize: "12px", color: "#9ca3af" }}>Complete immutable record of every save action on this patient.</p>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+        {logs.map((log, i) => {
+          const isOpen = expanded === log.id;
+          const ts = new Date(log.created_at);
+          const tsStr = ts.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" });
+          return (
+            <div key={log.id} style={{ background: "white", borderRadius: "12px", border: "1px solid #e5e7eb", boxShadow: "0 1px 4px rgba(0,0,0,0.04)", overflow: "hidden" }}>
+              <div onClick={() => setExpanded(isOpen ? null : log.id)} style={{ padding: "14px 16px", display: "flex", alignItems: "center", gap: "12px", cursor: "pointer" }}>
+                <div style={{ width: "36px", height: "36px", borderRadius: "8px", background: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px", fontWeight: "800", color: "#6b7280", flexShrink: 0 }}>
+                  {logs.length - i}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ margin: 0, fontSize: "14px", fontWeight: "700", color: "#111827" }}>{log.action}</p>
+                  <p style={{ margin: "3px 0 0", fontSize: "12px", color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <span style={{ fontWeight: "600", color: "#374151" }}>{log.actor_email || "Unknown"}</span>
+                    {" · "}
+                    <span style={{ background: "#f3f4f6", padding: "1px 6px", borderRadius: "4px", fontWeight: "600", textTransform: "uppercase", fontSize: "10px", letterSpacing: "0.5px" }}>{log.actor_role || "—"}</span>
+                    {" · "}
+                    {tsStr}
+                  </p>
+                </div>
+                <span style={{ fontSize: "12px", color: "#9ca3af", flexShrink: 0 }}>{isOpen ? "▲" : "▼"}</span>
+              </div>
+              {isOpen && (
+                <div style={{ borderTop: "1px solid #f3f4f6", padding: "14px 16px", background: "#fafafa" }}>
+                  {log.entity && <p style={{ margin: "0 0 10px", fontSize: "11px", fontWeight: "700", color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.5px" }}>Field: {log.entity}</p>}
+                  {log.new_data && (
+                    <div style={{ marginBottom: log.old_data ? "12px" : 0 }}>
+                      <p style={{ margin: "0 0 6px", fontSize: "11px", fontWeight: "700", color: "#374151", textTransform: "uppercase", letterSpacing: "0.5px" }}>Saved Data</p>
+                      <pre style={{ margin: 0, background: "white", borderRadius: "8px", padding: "10px 12px", fontSize: "11px", color: "#374151", border: "1px solid #e5e7eb", overflow: "auto", maxHeight: "220px", fontFamily: "monospace", lineHeight: "1.6" }}>
+                        {JSON.stringify(log.new_data, null, 2)}
+                      </pre>
+                    </div>
+                  )}
+                  {log.old_data && (
+                    <div>
+                      <p style={{ margin: "0 0 6px", fontSize: "11px", fontWeight: "700", color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.5px" }}>Previous Data</p>
+                      <pre style={{ margin: 0, background: "white", borderRadius: "8px", padding: "10px 12px", fontSize: "11px", color: "#9ca3af", border: "1px solid #e5e7eb", overflow: "auto", maxHeight: "220px", fontFamily: "monospace", lineHeight: "1.6" }}>
+                        {JSON.stringify(log.old_data, null, 2)}
+                      </pre>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function PatientDetailPage() {
   const { id } = useParams();
@@ -721,6 +809,7 @@ export default function PatientDetailPage() {
   const [loading, setLoading] = useState(true);
   const [appt, setAppt] = useState(null);
   const [userRole, setUserRole] = useState("");
+  const [actor, setActor] = useState(null);
 
   useEffect(() => {
     if (!id) return;
@@ -732,7 +821,9 @@ export default function PatientDetailPage() {
       setAppt(data || null);
       if (authData?.user) {
         const { data: roleData } = await supabase.from("users").select("role").eq("id", authData.user.id).single();
-        setUserRole(roleData?.role || "");
+        const role = roleData?.role || "";
+        setUserRole(role);
+        setActor({ email: authData.user.email || null, role });
       }
       setLoading(false);
     };
@@ -807,19 +898,25 @@ export default function PatientDetailPage() {
 
       {/* Tab Content */}
       <div style={{ display: activeTab === "Journey" ? "block" : "none" }}>
-        <JourneyTab appointmentId={id} appt={appt} isAdmin={userRole === "admin"} />
+        <JourneyTab appointmentId={id} appt={appt} isAdmin={userRole === "admin"} actor={actor} />
       </div>
       <div style={{ display: activeTab === "Payment" ? "block" : "none" }}>
-        <PaymentTab appointmentId={id} initialData={appt.payment_data || {}} />
+        <PaymentTab appointmentId={id} initialData={appt.payment_data || {}} actor={actor} />
       </div>
       <div style={{ display: activeTab === "Manufacturing" ? "block" : "none" }}>
-        <ManufacturingTab appointmentId={id} initialData={appt.manufacturing_data || null} />
+        <ManufacturingTab appointmentId={id} initialData={appt.manufacturing_data || null} actor={actor} />
       </div>
       <div style={{ display: activeTab === "Logistics" ? "block" : "none" }}>
-        <LogisticsTab appointmentId={id} manufacturingData={appt.manufacturing_data || null} initialData={appt.logistics_data || null} />
+        <LogisticsTab appointmentId={id} manufacturingData={appt.manufacturing_data || null} initialData={appt.logistics_data || null} actor={actor} />
       </div>
       <div style={{ display: activeTab === "Patient Page" ? "block" : "none" }}>
         <PatientPageTab appointmentId={id} />
+      </div>
+      <div style={{ display: activeTab === "Audit" ? "block" : "none" }}>
+        {userRole === "admin"
+          ? <AuditTab appointmentId={id} />
+          : <div style={card}><p style={{ margin: 0, color: "#dc2626", textAlign: "center", padding: "20px 0", fontWeight: "600" }}>Access restricted to admins only.</p></div>
+        }
       </div>
     </div>
   );

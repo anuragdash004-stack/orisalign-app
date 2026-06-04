@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { useParams, useRouter } from "next/navigation";
+import { logAudit } from "@/lib/logAudit";
 
 const supabase = getSupabaseClient();
 
@@ -43,6 +44,7 @@ export default function AppointmentWorkflow() {
   const [imagesSubmitted, setImagesSubmitted] = useState(false);
   const [stlSubmitted, setStlSubmitted] = useState(false);
   const [ending, setEnding] = useState(false);
+  const [actor, setActor] = useState(null);
 
   const [provisionalPlan, setProvisionalPlan] = useState("");
   const [provisionalPlanSubmitted, setProvisionalPlanSubmitted] = useState(false);
@@ -61,6 +63,12 @@ export default function AppointmentWorkflow() {
 
   useEffect(() => {
     const load = async () => {
+      const { data: authData } = await supabase.auth.getUser();
+      if (authData?.user) {
+        const { data: roleData } = await supabase.from("users").select("role").eq("id", authData.user.id).single();
+        setActor({ email: authData.user.email || null, role: roleData?.role || "dentist" });
+      }
+
       const { data } = await supabase
         .from("appointments_booking")
         .select("*")
@@ -123,6 +131,7 @@ export default function AppointmentWorkflow() {
       .eq("id", id);
     setFormSaving(false);
     if (error) { alert("Failed to save form."); return; }
+    logAudit({ appointmentId: id, actor, action: "Patient Form Submitted", entity: "patient_form_data", newData: { ...form, documents: formDocs } });
     setFormSubmitted(true);
     setActiveSection(null);
   };
@@ -177,6 +186,7 @@ export default function AppointmentWorkflow() {
       paths[slot.key] = path;
     }
     await supabase.from("appointments_booking").update({ image_paths: paths, images_submitted: true }).eq("id", id);
+    logAudit({ appointmentId: id, actor, action: "Patient Images Uploaded", entity: "image_paths", newData: { image_slots: Object.keys(paths) } });
     setImagesSaving(false);
     setImagesSubmitted(true);
     setActiveSection(null);
@@ -201,6 +211,7 @@ export default function AppointmentWorkflow() {
       paths[slot.key] = path;
     }
     await supabase.from("appointments_booking").update({ stl_paths: paths, stl_submitted: true }).eq("id", id);
+    logAudit({ appointmentId: id, actor, action: "STL Scan Files Uploaded", entity: "stl_paths", newData: { stl_slots: Object.keys(paths) } });
     setStlSaving(false);
     setStlSubmitted(true);
     setActiveSection(null);
@@ -217,6 +228,7 @@ export default function AppointmentWorkflow() {
     const { error } = await supabase.from("appointments_booking").update({ status: "completed" }).eq("id", id);
     setEnding(false);
     if (error) { alert("Failed to end appointment."); return; }
+    logAudit({ appointmentId: id, actor, action: "Appointment Ended by Dentist", entity: "status", newData: { status: "completed" } });
     alert("Appointment completed successfully!");
     router.push("/dentist");
   };

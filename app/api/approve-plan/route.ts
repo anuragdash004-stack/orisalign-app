@@ -47,6 +47,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
+    // Audit log — patient self-approved, actor is the patient (no role)
+    await supabase.from("audit_log").insert({
+      appointment_id: patientId,
+      actor_email: "patient",
+      actor_role: "patient",
+      action: "Plan Approved by Patient",
+      entity: "plan_approved",
+      new_data: { plan_approved: true, plan_approved_at: new Date().toISOString(), plan_approval_ip: ip },
+      old_data: null,
+    }).catch(() => {})
+
     return NextResponse.json({ success: true })
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Server error"

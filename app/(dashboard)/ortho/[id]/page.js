@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { useParams, useRouter } from "next/navigation";
+import { logAudit } from "@/lib/logAudit";
 
 const supabase = getSupabaseClient();
 
@@ -65,6 +66,7 @@ export default function OrthoCase() {
   const [imageUrls, setImageUrls] = useState({});
   const [stlUrls, setStlUrls] = useState({});
   const [activeSection, setActiveSection] = useState(null);
+  const [actor, setActor] = useState(null);
 
   // Planning state
   const [provisionalPlan, setProvisionalPlan] = useState("");
@@ -92,11 +94,14 @@ export default function OrthoCase() {
 
   useEffect(() => {
     const load = async () => {
-      const { data } = await supabase
-        .from("appointments_booking")
-        .select("*")
-        .eq("id", id)
-        .single();
+      const [{ data }, { data: authData }] = await Promise.all([
+        supabase.from("appointments_booking").select("*").eq("id", id).single(),
+        supabase.auth.getUser(),
+      ]);
+      if (authData?.user) {
+        const { data: roleData } = await supabase.from("users").select("role").eq("id", authData.user.id).single();
+        setActor({ email: authData.user.email || null, role: roleData?.role || "orthodontist" });
+      }
 
       if (!data) return;
       setPatient(data);
@@ -162,6 +167,7 @@ export default function OrthoCase() {
       .eq("id", id);
     setProvisionalSaving(false);
     if (error) { alert("Failed to submit plan: " + error.message); return; }
+    logAudit({ appointmentId: id, actor, action: "Provisional Plan Submitted", entity: "provisional_plan", newData: { provisional_plan: provisionalPlan, ortho_note: orthoNote } });
     setProvisionalSubmitted(true);
   };
 
@@ -174,15 +180,16 @@ export default function OrthoCase() {
       .eq("id", id);
     setFinalSaving(false);
     if (error) { alert("Failed to save: " + error.message); return; }
+    logAudit({ appointmentId: id, actor, action: "Final Plan Saved", entity: "final_plan", newData: { final_plan: finalPlan, planning_video_link: videoLink } });
     alert("Final plan saved.");
   };
 
   // ── SHEET SELECTION ───────────────────────────────────────────
   const saveSheets = async () => {
     setSheetsSaving(true);
-    await supabase.from("appointments_booking").update({
-      sheet_selection: { activeCategory: activeSheetCat, attachmentSheet, retainerSheet, alignerRows },
-    }).eq("id", id);
+    const sheetPayload = { activeCategory: activeSheetCat, attachmentSheet, retainerSheet, alignerRows };
+    await supabase.from("appointments_booking").update({ sheet_selection: sheetPayload }).eq("id", id);
+    logAudit({ appointmentId: id, actor, action: "Sheet Selection Saved", entity: "sheet_selection", newData: sheetPayload });
     setSheetsSaving(false);
     setSheetsSaved(true);
     setTimeout(() => setSheetsSaved(false), 3000);
@@ -197,10 +204,8 @@ export default function OrthoCase() {
       .from("case-files")
       .upload(path, pdfFile, { upsert: true });
     if (error) { alert("Failed to upload PDF: " + error.message); setPdfUploading(false); return; }
-    await supabase
-      .from("appointments_booking")
-      .update({ plan_pdf_url: path })
-      .eq("id", id);
+    await supabase.from("appointments_booking").update({ plan_pdf_url: path }).eq("id", id);
+    logAudit({ appointmentId: id, actor, action: "Planning PDF Uploaded", entity: "plan_pdf_url", newData: { plan_pdf_url: path, file_name: pdfFile.name } });
     setPdfUploading(false);
     setPdfSubmitted(true);
     alert("Plan PDF uploaded.");
