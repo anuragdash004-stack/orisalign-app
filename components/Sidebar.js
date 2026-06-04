@@ -57,6 +57,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
     dentist:      userRole === "admin" || userRole === "dentist",
     ortho:        userRole === "admin" || userRole === "orthodontist",
     patients:     userRole === "admin",
+    audit:        userRole === "admin",
   };
 
   const expanded = !collapsed || isMobile && !collapsed;
@@ -221,6 +222,14 @@ export default function Sidebar({ collapsed, setCollapsed }) {
           {show.patients && (
             <Link href="/patients" style={linkStyle("/patients")}>
               {showContent ? "PATIENTS" : ""}
+            </Link>
+          )}
+          {show.audit && (
+            <Link href="/audit" style={{
+              ...linkStyle("/audit"),
+              ...(path.startsWith("/audit") ? { background: "#ffffff90" } : {}),
+            }}>
+              {showContent ? "AUDIT LOG" : ""}
             </Link>
           )}
         </div>
