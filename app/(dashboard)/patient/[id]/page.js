@@ -13,7 +13,7 @@ const JOURNEY_STEPS = [
   { key: "scanning_done",           label: "Scanning & Planning",        expandable: true },
   { key: "payment_done",            label: "Price & Payment",            expandable: true },
   { key: "planning_done",           label: "Planning Done" },
-  { key: "plan_approved",           label: "Plan Approved" },
+  { key: "plan_approved",           label: "Plan Approval", subtext: "Review and approve your treatment plan to begin fabrication", approveAction: true },
   { key: "manufacturing_started",   label: "Manufacturing Started" },
   { key: "manufacturing_completed", label: "Manufacturing Completed" },
   { key: "aligners_dispatched",     label: "Aligners Dispatched" },
@@ -58,6 +58,7 @@ export default function PatientJourney() {
   const [patient, setPatient] = useState(null);
   const [loading, setLoading] = useState(true);
   const [expandedStep, setExpandedStep] = useState(null);
+  const [approving, setApproving] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -90,6 +91,31 @@ export default function PatientJourney() {
   const completedCount = Object.values(steps).filter(Boolean).length;
   const progressPct = Math.round((completedCount / JOURNEY_STEPS.length) * 100);
   const pd = patient.payment_data || {};
+
+  const handleApprovePlan = async () => {
+    const confirmed = window.confirm(
+      "By clicking OK, you confirm that you have reviewed your 3D treatment plan and legally authorise Orisalign Private Limited to commence fabrication of your aligners."
+    );
+    if (!confirmed) return;
+    setApproving(true);
+    try {
+      const res = await fetch("/api/approve-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ patientId: id }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        window.location.reload();
+      } else {
+        alert("Failed to approve plan: " + (json.error || "Unknown error"));
+      }
+    } catch {
+      alert("Network error. Please try again.");
+    } finally {
+      setApproving(false);
+    }
+  };
 
   const handleStepClick = (step) => {
     if (step.smileLink) {
@@ -185,11 +211,33 @@ export default function PatientJourney() {
 
                     {/* Box */}
                     <div style={{ flex: 1, padding: "12px 16px", borderRadius: "12px", background: done ? "linear-gradient(135deg, #f0fdf4, #dcfce7)" : isNext ? "linear-gradient(135deg, #fffbeb, #fef3c7)" : "white", border: `1px solid ${done ? "#bbf7d0" : isNext ? "#fde68a" : "#e5e7eb"}`, boxShadow: done ? "0 2px 8px rgba(34,197,94,0.12)" : "0 2px 6px rgba(0,0,0,0.04)", marginTop: "2px" }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                        <p style={{ margin: 0, fontSize: "14px", fontWeight: done ? "700" : "500", color: done ? "#15803d" : isNext ? "#92400e" : "#9ca3af" }}>
-                          {step.label}
-                        </p>
-                        {isClickable && <span style={{ fontSize: "12px", color: done ? "#16a34a" : "#9ca3af", flexShrink: 0, marginLeft: "8px" }}>{isExpanded ? "▲" : "▼"}</span>}
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px" }}>
+                        <div style={{ flex: 1 }}>
+                          <p style={{ margin: 0, fontSize: "14px", fontWeight: done ? "700" : "500", color: done ? "#15803d" : isNext ? "#92400e" : "#9ca3af" }}>
+                            {step.label}
+                          </p>
+                          {step.subtext && (
+                            <p style={{ margin: "2px 0 0", fontSize: "11px", color: done ? "#16a34a" : "#9ca3af", lineHeight: "1.4" }}>
+                              {step.subtext}
+                            </p>
+                          )}
+                        </div>
+                        {step.approveAction && (
+                          patient.plan_approved ? (
+                            <span style={{ flexShrink: 0, padding: "4px 10px", borderRadius: "99px", background: "#dcfce7", color: "#16a34a", fontSize: "12px", fontWeight: "700", whiteSpace: "nowrap" }}>
+                              ✓ Approved
+                            </span>
+                          ) : (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleApprovePlan(); }}
+                              disabled={approving}
+                              style={{ flexShrink: 0, padding: "7px 14px", borderRadius: "8px", border: "none", background: approving ? "#d4a574" : "#b8905a", color: "white", fontWeight: "700", fontSize: "12px", cursor: approving ? "not-allowed" : "pointer", whiteSpace: "nowrap" }}
+                            >
+                              {approving ? "Approving..." : "Approve Plan"}
+                            </button>
+                          )
+                        )}
+                        {isClickable && !step.approveAction && <span style={{ fontSize: "12px", color: done ? "#16a34a" : "#9ca3af", flexShrink: 0, marginLeft: "8px" }}>{isExpanded ? "▲" : "▼"}</span>}
                       </div>
                     </div>
                   </div>
