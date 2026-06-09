@@ -84,6 +84,7 @@ By making a payment to Orisalign and/or accepting our treatment proposal, you ac
                 bullets: [
                   "The patient submits a written refund request before the physical aligner sets have been dispatched or shipped;",
                   "The refund request is submitted prior to the Company's confirmation that fabrication of the aligner sets has commenced;",
+                  "Acceptance of the final treatment plan via written confirmation, email, WhatsApp message, or patient portal approval shall constitute the patient's authorisation to commence fabrication. From that point, refunds are only considered on the undelivered balance of a treatment, and only prior to fabrication of those remaining sets (mandatory deduction of ₹5,999/- is applicable on any refund request post payment).",
                 ]
               },
               {
@@ -129,12 +130,17 @@ By making a payment to Orisalign and/or accepting our treatment proposal, you ac
             content: `The refundable amount shall be calculated as follows:\n\nRefund Amount = Total Amount Paid – INR 5,000 (Non-Refundable Fee)\n\nAny applicable payment gateway or transaction charges are non-refundable.\n\nExample: If a patient has paid INR 25,000/- and submits a valid refund request before dispatch, the refundable amount shall be INR 20,000/-. The INR 5,000/- will be retained as the service charge for consultation, scanning, and planning services already provided.`
           },
           {
+            num: "6.1", title: "EMI Refunds",
+            content: `For payments made via Equated Monthly Installment (EMI) through any financial institution or lending partner, refunds requested prior to aligner fabrication will be processed back to the original EMI source after deduction of the ₹5,999/- non-refundable fee and any foreclosure, processing, or transaction charges levied by the financier. Orisalign is not liable for any charges imposed by the lending institution.`
+          },
+          {
             num: "7", title: "Cancellation Policy",
             content: "Patients may cancel their treatment order at any time before the commencement of aligner fabrication. Upon cancellation:",
             bullets: [
               "Before fabrication begins: Entitled to a refund of the amount paid, less the non-refundable fee of INR 5,000/-.",
               "After fabrication has commenced but before dispatch: No refund shall be applicable. The full amount paid shall be forfeited.",
               "After dispatch: No refund or cancellation shall be entertained.",
+              "Partial treatment: No refund shall be applicable for any aligner sets already delivered as part of an ongoing treatment. (Remember: aligners are custom-made and cannot be used for any other patients.) Refunds are only considered on the undelivered balance of a treatment, and only prior to fabrication of those remaining sets (mandatory deduction of ₹5,999/- is applicable on any refund request post payment).",
             ],
             footer: "All cancellation requests must be submitted in writing to Orisalign's official communication channels as described in Section 5.1 above."
           },
