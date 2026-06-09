@@ -167,7 +167,7 @@ function buildEmailHtml(params: {
       <p style="color:#6b7280;font-size:13px;line-height:1.7;text-align:center;">
         For any queries, reach us at
         <a href="mailto:hello@orisalign.com" style="color:#C9A84C;font-weight:600;">hello@orisalign.com</a>
-        or call <strong>+91 80 6217 8511</strong>.
+        or call <strong>+91 8069645412</strong>.
       </p>
 
       <p style="text-align:center;color:#9ca3af;font-size:12px;margin-top:20px;border-top:1px solid #e5e7eb;padding-top:16px;">

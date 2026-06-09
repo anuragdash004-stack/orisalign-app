@@ -104,7 +104,7 @@ export async function POST(req: Request) {
                   <tr><td style="padding:6px 0;color:#6b7280;">Booked on</td><td style="padding:6px 0;color:#111;">${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</td></tr>
                 </table>
               </div>
-              <p style="color:#6b7280;font-size:13px;line-height:1.7;">Our team will contact you shortly to confirm. For queries, reach us at <a href="https://www.orisalign.com" style="color:#C9A84C;">orisalign.com</a> or call <strong>+91 80 6217 8511</strong>.</p>
+              <p style="color:#6b7280;font-size:13px;line-height:1.7;">Our team will contact you shortly to confirm. For queries, reach us at <a href="https://www.orisalign.com" style="color:#C9A84C;">orisalign.com</a> or call <strong>+91 8069645412</strong>.</p>
               <p style="text-align:center;color:#9ca3af;font-size:12px;margin-top:20px;">OrisAlign · Chandrasekharpur, Bhubaneswar, Odisha</p>
             </div>
           `,

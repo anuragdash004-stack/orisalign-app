@@ -202,7 +202,7 @@ By making a payment to Orisalign and/or accepting our treatment proposal, you ac
                 MIG-1, 43/5, Housing Board Colony, Chandrasekharpur<br />
                 Bhubaneswar – 751016, Odisha, India<br />
                 Email: hello@orisalign.com<br />
-                Phone: +91 80 6217 8511
+                Phone: +91 8069645412
               </div>
             )}
           </div>
