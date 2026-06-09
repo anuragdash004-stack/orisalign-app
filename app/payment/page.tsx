@@ -49,44 +49,12 @@ const OPTIONS: PaymentOption[] = [
     comingSoon: false,
   },
   {
-    key: "upi-direct",
-    name: "UPI ID (Direct)",
-    blurb: "Pay to our UPI handle — share the screenshot on WhatsApp",
-    emoji: "📱",
-    bg: "#5b21b6",
-    comingSoon: true,
-  },
-  {
-    key: "stripe",
-    name: "International Cards",
-    blurb: "Visa / Mastercard / Amex via Stripe (USD)",
-    emoji: "🌍",
-    bg: "#635bff",
-    comingSoon: true,
-  },
-  {
-    key: "finance",
-    name: "EMI / Finance",
-    blurb: "Bajaj, HBD or Poonawalla — 6/9/12 month plans",
-    emoji: "🏦",
-    bg: "#16a34a",
-    comingSoon: true,
-  },
-  {
-    key: "bank-transfer",
-    name: "Bank Transfer (NEFT/IMPS)",
-    blurb: "Get our account details and pay manually",
-    emoji: "🏛️",
-    bg: "#374151",
-    comingSoon: true,
-  },
-  {
-    key: "cash",
-    name: "Cash at Clinic",
-    blurb: "Visit our Bhubaneswar clinic and pay in person",
-    emoji: "🏥",
-    bg: "#b8905a",
-    comingSoon: true,
+    key: "razorpay",
+    name: "Razorpay Checkout",
+    blurb: "Cards, UPI, Wallets, Bank Transfer & more",
+    emoji: "💰",
+    bg: "#2563eb",
+    comingSoon: false,
   },
 ];
 
@@ -138,10 +106,114 @@ function PaymentInner() {
     }
   };
 
+  const startRazorpay = async () => {
+    if (!id) {
+      setNotice("Missing appointment context. Please open this page from your patient dashboard.");
+      return;
+    }
+    setBusy(true);
+    setNotice(null);
+    try {
+      // Create order
+      const orderRes = await fetch("/api/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: amount * 100, // Convert to paise
+          receipt: id,
+        }),
+      });
+
+      const orderData = await orderRes.json();
+
+      if (!orderRes.ok || !orderData.order_id) {
+        setNotice(orderData.error || "Couldn't create payment order. Please try again.");
+        return;
+      }
+
+      // Load Razorpay script if not already loaded
+      if (!(window as any).Razorpay) {
+        const script = document.createElement("script");
+        script.src = "https://checkout.razorpay.com/v1/checkout.js";
+        script.async = true;
+        script.onload = () => openRazorpayModal(orderData.order_id);
+        script.onerror = () => {
+          setNotice("Failed to load payment gateway. Please try again.");
+          setBusy(false);
+        };
+        document.body.appendChild(script);
+      } else {
+        openRazorpayModal(orderData.order_id);
+      }
+    } catch (error) {
+      setNotice("Couldn't reach the payment service. Please check your connection and try again.");
+      setBusy(false);
+    }
+  };
+
+  const openRazorpayModal = (orderId: string) => {
+    const options = {
+      key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+      order_id: orderId,
+      name: "OrisAlign",
+      description: "Payment for Aligner Treatment",
+      image: "/logo.png",
+      handler: async (response: any) => {
+        try {
+          // Verify payment
+          const verifyRes = await fetch("/api/verify-payment", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            }),
+          });
+
+          const verifyData = await verifyRes.json();
+
+          if (!verifyRes.ok || !verifyData.success) {
+            setNotice("Payment verification failed. Please contact support.");
+            return;
+          }
+
+          // Payment successful
+          window.location.href = `/payment/success?id=${id}&payment_id=${response.razorpay_payment_id}`;
+        } catch (error) {
+          setNotice("Payment verification error. Please contact support.");
+        } finally {
+          setBusy(false);
+        }
+      },
+      prefill: {
+        name: "Patient",
+        email: "patient@example.com",
+        contact: "",
+      },
+      theme: {
+        color: GOLD,
+      },
+      modal: {
+        ondismiss: () => {
+          setNotice("Payment cancelled. Please try again when ready.");
+          setBusy(false);
+        },
+      },
+    };
+
+    const rzp = new (window as any).Razorpay(options);
+    rzp.open();
+  };
+
   const handleSelect = (opt: PaymentOption) => {
     setSelected(opt.key);
     if (opt.key === "cashfree") {
       void startCashfree();
+      return;
+    }
+    if (opt.key === "razorpay") {
+      void startRazorpay();
       return;
     }
     if (opt.comingSoon) {
@@ -194,7 +266,7 @@ function PaymentInner() {
         <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
           {OPTIONS.map((opt) => {
             const isSelected = selected === opt.key;
-            const isBusyOption = busy && opt.key === "cashfree";
+            const isBusyOption = busy && (opt.key === "cashfree" || opt.key === "razorpay");
             return (
               <button
                 key={opt.key}
