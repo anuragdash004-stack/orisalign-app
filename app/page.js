@@ -859,9 +859,9 @@ export default function LandingPage() {
           <div className="border-t pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-500" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
             <p>© 2025 OrisAlign. All rights reserved. | Designed by expert dentists</p>
             <div className="flex gap-4">
-              <a href="/terms" target="_blank" className="hover:text-white">Terms &amp; Conditions</a>
-              <a href="/privacy-policy" target="_blank" className="hover:text-white">Privacy Policy</a>
-              <a href="/refund-policy" target="_blank" className="hover:text-white">Refund Policy</a>
+              <a href="/terms" className="hover:text-white">Terms &amp; Conditions</a>
+              <a href="/privacy-policy" className="hover:text-white">Privacy Policy</a>
+              <a href="/refund-policy" className="hover:text-white">Refund Policy</a>
               <Link href="/login" className="hover:text-white">Staff Login</Link>
             </div>
           </div>

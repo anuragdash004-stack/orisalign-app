@@ -380,7 +380,7 @@ export default function BookPage() {
               <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer", fontSize: "13px", color: "#374151" }}>
                 <input type="checkbox" checked={agreeTnc} onChange={e => { setAgreeTnc(e.target.checked); setTncError(false) }}
                   style={{ marginTop: "2px", accentColor: "#b8905a", flexShrink: 0, width: "16px", height: "16px" }} />
-                I agree to the <a href="/terms" target="_blank" style={{ color: "#b8905a", fontWeight: "600", textDecoration: "underline" }}>terms and conditions and privacy policy</a>.
+                I agree to the <a href="/terms" style={{ color: "#b8905a", fontWeight: "600", textDecoration: "underline" }}>terms and conditions and privacy policy</a>.
               </label>
               {tncError && (
                 <p style={{ color: "#dc2626", fontSize: "13px", margin: 0, fontWeight: "600" }}>
