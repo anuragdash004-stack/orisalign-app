@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { getSupabaseClient } from "@/lib/supabaseClient";
+import { logAudit } from "@/lib/logAudit";
 
 const supabase = getSupabaseClient();
 
@@ -91,6 +92,7 @@ export default function AppointmentPage() {
       .update({ name, phone, email, age, sex, address, problem, date, time })
       .eq("id", editingId);
     if (error) { alert("Update failed"); return; }
+    logAudit({ appointmentId: editingId, actor: { email: user?.email, role: userRole }, action: "Patient Details Updated", entity: "patient_details", newData: { name, phone, email, age, sex, address, problem, date, time } });
     setEditingId(null);
     fetchAppointments();
   };
@@ -99,6 +101,7 @@ export default function AppointmentPage() {
     const { error } = await supabase
       .from("appointments_booking").update({ status: "confirmed" }).eq("id", id);
     if (error) { alert("Confirm failed"); return; }
+    logAudit({ appointmentId: id, actor: { email: user?.email, role: userRole }, action: "Appointment Confirmed", entity: "status", newData: { status: "confirmed" } });
     alert("Appointment confirmed!");
     fetchAppointments();
   };
@@ -109,6 +112,7 @@ export default function AppointmentPage() {
     const { error } = await supabase
       .from("appointments_booking").update({ date: newDate, status: "pending" }).eq("id", id);
     if (error) { alert("Postpone failed"); return; }
+    logAudit({ appointmentId: id, actor: { email: user?.email, role: userRole }, action: "Appointment Postponed", entity: "appointment_date", newData: { date: newDate, status: "pending" } });
     fetchAppointments();
   };
 
@@ -124,6 +128,7 @@ export default function AppointmentPage() {
       })
       .eq("id", id).select();
     if (error) { alert("Assignment failed"); return; }
+    logAudit({ appointmentId: id, actor: { email: user?.email, role: userRole }, action: "Assigned to Dentist and Orthodontist", entity: "assignment", newData: { assigned_dentist: dentistMap[selectedDentist], assigned_ortho: orthoMap[selectedOrtho], status: "assigned" } });
     setShowAssign(null);
     setSelectedDentist("");
     setSelectedOrtho("");
@@ -137,6 +142,7 @@ export default function AppointmentPage() {
     const { error } = await supabase
       .from("appointments_booking").update({ status: "cancelled" }).eq("id", id);
     if (error) { alert("Cancel failed"); return; }
+    logAudit({ appointmentId: id, actor: { email: user?.email, role: userRole }, action: "Appointment Cancelled", entity: "status", newData: { status: "cancelled" } });
     fetchAppointments();
   };
 
