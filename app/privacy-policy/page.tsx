@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import PolicyFooter from "@/components/PolicyFooter";
+import BackButton from "@/components/BackButton";
 
 export const metadata: Metadata = {
   title: "Privacy Policy | OrisAlign",
@@ -24,8 +26,13 @@ export default function PrivacyPolicyPage() {
   const sec = { marginBottom: "32px" }
 
   return (
-    <div style={{ minHeight: "100vh", background: "#faf7f2", fontFamily: "Arial, sans-serif" }}>
-      <div style={{ maxWidth: "820px", margin: "0 auto", padding: "40px 20px 80px" }}>
+    <div style={{ minHeight: "100vh", background: "#faf7f2", fontFamily: "Arial, sans-serif", display: "flex", flexDirection: "column" }}>
+      <div style={{ maxWidth: "820px", margin: "0 auto", padding: "40px 20px", width: "100%", flex: 1, position: "relative" }}>
+
+        {/* Back Button */}
+        <BackButton />
+
+        <div style={{ maxWidth: "820px", padding: "0 0 80px" }}>
 
         {/* Header */}
         <div style={{ textAlign: "center", borderBottom: "2px solid #1B2A4A", paddingBottom: "24px", marginBottom: "36px" }}>
@@ -207,7 +214,10 @@ export default function PrivacyPolicyPage() {
           © 2026 Orisalign Private Limited. All rights reserved.
         </div>
 
+        </div>
       </div>
+
+      <PolicyFooter />
     </div>
   )
 }
