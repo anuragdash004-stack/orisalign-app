@@ -225,10 +225,36 @@ export default function AppointmentWorkflow() {
     const confirmed = window.confirm("End this appointment? It will be marked as completed and cannot be edited again.");
     if (!confirmed) return;
     setEnding(true);
-    const { error } = await supabase.from("appointments_booking").update({ status: "completed" }).eq("id", id);
+
+    // Fetch current journey_steps
+    const { data: apptData } = await supabase
+      .from("appointments_booking")
+      .select("journey_steps")
+      .eq("id", id)
+      .single();
+
+    const updatedJourneySteps = {
+      ...(apptData?.journey_steps || {}),
+      scanning_done: true,
+    };
+
+    const { error } = await supabase.from("appointments_booking").update({
+      status: "completed",
+      journey_steps: updatedJourneySteps,
+      stl_submitted: true
+    }).eq("id", id);
+
     setEnding(false);
     if (error) { alert("Failed to end appointment."); return; }
-    logAudit({ appointmentId: id, actor, action: "Appointment Ended by Dentist", entity: "status", newData: { status: "completed" } });
+    logAudit({ appointmentId: id, actor, action: "Appointment Ended by Dentist", entity: "status", newData: { status: "completed", scanning_done: true } });
+
+    // Notify patient of scanning_done step
+    await fetch("/api/notify-step", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ appointmentId: id, stepKey: "scanning_done" }),
+    }).catch(() => {});
+
     alert("Appointment completed successfully!");
     router.push("/dentist");
   };
