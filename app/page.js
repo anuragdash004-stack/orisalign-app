@@ -381,7 +381,7 @@ export default function LandingPage() {
                   <span className="flex items-center gap-3 text-sm font-medium" style={{ color: NAVY }}>
                     <span className="text-base">🎁</span>
                     <span>
-                      Freebies <span className="text-xs font-semibold" style={{ color: GOLD }}>worth ₹9,999</span>
+                      Benefits <span className="text-xs font-semibold" style={{ color: GOLD }}>worth ₹9,999</span>
                       <button
                         onClick={() => setFreebiesOpen(!freebiesOpen)}
                         className="inline-flex items-center justify-center w-5 h-5 rounded-full border-2 font-black transition-colors align-middle ml-1 flex-shrink-0"
