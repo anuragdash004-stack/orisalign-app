@@ -6,6 +6,10 @@ export async function POST(req: Request) {
     const { name, phone, email, age, sex, address, problem, date, time, consultationType, patientId } = body
 
     const shortId = patientId ? patientId.substring(0, 8).toUpperCase() : "N/A"
+    // Use dynamic host to support both local and production domains
+    const baseUrl = `https://${req.headers.get("host") || "orisalign.com"}`
+    const patientUrl = `${baseUrl}/patient/${patientId}`
+
     const typeLabel: Record<string, string> = {
       home: "🏠 Home Consultation",
       clinic: "🏥 Clinic Consultation",
@@ -57,7 +61,7 @@ export async function POST(req: Request) {
             </div>
 
             <div style="text-align:center;">
-              <a href="https://app.orisalign.com/patients/${patientId}" style="display:inline-block;background:#C9A84C;color:#1B2A4A;font-weight:bold;padding:14px 32px;border-radius:8px;text-decoration:none;font-size:15px;">
+              <a href="${patientUrl}" style="display:inline-block;background:#C9A84C;color:#1B2A4A;font-weight:bold;padding:14px 32px;border-radius:8px;text-decoration:none;font-size:15px;">
                 Open Patient Dashboard →
               </a>
             </div>
@@ -93,7 +97,7 @@ export async function POST(req: Request) {
                 <p style="margin:0;font-size:28px;font-weight:900;color:#1B2A4A;letter-spacing:4px;">${shortId}</p>
               </div>
               <div style="text-align:center;margin:0 0 16px;">
-                <a href="https://app.orisalign.com/patient/${patientId}" style="display:inline-block;background:#1B2A4A;color:#C9A84C;font-weight:700;font-size:14px;padding:12px 28px;border-radius:8px;text-decoration:none;letter-spacing:0.5px;">
+                <a href="${patientUrl}" style="display:inline-block;background:#1B2A4A;color:#C9A84C;font-weight:700;font-size:14px;padding:12px 28px;border-radius:8px;text-decoration:none;letter-spacing:0.5px;">
                   Track Your Progress →
                 </a>
               </div>

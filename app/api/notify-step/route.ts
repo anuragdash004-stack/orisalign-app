@@ -125,11 +125,10 @@ function getStepContent(stepKey: string): StepContent | null {
 function buildEmailHtml(params: {
   name: string
   shortId: string
-  patientId: string
+  journeyUrl: string
   content: StepContent
 }): string {
-  const { name, shortId, patientId, content } = params
-  const journeyUrl = `https://app.orisalign.com/patient/${patientId}`
+  const { name, shortId, journeyUrl, content } = params
 
   const nextStepBlock = content.nextStep
     ? `
@@ -172,7 +171,7 @@ function buildEmailHtml(params: {
 
       <p style="text-align:center;color:#9ca3af;font-size:12px;margin-top:20px;border-top:1px solid #e5e7eb;padding-top:16px;">
         OrisAlign · Chandrasekharpur, Bhubaneswar, Odisha<br/>
-        <a href="${journeyUrl}" style="color:#9ca3af;font-size:11px;">Your journey page: app.orisalign.com/patient/${shortId.toLowerCase()}</a>
+        <a href="${journeyUrl}" style="color:#9ca3af;font-size:11px;">View your journey page</a>
       </p>
     </div>
   `
@@ -187,6 +186,10 @@ export async function POST(req: Request) {
     if (!appointmentId || !stepKey) {
       return NextResponse.json({ error: "Missing appointmentId or stepKey" }, { status: 400 })
     }
+
+    // Use dynamic host to support both local and production domains
+    const baseUrl = `https://${req.headers.get("host") || "orisalign.com"}`
+    const journeyUrl = `${baseUrl}/patient/${appointmentId}`
 
     const content = getStepContent(stepKey)
     if (!content) {
@@ -209,7 +212,7 @@ export async function POST(req: Request) {
     }
 
     const shortId = appt.id.substring(0, 8).toUpperCase()
-    const html = buildEmailHtml({ name: appt.name || "Patient", shortId, patientId: appt.id, content })
+    const html = buildEmailHtml({ name: appt.name || "Patient", shortId, journeyUrl, content })
 
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
