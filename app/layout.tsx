@@ -61,6 +61,15 @@ export const metadata: Metadata = {
     "language": "English",
     "revisit-after": "7 days",
     "author": "OrisAlign Private Limited",
+    "apple-mobile-web-app-capable": "yes",
+    "apple-mobile-web-app-status-bar-style": "black-translucent",
+    "viewport": "width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes",
+  },
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 5,
+    userScalable: true,
   },
 };
 

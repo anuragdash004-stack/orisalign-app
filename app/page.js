@@ -151,7 +151,7 @@ export default function LandingPage() {
             ))}
           </div>
           <div className="flex items-center gap-3">
-            <a href="https://app.orisalign.com/patient" className="hidden sm:block text-sm font-semibold px-5 py-2 rounded-full transition-colors hover:opacity-80" style={{ background: GOLD, color: NAVY }}>
+            <a href="/patient" className="hidden sm:block text-sm font-semibold px-5 py-2 rounded-full transition-colors hover:opacity-80" style={{ background: GOLD, color: NAVY }}>
               Patient Login
             </a>
             <button className="md:hidden p-2" onClick={() => setMenuOpen(!menuOpen)}>
@@ -166,7 +166,7 @@ export default function LandingPage() {
             {NAV_LINKS.map(l => (
               <a key={l.label} href={l.href} onClick={() => setMenuOpen(false)} className="block py-3 text-sm border-b border-gray-50" style={{ color: NAVY }}>{l.label}</a>
             ))}
-            <a href="https://app.orisalign.com/patient" onClick={() => setMenuOpen(false)} className="block mt-3 text-center text-sm font-semibold px-4 py-3 rounded-full" style={{ background: GOLD, color: NAVY }}>
+            <a href="/patient" onClick={() => setMenuOpen(false)} className="block mt-3 text-center text-sm font-semibold px-4 py-3 rounded-full" style={{ background: GOLD, color: NAVY }}>
               Patient Login
             </a>
           </div>
@@ -227,7 +227,7 @@ export default function LandingPage() {
               )}
             </div>
             <div className="flex flex-col sm:flex-row gap-4">
-              <a href="https://app.orisalign.com/book" className="text-base font-bold px-8 py-4 rounded-full transition-all shadow-lg text-center" style={{ background: GOLD, color: NAVY, boxShadow: `0 8px 24px ${GOLD}55` }}>
+              <a href="/book" className="text-base font-bold px-8 py-4 rounded-full transition-all shadow-lg text-center" style={{ background: GOLD, color: NAVY, boxShadow: `0 8px 24px ${GOLD}55` }}>
                 Book your smile assessment →
               </a>
               <a href={WA_LINK} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 border-2 text-base font-semibold px-8 py-4 rounded-full hover:border-green-500 hover:text-green-700 transition-all" style={{ borderColor: '#e5e7eb', color: '#374151' }}>
@@ -345,7 +345,7 @@ export default function LandingPage() {
             ))}
           </div>
           <div className="text-center mt-10">
-            <a href="https://app.orisalign.com/book" className="font-bold px-8 py-4 rounded-full transition-all shadow-lg inline-block" style={{ background: GOLD, color: NAVY, boxShadow: `0 8px 24px ${GOLD}44` }}>
+            <a href="/book" className="font-bold px-8 py-4 rounded-full transition-all shadow-lg inline-block" style={{ background: GOLD, color: NAVY, boxShadow: `0 8px 24px ${GOLD}44` }}>
               Start Step 1 — Book Free Consult →
             </a>
           </div>
@@ -456,7 +456,7 @@ export default function LandingPage() {
 
             {/* CTA */}
             <div className="px-8 py-6 text-center bg-white">
-              <a href="https://app.orisalign.com/book" className="inline-block font-bold px-10 py-4 rounded-full text-base transition-all shadow-lg" style={{ background: GOLD, color: NAVY, boxShadow: `0 8px 24px ${GOLD}55` }}>
+              <a href="/book" className="inline-block font-bold px-10 py-4 rounded-full text-base transition-all shadow-lg" style={{ background: GOLD, color: NAVY, boxShadow: `0 8px 24px ${GOLD}55` }}>
                 Book Your ₹199 Scan →
               </a>
               <p className="text-xs text-gray-400 mt-3">Exact pricing shared after consultation — your case may cost less.</p>
@@ -765,7 +765,7 @@ export default function LandingPage() {
               📹 We also provide video consultations
             </div>
             <div>
-              <a href="https://app.orisalign.com/book" className="inline-block font-bold px-6 py-3 rounded-full transition-colors" style={{ background: GOLD, color: NAVY }}>
+              <a href="/book" className="inline-block font-bold px-6 py-3 rounded-full transition-colors" style={{ background: GOLD, color: NAVY }}>
                 Book with an Expert →
               </a>
             </div>
