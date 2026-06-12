@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import crypto from "crypto";
+import { logAuditEntry } from "@/lib/auditLog";
 
 /**
  * POST /api/cashfree/webhook
@@ -180,5 +181,16 @@ async function handleEvent(payload: CashfreeWebhookPayload) {
       updateError,
       appointmentId,
     );
+  } else {
+    // 📋 LOG PAYMENT STATUS CHANGE
+    await logAuditEntry({
+      appointmentId,
+      actorEmail: "cashfree",
+      actorRole: "payment_gateway",
+      action: "Payment Received",
+      entity: "payment_data",
+      newData: newPaymentData,
+      oldData: pd,
+    });
   }
 }

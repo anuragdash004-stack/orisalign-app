@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
+import { logAuditEntry, getClientInfo } from "@/lib/auditLog"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -9,8 +10,9 @@ const supabase = createClient(
 export async function POST(req: Request) {
   try {
     const body = await req.json()
-
     const { name, phone, email, age, sex, address, date, time } = body
+    const { ip, userAgent } = getClientInfo(req)
+    const bookingTimestamp = new Date().toISOString()
 
     // ✅ BASIC VALIDATION
     if (!name || !phone || !date || !time) {
@@ -42,8 +44,8 @@ export async function POST(req: Request) {
       })
     }
 
-    // ✅ INSERT NEW BOOKING
-    const { error: insertError } = await supabase
+    // ✅ INSERT NEW BOOKING with timestamp
+    const { data: insertedData, error: insertError } = await supabase
       .from("appointments_booking")
       .insert([
         {
@@ -56,8 +58,11 @@ export async function POST(req: Request) {
           date,
           time,
           status: "pending",
+          created_at: bookingTimestamp,
+          booking_timestamp: bookingTimestamp,
         },
       ])
+      .select("id")
 
     if (insertError) {
       console.error(insertError)
@@ -67,7 +72,34 @@ export async function POST(req: Request) {
       })
     }
 
-    return NextResponse.json({ success: true })
+    const appointmentId = insertedData?.[0]?.id
+
+    // 📋 LOG TO AUDIT TRAIL
+    if (appointmentId) {
+      await logAuditEntry({
+        appointmentId,
+        actorEmail: email || "customer",
+        actorRole: "customer",
+        action: "Booking Created",
+        entity: "appointment",
+        newData: {
+          name,
+          phone,
+          email,
+          age,
+          sex,
+          address,
+          date,
+          time,
+          status: "pending",
+          booking_timestamp: bookingTimestamp,
+        },
+        ipAddress: ip,
+        userAgent,
+      })
+    }
+
+    return NextResponse.json({ success: true, appointmentId })
   } catch (err) {
     console.error(err)
     return NextResponse.json({
