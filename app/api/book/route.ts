@@ -59,7 +59,6 @@ export async function POST(req: Request) {
           time,
           status: "pending",
           created_at: bookingTimestamp,
-          booking_timestamp: bookingTimestamp,
         },
       ])
       .select("id")
