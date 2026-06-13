@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { getAmountToCollect, PaymentType } from "@/lib/paymentHelper";
 
 /**
  * POST /api/cashfree/order
@@ -61,7 +62,7 @@ export async function POST(req: Request) {
     // Pull the appointment to derive the trusted amount + customer details.
     const { data: appt, error } = await supabase
       .from("appointments_booking")
-      .select("id, name, phone, payment_data")
+      .select("id, name, phone, payment_data, payment_type_to_collect")
       .eq("id", appointmentId)
       .single();
 
@@ -73,10 +74,15 @@ export async function POST(req: Request) {
     }
 
     const pd = (appt.payment_data as Record<string, unknown>) || {};
-    const amount = Math.round(Number(pd.pending_amount) || 0);
+    const paymentType = (appt.payment_type_to_collect || "down_payment") as PaymentType;
+
+    // Use the paymentHelper to get the correct amount based on payment type
+    const amountInPaise = getAmountToCollect(pd, paymentType);
+    const amount = Math.round(amountInPaise / 100); // Convert back to rupees for validation
+
     if (amount <= 0) {
       return NextResponse.json(
-        { error: "No pending amount on this appointment" },
+        { error: `No ${paymentType.replace("_", " ")} available on this appointment` },
         { status: 400 },
       );
     }
@@ -113,7 +119,7 @@ export async function POST(req: Request) {
           customer_phone: phone,
         },
         order_meta: { return_url: returnUrl },
-        order_note: "OrisAlign aligner payment",
+        order_note: `OrisAlign aligner ${paymentType.replace("_", " ")} payment`,
       }),
     });
 
