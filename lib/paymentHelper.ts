@@ -64,24 +64,65 @@ export function getPaymentSummary(paymentData: PaymentData): {
   discountAmount: number;
   downPayment: number;
   pendingAmount: number;
-  paymentType: PaymentType;
+  amountPaid: number;
   amountToPay: number;
+  paymentType: PaymentType;
+  amountNow: number;
   label: string;
+  paymentStatus: "pending" | "partial" | "paid";
 } {
   const paymentType: PaymentType = (paymentData.payment_type_to_collect || "down_payment") as PaymentType;
   const fullAmount = Number(paymentData.full_amount) || 0;
   const discountAmount = Number(paymentData.discount_amount) || 0;
   const downPayment = Number(paymentData.down_payment) || 0;
   const pendingAmount = Number(paymentData.pending_amount) || 0;
-  const amountToPay = getAmountToCollect(paymentData, paymentType) / 100;
+
+  // Track how much has been paid and how much is left to pay
+  const amountPaid = Number(paymentData.amount_paid) || 0;
+  const amountToPay = fullAmount - amountPaid;
+
+  // Amount to pay now (what admin selected)
+  const amountNow = getAmountToCollect(paymentData, paymentType) / 100;
+
+  // Determine payment status
+  let paymentStatus: "pending" | "partial" | "paid" = "pending";
+  if (amountPaid >= fullAmount) {
+    paymentStatus = "paid";
+  } else if (amountPaid > 0) {
+    paymentStatus = "partial";
+  }
 
   return {
     fullAmount,
     discountAmount,
     downPayment,
     pendingAmount,
-    paymentType,
+    amountPaid,
     amountToPay,
+    paymentType,
+    amountNow,
     label: getPaymentTypeLabel(paymentType),
+    paymentStatus,
+  };
+}
+
+/**
+ * Format payment display string
+ */
+export function formatPaymentDisplay(paymentData: PaymentData): {
+  paid: string;
+  toPay: string;
+  status: string;
+} {
+  const summary = getPaymentSummary(paymentData);
+
+  return {
+    paid: `₹${summary.amountPaid.toLocaleString('en-IN')}`,
+    toPay: `₹${summary.amountToPay.toLocaleString('en-IN')}`,
+    status: summary.paymentStatus === "paid"
+      ? "✅ Fully Paid"
+      : summary.paymentStatus === "partial"
+      ? `⏳ Partial (${summary.amountPaid > 0 ? 'Paid' : 'Pending'})`
+      : "⏳ Pending",
   };
 }

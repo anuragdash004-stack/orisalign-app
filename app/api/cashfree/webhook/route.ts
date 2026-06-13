@@ -192,5 +192,37 @@ async function handleEvent(payload: CashfreeWebhookPayload) {
       newData: newPaymentData,
       oldData: pd,
     });
+
+    // 💳 UPDATE PAYMENT STATUS (track how much paid / to pay)
+    try {
+      const amountInRupees = Math.round(paymentAmount / 100 * 100) / 100; // Convert paise to rupees
+
+      const statusRes = await fetch(
+        `${process.env.VERCEL_URL ? "https://" + process.env.VERCEL_URL : "http://localhost:3000"}/api/update-payment-status`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            appointmentId,
+            amountPaid: amountInRupees,
+            transactionId: payload.data?.payment?.cf_payment_id,
+            paymentMethod: "Cashfree",
+            notes: `Payment via ${payload.data?.payment?.payment_method?.type || "online"}`,
+            actorEmail: "cashfree_webhook",
+            actorRole: "payment_gateway",
+          }),
+        }
+      );
+
+      if (!statusRes.ok) {
+        console.warn(
+          "[cashfree/webhook] failed to update payment status",
+          await statusRes.text()
+        );
+      }
+    } catch (e) {
+      console.error("[cashfree/webhook] payment status update error", e);
+      // Don't fail the webhook if status update fails
+    }
   }
 }
