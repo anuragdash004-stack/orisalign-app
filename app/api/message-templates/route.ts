@@ -122,7 +122,7 @@ export async function POST(req: Request) {
       oldData: oldTemplate ? {
         subject_line: oldTemplate.subject_line,
         email_body_preview: oldTemplate.email_body.substring(0, 100) + "...",
-      } : null,
+      } : undefined,
       ipAddress: ip,
       userAgent,
     });

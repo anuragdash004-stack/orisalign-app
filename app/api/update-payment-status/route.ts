@@ -59,7 +59,7 @@ export async function POST(req: Request) {
     const { data: appt, error: fetchError } = await supabase
       .from("appointments_booking")
       .select(
-        "id, name, payment_data, amount_paid, amount_to_pay, payment_status, last_payment_date"
+        "id, name, payment_data, amount_paid, amount_to_pay, payment_status, first_payment_date, last_payment_date"
       )
       .eq("id", appointmentId)
       .single();

@@ -13,8 +13,8 @@ export interface AuditLogEntry {
   entity?: string
   newData?: Record<string, any>
   oldData?: Record<string, any>
-  ipAddress?: string
-  userAgent?: string
+  ipAddress?: string | null
+  userAgent?: string | null
 }
 
 /**

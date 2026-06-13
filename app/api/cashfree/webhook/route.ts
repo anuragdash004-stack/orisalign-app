@@ -207,7 +207,7 @@ async function handleEvent(payload: CashfreeWebhookPayload) {
             amountPaid: amountInRupees,
             transactionId: payload.data?.payment?.cf_payment_id,
             paymentMethod: "Cashfree",
-            notes: `Payment via ${payload.data?.payment?.payment_method?.type || "online"}`,
+            notes: `Payment via ${(payload.data?.payment?.payment_method as { type?: string } | undefined)?.type || "online"}`,
             actorEmail: "cashfree_webhook",
             actorRole: "payment_gateway",
           }),
