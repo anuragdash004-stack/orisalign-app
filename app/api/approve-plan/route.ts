@@ -19,7 +19,7 @@ export async function POST(req: Request) {
 
     const { data: existing, error: fetchError } = await supabase
       .from("appointments_booking")
-      .select("journey_steps, plan_approved")
+      .select("journey_steps, plan_approved, name, email")
       .eq("id", patientId)
       .single()
 
@@ -50,7 +50,7 @@ export async function POST(req: Request) {
     // 📋 LOG TO AUDIT TRAIL
     await logAuditEntry({
       appointmentId: patientId,
-      actorEmail: "patient",
+      actorEmail: existing.email || existing.name || "patient",
       actorRole: "patient",
       action: "Plan Approved by Patient",
       entity: "plan_approved",
