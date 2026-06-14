@@ -16,7 +16,7 @@ const JOURNEY_STEPS = [
   { key: "plan_approved",           label: "Plan Approval", approveAction: true },
   { key: "manufacturing_started",   label: "Manufacturing Started" },
   { key: "manufacturing_completed", label: "Manufacturing Completed" },
-  { key: "aligners_dispatched",     label: "Aligners Dispatched" },
+  { key: "aligners_dispatched",     label: "Aligners Dispatched", expandable: true },
   { key: "aligners_received",       label: "Aligners Received" },
   { key: "followup_appointment",    label: "Appointment Book" },
   { key: "aligners_delivered",      label: "Aligners Delivered" },
@@ -59,6 +59,7 @@ export default function PatientJourney() {
   const [loading, setLoading] = useState(true);
   const [expandedStep, setExpandedStep] = useState(null);
   const [approving, setApproving] = useState(false);
+  const [copiedNum, setCopiedNum] = useState(null);
 
   useEffect(() => {
     const load = async () => {
@@ -128,6 +129,16 @@ export default function PatientJourney() {
       return;
     }
     if (step.expandable) { setExpandedStep(expandedStep === step.key ? null : step.key); }
+  };
+
+  const handleCopyShipmentId = async (num, shipmentId) => {
+    try {
+      await navigator.clipboard.writeText(shipmentId);
+      setCopiedNum(num);
+      setTimeout(() => setCopiedNum(null), 2000);
+    } catch {
+      // ignore clipboard errors
+    }
   };
 
   return (
@@ -319,6 +330,52 @@ export default function PatientJourney() {
                           Review Treatment Plan
                         </a>
                       )}
+                    </div>
+                  )}
+
+                  {/* Expanded Panel — Aligners Dispatched */}
+                  {step.key === "aligners_dispatched" && isExpanded && (
+                    <div style={{ marginLeft: "58px", marginTop: "8px", background: "white", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+                      <p style={{ margin: "0 0 14px", fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Shipment Details</p>
+                      {(() => {
+                        const shippedBatches = (patient.logistics_data?.batches || []).filter((b) => b.shipment_id);
+                        if (shippedBatches.length === 0) {
+                          return <p style={{ margin: 0, fontSize: "13px", color: "#9ca3af", fontStyle: "italic" }}>Shipment details will appear here once your aligners are dispatched.</p>;
+                        }
+                        return (
+                          <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                            {shippedBatches.map((batch) => {
+                              const partnerName = batch.delivery_partner === "Other" ? (batch.delivery_partner_other || "Other") : batch.delivery_partner;
+                              return (
+                                <div key={batch.num} style={{ padding: "12px", background: "#f8f7f5", borderRadius: "10px" }}>
+                                  <p style={{ margin: "0 0 8px", fontSize: "13px", fontWeight: "700", color: "#111827" }}>
+                                    Batch {batch.num}{partnerName ? ` • ${partnerName}` : ""}
+                                  </p>
+                                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                    <div style={{ flex: 1, padding: "8px 12px", borderRadius: "8px", background: "white", border: "1px solid #e5e7eb", fontSize: "13px", color: "#111827", fontWeight: "600", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                      {batch.shipment_id}
+                                    </div>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); handleCopyShipmentId(batch.num, batch.shipment_id); }}
+                                      style={{ flexShrink: 0, padding: "8px 12px", borderRadius: "8px", border: "none", background: copiedNum === batch.num ? "#16a34a" : "#b8905a", color: "white", fontWeight: "700", fontSize: "12px", cursor: "pointer", whiteSpace: "nowrap" }}
+                                    >
+                                      {copiedNum === batch.num ? "Copied!" : "Copy"}
+                                    </button>
+                                  </div>
+                                  {batch.shipment_link && (
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); window.open(batch.shipment_link, "_blank", "noopener,noreferrer"); }}
+                                      style={{ marginTop: "10px", width: "100%", padding: "10px", borderRadius: "8px", border: "none", background: "linear-gradient(135deg, #b8905a, #f59e0b)", color: "white", fontWeight: "700", fontSize: "13px", cursor: "pointer" }}
+                                    >
+                                      Track Shipment
+                                    </button>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
                     </div>
                   )}
 

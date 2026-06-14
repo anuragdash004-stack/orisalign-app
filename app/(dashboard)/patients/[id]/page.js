@@ -27,19 +27,7 @@ const ALL_STEPS = [
 ];
 const MODE_OPTIONS = ["Cash", "Card", "UPI", "Bank Transfer", "Finance"];
 const FINANCE_OPTIONS = ["Bajaj Finance", "HBD Finance", "Poonawalla Finance"];
-
-function calculateBatches(totalSets) {
-  const batches = [];
-  let start = 0;
-  while (start <= totalSets) {
-    const batchSize = start === 0 ? 7 : 6;
-    const end = Math.min(start + batchSize - 1, totalSets);
-    batches.push({ num: batches.length + 1, start, end });
-    if (end >= totalSets) break;
-    start = end + 1;
-  }
-  return batches;
-}
+const DELIVERY_PARTNERS = ["BlueDart", "Delhivery", "Other"];
 
 // ─── Shared styles ────────────────────────────────────────────────────────────
 const card = {
@@ -340,24 +328,14 @@ function PaymentTab({ appointmentId, initialData, actor }) {
 
 // ─── Manufacturing Tab ────────────────────────────────────────────────────────
 function ManufacturingTab({ appointmentId, initialData, actor }) {
-  const [totalSets, setTotalSets] = useState(initialData?.total_sets ?? "");
   const [batches, setBatches] = useState(initialData?.batches || []);
   const [alignerDelivered, setAlignerDelivered] = useState(initialData?.aligner_delivered || "");
   const [saving, setSaving] = useState(null);
   const [savedBatch, setSavedBatch] = useState(null);
 
-  const handleSetupBatches = async () => {
-    const n = parseInt(totalSets);
-    if (isNaN(n) || n < 0) { alert("Enter a valid number of total sets."); return; }
-    const computed = calculateBatches(n);
-    const merged = computed.map((b) => {
-      const existing = batches.find((x) => x.num === b.num);
-      return { ...b, mfg_started: existing?.mfg_started || "", mfg_done: existing?.mfg_done || "", dispatched: existing?.dispatched || "" };
-    });
-    setBatches(merged);
-    await supabase.from("appointments_booking")
-      .update({ manufacturing_data: { total_sets: n, batches: merged, aligner_delivered: alignerDelivered } })
-      .eq("id", appointmentId);
+  const addBatch = () => {
+    const nextNum = batches.length > 0 ? Math.max(...batches.map((b) => b.num)) + 1 : 1;
+    setBatches((prev) => [...prev, { num: nextNum, start: "", end: "", mfg_started: "", mfg_done: "" }]);
   };
 
   const updateBatch = (num, key, val) => {
@@ -365,8 +343,10 @@ function ManufacturingTab({ appointmentId, initialData, actor }) {
   };
 
   const saveBatch = async (num) => {
+    const batch = batches.find((b) => b.num === num);
+    if (batch.start === "" || batch.end === "") { alert("Enter the aligner set range for this batch."); return; }
     setSaving(num);
-    const payload = { total_sets: parseInt(totalSets), batches, aligner_delivered: alignerDelivered };
+    const payload = { batches, aligner_delivered: alignerDelivered };
     const { error } = await supabase
       .from("appointments_booking")
       .update({ manufacturing_data: payload })
@@ -383,7 +363,7 @@ function ManufacturingTab({ appointmentId, initialData, actor }) {
 
   const saveAlignerDelivered = async () => {
     setSaving("delivered");
-    const payload = { total_sets: parseInt(totalSets), batches, aligner_delivered: alignerDelivered };
+    const payload = { batches, aligner_delivered: alignerDelivered };
     const { error } = await supabase
       .from("appointments_booking")
       .update({ manufacturing_data: payload })
@@ -400,38 +380,34 @@ function ManufacturingTab({ appointmentId, initialData, actor }) {
 
   return (
     <div>
-      <div style={card}>
-        <h3 style={{ margin: "0 0 20px", fontSize: "16px", color: "#111827" }}>Manufacturing Setup</h3>
-        <div style={{ display: "flex", gap: "12px", alignItems: "flex-end" }}>
-          <div style={{ flex: 1 }}>
-            <span style={label}>TOTAL SETS</span>
-            <input style={input} type="number" placeholder="e.g. 24" value={totalSets}
-              onChange={(e) => setTotalSets(e.target.value)} />
-          </div>
-          <button style={btnGold} onClick={handleSetupBatches}>Setup Batches</button>
-        </div>
-      </div>
       {batches.map((batch) => (
         <div key={batch.num} style={card}>
           <h4 style={{ margin: "0 0 16px", fontSize: "14px", color: "#b8905a", fontWeight: "800", letterSpacing: "0.5px" }}>
-            BATCH {batch.num} — Sets {batch.start} to {batch.end}
+            BATCH {batch.num}
           </h4>
           <div style={row}>
             <div>
-              <span style={label}>MANUFACTURING STARTED</span>
+              <span style={label}>ALIGNERS FROM</span>
+              <input style={input} type="number" min="0" placeholder="e.g. 0" value={batch.start}
+                onChange={(e) => updateBatch(batch.num, "start", e.target.value)} />
+            </div>
+            <div>
+              <span style={label}>ALIGNERS TO</span>
+              <input style={input} type="number" min="0" placeholder="e.g. 1" value={batch.end}
+                onChange={(e) => updateBatch(batch.num, "end", e.target.value)} />
+            </div>
+          </div>
+          <div style={row}>
+            <div>
+              <span style={label}>MANUFACTURING START DATE</span>
               <input style={input} type="date" value={batch.mfg_started}
                 onChange={(e) => updateBatch(batch.num, "mfg_started", e.target.value)} />
             </div>
             <div>
-              <span style={label}>MANUFACTURING DONE</span>
+              <span style={label}>MANUFACTURING END DATE</span>
               <input style={input} type="date" value={batch.mfg_done}
                 onChange={(e) => updateBatch(batch.num, "mfg_done", e.target.value)} />
             </div>
-          </div>
-          <div style={{ marginBottom: "16px" }}>
-            <span style={label}>DISPATCHED</span>
-            <input style={input} type="date" value={batch.dispatched}
-              onChange={(e) => updateBatch(batch.num, "dispatched", e.target.value)} />
           </div>
           <button
             style={saving === batch.num ? { ...btnPrimary, opacity: 0.6 } : btnPrimary}
@@ -442,6 +418,11 @@ function ManufacturingTab({ appointmentId, initialData, actor }) {
           </button>
         </div>
       ))}
+
+      <div style={card}>
+        <button style={btnGold} onClick={addBatch}>+ Add Batch</button>
+      </div>
+
       {batches.length > 0 && (
         <div style={card}>
           <h4 style={{ margin: "0 0 16px", fontSize: "14px", color: "#111827", fontWeight: "800", letterSpacing: "0.5px" }}>
@@ -463,7 +444,7 @@ function ManufacturingTab({ appointmentId, initialData, actor }) {
             <button
               onClick={async () => {
                 if (!window.confirm("Clear ALL manufacturing data including all batches?")) return;
-                setTotalSets(""); setBatches([]); setAlignerDelivered("");
+                setBatches([]); setAlignerDelivered("");
                 await supabase.from("appointments_booking").update({ manufacturing_data: {} }).eq("id", appointmentId);
               }}
               style={{ padding: "10px 22px", borderRadius: "10px", border: "1px solid #e5e7eb", background: "white", color: "#6b7280", fontWeight: "700", fontSize: "13px", cursor: "pointer" }}
@@ -485,10 +466,12 @@ function LogisticsTab({ appointmentId, manufacturingData, initialData, actor }) 
       const existing = (initialData?.batches || []).find((b) => b.num === mb.num);
       return {
         num: mb.num, start: mb.start, end: mb.end,
-        mfg_started: mb.mfg_started || "", mfg_done: mb.mfg_done || "", dispatched: mb.dispatched || "",
+        mfg_started: mb.mfg_started || "", mfg_done: mb.mfg_done || "",
         aligner_received: existing?.aligner_received || "",
         delivery_partner: existing?.delivery_partner || "",
+        delivery_partner_other: existing?.delivery_partner_other || "",
         shipment_id: existing?.shipment_id || "",
+        shipment_link: existing?.shipment_link || "",
       };
     });
   });
@@ -512,8 +495,8 @@ function LogisticsTab({ appointmentId, manufacturingData, initialData, actor }) 
   const saveBatch = async (num) => {
     setSaving(num);
     const payload = {
-      batches: batches.map(({ num: n, aligner_received, delivery_partner, shipment_id }) => ({
-        num: n, aligner_received, delivery_partner, shipment_id,
+      batches: batches.map(({ num: n, aligner_received, delivery_partner, delivery_partner_other, shipment_id, shipment_link }) => ({
+        num: n, aligner_received, delivery_partner, delivery_partner_other, shipment_id, shipment_link,
       })),
     };
     const { error } = await supabase
@@ -535,13 +518,12 @@ function LogisticsTab({ appointmentId, manufacturingData, initialData, actor }) 
       {batches.map((batch) => (
         <div key={batch.num} style={card}>
           <h4 style={{ margin: "0 0 14px", fontSize: "14px", color: "#b8905a", fontWeight: "800", letterSpacing: "0.5px" }}>
-            BATCH {batch.num} — Sets {batch.start} to {batch.end}
+            BATCH {batch.num} — Aligners {batch.start} to {batch.end}
           </h4>
           <div style={{ marginBottom: "14px" }}>
             {batch.mfg_started && <span style={infoPill}>Started: {batch.mfg_started}</span>}
             {batch.mfg_done && <span style={infoPill}>Done: {batch.mfg_done}</span>}
-            {batch.dispatched && <span style={infoPill}>Dispatched: {batch.dispatched}</span>}
-            {!batch.mfg_started && !batch.mfg_done && !batch.dispatched && (
+            {!batch.mfg_started && !batch.mfg_done && (
               <span style={{ ...infoPill, color: "#9ca3af" }}>No manufacturing dates yet</span>
             )}
           </div>
@@ -553,14 +535,32 @@ function LogisticsTab({ appointmentId, manufacturingData, initialData, actor }) 
             </div>
             <div>
               <span style={label}>DELIVERY PARTNER</span>
-              <input style={input} type="text" placeholder="e.g. BlueDart, Delhivery" value={batch.delivery_partner}
-                onChange={(e) => updateBatch(batch.num, "delivery_partner", e.target.value)} />
+              <select style={select} value={batch.delivery_partner}
+                onChange={(e) => updateBatch(batch.num, "delivery_partner", e.target.value)}>
+                <option value="">Select...</option>
+                {DELIVERY_PARTNERS.map((p) => <option key={p} value={p}>{p}</option>)}
+              </select>
             </div>
           </div>
+          {batch.delivery_partner === "Other" && (
+            <div style={{ marginBottom: "16px" }}>
+              <span style={label}>DELIVERY PARTNER NAME</span>
+              <input style={input} type="text" placeholder="Enter delivery partner name" value={batch.delivery_partner_other}
+                onChange={(e) => updateBatch(batch.num, "delivery_partner_other", e.target.value)} />
+            </div>
+          )}
           <div style={{ marginBottom: "16px" }}>
             <span style={label}>SHIPMENT ID</span>
             <input style={input} type="text" placeholder="Tracking number" value={batch.shipment_id}
               onChange={(e) => updateBatch(batch.num, "shipment_id", e.target.value)} />
+          </div>
+          <div style={{ marginBottom: "16px" }}>
+            <span style={label}>SHIPMENT TRACKING LINK</span>
+            <input style={input} type="url" placeholder="https://..." value={batch.shipment_link}
+              onChange={(e) => updateBatch(batch.num, "shipment_link", e.target.value)} />
+            <p style={{ margin: "6px 0 0", fontSize: "11px", color: "#9ca3af" }}>
+              Patient sees a &quot;Track Shipment&quot; button that opens this link, plus a copyable shipment ID.
+            </p>
           </div>
           <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
             <button
@@ -571,7 +571,7 @@ function LogisticsTab({ appointmentId, manufacturingData, initialData, actor }) 
               {saving === batch.num ? "Saving..." : savedBatch === batch.num ? "Saved ✓" : "Save Batch"}
             </button>
             <button
-              onClick={() => setBatches((prev) => prev.map((b) => b.num === batch.num ? { ...b, aligner_received: "", delivery_partner: "", shipment_id: "" } : b))}
+              onClick={() => setBatches((prev) => prev.map((b) => b.num === batch.num ? { ...b, aligner_received: "", delivery_partner: "", delivery_partner_other: "", shipment_id: "", shipment_link: "" } : b))}
               style={{ padding: "10px 22px", borderRadius: "10px", border: "1px solid #e5e7eb", background: "white", color: "#6b7280", fontWeight: "700", fontSize: "13px", cursor: "pointer" }}
             >
               Clear
@@ -584,7 +584,7 @@ function LogisticsTab({ appointmentId, manufacturingData, initialData, actor }) 
           <button
             onClick={async () => {
               if (!window.confirm("Clear ALL logistics data?")) return;
-              setBatches((prev) => prev.map((b) => ({ ...b, aligner_received: "", delivery_partner: "", shipment_id: "" })));
+              setBatches((prev) => prev.map((b) => ({ ...b, aligner_received: "", delivery_partner: "", delivery_partner_other: "", shipment_id: "", shipment_link: "" })));
               await supabase.from("appointments_booking").update({ logistics_data: {} }).eq("id", appointmentId);
             }}
             style={{ padding: "8px 18px", borderRadius: "10px", border: "1px solid #fecaca", background: "#fef2f2", color: "#dc2626", fontWeight: "700", fontSize: "13px", cursor: "pointer" }}
