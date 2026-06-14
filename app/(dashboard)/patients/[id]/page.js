@@ -11,7 +11,7 @@ const TABS = ["Payment", "Manufacturing", "Logistics", "Journey", "Patient Page"
 const ALL_STEPS = [
   { key: "booked",                  label: "Appointment Booked" },
   { key: "confirmed",               label: "Appointment Confirmed" },
-  { key: "scanning_done",           label: "Scanning & Planning" },
+  { key: "scanning_done",           label: "Scanning and Provisional Planning" },
   { key: "payment_done",            label: "Price & Payment" },
   { key: "planning_done",           label: "Planning Done" },
   { key: "plan_approved",           label: "Plan Approved" },
@@ -82,6 +82,17 @@ const readonlyInput = {
 const select = {
   ...input,
   cursor: "pointer",
+};
+
+const subBox = {
+  marginTop: "8px",
+  padding: "16px",
+  borderRadius: "12px",
+  border: "1px solid #e5e7eb",
+  background: "#fafafa",
+  display: "flex",
+  flexDirection: "column",
+  gap: "10px",
 };
 
 const btnPrimary = {
@@ -623,9 +634,110 @@ function PatientPageTab({ appointmentId }) {
 }
 
 // ─── Journey Tab (admin only) ─────────────────────────────────────────────────
+const PAYMENT_PUSH_OPTIONS = [
+  { value: "down_payment", label: "Down Payment" },
+  { value: "full", label: "Full Payment" },
+  { value: "pending", label: "Pending Amount" },
+  { value: "others", label: "Others" },
+];
+
 function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
   const [steps, setSteps] = useState(() => deriveSteps(appt));
   const [saving, setSaving] = useState(null);
+
+  // Part A — Scanning & Provisional Planning video
+  const [scanningVideoUrl, setScanningVideoUrl] = useState(appt.scanning_video_url || "");
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+
+  // Part B — Price & Payment: payment type to push
+  const [paymentType, setPaymentType] = useState(appt.payment_type_to_collect || "down_payment");
+  const [customAmount, setCustomAmount] = useState(appt.payment_custom_amount ? String(appt.payment_custom_amount) : "");
+  const [pushing, setPushing] = useState(false);
+  const [pushed, setPushed] = useState(false);
+
+  // Part C — Planning Done: review link
+  const [reviewLink, setReviewLink] = useState(appt.review_link || "");
+  const [savingLink, setSavingLink] = useState(false);
+  const [linkSaved, setLinkSaved] = useState(false);
+
+  const handleVideoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !isAdmin) return;
+    setUploadingVideo(true);
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const path = `appointments/${appointmentId}/scanning/video_${Date.now()}_${safeName}`;
+    const { error: uploadError } = await supabase.storage.from("patient-docs").upload(path, file, { upsert: true });
+    if (uploadError) {
+      setUploadingVideo(false);
+      alert("Failed to upload video: " + uploadError.message);
+      return;
+    }
+    const { data: { publicUrl } } = supabase.storage.from("patient-docs").getPublicUrl(path);
+    const { error: updateError } = await supabase
+      .from("appointments_booking")
+      .update({ scanning_video_url: publicUrl })
+      .eq("id", appointmentId);
+    setUploadingVideo(false);
+    if (updateError) {
+      alert("Failed to save video: " + updateError.message);
+      return;
+    }
+    setScanningVideoUrl(publicUrl);
+    logAudit({ appointmentId, actor, action: "Scanning & Planning Video Uploaded", entity: "scanning_video_url", newData: { scanning_video_url: publicUrl, file_name: file.name } });
+  };
+
+  const removeVideo = async () => {
+    if (!window.confirm("Remove this video?")) return;
+    const { error } = await supabase.from("appointments_booking").update({ scanning_video_url: null }).eq("id", appointmentId);
+    if (error) { alert("Failed to remove video: " + error.message); return; }
+    setScanningVideoUrl("");
+    logAudit({ appointmentId, actor, action: "Scanning & Planning Video Removed", entity: "scanning_video_url", newData: { scanning_video_url: null } });
+  };
+
+  const pushPaymentType = async () => {
+    if (paymentType === "others" && !(parseFloat(customAmount) > 0)) {
+      alert("Enter a valid custom amount.");
+      return;
+    }
+    setPushing(true);
+    try {
+      const res = await fetch("/api/set-payment-type", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          appointmentId,
+          paymentType,
+          customAmount: paymentType === "others" ? parseFloat(customAmount) : undefined,
+          actorEmail: actor?.email,
+          actorRole: actor?.role,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || json.error) {
+        alert("Failed: " + (json.error || "Unknown error"));
+        return;
+      }
+      setPushed(true);
+      setTimeout(() => setPushed(false), 3000);
+    } catch {
+      alert("Network error. Please try again.");
+    } finally {
+      setPushing(false);
+    }
+  };
+
+  const saveReviewLink = async () => {
+    setSavingLink(true);
+    const { error } = await supabase
+      .from("appointments_booking")
+      .update({ review_link: reviewLink.trim() || null })
+      .eq("id", appointmentId);
+    setSavingLink(false);
+    if (error) { alert("Failed to save link: " + error.message); return; }
+    logAudit({ appointmentId, actor, action: "Planning Review Link Saved", entity: "review_link", newData: { review_link: reviewLink.trim() || null } });
+    setLinkSaved(true);
+    setTimeout(() => setLinkSaved(false), 3000);
+  };
 
   const toggle = async (key) => {
     if (!isAdmin) return;
@@ -681,38 +793,119 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
           const done = !!steps[step.key];
           const isSaving = saving === step.key;
           return (
-            <div key={step.key} style={{
-              display: "flex", alignItems: "center", gap: "12px",
-              borderRadius: "12px", padding: "14px 16px",
-              border: `1px solid ${done ? "#bbf7d0" : "#e5e7eb"}`,
-              background: done ? "linear-gradient(135deg, #f0fdf4, #dcfce7)" : "white",
-              boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
-            }}>
+            <div key={step.key}>
               <div style={{
-                width: "36px", height: "36px", borderRadius: "8px", flexShrink: 0,
-                background: done ? "linear-gradient(135deg, #22c55e, #16a34a)" : "#f3f4f6",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                color: done ? "white" : "#9ca3af", fontWeight: "700", fontSize: "13px",
+                display: "flex", alignItems: "center", gap: "12px",
+                borderRadius: "12px", padding: "14px 16px",
+                border: `1px solid ${done ? "#bbf7d0" : "#e5e7eb"}`,
+                background: done ? "linear-gradient(135deg, #f0fdf4, #dcfce7)" : "white",
+                boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
               }}>
-                {done ? "✓" : i + 1}
+                <div style={{
+                  width: "36px", height: "36px", borderRadius: "8px", flexShrink: 0,
+                  background: done ? "linear-gradient(135deg, #22c55e, #16a34a)" : "#f3f4f6",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  color: done ? "white" : "#9ca3af", fontWeight: "700", fontSize: "13px",
+                }}>
+                  {done ? "✓" : i + 1}
+                </div>
+                <p style={{ margin: 0, flex: 1, fontSize: "14px", fontWeight: done ? "700" : "500", color: done ? "#15803d" : "#374151" }}>
+                  {step.label}
+                </p>
+                {isAdmin && (
+                  <button
+                    onClick={() => toggle(step.key)}
+                    disabled={isSaving}
+                    style={{
+                      padding: "6px 14px", borderRadius: "8px", border: "none", cursor: isSaving ? "not-allowed" : "pointer",
+                      background: done ? "#fee2e2" : "#111827",
+                      color: done ? "#dc2626" : "white",
+                      fontWeight: "700", fontSize: "12px", flexShrink: 0,
+                      opacity: isSaving ? 0.6 : 1,
+                    }}
+                  >
+                    {isSaving ? "..." : done ? "Undo" : "Mark Done"}
+                  </button>
+                )}
               </div>
-              <p style={{ margin: 0, flex: 1, fontSize: "14px", fontWeight: done ? "700" : "500", color: done ? "#15803d" : "#374151" }}>
-                {step.label}
-              </p>
-              {isAdmin && (
-                <button
-                  onClick={() => toggle(step.key)}
-                  disabled={isSaving}
-                  style={{
-                    padding: "6px 14px", borderRadius: "8px", border: "none", cursor: isSaving ? "not-allowed" : "pointer",
-                    background: done ? "#fee2e2" : "#111827",
-                    color: done ? "#dc2626" : "white",
-                    fontWeight: "700", fontSize: "12px", flexShrink: 0,
-                    opacity: isSaving ? 0.6 : 1,
-                  }}
-                >
-                  {isSaving ? "..." : done ? "Undo" : "Mark Done"}
-                </button>
+
+              {/* Part A — Scanning & Provisional Planning video upload */}
+              {isAdmin && step.key === "scanning_done" && (
+                <div style={subBox}>
+                  <span style={label}>PROVISIONAL PLANNING VIDEO (any format)</span>
+                  {scanningVideoUrl ? (
+                    <>
+                      <video controls src={scanningVideoUrl} style={{ width: "100%", maxHeight: "260px", borderRadius: "8px", background: "#000" }} />
+                      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                        <label style={{ ...btnPrimary, background: "#6b7280", cursor: uploadingVideo ? "not-allowed" : "pointer", opacity: uploadingVideo ? 0.6 : 1 }}>
+                          {uploadingVideo ? "Uploading..." : "Replace Video"}
+                          <input type="file" onChange={handleVideoUpload} disabled={uploadingVideo} style={{ display: "none" }} />
+                        </label>
+                        <button onClick={removeVideo} disabled={uploadingVideo} style={{ padding: "10px 22px", borderRadius: "10px", border: "1px solid #fecaca", background: "#fff", color: "#dc2626", fontWeight: "700", fontSize: "13px", cursor: uploadingVideo ? "not-allowed" : "pointer" }}>
+                          Remove
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <label style={{ ...btnGold, display: "inline-block", textAlign: "center", cursor: uploadingVideo ? "not-allowed" : "pointer", opacity: uploadingVideo ? 0.6 : 1 }}>
+                      {uploadingVideo ? "Uploading..." : "Upload Video"}
+                      <input type="file" onChange={handleVideoUpload} disabled={uploadingVideo} style={{ display: "none" }} />
+                    </label>
+                  )}
+                  <p style={{ margin: 0, fontSize: "11px", color: "#9ca3af" }}>
+                    Visible to the patient on their journey page — they can view and download it.
+                  </p>
+                </div>
+              )}
+
+              {/* Part B — Price & Payment: select which payment to push */}
+              {isAdmin && step.key === "payment_done" && (
+                <div style={subBox}>
+                  <span style={label}>PAYMENT TO PUSH TO PATIENT</span>
+                  <select style={select} value={paymentType} onChange={(e) => setPaymentType(e.target.value)}>
+                    {PAYMENT_PUSH_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                  {paymentType === "others" && (
+                    <input
+                      style={input}
+                      type="number"
+                      placeholder="Enter amount (₹)"
+                      value={customAmount}
+                      onChange={(e) => setCustomAmount(e.target.value)}
+                    />
+                  )}
+                  <button
+                    style={pushing ? { ...btnPrimary, opacity: 0.6 } : btnPrimary}
+                    onClick={pushPaymentType}
+                    disabled={pushing}
+                  >
+                    {pushing ? "Pushing..." : pushed ? "Pushed ✓" : "Push to Patient"}
+                  </button>
+                </div>
+              )}
+
+              {/* Part C — Planning Done: review link */}
+              {isAdmin && step.key === "planning_done" && (
+                <div style={subBox}>
+                  <span style={label}>TREATMENT PLAN REVIEW LINK</span>
+                  <input
+                    style={input}
+                    type="url"
+                    placeholder="https://..."
+                    value={reviewLink}
+                    onChange={(e) => setReviewLink(e.target.value)}
+                  />
+                  <button
+                    style={savingLink ? { ...btnPrimary, opacity: 0.6 } : btnPrimary}
+                    onClick={saveReviewLink}
+                    disabled={savingLink}
+                  >
+                    {savingLink ? "Saving..." : linkSaved ? "Saved ✓" : "Save Link"}
+                  </button>
+                  <p style={{ margin: 0, fontSize: "11px", color: "#9ca3af" }}>
+                    Appears to the patient as a &quot;Review&quot; button that opens this link in a new tab.
+                  </p>
+                </div>
               )}
             </div>
           );

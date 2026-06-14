@@ -11,6 +11,7 @@ const supabase = createClient(
 interface SetPaymentTypeRequest {
   appointmentId: string;
   paymentType: PaymentType;
+  customAmount?: number;
   actorEmail?: string;
   actorRole?: string;
 }
@@ -24,14 +25,15 @@ interface SetPaymentTypeRequest {
  *
  * Body: {
  *   appointmentId: string,
- *   paymentType: "down_payment" | "pending" | "full",
+ *   paymentType: "down_payment" | "pending" | "full" | "others",
+ *   customAmount?: number (required when paymentType is "others"),
  *   actorEmail?: string (optional, for audit logging)
  *   actorRole?: string (optional, defaults to "admin")
  * }
  */
 export async function POST(req: Request) {
   try {
-    const { appointmentId, paymentType, actorEmail, actorRole } =
+    const { appointmentId, paymentType, customAmount, actorEmail, actorRole } =
       (await req.json()) as SetPaymentTypeRequest;
     const { ip, userAgent } = getClientInfo(req);
 
@@ -43,9 +45,16 @@ export async function POST(req: Request) {
       );
     }
 
-    if (!["down_payment", "pending", "full"].includes(paymentType)) {
+    if (!["down_payment", "pending", "full", "others"].includes(paymentType)) {
       return NextResponse.json(
-        { error: "Invalid paymentType. Must be: down_payment, pending, or full" },
+        { error: "Invalid paymentType. Must be: down_payment, pending, full, or others" },
+        { status: 400 }
+      );
+    }
+
+    if (paymentType === "others" && !(Number(customAmount) > 0)) {
+      return NextResponse.json(
+        { error: "customAmount is required and must be greater than 0 when paymentType is 'others'" },
         { status: 400 }
       );
     }
@@ -53,7 +62,7 @@ export async function POST(req: Request) {
     // Fetch current appointment state for audit
     const { data: appt, error: fetchError } = await supabase
       .from("appointments_booking")
-      .select("id, name, payment_data, payment_type_to_collect")
+      .select("id, name, payment_data, payment_type_to_collect, payment_custom_amount")
       .eq("id", appointmentId)
       .single();
 
@@ -69,14 +78,21 @@ export async function POST(req: Request) {
       down_payment: "Down Payment",
       pending: "Pending Amount",
       full: "Full Amount",
+      others: "Custom Amount",
     };
+
+    const newCustomAmount = paymentType === "others" ? Number(customAmount) : null;
 
     // Update appointment with new payment type
     const { error: updateError } = await supabase
       .from("appointments_booking")
       .update({
         payment_type_to_collect: paymentType,
-        payment_type_description: `${paymentLabels[paymentType]} set by ${actorRole || "admin"}`,
+        payment_custom_amount: newCustomAmount,
+        payment_type_description:
+          paymentType === "others"
+            ? `Custom Amount (₹${newCustomAmount}) set by ${actorRole || "admin"}`
+            : `${paymentLabels[paymentType]} set by ${actorRole || "admin"}`,
       })
       .eq("id", appointmentId);
 
@@ -98,11 +114,13 @@ export async function POST(req: Request) {
       newData: {
         payment_type_to_collect: paymentType,
         payment_type_label: paymentLabels[paymentType],
+        payment_custom_amount: newCustomAmount,
         payment_data: appt.payment_data,
       },
       oldData: {
         payment_type_to_collect: oldPaymentType,
         payment_type_label: paymentLabels[oldPaymentType as PaymentType],
+        payment_custom_amount: appt.payment_custom_amount ?? null,
       },
       ipAddress: ip,
       userAgent,
@@ -113,6 +131,7 @@ export async function POST(req: Request) {
       message: `Payment type set to ${paymentLabels[paymentType]}`,
       appointmentId,
       paymentType,
+      customAmount: newCustomAmount,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Server error";
@@ -140,7 +159,7 @@ export async function GET(req: Request) {
 
     const { data: appt, error } = await supabase
       .from("appointments_booking")
-      .select("payment_type_to_collect, payment_data")
+      .select("payment_type_to_collect, payment_data, payment_custom_amount")
       .eq("id", appointmentId)
       .single();
 
@@ -155,6 +174,7 @@ export async function GET(req: Request) {
       appointmentId,
       paymentType: appt.payment_type_to_collect || "down_payment",
       paymentData: appt.payment_data || {},
+      customAmount: appt.payment_custom_amount ?? null,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Server error";

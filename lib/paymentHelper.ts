@@ -3,7 +3,7 @@
  * Handles payment type selection and amount calculations
  */
 
-export type PaymentType = "down_payment" | "pending" | "full";
+export type PaymentType = "down_payment" | "pending" | "full" | "others";
 
 export interface PaymentData {
   full_amount?: number;
@@ -11,6 +11,7 @@ export interface PaymentData {
   down_payment?: number;
   pending_amount?: number;
   payment_type_to_collect?: PaymentType;
+  payment_custom_amount?: number;
   [key: string]: any;
 }
 
@@ -27,6 +28,7 @@ export function getAmountToCollect(
   const full = Number(paymentData.full_amount) || 0;
   const down = Number(paymentData.down_payment) || 0;
   const pending = Number(paymentData.pending_amount) || 0;
+  const custom = Number(paymentData.payment_custom_amount) || 0;
 
   switch (paymentType) {
     case "down_payment":
@@ -35,6 +37,8 @@ export function getAmountToCollect(
       return Math.round(pending * 100); // Convert to paise
     case "full":
       return Math.round(full * 100); // Convert to paise
+    case "others":
+      return Math.round(custom * 100); // Convert to paise
     default:
       return Math.round(down * 100); // Default to down payment
   }
@@ -51,6 +55,8 @@ export function getPaymentTypeLabel(paymentType: PaymentType): string {
       return "Pending Amount";
     case "full":
       return "Full Payment";
+    case "others":
+      return "Custom Amount";
     default:
       return "Payment";
   }

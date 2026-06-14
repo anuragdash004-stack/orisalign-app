@@ -10,7 +10,7 @@ const supabase = getSupabaseClient();
 const JOURNEY_STEPS = [
   { key: "booked",                  label: "Appointment Booked" },
   { key: "confirmed",               label: "Appointment Confirmed" },
-  { key: "scanning_done",           label: "Scanning & Planning",        expandable: true },
+  { key: "scanning_done",           label: "Scanning and Provisional Planning", expandable: true },
   { key: "payment_done",            label: "Price & Payment",            expandable: true },
   { key: "planning_done",           label: "Planning Done" },
   { key: "plan_approved",           label: "Plan Approval", subtext: "Review and approve your treatment plan to begin fabrication", approveAction: true },
@@ -248,12 +248,20 @@ export default function PatientJourney() {
                             </button>
                           )
                         )}
+                        {step.key === "planning_done" && patient.review_link && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); window.open(patient.review_link, "_blank", "noopener,noreferrer"); }}
+                            style={{ flexShrink: 0, padding: "7px 14px", borderRadius: "8px", border: "none", background: "#b8905a", color: "white", fontWeight: "700", fontSize: "12px", cursor: "pointer", whiteSpace: "nowrap" }}
+                          >
+                            Review
+                          </button>
+                        )}
                         {isClickable && !step.approveAction && <span style={{ fontSize: "12px", color: done ? "#16a34a" : "#9ca3af", flexShrink: 0, marginLeft: "8px" }}>{isExpanded ? "▲" : "▼"}</span>}
                       </div>
                     </div>
                   </div>
 
-                  {/* Expanded Panel — Scanning & Planning */}
+                  {/* Expanded Panel — Scanning and Provisional Planning */}
                   {step.key === "scanning_done" && isExpanded && (
                     <div style={{ marginLeft: "58px", marginTop: "8px", background: "white", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
                       <p style={{ margin: "0 0 10px", fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Your Provisional Plan</p>
@@ -261,6 +269,19 @@ export default function PatientJourney() {
                         <p style={{ margin: 0, fontSize: "14px", color: "#111827", lineHeight: "1.6", whiteSpace: "pre-wrap" }}>{patient.provisional_plan}</p>
                       ) : (
                         <p style={{ margin: 0, fontSize: "13px", color: "#9ca3af", fontStyle: "italic" }}>Your treatment plan is being prepared. Please check back soon.</p>
+                      )}
+                      {patient.scanning_video_url && (
+                        <div style={{ marginTop: "14px" }}>
+                          <p style={{ margin: "0 0 10px", fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Provisional Planning Video</p>
+                          <video controls src={patient.scanning_video_url} style={{ width: "100%", borderRadius: "10px", background: "#000" }} />
+                          <a
+                            href={`${patient.scanning_video_url}${patient.scanning_video_url.includes("?") ? "&" : "?"}download=`}
+                            target="_blank" rel="noopener noreferrer"
+                            style={{ marginTop: "10px", display: "block", padding: "12px", borderRadius: "10px", background: "#f3f4f6", color: "#374151", fontWeight: "700", fontSize: "13px", textAlign: "center", textDecoration: "none" }}
+                          >
+                            ⬇ Download Video
+                          </a>
+                        </div>
                       )}
                     </div>
                   )}
