@@ -6,7 +6,7 @@ import { logAudit } from "@/lib/logAudit";
 
 const supabase = getSupabaseClient();
 
-const TABS = ["Payment", "Manufacturing", "Logistics", "Journey", "Patient Page", "Messages"];
+const TABS = ["Payment", "Manufacturing", "Logistics", "Journey", "Patient Page", "Messages", "Report"];
 
 const ALL_STEPS = [
   { key: "booked",                  label: "Appointment Booked" },
@@ -1229,6 +1229,181 @@ function MessagesTab({ appointmentId, recipientEmail, actor }) {
   );
 }
 
+// ─── Report Tab ───────────────────────────────────────────────────────────────
+function ReportTab({ appointmentId, appt }) {
+  const [logs, setLogs] = useState([]);
+
+  useEffect(() => {
+    fetch(`/api/audit-log?appointmentId=${appointmentId}`)
+      .then((r) => r.json())
+      .then((d) => setLogs(d.logs || []))
+      .catch(() => {});
+  }, [appointmentId]);
+
+  const steps = deriveSteps(appt);
+  const js = appt.journey_steps || {};
+  const pd = { ...EMPTY_PAYMENT, ...(appt.payment_data || {}) };
+  const fullAmt = parseFloat(pd.full_amount) || 0;
+  const disc = parseFloat(pd.discount) || 0;
+  const couponDisc = parseFloat(pd.coupon_discount) || 0;
+  const finalAmt = pd.final_amount !== undefined && pd.final_amount !== "" && pd.final_amount !== null
+    ? Number(pd.final_amount)
+    : Math.max(0, fullAmt - disc - couponDisc);
+  const downPmt = parseFloat(pd.down_payment) || 0;
+  const pendingAmt = pd.pending_amount !== undefined && pd.pending_amount !== "" && pd.pending_amount !== null
+    ? Number(pd.pending_amount)
+    : Math.max(0, finalAmt - downPmt);
+  const hasPaymentData = !!(pd.full_amount || pd.down_payment || appt.payment_data?.final_amount);
+
+  const fmt = (iso) => {
+    if (!iso) return null;
+    return new Date(iso).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
+  };
+
+  // audit-log entries are returned newest-first, so the first match is the latest one
+  const findDoneLog = (label) => logs.find((l) => l.action === `Step Marked Done: ${label}`);
+
+  const stepInfo = ALL_STEPS.map((step) => {
+    const done = !!steps[step.key];
+    let timestamp = null;
+    let actorEmail = null;
+    let note = null;
+
+    if (step.key === "booked") {
+      timestamp = appt.created_at;
+    } else if (step.key === "scanning_done" && appt.appointment_started_at) {
+      timestamp = appt.appointment_started_at;
+      note = "Verified via patient OTP";
+    } else if (step.key === "plan_approved" && (js.plan_approved_at || appt.plan_approved_at)) {
+      timestamp = js.plan_approved_at || appt.plan_approved_at;
+      note = `Verified via patient OTP${appt.plan_approval_ip ? ` · IP ${appt.plan_approval_ip}` : ""}`;
+    } else {
+      const log = findDoneLog(step.label);
+      if (log) {
+        timestamp = log.created_at;
+        actorEmail = log.actor_email;
+      }
+    }
+
+    return { ...step, done, timestamp, actorEmail, note };
+  });
+
+  const doneCount = stepInfo.filter((s) => s.done).length;
+
+  return (
+    <div>
+      <div style={{ ...card, marginBottom: "16px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "8px" }}>
+          <h3 style={{ margin: 0, fontSize: "16px", color: "#111827" }}>Patient Journey Report</h3>
+          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+            <span style={{ fontSize: "13px", color: "#6b7280" }}>{doneCount} / {stepInfo.length} steps completed</span>
+            <div style={{ height: "8px", width: "120px", borderRadius: "99px", background: "#e5e7eb", overflow: "hidden" }}>
+              <div style={{ height: "100%", borderRadius: "99px", width: `${Math.round((doneCount / stepInfo.length) * 100)}%`, background: "linear-gradient(90deg, #22c55e, #16a34a)", transition: "width 0.4s ease" }} />
+            </div>
+          </div>
+        </div>
+        <p style={{ margin: "10px 0 0", fontSize: "12px", color: "#9ca3af" }}>
+          A complete stepwise record of this patient&apos;s treatment journey — dates, times, and details for every milestone.
+        </p>
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+        {stepInfo.map((step, i) => (
+          <div
+            key={step.key}
+            style={{
+              ...card,
+              marginBottom: 0,
+              border: `1px solid ${step.done ? "#bbf7d0" : "#e5e7eb"}`,
+              background: step.done ? "linear-gradient(135deg, #f9fefb, #ffffff)" : "white",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
+              <div style={{
+                width: "32px", height: "32px", borderRadius: "8px", flexShrink: 0,
+                background: step.done ? "linear-gradient(135deg, #22c55e, #16a34a)" : "#f3f4f6",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                color: step.done ? "white" : "#9ca3af", fontWeight: "700", fontSize: "13px",
+              }}>
+                {step.done ? "✓" : i + 1}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                  <h4 style={{ margin: 0, fontSize: "14px", color: step.done ? "#15803d" : "#374151" }}>{step.label}</h4>
+                  <span style={pillStyle(step.done ? "#dcfce7" : "#f3f4f6", step.done ? "#16a34a" : "#9ca3af")}>
+                    {step.done ? "COMPLETED" : "PENDING"}
+                  </span>
+                </div>
+
+                {step.done && step.timestamp && (
+                  <p style={{ margin: "6px 0 0", fontSize: "13px", color: "#6b7280" }}>
+                    {fmt(step.timestamp)}
+                    {step.actorEmail ? ` · by ${step.actorEmail}` : ""}
+                    {step.note ? ` · ${step.note}` : ""}
+                  </p>
+                )}
+                {step.done && !step.timestamp && (
+                  <p style={{ margin: "6px 0 0", fontSize: "13px", color: "#9ca3af" }}>Completed (timestamp not recorded)</p>
+                )}
+
+                {/* Payment breakdown */}
+                {step.key === "payment_done" && hasPaymentData && (
+                  <div style={{ marginTop: "12px", paddingTop: "12px", borderTop: "1px dashed #e5e7eb" }}>
+                    <PaymentSummaryRow label="Full Amount" value={inr(pd.full_amount)} />
+                    {parseFloat(pd.discount) > 0 && (
+                      <PaymentSummaryRow label="Discount" value={`− ${inr(pd.discount)}`} />
+                    )}
+                    {(pd.coupon_code || parseFloat(pd.coupon_discount) > 0) && (
+                      <PaymentSummaryRow
+                        label={pd.coupon_code ? `Coupon (${pd.coupon_code})` : "Coupon"}
+                        value={`− ${inr(pd.coupon_discount)}`}
+                      />
+                    )}
+                    <PaymentSummaryRow label="Final Amount (after discount)" value={inr(finalAmt)} />
+                    <PaymentSummaryRow
+                      label="Down Payment Given"
+                      value={`${inr(pd.down_payment)} · ${pd.down_payment_mode}${pd.down_payment_mode === "Finance" ? ` (${pd.finance_provider})` : ""}`}
+                    />
+                    <PaymentSummaryRow
+                      label="Pending Amount"
+                      value={`${inr(pendingAmt)} · to be paid via ${pd.pending_mode}${pd.pending_mode === "Finance" ? ` (${pd.finance_provider})` : ""}`}
+                    />
+                  </div>
+                )}
+
+                {/* Scanning & Provisional Planning extras */}
+                {step.key === "scanning_done" && (appt.scanning_video_url || appt.scanning_review_link) && (
+                  <div style={{ marginTop: "10px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                    {appt.scanning_video_url && (
+                      <a href={appt.scanning_video_url} target="_blank" rel="noopener noreferrer" style={{ ...infoPill, textDecoration: "none" }}>
+                        📹 Provisional Planning Video
+                      </a>
+                    )}
+                    {appt.scanning_review_link && (
+                      <a href={appt.scanning_review_link} target="_blank" rel="noopener noreferrer" style={{ ...infoPill, textDecoration: "none" }}>
+                        🔗 Pre-Treatment Scanning Review
+                      </a>
+                    )}
+                  </div>
+                )}
+
+                {/* Planning Done extras */}
+                {step.key === "planning_done" && appt.review_link && (
+                  <div style={{ marginTop: "10px" }}>
+                    <a href={appt.review_link} target="_blank" rel="noopener noreferrer" style={{ ...infoPill, textDecoration: "none" }}>
+                      🔗 Treatment Plan Review
+                    </a>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function PatientDetailPage() {
   const { id } = useParams();
@@ -1342,6 +1517,9 @@ export default function PatientDetailPage() {
       </div>
       <div style={{ display: activeTab === "Messages" ? "block" : "none" }}>
         <MessagesTab appointmentId={id} recipientEmail={appt.email} actor={actor} />
+      </div>
+      <div style={{ display: activeTab === "Report" ? "block" : "none" }}>
+        <ReportTab appointmentId={id} appt={appt} />
       </div>
     </div>
   );

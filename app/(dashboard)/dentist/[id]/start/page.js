@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { useParams, useRouter } from "next/navigation";
+import { logAudit } from "@/lib/logAudit";
 
 const supabase = getSupabaseClient();
 
@@ -67,10 +68,20 @@ export default function StartAppointment() {
     }
 
     // Clear OTP and mark appointment as started
+    const startedAt = new Date().toISOString();
     await supabase
       .from("appointments_booking")
-      .update({ otp: null, otp_expires_at: null, appointment_started: true })
+      .update({ otp: null, otp_expires_at: null, appointment_started: true, appointment_started_at: startedAt })
       .eq("id", id);
+
+    const { data: authData } = await supabase.auth.getUser();
+    logAudit({
+      appointmentId: id,
+      actor: { email: authData?.user?.email || null, role: "dentist" },
+      action: "Appointment Started (OTP Verified)",
+      entity: "appointment_started",
+      newData: { appointment_started: true, appointment_started_at: startedAt },
+    });
 
     // Go to appointment workflow
     router.push(`/dentist/${id}/appointment`);
