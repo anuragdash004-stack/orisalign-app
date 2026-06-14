@@ -1456,6 +1456,9 @@ function ReportTab({ appointmentId, appt }) {
     ? Number(pd.pending_amount)
     : Math.max(0, finalAmt - downPmt);
   const hasPaymentData = !!(pd.full_amount || pd.down_payment || appt.payment_data?.final_amount);
+  const manufacturingData = appt.manufacturing_data || {};
+  const manufacturingBatches = manufacturingData.batches || [];
+  const logisticsBatches = appt.logistics_data?.batches || [];
 
   const fmt = (iso) => {
     if (!iso) return null;
@@ -1605,11 +1608,75 @@ function ReportTab({ appointmentId, appt }) {
                 )}
 
                 {/* Planning Done extras */}
-                {step.key === "planning_done" && appt.review_link && (
-                  <div style={{ marginTop: "10px" }}>
-                    <a href={appt.review_link} target="_blank" rel="noopener noreferrer" style={{ ...infoPill, textDecoration: "none" }}>
-                      🔗 Treatment Plan Review
-                    </a>
+                {step.key === "planning_done" && (appt.aligner_total_sets || appt.review_link) && (
+                  <div style={{ marginTop: "12px", paddingTop: "12px", borderTop: "1px dashed #e5e7eb" }}>
+                    {appt.aligner_total_sets && appt.aligner_days_per_set && (
+                      <div style={{ marginBottom: "10px" }}>
+                        <PaymentSummaryRow label="Total Number of Sets" value={appt.aligner_total_sets} />
+                        <PaymentSummaryRow label="Wear Duration per Set" value={`${appt.aligner_days_per_set} days`} />
+                        <PaymentSummaryRow
+                          label="Total Treatment Duration"
+                          value={`${appt.aligner_total_sets * appt.aligner_days_per_set} days (~${Math.round((appt.aligner_total_sets * appt.aligner_days_per_set) / 30)} months)`}
+                        />
+                      </div>
+                    )}
+                    {appt.review_link && (
+                      <a href={appt.review_link} target="_blank" rel="noopener noreferrer" style={{ ...infoPill, textDecoration: "none" }}>
+                        🔗 Treatment Plan Review
+                      </a>
+                    )}
+                  </div>
+                )}
+
+                {/* Manufacturing Completed extras */}
+                {step.key === "manufacturing_completed" && (manufacturingBatches.length > 0 || manufacturingData.aligner_delivered) && (
+                  <div style={{ marginTop: "12px", paddingTop: "12px", borderTop: "1px dashed #e5e7eb" }}>
+                    <p style={{ margin: "0 0 8px", fontSize: "11px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Manufacturing Batches</p>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                      {manufacturingBatches.map((b) => (
+                        <div key={b.num} style={{ padding: "8px 12px", background: "#f8f7f5", borderRadius: "8px" }}>
+                          <p style={{ margin: 0, fontSize: "13px", fontWeight: "700", color: "#111827" }}>Batch {b.num} · Aligners {b.start}–{b.end}</p>
+                          <p style={{ margin: "4px 0 0", fontSize: "12px", color: "#6b7280" }}>
+                            {b.mfg_started ? `Started: ${b.mfg_started}` : "Not started"}{b.mfg_done ? ` · Done: ${b.mfg_done}` : ""}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                    {manufacturingData.aligner_delivered && (
+                      <p style={{ margin: "10px 0 0", fontSize: "13px", color: "#374151" }}>
+                        <strong>Aligners Delivered to Clinic:</strong> {manufacturingData.aligner_delivered}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Aligners Dispatched extras */}
+                {step.key === "aligners_dispatched" && logisticsBatches.length > 0 && (
+                  <div style={{ marginTop: "12px", paddingTop: "12px", borderTop: "1px dashed #e5e7eb" }}>
+                    <p style={{ margin: "0 0 8px", fontSize: "11px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Shipment Details</p>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                      {logisticsBatches.map((b) => {
+                        const partnerName = b.delivery_partner === "Other" ? (b.delivery_partner_other || "Other") : b.delivery_partner;
+                        return (
+                          <div key={b.num} style={{ padding: "8px 12px", background: "#f8f7f5", borderRadius: "8px" }}>
+                            <p style={{ margin: 0, fontSize: "13px", fontWeight: "700", color: "#111827" }}>
+                              Batch {b.num}{partnerName ? ` · ${partnerName}` : ""}
+                            </p>
+                            {b.shipment_id && (
+                              <p style={{ margin: "4px 0 0", fontSize: "12px", color: "#6b7280" }}>Shipment ID: {b.shipment_id}</p>
+                            )}
+                            {b.aligner_received && (
+                              <p style={{ margin: "4px 0 0", fontSize: "12px", color: "#6b7280" }}>Received by patient: {b.aligner_received}</p>
+                            )}
+                            {b.shipment_link && (
+                              <a href={b.shipment_link} target="_blank" rel="noopener noreferrer" style={{ ...infoPill, textDecoration: "none", marginTop: "6px", display: "inline-block" }}>
+                                🔗 Track Shipment
+                              </a>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
               </div>
