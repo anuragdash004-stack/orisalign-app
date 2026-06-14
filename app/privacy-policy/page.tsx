@@ -42,7 +42,7 @@ export default function PrivacyPolicyPage() {
             Last Updated: 30 April 2026 &nbsp;•&nbsp; Effective Date: 1 May 2026 &nbsp;•&nbsp; Version 1.0
           </p>
           <p style={{ color: "#6b7280", fontSize: "13px", marginTop: "4px" }}>
-            Orisalign Private Limited &nbsp;|&nbsp; MIG-1, 43/5, Housing Board Colony, Chandrasekharpur, Bhubaneswar – 751016, Odisha
+            Orisalign Private Limited &nbsp;|&nbsp; Bhubaneswar – 751016, Odisha
           </p>
           <p style={{ color: "#374151", fontSize: "13px", fontStyle: "italic", marginTop: "14px", padding: "12px 16px", background: "#FBF7EE", borderRadius: "8px", border: "1px solid #E8D5A0" }}>
             This Privacy Policy explains how Orisalign Private Limited collects, uses, stores, shares, and protects your personal data. It applies to all patients, clients, website visitors, and users who interact with Orisalign Private Limited through any channel including our website, booking platform, and all consultation services.
@@ -58,7 +58,7 @@ export default function PrivacyPolicyPage() {
           <p style={s}>Orisalign Private Limited is a healthcare and aesthetic services company incorporated and operating in the State of Odisha, India. We provide medical and aesthetic consultations and treatments through qualified practitioners registered with the Odisha Council of Medical Registration (OCMR).</p>
           <p style={{ ...s, marginTop: "10px" }}>Under the Digital Personal Data Protection Act, 2023, Orisalign Private Limited is the <strong>Data Fiduciary</strong> responsible for your personal data.</p>
           <div style={{ marginTop: "12px", background: "white", borderRadius: "8px", padding: "14px 16px", border: "1px solid #e5e7eb", fontSize: "14px", color: "#374151" }}>
-            <strong>Registered Office:</strong> MIG-1, 43/5, Housing Board Colony, Chandrasekharpur, Bhubaneswar – 751016, Odisha<br />
+            <strong>Registered Office:</strong> Bhubaneswar – 751016, Odisha<br />
             <strong>Data Protection Contact:</strong> <a href="mailto:hello@orisalign.com" style={{ color: "#C9A84C" }}>hello@orisalign.com</a>
           </div>
         </div>
@@ -205,7 +205,7 @@ export default function PrivacyPolicyPage() {
           <div style={{ background: "#1B2A4A", color: "white", borderRadius: "12px", padding: "20px 24px", fontSize: "14px", lineHeight: "1.8" }}>
             <strong>Orisalign Private Limited</strong><br />
             Grievance Officer (Data Protection): <a href="mailto:hello@orisalign.com" style={{ color: "#C9A84C" }}>hello@orisalign.com</a><br />
-            MIG-1, 43/5, Housing Board Colony, Chandrasekharpur, Bhubaneswar – 751016, Odisha
+            Bhubaneswar – 751016, Odisha
           </div>
           <p style={{ ...s, marginTop: "14px" }}>We aim to respond to all data-related requests within <strong>seven working days</strong>. If you are not satisfied with our response, you may escalate your complaint to the Data Protection Board of India.</p>
         </div>

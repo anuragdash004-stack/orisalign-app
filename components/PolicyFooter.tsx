@@ -35,8 +35,7 @@ export default function PolicyFooter() {
             <div>
               <h4 style={{ fontSize: "14px", fontWeight: "700", marginBottom: "12px", color: "#C9A84C" }}>Contact</h4>
               <p style={{ fontSize: "13px", color: "#e5e7eb", margin: "0 0 8px" }}>Email: <a href="mailto:hello@orisalign.com" style={{ color: "#C9A84C", textDecoration: "none" }}>hello@orisalign.com</a></p>
-              <p style={{ fontSize: "13px", color: "#e5e7eb", margin: "0 0 8px" }}>Phone: +91 80 6217 8511</p>
-              <p style={{ fontSize: "13px", color: "#e5e7eb", margin: 0 }}>Bhubaneswar, Odisha, India</p>
+              <p style={{ fontSize: "13px", color: "#e5e7eb", margin: 0 }}>Bhubaneswar – 751016, Odisha, India</p>
             </div>
             <div>
               <h4 style={{ fontSize: "14px", fontWeight: "700", marginBottom: "12px", color: "#C9A84C" }}>Follow Us</h4>

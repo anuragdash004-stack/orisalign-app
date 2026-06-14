@@ -188,14 +188,12 @@ function SuccessInner() {
             lineHeight: "1.7",
           }}
         >
-          Need help? WhatsApp{" "}
+          Need help? Email{" "}
           <a
-            href="https://wa.me/918069645412"
-            target="_blank"
-            rel="noreferrer"
+            href="mailto:hello@orisalign.com"
             style={{ color: GOLD, fontWeight: "700", textDecoration: "none" }}
           >
-            +91 8069645412
+            hello@orisalign.com
           </a>
         </div>
       </div>

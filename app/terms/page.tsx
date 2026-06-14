@@ -42,7 +42,7 @@ export default function TermsPage() {
           </h1>
           <p style={{ color: "#6b7280", fontSize: "13px", margin: "8px 0 0" }}>Version 1.0 &nbsp;•&nbsp; Effective from date of publication</p>
           <p style={{ color: "#6b7280", fontSize: "13px", marginTop: "4px" }}>
-            Orisalign Private Limited &nbsp;|&nbsp; MIG-1, 43/5, Housing Board Colony, Chandrasekharpur, Bhubaneswar – 751016, Odisha
+            Orisalign Private Limited &nbsp;|&nbsp; Bhubaneswar – 751016, Odisha
           </p>
           <p style={{ color: "#374151", fontSize: "13px", fontStyle: "italic", marginTop: "14px", padding: "12px 16px", background: "#FBF7EE", borderRadius: "8px", border: "1px solid #E8D5A0" }}>
             By proceeding to book an appointment with Orisalign Private Limited, you confirm that you have read, understood, and agree to all terms, conditions, consents, and policies set out in this document. This document is legally binding and applies to all patients, clients, and users of Orisalign Private Limited's services.
@@ -60,7 +60,7 @@ export default function TermsPage() {
           <h2 style={h2}>1. ABOUT ORISALIGN PRIVATE LIMITED</h2>
           <p style={s}>Orisalign Private Limited is a healthcare and aesthetic services company registered and operating in the State of Odisha, India. Orisalign provides medical and aesthetic consultations and treatments through trained and qualified practitioners registered with the Odisha Council of Medical Registration (OCMR).</p>
           <p style={{ ...s, marginTop: "10px" }}>All services are delivered in compliance with the National Medical Commission Act, 2019; the Telemedicine Practice Guidelines, 2020; the Odisha Council of Medical Registration Act, 1916 (as amended 2010); the Indian Medical Council (Professional Conduct, Etiquette and Ethics) Regulations, 2002; the Consumer Protection Act, 2019; the Digital Personal Data Protection Act, 2023; and the Information Technology Act, 2000.</p>
-          <p style={{ ...s, marginTop: "10px" }}><strong>Registered Office:</strong> MIG-1, 43/5, Housing Board Colony, Chandrasekharpur, Bhubaneswar – 751016, Odisha. &nbsp;<strong>Contact:</strong> hello@orisalign.com</p>
+          <p style={{ ...s, marginTop: "10px" }}><strong>Registered Office:</strong> Bhubaneswar – 751016, Odisha. &nbsp;<strong>Contact:</strong> hello@orisalign.com</p>
         </div>
 
         {/* Section 2 */}
@@ -83,7 +83,7 @@ export default function TermsPage() {
             {["By booking a Home Consultation, the patient voluntarily invites the practitioner to their private residence for the sole purpose of the agreed consultation or treatment.", "The visiting practitioner will carry a valid OCMR-registered photo identity. The patient has the right to verify the practitioner's credentials before permitting entry.", "The patient is responsible for ensuring a safe, reasonably clean, adequately lit, and accessible environment for the consultation or procedure.", "Orisalign Private Limited and its practitioners are not liable for treatment limitations or adverse outcomes arising directly from environmental conditions at the patient's premises.", "Other persons present at the premises during the visit are present with the patient's knowledge and consent.", "A travel or home visit fee may be charged in addition to the consultation fee. This will be disclosed at the time of booking.", "In the event of a medical emergency during a home visit, the practitioner will contact emergency services immediately (Dial 112, Odisha State Emergency)."].map((t, i) => <li key={i} style={li}>{t}</li>)}
           </ul>
           <h3 style={h3}>3.2 Clinic Consultation</h3>
-          <p style={{ ...s, marginBottom: "8px" }}>A Clinic Consultation involves the patient attending the Orisalign clinic premises at MIG-1, 43/5, Housing Board Colony, Chandrasekharpur, Bhubaneswar – 751016, Odisha.</p>
+          <p style={{ ...s, marginBottom: "8px" }}>A Clinic Consultation involves the patient attending the Orisalign clinic premises in Bhubaneswar – 751016, Odisha.</p>
           <ul style={{ paddingLeft: "20px", margin: 0 }}>
             {["Patients are expected to present themselves at the clinic at their agreed appointment date and time. Late arrivals may result in a reduced appointment duration or rescheduling.", "All procedures performed at the clinic are carried out by OCMR-registered practitioners or directly under their supervision.", "Patients are expected to conduct themselves respectfully towards all clinic staff and other patients at all times.", "Orisalign Private Limited is not liable for the loss of personal belongings on clinic premises.", "For infection control or clinical safety reasons, the clinic may request that a patient attend without companions."].map((t, i) => <li key={i} style={li}>{t}</li>)}
           </ul>
@@ -172,7 +172,7 @@ export default function TermsPage() {
         <div style={{ background: "#1B2A4A", color: "white", borderRadius: "12px", padding: "20px 24px", fontSize: "14px", lineHeight: "1.8", marginBottom: "20px" }}>
           <strong>For all queries, concerns, or data protection requests, contact:</strong><br />
           Orisalign Private Limited<br />
-          MIG-1, 43/5, Housing Board Colony, Chandrasekharpur, Bhubaneswar – 751016, Odisha, India<br />
+          Bhubaneswar – 751016, Odisha, India<br />
           <a href="mailto:hello@orisalign.com" style={{ color: "#C9A84C" }}>hello@orisalign.com</a>
         </div>
 

@@ -34,14 +34,14 @@ export default function RefundPolicyPage() {
           <h1 style={{ fontSize: "28px", fontWeight: "900", color: "#1B2A4A", margin: "0 0 6px" }}>REFUND AND CANCELLATION POLICY</h1>
           <p style={{ color: "#6b7280", fontSize: "14px", margin: 0 }}>Effective Date: 23 April 2026 &nbsp;•&nbsp; Version: 1.0</p>
           <p style={{ color: "#6b7280", fontSize: "13px", marginTop: "6px" }}>
-            Orisalign Private Limited &nbsp;|&nbsp; MIG-1, 43/5, Housing Board Colony, Chandrasekharpur, Bhubaneswar – 751016, Odisha
+            Orisalign Private Limited &nbsp;|&nbsp; Bhubaneswar – 751016, Odisha
           </p>
         </div>
 
         {[
           {
             num: "1", title: "Introduction",
-            content: `This Refund and Cancellation Policy ("Policy") is issued by Orisalign Private Limited ("Orisalign", "the Company", "We", "Us", or "Our"), a company incorporated and operating under the laws of India, with its registered office at MIG-1, 43/5, Housing Board Colony, Chandrasekharpur, Bhubaneswar – 751016, Odisha.
+            content: `This Refund and Cancellation Policy ("Policy") is issued by Orisalign Private Limited ("Orisalign", "the Company", "We", "Us", or "Our"), a company incorporated and operating under the laws of India, with its registered office at Bhubaneswar – 751016, Odisha.
 
 This Policy governs all financial transactions between Orisalign and its clients ("Patient", "Client", "You", or "Your") in relation to the procurement of clear aligner treatment plans, orthodontic consultation services, three-dimensional (3D) dental scanning, and associated orthodontic treatment planning services offered by the Company.
 
@@ -62,7 +62,7 @@ By making a payment to Orisalign and/or accepting our treatment proposal, you ac
             subsections: [
               {
                 title: "3.1 Consultation & Planning Fee",
-                content: `Orisalign incurs substantial clinical, technical, and professional resources from the moment a patient engages with our services. Accordingly, a fixed, non-refundable fee of INR 5,000/- (Rupees Five Thousand Only) shall be retained by Orisalign on all eligible refund requests. This charge represents the cost of services already rendered at the time of the refund request.`
+                content: `Orisalign incurs substantial clinical, technical, and professional resources from the moment a patient engages with our services. Accordingly, a fixed, non-refundable fee of INR 5,999/- (Rupees Five Thousand Nine Hundred and Ninety-Nine Only) shall be retained by Orisalign on all eligible refund requests. This charge represents the cost of services already rendered at the time of the refund request.`
               },
               {
                 title: "3.2 Breakdown of the Non-Refundable Fee",
@@ -80,7 +80,7 @@ By making a payment to Orisalign and/or accepting our treatment proposal, you ac
             subsections: [
               {
                 title: "4.1 Eligible for Refund",
-                content: "A refund (less the non-refundable fee of INR 5,000/-) shall be applicable under the following conditions:",
+                content: "A refund (less the non-refundable fee of INR 5,999/-) shall be applicable under the following conditions:",
                 bullets: [
                   "The patient submits a written refund request before the physical aligner sets have been dispatched or shipped;",
                   "The refund request is submitted prior to the Company's confirmation that fabrication of the aligner sets has commenced;",
@@ -127,7 +127,7 @@ By making a payment to Orisalign and/or accepting our treatment proposal, you ac
           },
           {
             num: "6", title: "Refund Amount Calculation",
-            content: `The refundable amount shall be calculated as follows:\n\nRefund Amount = Total Amount Paid – INR 5,000 (Non-Refundable Fee)\n\nAny applicable payment gateway or transaction charges are non-refundable.\n\nExample: If a patient has paid INR 25,000/- and submits a valid refund request before dispatch, the refundable amount shall be INR 20,000/-. The INR 5,000/- will be retained as the service charge for consultation, scanning, and planning services already provided.`
+            content: `The refundable amount shall be calculated as follows:\n\nRefund Amount = Total Amount Paid – INR 5,999 (Non-Refundable Fee)\n\nAny applicable payment gateway or transaction charges are non-refundable.\n\nExample: If a patient has paid INR 25,000/- and submits a valid refund request before dispatch, the refundable amount shall be INR 19,001/-. The INR 5,999/- will be retained as the service charge for consultation, scanning, and planning services already provided.`
           },
           {
             num: "6.1", title: "EMI Refunds",
@@ -137,7 +137,7 @@ By making a payment to Orisalign and/or accepting our treatment proposal, you ac
             num: "7", title: "Cancellation Policy",
             content: "Patients may cancel their treatment order at any time before the commencement of aligner fabrication. Upon cancellation:",
             bullets: [
-              "Before fabrication begins: Entitled to a refund of the amount paid, less the non-refundable fee of INR 5,000/-.",
+              "Before fabrication begins: Entitled to a refund of the amount paid, less the non-refundable fee of INR 5,999/-.",
               "After fabrication has commenced but before dispatch: No refund shall be applicable. The full amount paid shall be forfeited.",
               "After dispatch: No refund or cancellation shall be entertained.",
               "Partial treatment: No refund shall be applicable for any aligner sets already delivered as part of an ongoing treatment. (Remember: aligners are custom-made and cannot be used for any other patients.) Refunds are only considered on the undelivered balance of a treatment, and only prior to fabrication of those remaining sets (mandatory deduction of ₹5,999/- is applicable on any refund request post payment).",
@@ -205,10 +205,8 @@ By making a payment to Orisalign and/or accepting our treatment proposal, you ac
             {section.num === "12" && (
               <div style={{ background: "#1B2A4A", color: "white", borderRadius: "12px", padding: "20px 24px", fontSize: "14px", lineHeight: "1.8" }}>
                 <strong>Orisalign Private Limited</strong><br />
-                MIG-1, 43/5, Housing Board Colony, Chandrasekharpur<br />
                 Bhubaneswar – 751016, Odisha, India<br />
-                Email: hello@orisalign.com<br />
-                Phone: +91 8069645412
+                Email: hello@orisalign.com
               </div>
             )}
           </div>
