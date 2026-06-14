@@ -256,6 +256,14 @@ export default function PatientJourney() {
                             Review
                           </button>
                         )}
+                        {step.key === "scanning_done" && patient.scanning_review_link && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); window.open(patient.scanning_review_link, "_blank", "noopener,noreferrer"); }}
+                            style={{ flexShrink: 0, padding: "7px 14px", borderRadius: "8px", border: "none", background: "#b8905a", color: "white", fontWeight: "700", fontSize: "12px", cursor: "pointer", whiteSpace: "nowrap" }}
+                          >
+                            Review
+                          </button>
+                        )}
                         {isClickable && !step.approveAction && <span style={{ fontSize: "12px", color: done ? "#16a34a" : "#9ca3af", flexShrink: 0, marginLeft: "8px" }}>{isExpanded ? "▲" : "▼"}</span>}
                       </div>
                     </div>

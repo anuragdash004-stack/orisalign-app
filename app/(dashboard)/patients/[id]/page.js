@@ -649,6 +649,11 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
   const [scanningVideoUrl, setScanningVideoUrl] = useState(appt.scanning_video_url || "");
   const [uploadingVideo, setUploadingVideo] = useState(false);
 
+  // Part A2 — Scanning & Provisional Planning: pre-treatment scanning review link
+  const [scanningReviewLink, setScanningReviewLink] = useState(appt.scanning_review_link || "");
+  const [savingScanningLink, setSavingScanningLink] = useState(false);
+  const [scanningLinkSaved, setScanningLinkSaved] = useState(false);
+
   // Part B — Price & Payment: payment type to push
   const [paymentType, setPaymentType] = useState(appt.payment_type_to_collect || "down_payment");
   const [customAmount, setCustomAmount] = useState(appt.payment_custom_amount ? String(appt.payment_custom_amount) : "");
@@ -737,6 +742,19 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
     logAudit({ appointmentId, actor, action: "Planning Review Link Saved", entity: "review_link", newData: { review_link: reviewLink.trim() || null } });
     setLinkSaved(true);
     setTimeout(() => setLinkSaved(false), 3000);
+  };
+
+  const saveScanningReviewLink = async () => {
+    setSavingScanningLink(true);
+    const { error } = await supabase
+      .from("appointments_booking")
+      .update({ scanning_review_link: scanningReviewLink.trim() || null })
+      .eq("id", appointmentId);
+    setSavingScanningLink(false);
+    if (error) { alert("Failed to save link: " + error.message); return; }
+    logAudit({ appointmentId, actor, action: "Scanning Review Link Saved", entity: "scanning_review_link", newData: { scanning_review_link: scanningReviewLink.trim() || null } });
+    setScanningLinkSaved(true);
+    setTimeout(() => setScanningLinkSaved(false), 3000);
   };
 
   const toggle = async (key) => {
@@ -854,6 +872,30 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                   )}
                   <p style={{ margin: 0, fontSize: "11px", color: "#9ca3af" }}>
                     Visible to the patient on their journey page — they can view and download it.
+                  </p>
+                </div>
+              )}
+
+              {/* Part A2 — Scanning & Provisional Planning: pre-treatment scanning review link */}
+              {isAdmin && step.key === "scanning_done" && (
+                <div style={subBox}>
+                  <span style={label}>PRE-TREATMENT SCANNING REVIEW LINK</span>
+                  <input
+                    style={input}
+                    type="url"
+                    placeholder="https://..."
+                    value={scanningReviewLink}
+                    onChange={(e) => setScanningReviewLink(e.target.value)}
+                  />
+                  <button
+                    style={savingScanningLink ? { ...btnPrimary, opacity: 0.6 } : btnPrimary}
+                    onClick={saveScanningReviewLink}
+                    disabled={savingScanningLink}
+                  >
+                    {savingScanningLink ? "Saving..." : scanningLinkSaved ? "Saved ✓" : "Save Link"}
+                  </button>
+                  <p style={{ margin: 0, fontSize: "11px", color: "#9ca3af" }}>
+                    Appears to the patient as a &quot;Review&quot; button to review their pre-treatment scanning.
                   </p>
                 </div>
               )}
