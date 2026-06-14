@@ -930,8 +930,9 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
       setSteps((prev) => ({ ...prev, [key]: currentVal }));
       return;
     }
-    const stepLabel = ALL_STEPS.find((s) => s.key === key)?.label || key;
-    logAudit({ appointmentId, actor, action: newVal ? `Step Marked Done: ${stepLabel}` : `Step Undone: ${stepLabel}`, entity: "journey_steps", newData: { [key]: newVal } });
+    if (key === "feedback_submitted") {
+      logAudit({ appointmentId, actor, action: newVal ? "Feedback Submitted" : "Feedback Marked Undone", entity: "feedback_submitted", newData: { [key]: newVal } });
+    }
     if (newVal) {
       fetch("/api/notify-step", {
         method: "POST",
