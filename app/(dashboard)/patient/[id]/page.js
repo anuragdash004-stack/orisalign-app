@@ -13,7 +13,7 @@ const JOURNEY_STEPS = [
   { key: "scanning_done",           label: "Scanning and Provisional Planning", expandable: true },
   { key: "payment_done",            label: "Price & Payment",            expandable: true },
   { key: "planning_done",           label: "Planning Done" },
-  { key: "plan_approved",           label: "Plan Approval", subtext: "Review and approve your treatment plan to begin fabrication", approveAction: true },
+  { key: "plan_approved",           label: "Plan Approval", approveAction: true },
   { key: "manufacturing_started",   label: "Manufacturing Started" },
   { key: "manufacturing_completed", label: "Manufacturing Completed" },
   { key: "aligners_dispatched",     label: "Aligners Dispatched" },
@@ -220,6 +220,11 @@ export default function PatientJourney() {
                           <p style={{ margin: 0, fontSize: "14px", fontWeight: done ? "700" : "500", color: done ? "#15803d" : isNext ? "#92400e" : "#9ca3af" }}>
                             {step.label}
                           </p>
+                          {step.key === "plan_approved" && done && (
+                            <p style={{ margin: "2px 0 0", fontSize: "11px", color: "#16a34a", lineHeight: "1.4" }}>
+                              Thank you for approving your treatment plan.
+                            </p>
+                          )}
                           {step.subtext && (
                             <p style={{ margin: "2px 0 0", fontSize: "11px", color: done ? "#16a34a" : "#9ca3af", lineHeight: "1.4" }}>
                               {step.subtext}
