@@ -38,12 +38,12 @@ export default function PatientAuditPage() {
   useEffect(() => {
     if (!id) return;
     const load = async () => {
-      const [{ data: appt }, { data: logData }] = await Promise.all([
+      const [{ data: appt }, logJson] = await Promise.all([
         supabase.from("appointments_booking").select("id, name, phone, email, status").eq("id", id).single(),
         fetch(`/api/audit-log?appointmentId=${id}`).then((r) => r.json()),
       ]);
       setPatient(appt || null);
-      setLogs(logData?.logs || []);
+      setLogs(logJson?.logs || []);
       setLoading(false);
     };
     load();
