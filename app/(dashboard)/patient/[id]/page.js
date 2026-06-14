@@ -422,6 +422,23 @@ export default function PatientJourney() {
                             </div>
                           ))}
 
+                          {/* Installment Plan */}
+                          {pd.pending_mode === "Installment" && pd.installment_plan?.installments?.length > 0 && (
+                            <div style={{ marginTop: "8px" }}>
+                              <p style={{ margin: "2px 0 8px", fontSize: "11px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Installment Plan</p>
+                              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                                {pd.installment_plan.installments.map((inst) => (
+                                  <div key={inst.num} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: inst.paid ? "#f0fdf4" : "#f8f7f5", borderRadius: "8px", border: inst.paid ? "1px solid #bbf7d0" : "none" }}>
+                                    <span style={{ fontSize: "13px", color: "#111827", fontWeight: "600" }}>Installment {inst.num} · {fmt(inst.amount)}</span>
+                                    <span style={{ fontSize: "12px", fontWeight: "700", color: inst.paid ? "#16a34a" : "#9ca3af" }}>
+                                      {inst.paid ? `Paid ✓${inst.paid_date ? ` on ${inst.paid_date}` : ""}` : "Pending"}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
                           {/* Pay Now CTA — opens /payment with appointment context */}
                           {pd.pending_amount > 0 && (
                             <a

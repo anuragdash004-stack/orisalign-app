@@ -26,6 +26,7 @@ const ALL_STEPS = [
   { key: "feedback_submitted",      label: "Feedback Submitted" },
 ];
 const MODE_OPTIONS = ["Cash", "Card", "UPI", "Bank Transfer", "Finance"];
+const PENDING_MODE_OPTIONS = [...MODE_OPTIONS, "Installment"];
 const FINANCE_OPTIONS = ["Bajaj Finance", "HBD Finance", "Poonawalla Finance"];
 const DELIVERY_PARTNERS = ["BlueDart", "Delhivery", "Other"];
 
@@ -129,9 +130,28 @@ const EMPTY_PAYMENT = {
   down_payment_mode: "Cash",
   pending_mode: "Cash",
   finance_provider: "Bajaj Finance",
+  installment_count: "",
+  installment_emi: "",
+  installment_plan: null,
 };
 
 const inr = (n) => `₹ ${(Number(n) || 0).toLocaleString("en-IN")}`;
+
+// Splits pendingAmt into `count` installments of `emi` each, with the
+// remainder absorbed by the final installment. Preserves paid status
+// for installment numbers that already existed in `existing`.
+function buildInstallments(pendingAmt, count, emi, existing = []) {
+  const n = parseInt(count) || 0;
+  const e = parseFloat(emi) || 0;
+  if (n <= 0 || e <= 0) return [];
+  const result = [];
+  for (let i = 1; i <= n; i++) {
+    const amount = i < n ? e : Math.max(0, Math.round((pendingAmt - e * (n - 1)) * 100) / 100);
+    const prev = (existing || []).find((x) => x.num === i);
+    result.push({ num: i, amount, paid: prev?.paid || false, paid_date: prev?.paid_date || null });
+  }
+  return result;
+}
 
 function PaymentSummaryRow({ label: lbl, value }) {
   return (
@@ -142,13 +162,14 @@ function PaymentSummaryRow({ label: lbl, value }) {
   );
 }
 
-function PaymentTab({ appointmentId, initialData, actor }) {
+function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
   const hasSaved = !!(initialData && (initialData.full_amount || initialData.down_payment || initialData.final_amount));
 
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [editing, setEditing] = useState(!hasSaved);
   const [data, setData] = useState({ ...EMPTY_PAYMENT, ...initialData });
+  const [markingPaid, setMarkingPaid] = useState(null);
   const lastSaved = useRef({ ...EMPTY_PAYMENT, ...initialData });
 
   const set = (key, val) => setData((prev) => ({ ...prev, [key]: val }));
@@ -160,9 +181,22 @@ function PaymentTab({ appointmentId, initialData, actor }) {
   const downPmt = parseFloat(data.down_payment) || 0;
   const pendingAmt = Math.max(0, finalAmt - downPmt);
 
+  const installments = data.installment_plan?.installments || [];
+  const remainingBalance = installments.length > 0
+    ? installments.filter((inst) => !inst.paid).reduce((sum, inst) => sum + inst.amount, 0)
+    : pendingAmt;
+
   const handleSave = async () => {
     setSaving(true);
-    const payload = { ...data, final_amount: finalAmt, pending_amount: pendingAmt };
+    let installmentPlan = data.installment_plan;
+    if (data.pending_mode === "Installment") {
+      installmentPlan = {
+        count: data.installment_count,
+        emi: data.installment_emi,
+        installments: buildInstallments(pendingAmt, data.installment_count, data.installment_emi, installments),
+      };
+    }
+    const payload = { ...data, final_amount: finalAmt, pending_amount: pendingAmt, installment_plan: installmentPlan };
     const { error } = await supabase
       .from("appointments_booking")
       .update({ payment_data: payload })
@@ -171,6 +205,7 @@ function PaymentTab({ appointmentId, initialData, actor }) {
     if (!error) {
       logAudit({ appointmentId, actor, action: "Payment Details Saved", entity: "payment_data", newData: payload, oldData: lastSaved.current });
       lastSaved.current = payload;
+      setData(payload);
       setSaved(true);
       setEditing(false);
       setTimeout(() => setSaved(false), 3000);
@@ -182,6 +217,45 @@ function PaymentTab({ appointmentId, initialData, actor }) {
   const handleCancel = () => {
     setData({ ...EMPTY_PAYMENT, ...initialData });
     setEditing(false);
+  };
+
+  const markInstallmentPaid = async (num) => {
+    const updatedInstallments = installments.map((inst) =>
+      inst.num === num ? { ...inst, paid: true, paid_date: new Date().toISOString().slice(0, 10) } : inst
+    );
+    const remaining = updatedInstallments.filter((inst) => !inst.paid).reduce((sum, inst) => sum + inst.amount, 0);
+    const updatedPlan = { ...data.installment_plan, installments: updatedInstallments };
+    const payload = { ...data, installment_plan: updatedPlan };
+
+    setMarkingPaid(num);
+    const { error } = await supabase
+      .from("appointments_booking")
+      .update({ payment_data: payload })
+      .eq("id", appointmentId);
+    setMarkingPaid(null);
+    if (error) { alert("Error saving: " + error.message); return; }
+
+    setData(payload);
+    lastSaved.current = payload;
+    const paidInst = updatedInstallments.find((inst) => inst.num === num);
+    logAudit({ appointmentId, actor, action: `Installment ${num} Marked Paid`, entity: "payment_data", newData: { installment: num, amount: paidInst.amount, remaining } });
+
+    if (patientEmail) {
+      fetch("/api/message-history", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          appointmentId,
+          recipientEmail: patientEmail,
+          subject: `Installment ${num} Payment Received — OrisAlign`,
+          body: `Thank you for paying your installment number ${num} of ${inr(paidInst.amount)}. Your pending amount is ${inr(remaining)}.`,
+          messageType: "email",
+          stepKey: "payment_done",
+          actorEmail: actor?.email,
+          actorRole: actor?.role,
+        }),
+      }).catch(() => {});
+    }
   };
 
   if (!editing && hasSaved) {
@@ -212,7 +286,38 @@ function PaymentTab({ appointmentId, initialData, actor }) {
               label="Pending Amount"
               value={`${inr(pendingAmt)} · ${data.pending_mode}${data.pending_mode === "Finance" ? ` (${data.finance_provider})` : ""}`}
             />
+            {data.pending_mode === "Installment" && installments.length > 0 && (
+              <PaymentSummaryRow label="Remaining Balance" value={inr(remainingBalance)} />
+            )}
           </div>
+
+          {data.pending_mode === "Installment" && installments.length > 0 && (
+            <div style={{ marginBottom: "20px" }}>
+              <p style={{ margin: "0 0 10px", fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Installment Plan</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                {installments.map((inst) => (
+                  <div key={inst.num} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", padding: "10px 12px", background: inst.paid ? "#f0fdf4" : "#f8f7f5", borderRadius: "8px", border: inst.paid ? "1px solid #bbf7d0" : "1px solid transparent" }}>
+                    <div>
+                      <span style={{ fontSize: "13px", fontWeight: "700", color: "#111827" }}>Installment {inst.num}</span>
+                      <span style={{ marginLeft: "8px", fontSize: "13px", color: "#6b7280" }}>{inr(inst.amount)}</span>
+                    </div>
+                    {inst.paid ? (
+                      <span style={{ fontSize: "12px", fontWeight: "700", color: "#16a34a" }}>Paid ✓{inst.paid_date ? ` on ${inst.paid_date}` : ""}</span>
+                    ) : (
+                      <button
+                        onClick={() => markInstallmentPaid(inst.num)}
+                        disabled={markingPaid === inst.num}
+                        style={{ padding: "6px 14px", borderRadius: "8px", border: "none", background: markingPaid === inst.num ? "#d4a574" : "#b8905a", color: "white", fontWeight: "700", fontSize: "12px", cursor: markingPaid === inst.num ? "not-allowed" : "pointer", whiteSpace: "nowrap" }}
+                      >
+                        {markingPaid === inst.num ? "Saving..." : "Mark Paid"}
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
             <button style={btnGold} onClick={() => setEditing(true)}>Edit Payment</button>
           </div>
@@ -286,7 +391,7 @@ function PaymentTab({ appointmentId, initialData, actor }) {
           <span style={label}>PENDING AMOUNT MODE OF PAYMENT</span>
           <select style={select} value={data.pending_mode}
             onChange={(e) => set("pending_mode", e.target.value)}>
-            {MODE_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
+            {PENDING_MODE_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
           </select>
         </div>
         {data.pending_mode === "Finance" && (
@@ -296,6 +401,33 @@ function PaymentTab({ appointmentId, initialData, actor }) {
               onChange={(e) => set("finance_provider", e.target.value)}>
               {FINANCE_OPTIONS.map((f) => <option key={f} value={f}>{f}</option>)}
             </select>
+          </div>
+        )}
+        {data.pending_mode === "Installment" && (
+          <div style={{ marginBottom: "24px" }}>
+            <div style={row}>
+              <div>
+                <span style={label}>NUMBER OF INSTALLMENTS</span>
+                <input style={input} type="number" min="1" placeholder="e.g. 5" value={data.installment_count}
+                  onChange={(e) => set("installment_count", e.target.value)} />
+              </div>
+              <div>
+                <span style={label}>EMI PER INSTALLMENT (₹)</span>
+                <input style={input} type="number" min="0" placeholder="e.g. 6000" value={data.installment_emi}
+                  onChange={(e) => set("installment_emi", e.target.value)} />
+              </div>
+            </div>
+            {parseInt(data.installment_count) > 0 && parseFloat(data.installment_emi) > 0 && (
+              <div style={{ padding: "10px 12px", background: "#f8f7f5", borderRadius: "8px", fontSize: "12px", color: "#6b7280" }}>
+                This will split {inr(pendingAmt)} into {parseInt(data.installment_count)} installments of {inr(data.installment_emi)}
+                {(() => {
+                  const n = parseInt(data.installment_count);
+                  const e = parseFloat(data.installment_emi);
+                  const last = Math.max(0, Math.round((pendingAmt - e * (n - 1)) * 100) / 100);
+                  return last !== e ? `, with the final installment of ${inr(last)}.` : ".";
+                })()}
+              </div>
+            )}
           </div>
         )}
         <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
@@ -1438,6 +1570,21 @@ function ReportTab({ appointmentId, appt }) {
                       label="Pending Amount"
                       value={`${inr(pendingAmt)} · to be paid via ${pd.pending_mode}${pd.pending_mode === "Finance" ? ` (${pd.finance_provider})` : ""}`}
                     />
+                    {pd.pending_mode === "Installment" && pd.installment_plan?.installments?.length > 0 && (
+                      <div style={{ marginTop: "8px" }}>
+                        <p style={{ margin: "2px 0 8px", fontSize: "11px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Installment Plan</p>
+                        <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                          {pd.installment_plan.installments.map((inst) => (
+                            <div key={inst.num} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: inst.paid ? "#f0fdf4" : "#f8f7f5", borderRadius: "8px", border: inst.paid ? "1px solid #bbf7d0" : "none" }}>
+                              <span style={{ fontSize: "13px", color: "#111827", fontWeight: "600" }}>Installment {inst.num} · {inr(inst.amount)}</span>
+                              <span style={{ fontSize: "12px", fontWeight: "700", color: inst.paid ? "#16a34a" : "#9ca3af" }}>
+                                {inst.paid ? `Paid ✓${inst.paid_date ? ` on ${inst.paid_date}` : ""}` : "Pending"}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1574,7 +1721,7 @@ export default function PatientDetailPage() {
         <JourneyTab appointmentId={id} appt={appt} isAdmin={userRole === "admin"} actor={actor} />
       </div>
       <div style={{ display: activeTab === "Payment" ? "block" : "none" }}>
-        <PaymentTab appointmentId={id} initialData={appt.payment_data || {}} actor={actor} />
+        <PaymentTab appointmentId={id} initialData={appt.payment_data || {}} actor={actor} patientEmail={appt.email} />
       </div>
       <div style={{ display: activeTab === "Manufacturing" ? "block" : "none" }}>
         <ManufacturingTab appointmentId={id} initialData={appt.manufacturing_data || null} actor={actor} />
