@@ -12,7 +12,7 @@ const JOURNEY_STEPS = [
   { key: "confirmed",               label: "Appointment Confirmed" },
   { key: "scanning_done",           label: "Scanning and Provisional Planning", expandable: true },
   { key: "payment_done",            label: "Price & Payment",            expandable: true },
-  { key: "planning_done",           label: "Planning Done" },
+  { key: "planning_done",           label: "Planning Done", expandable: true },
   { key: "plan_approved",           label: "Plan Approval", approveAction: true },
   { key: "manufacturing_started",   label: "Manufacturing Started" },
   { key: "manufacturing_completed", label: "Manufacturing Completed" },
@@ -253,14 +253,6 @@ export default function PatientJourney() {
                             </button>
                           )
                         )}
-                        {step.key === "planning_done" && patient.review_link && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); window.open(patient.review_link, "_blank", "noopener,noreferrer"); }}
-                            style={{ flexShrink: 0, padding: "7px 14px", borderRadius: "8px", border: "none", background: "#b8905a", color: "white", fontWeight: "700", fontSize: "12px", cursor: "pointer", whiteSpace: "nowrap" }}
-                          >
-                            Review
-                          </button>
-                        )}
                         {step.key === "scanning_done" && patient.scanning_review_link && (
                           <button
                             onClick={(e) => { e.stopPropagation(); window.open(patient.scanning_review_link, "_blank", "noopener,noreferrer"); }}
@@ -295,6 +287,37 @@ export default function PatientJourney() {
                             ⬇ Download Video
                           </a>
                         </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Expanded Panel — Planning Done */}
+                  {step.key === "planning_done" && isExpanded && (
+                    <div style={{ marginLeft: "58px", marginTop: "8px", background: "white", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+                      <p style={{ margin: "0 0 14px", fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Your Aligner Plan</p>
+                      {patient.aligner_total_sets && patient.aligner_days_per_set ? (
+                        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                          {[
+                            ["Total Number of Sets", patient.aligner_total_sets],
+                            ["Wear Duration per Set", `${patient.aligner_days_per_set} days`],
+                            ["Total Treatment Duration", `${patient.aligner_total_sets * patient.aligner_days_per_set} days (~${Math.round((patient.aligner_total_sets * patient.aligner_days_per_set) / 30)} months)`],
+                          ].map(([lbl, val]) => (
+                            <div key={lbl} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: "#f8f7f5", borderRadius: "8px" }}>
+                              <span style={{ fontSize: "13px", color: "#6b7280", fontWeight: "600" }}>{lbl}</span>
+                              <span style={{ fontSize: "13px", color: "#111827", fontWeight: "700" }}>{val}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p style={{ margin: 0, fontSize: "13px", color: "#9ca3af", fontStyle: "italic" }}>Your aligner plan details will appear here once set by your dentist.</p>
+                      )}
+                      {patient.review_link && (
+                        <a
+                          href={patient.review_link} target="_blank" rel="noopener noreferrer"
+                          style={{ marginTop: "14px", display: "block", padding: "12px", borderRadius: "10px", background: "#b8905a", color: "white", fontWeight: "700", fontSize: "14px", textAlign: "center", textDecoration: "none" }}
+                        >
+                          Review Treatment Plan
+                        </a>
                       )}
                     </div>
                   )}

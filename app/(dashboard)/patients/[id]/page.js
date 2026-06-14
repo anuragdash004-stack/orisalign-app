@@ -665,6 +665,12 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
   const [savingLink, setSavingLink] = useState(false);
   const [linkSaved, setLinkSaved] = useState(false);
 
+  // Part C0 — Planning Done: aligner set plan
+  const [alignerTotalSets, setAlignerTotalSets] = useState(appt.aligner_total_sets ? String(appt.aligner_total_sets) : "");
+  const [alignerDaysPerSet, setAlignerDaysPerSet] = useState(appt.aligner_days_per_set || null);
+  const [savingAligner, setSavingAligner] = useState(false);
+  const [alignerSaved, setAlignerSaved] = useState(false);
+
   const handleVideoUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file || !isAdmin) return;
@@ -729,6 +735,22 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
     } finally {
       setPushing(false);
     }
+  };
+
+  const saveAlignerPlan = async () => {
+    const sets = parseInt(alignerTotalSets, 10);
+    if (!sets || sets <= 0) { alert("Enter a valid total number of sets."); return; }
+    if (alignerDaysPerSet !== 10 && alignerDaysPerSet !== 15) { alert("Select wear duration per set (10 or 15 days)."); return; }
+    setSavingAligner(true);
+    const { error } = await supabase
+      .from("appointments_booking")
+      .update({ aligner_total_sets: sets, aligner_days_per_set: alignerDaysPerSet })
+      .eq("id", appointmentId);
+    setSavingAligner(false);
+    if (error) { alert("Failed to save: " + error.message); return; }
+    logAudit({ appointmentId, actor, action: "Aligner Plan Saved", entity: "aligner_plan", newData: { aligner_total_sets: sets, aligner_days_per_set: alignerDaysPerSet } });
+    setAlignerSaved(true);
+    setTimeout(() => setAlignerSaved(false), 3000);
   };
 
   const saveReviewLink = async () => {
@@ -923,6 +945,54 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                   >
                     {pushing ? "Pushing..." : pushed ? "Pushed ✓" : "Push to Patient"}
                   </button>
+                </div>
+              )}
+
+              {/* Part C0 — Planning Done: aligner set plan */}
+              {isAdmin && step.key === "planning_done" && (
+                <div style={subBox}>
+                  <span style={label}>TOTAL NUMBER OF ALIGNER SETS</span>
+                  <input
+                    style={input}
+                    type="number"
+                    min="1"
+                    placeholder="e.g. 12"
+                    value={alignerTotalSets}
+                    onChange={(e) => setAlignerTotalSets(e.target.value.replace(/\D/g, ""))}
+                  />
+                  <span style={label}>WEAR DURATION PER SET</span>
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    {[10, 15].map((d) => (
+                      <button
+                        key={d}
+                        onClick={() => setAlignerDaysPerSet(d)}
+                        style={{
+                          flex: 1, padding: "10px", borderRadius: "8px",
+                          border: alignerDaysPerSet === d ? "2px solid #b8905a" : "1px solid #e5e7eb",
+                          background: alignerDaysPerSet === d ? "#fff7ed" : "white",
+                          color: alignerDaysPerSet === d ? "#b8905a" : "#374151",
+                          fontWeight: "700", fontSize: "13px", cursor: "pointer",
+                        }}
+                      >
+                        {d} Days
+                      </button>
+                    ))}
+                  </div>
+                  {parseInt(alignerTotalSets, 10) > 0 && alignerDaysPerSet && (
+                    <p style={{ margin: 0, fontSize: "13px", color: "#16a34a", fontWeight: "700" }}>
+                      Total Duration: {parseInt(alignerTotalSets, 10) * alignerDaysPerSet} days (~{Math.round((parseInt(alignerTotalSets, 10) * alignerDaysPerSet) / 30)} months)
+                    </p>
+                  )}
+                  <button
+                    style={savingAligner ? { ...btnPrimary, opacity: 0.6 } : btnPrimary}
+                    onClick={saveAlignerPlan}
+                    disabled={savingAligner}
+                  >
+                    {savingAligner ? "Saving..." : alignerSaved ? "Saved ✓" : "Save Aligner Plan"}
+                  </button>
+                  <p style={{ margin: 0, fontSize: "11px", color: "#9ca3af" }}>
+                    Shown to the patient once this step is marked done.
+                  </p>
                 </div>
               )}
 

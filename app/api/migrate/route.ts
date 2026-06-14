@@ -9,6 +9,8 @@ export async function GET() {
     "ALTER TABLE appointments_booking ADD COLUMN IF NOT EXISTS payment_data JSONB DEFAULT '{}'",
     "ALTER TABLE appointments_booking ADD COLUMN IF NOT EXISTS manufacturing_data JSONB DEFAULT '{}'",
     "ALTER TABLE appointments_booking ADD COLUMN IF NOT EXISTS logistics_data JSONB DEFAULT '{}'",
+    "ALTER TABLE appointments_booking ADD COLUMN IF NOT EXISTS aligner_total_sets INTEGER",
+    "ALTER TABLE appointments_booking ADD COLUMN IF NOT EXISTS aligner_days_per_set INTEGER",
   ];
 
   const results = [];
