@@ -22,8 +22,7 @@ interface PaymentOption {
   key: string;
   name: string;
   blurb: string;
-  emoji: string;
-  bg: string;
+  icon: string;
   comingSoon: boolean;
 }
 
@@ -42,18 +41,16 @@ declare global {
 const OPTIONS: PaymentOption[] = [
   {
     key: "cashfree",
-    name: "UPI / Cards / Net Banking",
-    blurb: "Powered by Cashfree — GPay, PhonePe, Paytm, all cards, EMI",
-    emoji: "💳",
-    bg: "#0a84ff",
+    name: "Cashfree Checkout",
+    blurb: "UPI, Cards, Net Banking, Wallets & EMI",
+    icon: "/cashfree-icon.svg",
     comingSoon: false,
   },
   {
     key: "razorpay",
     name: "Razorpay Checkout",
     blurb: "Cards, UPI, Wallets, Bank Transfer & more",
-    emoji: "💰",
-    bg: "#2563eb",
+    icon: "/razorpay-icon.svg",
     comingSoon: false,
   },
 ];
@@ -295,13 +292,13 @@ function PaymentInner() {
                     width: "44px",
                     height: "44px",
                     borderRadius: "12px",
-                    background: opt.bg,
-                    color: "white",
-                    fontSize: "22px",
+                    background: "#f8fafc",
+                    border: "1px solid #eef2f7",
                     flexShrink: 0,
+                    overflow: "hidden",
                   }}
                 >
-                  {opt.emoji}
+                  <img src={opt.icon} alt={`${opt.name} icon`} width={28} height={28} />
                 </span>
                 <span style={{ flex: 1, minWidth: 0 }}>
                   <span style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
