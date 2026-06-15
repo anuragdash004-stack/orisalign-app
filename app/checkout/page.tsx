@@ -5,7 +5,7 @@ import { Suspense, useState } from "react";
 import Script from "next/script";
 
 /**
- * /payment — Patient payment landing page.
+ * /checkout — Patient payment landing page.
  *
  * Query params:
  *   ?id=<appointment_id>     The booking row this payment is for.
@@ -179,7 +179,7 @@ function PaymentInner() {
           }
 
           // Payment successful
-          window.location.href = `/payment/success?id=${id}&payment_id=${response.razorpay_payment_id}`;
+          window.location.href = `/checkout/success?id=${id}&payment_id=${response.razorpay_payment_id}`;
         } catch (error) {
           setNotice("Payment verification error. Please contact support.");
         } finally {

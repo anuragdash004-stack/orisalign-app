@@ -439,10 +439,10 @@ export default function PatientJourney() {
                             </div>
                           )}
 
-                          {/* Pay Now CTA — opens /payment with appointment context */}
+                          {/* Pay Now CTA — opens /checkout with appointment context */}
                           {pd.pending_amount > 0 && (
                             <a
-                              href={`/payment?id=${id}&amount=${pd.pending_amount}`}
+                              href={`/checkout?id=${id}&amount=${pd.pending_amount}`}
                               style={{
                                 marginTop: "8px",
                                 display: "block",

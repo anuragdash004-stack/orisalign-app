@@ -94,7 +94,7 @@ export async function POST(req: Request) {
     const origin =
       req.headers.get("origin") ||
       `https://${req.headers.get("host") || "orisalign.com"}`;
-    const returnUrl = `${origin}/payment/success?order_id={order_id}`;
+    const returnUrl = `${origin}/checkout/success?order_id={order_id}`;
 
     // Phone must be a 10-digit Indian mobile for Cashfree; strip non-digits.
     const phone =

@@ -88,6 +88,7 @@ const serviceSchema = {
     "name": "OrisAlign",
     "address": {
       "@type": "PostalAddress",
+      "streetAddress": "MIG-1, 43/5, Housing Board Colony, Chandrasekharpur",
       "addressLocality": "Bhubaneswar",
       "addressRegion": "Odisha",
       "postalCode": "751016",
@@ -846,7 +847,7 @@ export default function LandingPage() {
             <div>
               <h4 className="font-bold text-white mb-4 text-sm uppercase tracking-wide">Contact</h4>
               <div className="space-y-3 text-sm">
-                <div className="flex gap-2"><span>📍</span><span>Bhubaneswar – 751016, Odisha</span></div>
+                <div className="flex gap-2"><span>📍</span><span>MIG-1, 43/5, Housing Board Colony, Chandrasekharpur, Bhubaneswar – 751016, Odisha</span></div>
                 <div className="flex gap-2"><span>📧</span><a href="mailto:hello@orisalign.com" className="hover:text-white">hello@orisalign.com</a></div>
                 <div className="flex gap-2"><span>🕐</span><span>Mon–Sat, 10am–7pm</span></div>
               </div>

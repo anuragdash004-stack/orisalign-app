@@ -15,7 +15,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
  * setItem to decide which backing store to use, then mirrors removals to
  * both stores so we never leave a stale token behind.
  *
- * Server-side imports of this module (e.g. /payment, dashboard SSR) skip the
+ * Server-side imports of this module (e.g. /checkout, dashboard SSR) skip the
  * storage override — the default in-memory storage is correct there.
  */
 

@@ -8,7 +8,7 @@ import { logAuditEntry } from "@/lib/auditLog";
  *
  * Server-to-server callback from Cashfree. Fires on every payment lifecycle
  * event (success, failed, user dropped, refund issued, etc.) regardless of
- * whether the user's browser ever lands on /payment/success.
+ * whether the user's browser ever lands on /checkout/success.
  *
  * Setup:
  *   1. In Cashfree dashboard → Developers → Webhooks, add:
