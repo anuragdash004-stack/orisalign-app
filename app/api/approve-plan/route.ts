@@ -47,6 +47,32 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
+    // Notify clinic
+    fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+      },
+      body: JSON.stringify({
+        from: "OrisAlign <no-reply@orisalign.com>",
+        to: "anurag@orisalign.com",
+        subject: `Plan Approved — ${existing.name}`,
+        html: `
+          <div style="font-family:sans-serif;max-width:520px;margin:0 auto;">
+            <h2 style="color:#1B2A4A;">Treatment Plan Approved</h2>
+            <p><strong>${existing.name}</strong> has approved their treatment plan.</p>
+            <table style="border-collapse:collapse;width:100%;font-size:14px;">
+              <tr><td style="padding:6px 0;color:#6b7280;">Patient</td><td><strong>${existing.name}</strong></td></tr>
+              <tr><td style="padding:6px 0;color:#6b7280;">Email</td><td>${existing.email || "—"}</td></tr>
+              <tr><td style="padding:6px 0;color:#6b7280;">Approved at</td><td>${new Date(approvalTimestamp).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST</td></tr>
+              <tr><td style="padding:6px 0;color:#6b7280;">Patient ID</td><td style="font-size:12px;color:#9ca3af;">${patientId}</td></tr>
+            </table>
+          </div>
+        `,
+      }),
+    }).catch(() => {})
+
     // 📋 LOG TO AUDIT TRAIL
     await logAuditEntry({
       appointmentId: patientId,
