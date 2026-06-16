@@ -920,9 +920,16 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
     setSaving(key);
     const js = appt.journey_steps || {};
     const newJs = { ...js, [key]: newVal };
+    const updatePayload = { journey_steps: newJs };
+    if (key === "plan_approved" && !newVal) {
+      updatePayload.plan_approved = false;
+      updatePayload.plan_approved_at = null;
+      updatePayload.plan_approval_ip = null;
+      delete newJs.plan_approved_at;
+    }
     const { error } = await supabase
       .from("appointments_booking")
-      .update({ journey_steps: newJs })
+      .update(updatePayload)
       .eq("id", appointmentId);
     setSaving(null);
     if (error) {
