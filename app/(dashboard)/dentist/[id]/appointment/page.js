@@ -372,7 +372,7 @@ export default function AppointmentWorkflow() {
                 <option value="">Select</option>
                 <option value="MALE">Male</option>
                 <option value="FEMALE">Female</option>
-                <option value="TRANSGENDER">Transgender</option>
+                <option value="OTHERS">Others</option>
               </select>
             </div>
             <div>

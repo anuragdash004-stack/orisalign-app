@@ -392,7 +392,7 @@ export default function BookPage() {
               <option value="" disabled>Gender</option>
               <option value="MALE">Male</option>
               <option value="FEMALE">Female</option>
-              <option value="TRANSGENDER">Transgender</option>
+              <option value="OTHERS">Others</option>
             </select>
 
             <div className="section-label">Address</div>
