@@ -186,6 +186,7 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
   const [pushing, setPushing] = useState(false);
   const [pushed, setPushed] = useState(false);
   const [showModelSelector, setShowModelSelector] = useState(false);
+  const [selectedModelForApply, setSelectedModelForApply] = useState(null);
   const [applyingModel, setApplyingModel] = useState(false);
 
   useEffect(() => {
@@ -193,24 +194,26 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
       .then(({ data }) => setAppt(data || null));
   }, [appointmentId]);
 
-  const applyModel = async (model) => {
+  const applyModel = async () => {
+    if (!selectedModelForApply) return;
     setApplyingModel(true);
     const newData = {
       ...data,
-      full_amount: model.fullAmount,
+      full_amount: selectedModelForApply.fullAmount,
       down_payment: DOWN_PAYMENT_FIXED,
-      treatment_model: model.value,
+      treatment_model: selectedModelForApply.value,
     };
     setData(newData);
 
     await supabase
       .from("appointments_booking")
-      .update({ treatment_model: model.value })
+      .update({ treatment_model: selectedModelForApply.value })
       .eq("id", id)
       .then(() => {})
       .catch(() => {});
 
     setShowModelSelector(false);
+    setSelectedModelForApply(null);
     setApplyingModel(false);
   };
 
@@ -402,11 +405,11 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
 
   return (
     <div>
-      {/* Model Selector Card */}
+      {/* Model Selector Card — Separate Section */}
       <div style={card}>
         <h3 style={{ margin: "0 0 16px", fontSize: "16px", color: "#111827" }}>Select Treatment Model</h3>
         <button
-          onClick={() => setShowModelSelector(!showModelSelector)}
+          onClick={() => setShowModelSelector(true)}
           style={{
             width: "100%",
             padding: "12px 16px",
@@ -419,33 +422,110 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
             cursor: "pointer",
           }}
         >
-          {showModelSelector ? "▼ Select Model" : "► Select Model"}
+          Select Model
         </button>
-        {showModelSelector && (
-          <div style={{ marginTop: "12px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-            {MODEL_OPTIONS.map((model) => (
-              <button
-                key={model.value}
-                onClick={() => applyModel(model)}
-                disabled={applyingModel}
-                style={{
-                  padding: "10px 12px",
-                  borderRadius: "8px",
-                  border: "1px solid #e5e7eb",
-                  background: "#f8f7f5",
-                  color: "#111827",
-                  fontWeight: "600",
-                  fontSize: "13px",
-                  cursor: applyingModel ? "not-allowed" : "pointer",
-                  opacity: applyingModel ? 0.6 : 1,
-                }}
-              >
-                {model.label} — {inr(model.fullAmount)}
-              </button>
-            ))}
+        {data.treatment_model && (
+          <div style={{ marginTop: "12px", padding: "12px", background: "#f0fdf4", borderRadius: "8px", border: "1px solid #bbf7d0" }}>
+            <p style={{ margin: "0 0 6px", fontSize: "11px", fontWeight: "700", color: "#16a34a", textTransform: "uppercase" }}>Selected Model</p>
+            <p style={{ margin: 0, fontSize: "14px", fontWeight: "700", color: "#111827" }}>
+              {MODEL_OPTIONS.find(m => m.value === data.treatment_model)?.label}
+            </p>
           </div>
         )}
       </div>
+
+      {/* Model Selection Modal */}
+      {showModelSelector && (
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(0,0,0,0.5)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 1000,
+        }}>
+          <div style={{
+            background: "white",
+            borderRadius: "12px",
+            padding: "24px",
+            maxWidth: "500px",
+            width: "90%",
+            boxShadow: "0 10px 40px rgba(0,0,0,0.2)",
+          }}>
+            <h2 style={{ margin: "0 0 16px", fontSize: "18px", fontWeight: "700", color: "#111827" }}>Select Treatment Model</h2>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "16px" }}>
+              {MODEL_OPTIONS.map((model) => (
+                <button
+                  key={model.value}
+                  onClick={() => setSelectedModelForApply(model)}
+                  style={{
+                    padding: "12px 14px",
+                    borderRadius: "8px",
+                    border: selectedModelForApply?.value === model.value ? "2px solid #111827" : "1px solid #d1d5db",
+                    background: selectedModelForApply?.value === model.value ? "#f0f0f0" : "white",
+                    color: "#111827",
+                    fontWeight: selectedModelForApply?.value === model.value ? "700" : "600",
+                    fontSize: "14px",
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                  }}
+                >
+                  {model.label}
+                </button>
+              ))}
+            </div>
+
+            {selectedModelForApply && (
+              <div style={{ padding: "12px", background: "#ede9fe", borderRadius: "8px", marginBottom: "16px" }}>
+                <p style={{ margin: "0 0 4px", fontSize: "10px", fontWeight: "700", color: "#6d28d9", textTransform: "uppercase" }}>Selected</p>
+                <p style={{ margin: 0, fontSize: "14px", fontWeight: "700", color: "#4c1d95" }}>{selectedModelForApply.label}</p>
+              </div>
+            )}
+
+            <div style={{ display: "flex", gap: "10px" }}>
+              <button
+                onClick={() => {
+                  setShowModelSelector(false);
+                  setSelectedModelForApply(null);
+                }}
+                style={{
+                  flex: 1,
+                  padding: "10px",
+                  borderRadius: "8px",
+                  border: "1px solid #e5e7eb",
+                  background: "white",
+                  color: "#111827",
+                  fontWeight: "600",
+                  fontSize: "13px",
+                  cursor: "pointer",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={applyModel}
+                disabled={!selectedModelForApply || applyingModel}
+                style={{
+                  flex: 1,
+                  padding: "10px",
+                  borderRadius: "8px",
+                  border: "none",
+                  background: selectedModelForApply && !applyingModel ? "#111827" : "#d1d5db",
+                  color: "white",
+                  fontWeight: "600",
+                  fontSize: "13px",
+                  cursor: selectedModelForApply && !applyingModel ? "pointer" : "not-allowed",
+                  opacity: applyingModel ? 0.6 : 1,
+                }}
+              >
+                {applyingModel ? "Applying..." : "Apply"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Payment Details Card */}
       <div style={card}>
