@@ -53,10 +53,10 @@ export default function Sidebar({ collapsed, setCollapsed }) {
 
   const show = {
     dashboard:    userRole === "admin",
-    appointments: userRole === "admin" || userRole === "counsellor",
+    appointments: userRole === "admin" || userRole === "counselor",
     dentist:      userRole === "admin" || userRole === "dentist",
     ortho:        userRole === "admin" || userRole === "orthodontist",
-    patients:     userRole === "admin",
+    patients:     userRole === "admin" || userRole === "counselor",
     audit:        userRole === "admin",
   };
 

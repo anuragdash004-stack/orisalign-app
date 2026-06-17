@@ -1,13 +1,49 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
+import { getSupabaseClient } from "@/lib/supabaseClient";
+
+const supabase = getSupabaseClient();
+
+// Which path prefixes each role may visit
+const ROLE_ALLOWED = {
+  admin:        ["/admin", "/appointment", "/dentist", "/ortho", "/patients", "/audit"],
+  counselor:    ["/appointment", "/patients"],
+  dentist:      ["/dentist"],
+  orthodontist: ["/ortho"],
+};
+
+// Where to land after login
+const ROLE_HOME = {
+  admin:        "/admin",
+  counselor:    "/appointment",
+  dentist:      "/dentist",
+  orthodontist: "/ortho",
+};
 
 export default function DashboardLayout({ children }) {
   const [collapsed, setCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const path = usePathname();
+  const router = useRouter();
+
+  // Role-based route guard
+  useEffect(() => {
+    const check = async () => {
+      const { data: authData } = await supabase.auth.getUser();
+      if (!authData?.user) { router.replace("/login"); return; }
+      const { data } = await supabase.from("users").select("role").eq("id", authData.user.id).single();
+      const role = data?.role || "";
+      const allowed = ROLE_ALLOWED[role] || [];
+      const permitted = allowed.some((prefix) => path.startsWith(prefix));
+      if (!permitted && !path.startsWith("/patient") && !path.startsWith("/checkout")) {
+        router.replace(ROLE_HOME[role] || "/login");
+      }
+    };
+    check();
+  }, [path]);
 
   // Patient journey pages are public — no sidebar
   const isPublicPatientPage = path === "/patient" || path?.startsWith("/patient/");
