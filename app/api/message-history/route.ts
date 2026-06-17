@@ -130,6 +130,11 @@ export async function POST(req: Request) {
                   <h1 style="color:#C9A84C;margin:0;font-size:22px;">OrisAlign</h1>
                 </div>
                 <p style="color:#374151;font-size:15px;line-height:1.7;">${body}</p>
+                <div style="text-align:center;margin:24px 0;">
+                  <a href="https://orisalign.com/patient/${appointmentId}" style="display:inline-block;padding:12px 30px;background:#b8905a;color:white;text-decoration:none;border-radius:8px;font-weight:700;font-size:14px;">
+                    Track Your Journey →
+                  </a>
+                </div>
                 <hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0;">
                 <p style="text-align:center;color:#9ca3af;font-size:12px;">
                   OrisAlign · Bhubaneswar – 751016, Odisha<br/>
