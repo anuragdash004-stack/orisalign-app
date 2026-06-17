@@ -30,12 +30,12 @@ const PENDING_MODE_OPTIONS = [...MODE_OPTIONS, "Installment"];
 const FINANCE_OPTIONS = ["Bajaj Finance", "HBD Finance", "Poonawalla Finance", "Fibe", "Others"];
 const DELIVERY_PARTNERS = ["BlueDart", "Delhivery", "Other"];
 const MODEL_OPTIONS = [
-  { label: "6-8 Years", value: "6-8", fullAmount: 65000 },
-  { label: "8-10 Years", value: "8-10", fullAmount: 70000 },
-  { label: "10-12 Years", value: "10-12", fullAmount: 80000 },
-  { label: "12-14 Years", value: "12-14", fullAmount: 89000 },
-  { label: "14-16 Years", value: "14-16", fullAmount: 99000 },
-  { label: "16-18 Years", value: "16-18", fullAmount: 108000 },
+  { label: "6-8", value: "6-8", fullAmount: 65000 },
+  { label: "8-10", value: "8-10", fullAmount: 70000 },
+  { label: "10-12", value: "10-12", fullAmount: 80000 },
+  { label: "12-14", value: "12-14", fullAmount: 89000 },
+  { label: "14-16", value: "14-16", fullAmount: 99000 },
+  { label: "16-18", value: "16-18", fullAmount: 108000 },
 ];
 const DOWN_PAYMENT_FIXED = 12500;
 
