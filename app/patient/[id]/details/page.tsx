@@ -153,7 +153,13 @@ export default function PatientDetailsPage() {
       const address = [fullAddress, city && `${city}, ${district}, ${areaState}`, `PIN: ${pincode}`, locationLink ? `Maps: ${locationLink}` : ""].filter(Boolean).join(" | ")
       const problem = chiefComplaint === "Others" ? `Others — ${explainConcern}` : chiefComplaint + (explainConcern ? ` — ${explainConcern}` : "")
 
-      const { error } = await supabase!
+      console.log("Submitting details for patient:", id)
+      console.log("Update data:", {
+        age, sex, address, pincode, chief_complaint: chiefComplaint, consultation_type: consultationType,
+        explain_concern: explainConcern, date, time, problem: `[${consultationType.toUpperCase()}] ${problem}`
+      })
+
+      const { error, data } = await supabase!
         .from("appointments_booking")
         .update({
           age, sex, address, pincode, chief_complaint: chiefComplaint, consultation_type: consultationType,
@@ -162,10 +168,16 @@ export default function PatientDetailsPage() {
         })
         .eq("id", id)
 
-      if (error) throw error
-      router.push(`/patient/${id}`)
+      if (error) {
+        console.error("Supabase error:", error)
+        throw error
+      }
+
+      console.log("Update successful, redirecting to patient page")
+      setTimeout(() => router.push(`/patient/${id}`), 500)
     } catch (err: any) {
-      alert(`Failed to save details: ${err.message}`)
+      console.error("Full error:", err)
+      alert(`Failed to save details: ${err.message || err}`)
     } finally {
       setSubmitting(false)
     }
