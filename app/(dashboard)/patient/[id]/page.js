@@ -52,6 +52,21 @@ function fmt(n) {
   return `₹ ${parseFloat(n).toLocaleString("en-IN")}`;
 }
 
+function calculateFinalAmount(pd, appliedCouponIds) {
+  let fullAmt = parseFloat(pd.full_amount) || 0;
+  fullAmt = fullAmt - (parseFloat(pd.discount) || 0);
+
+  // Apply all selected coupons
+  appliedCouponIds.forEach((couponId) => {
+    const coupon = coupons.find((c) => c.id === couponId);
+    if (coupon) {
+      fullAmt = Math.max(0, fullAmt - (parseFloat(coupon.discount_amount) || 0));
+    }
+  });
+
+  return Math.round(fullAmt * 100) / 100;
+}
+
 export default function PatientJourney() {
   const { id } = useParams();
   const router = useRouter();
@@ -60,6 +75,10 @@ export default function PatientJourney() {
   const [expandedStep, setExpandedStep] = useState(null);
   const [approving, setApproving] = useState(false);
   const [copiedNum, setCopiedNum] = useState(null);
+  const [coupons, setCoupons] = useState([]);
+  const [paymentMode, setPaymentMode] = useState("down"); // "down" or "full"
+  const [appliedCoupons, setAppliedCoupons] = useState([]);
+  const [showCouponSelector, setShowCouponSelector] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -73,6 +92,18 @@ export default function PatientJourney() {
     };
     load();
   }, [id]);
+
+  useEffect(() => {
+    const fetchCoupons = async () => {
+      const { data } = await supabase
+        .from("coupons")
+        .select("*")
+        .eq("is_active", true)
+        .order("created_at", { ascending: false });
+      setCoupons(data || []);
+    };
+    fetchCoupons();
+  }, []);
 
   if (loading) return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
@@ -402,65 +433,147 @@ export default function PatientJourney() {
                   {/* Expanded Panel — Price & Payment */}
                   {step.key === "payment_done" && isExpanded && (
                     <div style={{ marginLeft: "58px", marginTop: "8px", background: "white", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
-                      <p style={{ margin: "0 0 14px", fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Price & Payment Details</p>
-                      {!pd.final_amount ? (
+                      <p style={{ margin: "0 0 14px", fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Price & Payment</p>
+                      {!pd.full_amount ? (
                         <p style={{ margin: 0, fontSize: "13px", color: "#9ca3af", fontStyle: "italic" }}>Payment details will appear here once confirmed.</p>
                       ) : (
-                        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                          {[
-                            ["Full Amount", fmt(pd.full_amount)],
-                            ["Discount", pd.discount ? `- ${fmt(pd.discount)}` : "—"],
-                            pd.coupon_code ? ["Coupon (" + pd.coupon_code + ")", pd.coupon_discount ? `- ${fmt(pd.coupon_discount)}` : "—"] : null,
-                            ["Final Amount", fmt(pd.final_amount)],
-                            ["Down Payment", fmt(pd.down_payment) + (pd.down_payment_mode ? ` (${pd.down_payment_mode})` : "")],
-                            ["Pending Amount", fmt(pd.pending_amount) + (pd.pending_mode ? ` (${pd.pending_mode})` : "")],
-                            (pd.down_payment_mode === "Finance" || pd.pending_mode === "Finance") && pd.finance_provider ? ["Finance", pd.finance_provider] : null,
-                          ].filter(Boolean).map(([lbl, val]) => (
-                            <div key={lbl} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: lbl === "Final Amount" ? "#f0fdf4" : "#f8f7f5", borderRadius: "8px", border: lbl === "Final Amount" ? "1px solid #bbf7d0" : "none" }}>
-                              <span style={{ fontSize: "13px", color: "#6b7280", fontWeight: "600" }}>{lbl}</span>
-                              <span style={{ fontSize: "13px", color: lbl === "Final Amount" ? "#16a34a" : "#111827", fontWeight: lbl === "Final Amount" ? "800" : "600" }}>{val}</span>
-                            </div>
-                          ))}
+                        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                          {/* Payment Mode Selection */}
+                          <div style={{ display: "flex", gap: "8px" }}>
+                            <button
+                              onClick={() => setPaymentMode("down")}
+                              style={{
+                                flex: 1,
+                                padding: "10px",
+                                borderRadius: "8px",
+                                border: paymentMode === "down" ? "2px solid #b8905a" : "1px solid #e5e7eb",
+                                background: paymentMode === "down" ? "#f8f7f5" : "white",
+                                color: "#111827",
+                                fontWeight: "700",
+                                fontSize: "13px",
+                                cursor: "pointer",
+                              }}
+                            >
+                              Down Payment
+                            </button>
+                            <button
+                              onClick={() => setPaymentMode("full")}
+                              style={{
+                                flex: 1,
+                                padding: "10px",
+                                borderRadius: "8px",
+                                border: paymentMode === "full" ? "2px solid #b8905a" : "1px solid #e5e7eb",
+                                background: paymentMode === "full" ? "#f8f7f5" : "white",
+                                color: "#111827",
+                                fontWeight: "700",
+                                fontSize: "13px",
+                                cursor: "pointer",
+                              }}
+                            >
+                              Full Payment
+                            </button>
+                          </div>
 
-                          {/* Installment Plan */}
-                          {pd.pending_mode === "Installment" && pd.installment_plan?.installments?.length > 0 && (
-                            <div style={{ marginTop: "8px" }}>
-                              <p style={{ margin: "2px 0 8px", fontSize: "11px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Installment Plan</p>
-                              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                                {pd.installment_plan.installments.map((inst) => (
-                                  <div key={inst.num} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: inst.paid ? "#f0fdf4" : "#f8f7f5", borderRadius: "8px", border: inst.paid ? "1px solid #bbf7d0" : "none" }}>
-                                    <span style={{ fontSize: "13px", color: "#111827", fontWeight: "600" }}>Installment {inst.num} · {fmt(inst.amount)}</span>
-                                    <span style={{ fontSize: "12px", fontWeight: "700", color: inst.paid ? "#16a34a" : "#9ca3af" }}>
-                                      {inst.paid ? `Paid ✓${inst.paid_date ? ` on ${inst.paid_date}` : ""}` : "Pending"}
+                          {/* Amount Display */}
+                          <div style={{ padding: "12px", background: "#f0fdf4", borderRadius: "8px", border: "1px solid #bbf7d0" }}>
+                            <p style={{ margin: "0 0 4px", fontSize: "11px", fontWeight: "700", color: "#16a34a", textTransform: "uppercase" }}>Amount to Pay</p>
+                            <p style={{ margin: 0, fontSize: "24px", fontWeight: "900", color: "#15803d" }}>
+                              {paymentMode === "down"
+                                ? fmt(pd.down_payment)
+                                : fmt(calculateFinalAmount(pd, appliedCoupons))}
+                            </p>
+                          </div>
+
+                          {/* Coupon Section */}
+                          <div>
+                            <button
+                              onClick={() => setShowCouponSelector(!showCouponSelector)}
+                              style={{
+                                width: "100%",
+                                padding: "10px",
+                                borderRadius: "8px",
+                                border: "1px solid #e5e7eb",
+                                background: "white",
+                                color: "#111827",
+                                fontWeight: "700",
+                                fontSize: "13px",
+                                cursor: "pointer",
+                              }}
+                            >
+                              {showCouponSelector ? "▼ Apply Coupon" : "► Apply Coupon"}
+                            </button>
+                            {showCouponSelector && coupons.length > 0 && (
+                              <div style={{ marginTop: "8px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                                {coupons.map((coupon) => (
+                                  <div
+                                    key={coupon.id}
+                                    onClick={() => {
+                                      if (appliedCoupons.includes(coupon.id)) {
+                                        setAppliedCoupons(appliedCoupons.filter((id) => id !== coupon.id));
+                                      } else {
+                                        setAppliedCoupons([...appliedCoupons, coupon.id]);
+                                      }
+                                    }}
+                                    style={{
+                                      padding: "10px 12px",
+                                      borderRadius: "8px",
+                                      border: appliedCoupons.includes(coupon.id) ? "2px solid #16a34a" : "1px solid #e5e7eb",
+                                      background: appliedCoupons.includes(coupon.id) ? "#f0fdf4" : "#f8f7f5",
+                                      cursor: "pointer",
+                                      display: "flex",
+                                      justifyContent: "space-between",
+                                      alignItems: "center",
+                                    }}
+                                  >
+                                    <div>
+                                      <p style={{ margin: "0 0 2px", fontSize: "13px", fontWeight: "700", color: "#111827" }}>{coupon.code}</p>
+                                      <p style={{ margin: 0, fontSize: "12px", color: "#6b7280" }}>Discount: {fmt(coupon.discount_amount)}</p>
+                                    </div>
+                                    <span style={{ fontSize: "12px", fontWeight: "700", color: appliedCoupons.includes(coupon.id) ? "#16a34a" : "#9ca3af" }}>
+                                      {appliedCoupons.includes(coupon.id) ? "✓ Applied" : ""}
                                     </span>
                                   </div>
                                 ))}
                               </div>
+                            )}
+                          </div>
+
+                          {/* Applied Coupons Summary */}
+                          {appliedCoupons.length > 0 && (
+                            <div style={{ padding: "10px 12px", background: "#fef3c7", borderRadius: "8px" }}>
+                              <p style={{ margin: "0 0 4px", fontSize: "11px", fontWeight: "700", color: "#92400e", textTransform: "uppercase" }}>Coupons Applied</p>
+                              <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
+                                {appliedCoupons.map((couponId) => {
+                                  const coupon = coupons.find((c) => c.id === couponId);
+                                  return (
+                                    <span key={couponId} style={{ fontSize: "12px", fontWeight: "700", padding: "3px 8px", background: "white", borderRadius: "4px", border: "1px solid #fbbf24", color: "#92400e" }}>
+                                      {coupon?.code} - {fmt(coupon?.discount_amount)}
+                                    </span>
+                                  );
+                                })}
+                              </div>
                             </div>
                           )}
 
-                          {/* Pay Now CTA — opens /checkout with appointment context */}
-                          {pd.pending_amount > 0 && (
-                            <a
-                              href={`/checkout?id=${id}&amount=${pd.pending_amount}`}
-                              style={{
-                                marginTop: "8px",
-                                display: "block",
-                                padding: "12px",
-                                borderRadius: "10px",
-                                background: "linear-gradient(135deg, #b8905a, #f59e0b)",
-                                color: "white",
-                                fontWeight: "800",
-                                fontSize: "14px",
-                                textAlign: "center",
-                                textDecoration: "none",
-                                letterSpacing: "0.3px",
-                                boxShadow: "0 4px 10px rgba(184, 144, 90, 0.25)",
-                              }}
-                            >
-                              Pay Now · {fmt(pd.pending_amount)}
-                            </a>
-                          )}
+                          {/* Pay Now Button */}
+                          <a
+                            href={`/checkout?id=${id}&amount=${paymentMode === "down" ? pd.down_payment : calculateFinalAmount(pd, appliedCoupons)}`}
+                            style={{
+                              display: "block",
+                              padding: "12px",
+                              borderRadius: "10px",
+                              background: "linear-gradient(135deg, #b8905a, #f59e0b)",
+                              color: "white",
+                              fontWeight: "800",
+                              fontSize: "14px",
+                              textAlign: "center",
+                              textDecoration: "none",
+                              letterSpacing: "0.3px",
+                              boxShadow: "0 4px 10px rgba(184, 144, 90, 0.25)",
+                            }}
+                          >
+                            Pay Now · {paymentMode === "down" ? fmt(pd.down_payment) : fmt(calculateFinalAmount(pd, appliedCoupons))}
+                          </a>
                         </div>
                       )}
                     </div>
