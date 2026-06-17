@@ -58,6 +58,15 @@ const SHEET_CATS = {
   "Retainer":            [3, 5, 8, 10, 13, 17, 18, 19, 21, 22],
 };
 
+const MODEL_OPTIONS = [
+  { label: "6-8", value: "6-8", fullAmount: 65000 },
+  { label: "8-10", value: "8-10", fullAmount: 70000 },
+  { label: "10-12", value: "10-12", fullAmount: 80000 },
+  { label: "12-14", value: "12-14", fullAmount: 89000 },
+  { label: "14-16", value: "14-16", fullAmount: 99000 },
+  { label: "16-18", value: "16-18", fullAmount: 108000 },
+];
+
 const DURATION_OPTIONS = [
   "6-8 months",
   "8-10 months",
@@ -87,6 +96,9 @@ export default function OrthoCase() {
 
   const [orthoNote, setOrthoNote] = useState(PROVISIONAL_PLAN_NOTE);
   const [noteSaving, setNoteSaving] = useState(false);
+
+  const [selectedModel, setSelectedModel] = useState("");
+  const [showModelModal, setShowModelModal] = useState(false);
 
   const [finalPlan, setFinalPlan] = useState("");
   const [finalSaving, setFinalSaving] = useState(false);
@@ -123,6 +135,8 @@ export default function OrthoCase() {
         setProvisionalSubmitted(true);
         setProvisionalPlan(data.provisional_plan || "");
       }
+      setTreatmentDuration(data.treatment_duration || "");
+      setSelectedModel(data.treatment_model || "");
       setOrthoNote(data.ortho_note || "");
       setFinalPlan(data.final_plan || "");
       setVideoLink(data.planning_video_link || "");
@@ -174,12 +188,14 @@ export default function OrthoCase() {
       .update({
         provisional_plan: provisionalPlan,
         ortho_note: orthoNote,
+        treatment_duration: treatmentDuration,
+        treatment_model: selectedModel,
         provisional_plan_submitted: true,
       })
       .eq("id", id);
     setProvisionalSaving(false);
     if (error) { alert("Failed to submit plan: " + error.message); return; }
-    logAudit({ appointmentId: id, actor, action: "Provisional Plan Submitted", entity: "provisional_plan", newData: { provisional_plan: provisionalPlan, ortho_note: orthoNote } });
+    logAudit({ appointmentId: id, actor, action: "Provisional Plan Submitted", entity: "provisional_plan", newData: { provisional_plan: provisionalPlan, ortho_note: orthoNote, treatment_duration: treatmentDuration, treatment_model: selectedModel } });
     setProvisionalSubmitted(true);
   };
 
@@ -409,33 +425,71 @@ export default function OrthoCase() {
               </label>
 
               {!provisionalSubmitted && (
-                <div style={{ marginBottom: "16px" }}>
-                  <label style={{ fontWeight: "600", fontSize: "13px", color: "#111827", display: "block", marginBottom: "6px" }}>
-                    Treatment Duration
-                  </label>
-                  <select
-                    value={treatmentDuration}
-                    onChange={(e) => setTreatmentDuration(e.target.value)}
-                    style={{
-                      ...inputStyle,
-                      width: "100%",
-                      padding: "10px 12px",
-                      borderRadius: "8px",
-                      border: "1px solid #d1d5db",
-                      fontSize: "14px",
-                      outline: "none",
-                    }}
-                  >
-                    <option value="">Select duration</option>
-                    {DURATION_OPTIONS.map((duration) => (
-                      <option key={duration} value={duration}>{duration}</option>
-                    ))}
-                  </select>
-                </div>
+                <>
+                  <div style={{ marginBottom: "16px", padding: "14px", borderRadius: "12px", border: "1px solid #e5e7eb", background: "#f9fafb" }}>
+                    <p style={{ fontSize: "11px", fontWeight: "700", color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.5px", margin: "0 0 10px" }}>Treatment Model</p>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "8px" }}>
+                      {MODEL_OPTIONS.map((model) => (
+                        <button
+                          key={model.value}
+                          onClick={() => setSelectedModel(model.value)}
+                          style={{
+                            padding: "10px 12px",
+                            borderRadius: "8px",
+                            border: selectedModel === model.value ? "2px solid #111827" : "1px solid #d1d5db",
+                            background: selectedModel === model.value ? "#f0f0f0" : "white",
+                            color: "#111827",
+                            fontWeight: selectedModel === model.value ? "700" : "600",
+                            fontSize: "13px",
+                            cursor: "pointer",
+                            transition: "all 0.2s",
+                          }}
+                        >
+                          {model.label}
+                        </button>
+                      ))}
+                    </div>
+                    {selectedModel && (
+                      <p style={{ fontSize: "12px", color: "#16a34a", fontWeight: "600", margin: "8px 0 0" }}>
+                        ✓ {MODEL_OPTIONS.find(m => m.value === selectedModel)?.label} selected
+                      </p>
+                    )}
+                  </div>
+
+                  <div style={{ marginBottom: "16px" }}>
+                    <label style={{ fontWeight: "600", fontSize: "13px", color: "#111827", display: "block", marginBottom: "6px" }}>
+                      Treatment Duration
+                    </label>
+                    <select
+                      value={treatmentDuration}
+                      onChange={(e) => setTreatmentDuration(e.target.value)}
+                      style={{
+                        ...inputStyle,
+                        width: "100%",
+                        padding: "10px 12px",
+                        borderRadius: "8px",
+                        border: "1px solid #d1d5db",
+                        fontSize: "14px",
+                        outline: "none",
+                      }}
+                    >
+                      <option value="">Select duration</option>
+                      {DURATION_OPTIONS.map((duration) => (
+                        <option key={duration} value={duration}>{duration}</option>
+                      ))}
+                    </select>
+                  </div>
+                </>
               )}
 
               {provisionalSubmitted ? (
                 <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "8px", padding: "14px", fontSize: "14px", color: "#111827", whiteSpace: "pre-wrap" }}>
+                  {selectedModel && (
+                    <div style={{ marginBottom: "12px", paddingBottom: "12px", borderBottom: "1px solid #bbf7d0" }}>
+                      <p style={{ fontSize: "11px", fontWeight: "700", color: "#16a34a", textTransform: "uppercase", letterSpacing: "0.5px", margin: "0 0 4px" }}>Model</p>
+                      <p style={{ margin: 0, fontSize: "14px", color: "#111827" }}>{MODEL_OPTIONS.find(m => m.value === selectedModel)?.label}</p>
+                    </div>
+                  )}
                   {treatmentDuration && (
                     <div style={{ marginBottom: "12px", paddingBottom: "12px", borderBottom: "1px solid #bbf7d0" }}>
                       <p style={{ fontSize: "11px", fontWeight: "700", color: "#16a34a", textTransform: "uppercase", letterSpacing: "0.5px", margin: "0 0 4px" }}>Duration</p>
