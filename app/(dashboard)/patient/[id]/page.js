@@ -59,7 +59,7 @@ function deriveSteps(appt) {
   const js = appt.journey_steps || {};
   return {
     booked:                  js.booked               !== undefined ? !!js.booked               : true,
-    confirmed:               js.confirmed            !== undefined ? !!js.confirmed            : appt.status !== "pending",
+    confirmed:               js.confirmed            !== undefined ? !!js.confirmed            : false,
     scanning_done:           js.scanning_done        !== undefined ? !!js.scanning_done        : !!appt.stl_submitted,
     payment_done:            js.payment_done         !== undefined ? !!js.payment_done         : !!(appt.payment_data?.final_amount),
     planning_done:           js.planning_done        !== undefined ? !!js.planning_done        : !!appt.provisional_plan_submitted,
@@ -415,7 +415,7 @@ export default function PatientJourney() {
                             </span>
                           ) : (
                             <button
-                              onClick={(e) => { e.stopPropagation(); handleStepClick(step); }}
+                              onClick={(e) => { e.stopPropagation(); router.push(`/patient/${id}/details`); }}
                               style={{ flexShrink: 0, padding: "7px 14px", borderRadius: "8px", border: "none", background: "#b8905a", color: "white", fontWeight: "700", fontSize: "12px", cursor: "pointer", whiteSpace: "nowrap" }}
                             >
                               Fill Your Details
@@ -435,46 +435,6 @@ export default function PatientJourney() {
                     </div>
                   </div>
 
-                  {/* Expanded Panel — Appointment Booked - Fill Details */}
-                  {step.key === "booked" && isExpanded && !patient.age && (
-                    <div style={{ marginLeft: "58px", marginTop: "8px", background: "white", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
-                      <p style={{ margin: "0 0 16px", fontSize: "13px", fontWeight: "700", color: "#111827" }}>Complete Your Details</p>
-
-                      {/* Age and Sex */}
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "16px" }}>
-                        <div>
-                          <label style={{ display: "block", fontSize: "12px", fontWeight: "700", color: "#111827", marginBottom: "6px" }}>Age</label>
-                          <input type="number" placeholder="Age" value={patient.age || ""} onChange={(e) => handlePatientUpdate("age", e.target.value)} style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #e5e7eb", fontSize: "13px", boxSizing: "border-box" }} />
-                        </div>
-                        <div>
-                          <label style={{ display: "block", fontSize: "12px", fontWeight: "700", color: "#111827", marginBottom: "6px" }}>Sex</label>
-                          <select value={patient.sex || ""} onChange={(e) => handlePatientUpdate("sex", e.target.value)} style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #e5e7eb", fontSize: "13px", boxSizing: "border-box", color: patient.sex ? "#111" : "#9ca3af" }}>
-                            <option value="">Select</option>
-                            <option value="MALE">Male</option>
-                            <option value="FEMALE">Female</option>
-                            <option value="OTHERS">Others</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      {/* Full Address */}
-                      <div style={{ marginBottom: "16px" }}>
-                        <label style={{ display: "block", fontSize: "12px", fontWeight: "700", color: "#111827", marginBottom: "6px" }}>Full Address</label>
-                        <textarea placeholder="Enter your full address" value={patient.fullAddress || ""} onChange={(e) => handlePatientUpdate("fullAddress", e.target.value)} style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #e5e7eb", fontSize: "13px", minHeight: "80px", boxSizing: "border-box", resize: "vertical" }} />
-                      </div>
-
-                      {/* Pincode */}
-                      <div style={{ marginBottom: "16px" }}>
-                        <label style={{ display: "block", fontSize: "12px", fontWeight: "700", color: "#111827", marginBottom: "6px" }}>Pincode</label>
-                        <input type="text" placeholder="Pincode (e.g. 751001)" value={patient.pincode || ""} onChange={(e) => handlePatientUpdate("pincode", e.target.value)} maxLength={6} style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #e5e7eb", fontSize: "13px", boxSizing: "border-box" }} />
-                      </div>
-
-                      {/* Submit Button */}
-                      <button onClick={() => handlePatientDetailsSubmit()} style={{ width: "100%", padding: "12px", borderRadius: "8px", border: "none", background: "#111827", color: "white", fontWeight: "700", fontSize: "13px", cursor: "pointer" }}>
-                        Submit Details
-                      </button>
-                    </div>
-                  )}
 
                   {/* Expanded Panel — Scanning and Provisional Planning */}
                   {step.key === "scanning_done" && isExpanded && (
