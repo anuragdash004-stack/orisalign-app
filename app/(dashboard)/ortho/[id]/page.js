@@ -67,6 +67,33 @@ const MODEL_OPTIONS = [
   { label: "16-18", value: "16-18", fullAmount: 108000 },
 ];
 
+const ORISPRO_MODELS = {
+  "6-8": {
+    one: { duration: "6-8 months", fullAmount: 65000, downPayment: 12500 },
+    two: { duration: "4-6 months", fullAmount: 72000, downPayment: 15500 },
+  },
+  "8-10": {
+    one: { duration: "8-10 months", fullAmount: 70000, downPayment: 12500 },
+    two: { duration: "6-7 months", fullAmount: 78000, downPayment: 15500 },
+  },
+  "10-12": {
+    one: { duration: "10-12 months", fullAmount: 80000, downPayment: 12500 },
+    two: { duration: "6-8 months", fullAmount: 102000, downPayment: 15500 },
+  },
+  "12-14": {
+    one: { duration: "12-14 months", fullAmount: 89000, downPayment: 12500 },
+    two: { duration: "8-9 months", fullAmount: 115000, downPayment: 15500 },
+  },
+  "14-16": {
+    one: { duration: "14-16 months", fullAmount: 99000, downPayment: 12500 },
+    two: { duration: "9-11 months", fullAmount: 128000, downPayment: 15500 },
+  },
+  "16-18": {
+    one: { duration: "16-18 months", fullAmount: 108000, downPayment: 12500 },
+    two: { duration: "10-12 months", fullAmount: 141000, downPayment: 15500 },
+  },
+};
+
 const DURATION_OPTIONS = [
   "6-8 months",
   "8-10 months",
@@ -432,7 +459,13 @@ export default function OrthoCase() {
                       {MODEL_OPTIONS.map((model) => (
                         <button
                           key={model.value}
-                          onClick={() => setSelectedModel(model.value)}
+                          onClick={() => {
+                            setSelectedModel(model.value);
+                            const modelData = ORISPRO_MODELS[model.value];
+                            if (modelData && modelData.one) {
+                              setTreatmentDuration(modelData.one.duration);
+                            }
+                          }}
                           style={{
                             padding: "10px 12px",
                             borderRadius: "8px",

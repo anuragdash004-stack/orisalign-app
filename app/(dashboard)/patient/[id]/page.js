@@ -7,6 +7,33 @@ import Image from "next/image";
 
 const supabase = getSupabaseClient();
 
+const ORISPRO_MODELS = {
+  "6-8": {
+    one: { duration: "6-8 months", fullAmount: 65000, downPayment: 12500 },
+    two: { duration: "4-6 months", fullAmount: 72000, downPayment: 15500 },
+  },
+  "8-10": {
+    one: { duration: "8-10 months", fullAmount: 70000, downPayment: 12500 },
+    two: { duration: "6-7 months", fullAmount: 78000, downPayment: 15500 },
+  },
+  "10-12": {
+    one: { duration: "10-12 months", fullAmount: 80000, downPayment: 12500 },
+    two: { duration: "6-8 months", fullAmount: 102000, downPayment: 15500 },
+  },
+  "12-14": {
+    one: { duration: "12-14 months", fullAmount: 89000, downPayment: 12500 },
+    two: { duration: "8-9 months", fullAmount: 115000, downPayment: 15500 },
+  },
+  "14-16": {
+    one: { duration: "14-16 months", fullAmount: 99000, downPayment: 12500 },
+    two: { duration: "9-11 months", fullAmount: 128000, downPayment: 15500 },
+  },
+  "16-18": {
+    one: { duration: "16-18 months", fullAmount: 108000, downPayment: 12500 },
+    two: { duration: "10-12 months", fullAmount: 141000, downPayment: 15500 },
+  },
+};
+
 const JOURNEY_STEPS = [
   { key: "booked",                  label: "Appointment Booked" },
   { key: "confirmed",               label: "Appointment Confirmed" },
@@ -77,6 +104,7 @@ export default function PatientJourney() {
   const [couponInput, setCouponInput] = useState("");
   const [couponMessage, setCouponMessage] = useState("");
   const [applyingCoupon, setApplyingCoupon] = useState(false);
+  const [orisproVariant, setOrisproVariant] = useState("one"); // "one" or "two"
 
   useEffect(() => {
     const load = async () => {
@@ -90,6 +118,18 @@ export default function PatientJourney() {
     };
     load();
   }, [id]);
+
+  const getVariantPricing = () => {
+    if (!patient || !patient.treatment_model) return { fullAmount: 0, downPayment: 0, duration: "" };
+    const modelData = ORISPRO_MODELS[patient.treatment_model];
+    if (!modelData) return { fullAmount: 0, downPayment: 0, duration: "" };
+    const variantData = modelData[orisproVariant];
+    return {
+      fullAmount: variantData.fullAmount,
+      downPayment: variantData.downPayment,
+      duration: variantData.duration,
+    };
+  };
 
   const applyCoupon = async () => {
     if (!couponInput.trim()) {
@@ -472,6 +512,55 @@ export default function PatientJourney() {
                         <p style={{ margin: 0, fontSize: "13px", color: "#9ca3af", fontStyle: "italic" }}>Payment details will appear here once confirmed.</p>
                       ) : (
                         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                          {/* Orispro Variant Selection */}
+                          {patient?.treatment_model && (
+                            <>
+                              <div style={{ padding: "10px 12px", background: "#f3f4f6", borderRadius: "8px", marginBottom: "4px" }}>
+                                <p style={{ margin: "0 0 8px", fontSize: "11px", fontWeight: "700", color: "#6b7280", textTransform: "uppercase" }}>Treatment Plan</p>
+                                <div style={{ display: "flex", gap: "8px" }}>
+                                  <button
+                                    onClick={() => setOrisproVariant("one")}
+                                    style={{
+                                      flex: 1,
+                                      padding: "10px",
+                                      borderRadius: "8px",
+                                      border: orisproVariant === "one" ? "2px solid #111827" : "1px solid #d1d5db",
+                                      background: orisproVariant === "one" ? "#ffffff" : "#f9fafb",
+                                      color: "#111827",
+                                      fontWeight: orisproVariant === "one" ? "700" : "600",
+                                      fontSize: "13px",
+                                      cursor: "pointer",
+                                    }}
+                                  >
+                                    Orispro
+                                  </button>
+                                  <button
+                                    onClick={() => setOrisproVariant("two")}
+                                    style={{
+                                      flex: 1,
+                                      padding: "10px",
+                                      borderRadius: "8px",
+                                      border: orisproVariant === "two" ? "2px solid #111827" : "1px solid #d1d5db",
+                                      background: orisproVariant === "two" ? "#ffffff" : "#f9fafb",
+                                      color: "#111827",
+                                      fontWeight: orisproVariant === "two" ? "700" : "600",
+                                      fontSize: "13px",
+                                      cursor: "pointer",
+                                    }}
+                                  >
+                                    Orispro Plus
+                                  </button>
+                                </div>
+                              </div>
+                              {getVariantPricing().duration && (
+                                <div style={{ padding: "10px 12px", background: "#ede9fe", borderRadius: "8px", marginBottom: "4px" }}>
+                                  <p style={{ margin: "0 0 4px", fontSize: "11px", fontWeight: "700", color: "#6d28d9", textTransform: "uppercase" }}>Treatment Duration</p>
+                                  <p style={{ margin: 0, fontSize: "14px", fontWeight: "700", color: "#4c1d95" }}>{getVariantPricing().duration}</p>
+                                </div>
+                              )}
+                            </>
+                          )}
+
                           {/* Payment Mode Selection */}
                           <div style={{ display: "flex", gap: "8px" }}>
                             <button
@@ -513,8 +602,8 @@ export default function PatientJourney() {
                             <p style={{ margin: "0 0 4px", fontSize: "11px", fontWeight: "700", color: "#16a34a", textTransform: "uppercase" }}>Amount to Pay</p>
                             <p style={{ margin: 0, fontSize: "24px", fontWeight: "900", color: "#15803d" }}>
                               {paymentMode === "down"
-                                ? fmt(pd.down_payment)
-                                : fmt(calculateFinalAmount(pd, appliedCoupons))}
+                                ? fmt(getVariantPricing().downPayment || pd.down_payment)
+                                : fmt(calculateFinalAmount({ full_amount: getVariantPricing().fullAmount || pd.full_amount, discount: pd.discount }, appliedCoupons))}
                             </p>
                           </div>
 
@@ -594,7 +683,7 @@ export default function PatientJourney() {
 
                           {/* Pay Now Button */}
                           <a
-                            href={`/checkout?id=${id}&amount=${paymentMode === "down" ? pd.down_payment : calculateFinalAmount(pd, appliedCoupons)}`}
+                            href={`/checkout?id=${id}&amount=${paymentMode === "down" ? getVariantPricing().downPayment || pd.down_payment : calculateFinalAmount({ full_amount: getVariantPricing().fullAmount || pd.full_amount, discount: pd.discount }, appliedCoupons)}`}
                             style={{
                               display: "block",
                               padding: "12px",
@@ -609,7 +698,7 @@ export default function PatientJourney() {
                               boxShadow: "0 4px 10px rgba(184, 144, 90, 0.25)",
                             }}
                           >
-                            Pay Now · {paymentMode === "down" ? fmt(pd.down_payment) : fmt(calculateFinalAmount(pd, appliedCoupons))}
+                            Pay Now · {paymentMode === "down" ? fmt(getVariantPricing().downPayment || pd.down_payment) : fmt(calculateFinalAmount({ full_amount: getVariantPricing().fullAmount || pd.full_amount, discount: pd.discount }, appliedCoupons))}
                           </a>
                         </div>
                       )}

@@ -199,8 +199,17 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
       ...data,
       full_amount: model.fullAmount,
       down_payment: DOWN_PAYMENT_FIXED,
+      treatment_model: model.value,
     };
     setData(newData);
+
+    await supabase
+      .from("appointments_booking")
+      .update({ treatment_model: model.value })
+      .eq("id", id)
+      .then(() => {})
+      .catch(() => {});
+
     setShowModelSelector(false);
     setApplyingModel(false);
   };
