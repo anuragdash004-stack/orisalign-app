@@ -12,7 +12,7 @@ const ALL_STEPS = [
   { key: "booked",                  label: "Appointment Booked" },
   { key: "confirmed",               label: "Appointment Confirmed" },
   { key: "scanning_done",           label: "Scanning and Provisional Planning" },
-  { key: "payment_done",            label: "Price & Payment" },
+  { key: "payment_done",            label: "Plan and Payment" },
   { key: "planning_done",           label: "Planning Done" },
   { key: "plan_approved",           label: "Plan Approved" },
   { key: "manufacturing_started",   label: "Manufacturing Started" },
@@ -1413,10 +1413,10 @@ function ReportTab({ appointmentId, appt }) {
   });
 
   // 5. Payment
-  const payLog = findDoneLog("Price & Payment");
+  const payLog = findDoneLog("Plan and Payment");
   events.push({
     done: !!steps.payment_done,
-    title: "Price & Payment",
+    title: "Plan and Payment",
     by: payLog?.actor_email ? `counsellor / admin (${payLog.actor_email})` : "OrisAlign team",
     at: payLog?.created_at || null,
     detail: [

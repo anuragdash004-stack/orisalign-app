@@ -11,7 +11,7 @@ const JOURNEY_STEPS = [
   { key: "booked",                  label: "Appointment Booked" },
   { key: "confirmed",               label: "Appointment Confirmed" },
   { key: "scanning_done",           label: "Scanning and Provisional Planning", expandable: true },
-  { key: "payment_done",            label: "Price & Payment",            expandable: true },
+  { key: "payment_done",            label: "Plan and Payment",            expandable: true },
   { key: "planning_done",           label: "Planning Done", expandable: true },
   { key: "plan_approved",           label: "Plan Approval", approveAction: true },
   { key: "manufacturing_started",   label: "Manufacturing Started" },
@@ -464,10 +464,10 @@ export default function PatientJourney() {
                     </div>
                   )}
 
-                  {/* Expanded Panel — Price & Payment */}
+                  {/* Expanded Panel — Plan and Payment */}
                   {step.key === "payment_done" && isExpanded && (
                     <div style={{ marginLeft: "58px", marginTop: "8px", background: "white", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
-                      <p style={{ margin: "0 0 14px", fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Price & Payment</p>
+                      <p style={{ margin: "0 0 14px", fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Plan and Payment</p>
                       {!pd.full_amount ? (
                         <p style={{ margin: 0, fontSize: "13px", color: "#9ca3af", fontStyle: "italic" }}>Payment details will appear here once confirmed.</p>
                       ) : (
