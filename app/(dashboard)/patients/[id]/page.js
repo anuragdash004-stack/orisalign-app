@@ -27,7 +27,7 @@ const ALL_STEPS = [
 ];
 const MODE_OPTIONS = ["Cash", "Card", "UPI", "Bank Transfer", "Finance"];
 const PENDING_MODE_OPTIONS = [...MODE_OPTIONS, "Installment"];
-const FINANCE_OPTIONS = ["Bajaj Finance", "HBD Finance", "Poonawalla Finance"];
+const FINANCE_OPTIONS = ["Bajaj Finance", "HBD Finance", "Poonawalla Finance", "Fibe", "Others"];
 const DELIVERY_PARTNERS = ["BlueDart", "Delhivery", "Other"];
 
 // ─── Shared styles ────────────────────────────────────────────────────────────
