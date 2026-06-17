@@ -26,12 +26,16 @@ const STL_SLOTS = [
   { key: "lower_scan",  label: "Lower Scan" },
 ];
 
+const PROCEDURE_OPTIONS = ["Restorations", "Root Canal", "Scaling", "Extraction", "Gingival Therapy", "Others"];
+
 const EMPTY_FORM = {
   name: "", age: "", sex: "", weight: "", occupation: "",
   medical_history: "", chief_complaint: "",
   missing_tooth: "", dental_caries: "", deciduous_tooth: "",
   stains: "", calculus: "", recession: "",
   mobile: "", pain: "", sensitivity: "", pregnancy: "",
+  pre_orthodontic_procedures: [],
+  pre_orthodontic_others: "",
 };
 
 export default function AppointmentWorkflow() {
@@ -60,6 +64,10 @@ export default function AppointmentWorkflow() {
 
   const [stls, setStls] = useState({});
   const [stlSaving, setStlSaving] = useState(false);
+
+  const [showProcedureModal, setShowProcedureModal] = useState(false);
+  const [selectedProcedures, setSelectedProcedures] = useState([]);
+  const [procedureOthersText, setProcedureOthersText] = useState("");
 
   useEffect(() => {
     const load = async () => {
@@ -95,8 +103,12 @@ export default function AppointmentWorkflow() {
           pain: pfd.pain || "",
           sensitivity: pfd.sensitivity || "",
           pregnancy: pfd.pregnancy || "",
+          pre_orthodontic_procedures: pfd.pre_orthodontic_procedures || [],
+          pre_orthodontic_others: pfd.pre_orthodontic_others || "",
         });
         setFormDocs(pfd.documents || []);
+        setSelectedProcedures(pfd.pre_orthodontic_procedures || []);
+        setProcedureOthersText(pfd.pre_orthodontic_others || "");
         if (data.form_submitted) setFormSubmitted(true);
         if (data.images_submitted) setImagesSubmitted(true);
         if (data.stl_submitted) setStlSubmitted(true);
@@ -117,6 +129,11 @@ export default function AppointmentWorkflow() {
       return;
     }
     setFormSaving(true);
+    const updatedForm = {
+      ...form,
+      pre_orthodontic_procedures: selectedProcedures,
+      pre_orthodontic_others: procedureOthersText,
+    };
     const { error } = await supabase
       .from("appointments_booking")
       .update({
@@ -125,15 +142,37 @@ export default function AppointmentWorkflow() {
         occupation: form.occupation,
         chief_complaint: form.chief_complaint,
         complete_history: form.medical_history,
-        patient_form_data: { ...form, documents: formDocs },
+        patient_form_data: { ...updatedForm, documents: formDocs },
         form_submitted: true,
       })
       .eq("id", id);
     setFormSaving(false);
     if (error) { alert("Failed to save form."); return; }
-    logAudit({ appointmentId: id, actor, action: "Patient Form Submitted", entity: "patient_form_data", newData: { ...form, documents: formDocs } });
+    logAudit({ appointmentId: id, actor, action: "Patient Form Submitted", entity: "patient_form_data", newData: { ...updatedForm, documents: formDocs } });
     setFormSubmitted(true);
     setActiveSection(null);
+  };
+
+  // ─── PRE-ORTHODONTIC PROCEDURES ────────────────────────────────
+  const handleProcedureToggle = (procedure) => {
+    setSelectedProcedures((prev) =>
+      prev.includes(procedure)
+        ? prev.filter((p) => p !== procedure)
+        : [...prev, procedure]
+    );
+  };
+
+  const submitProcedures = async () => {
+    const updatedForm = {
+      ...form,
+      pre_orthodontic_procedures: selectedProcedures,
+      pre_orthodontic_others: procedureOthersText,
+    };
+    await supabase
+      .from("appointments_booking")
+      .update({ patient_form_data: { ...updatedForm, documents: formDocs } })
+      .eq("id", id);
+    setShowProcedureModal(false);
   };
 
   // ─── DOCUMENT UPLOAD ────────────────────────────────────────────
@@ -409,6 +448,131 @@ export default function AppointmentWorkflow() {
               <input style={inp} type="text" value={form.pregnancy} onChange={sf("pregnancy")} />
             </div>
           </div>
+
+          {/* Pre-Orthodontic Procedures */}
+          <div style={{ marginBottom: "16px" }}>
+            <span style={lbl}>Pre-orthodontic Procedures</span>
+            <button
+              onClick={() => setShowProcedureModal(true)}
+              style={{
+                width: "100%", padding: "12px", borderRadius: "8px",
+                border: "2px solid #d1d5db", background: "white",
+                color: "#374151", fontWeight: "600", fontSize: "13px",
+                cursor: "pointer", marginBottom: "8px",
+              }}
+            >
+              {selectedProcedures.length === 0 ? "Select Procedures" : `${selectedProcedures.length} selected`}
+            </button>
+            {selectedProcedures.length > 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                {selectedProcedures.map((proc) => (
+                  <div
+                    key={proc}
+                    style={{
+                      padding: "8px 12px", borderRadius: "8px", border: "1px solid #22c55e",
+                      background: "#f0fdf4", fontSize: "13px", color: "#16a34a",
+                      display: "flex", justifyContent: "space-between", alignItems: "center",
+                    }}
+                  >
+                    <span>{proc}</span>
+                    <button
+                      onClick={() => handleProcedureToggle(proc)}
+                      style={{
+                        background: "none", border: "none", color: "#dc2626",
+                        cursor: "pointer", fontSize: "16px", padding: 0,
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+                {selectedProcedures.includes("Others") && (
+                  <div style={{ marginTop: "6px" }}>
+                    <span style={lbl}>Other Procedures</span>
+                    <textarea
+                      value={procedureOthersText}
+                      onChange={(e) => setProcedureOthersText(e.target.value)}
+                      style={{ ...inp, minHeight: "60px", resize: "vertical" }}
+                      placeholder="Describe other pre-orthodontic procedures..."
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Procedure Selection Modal */}
+          {showProcedureModal && (
+            <div style={{
+              position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              zIndex: 1000,
+            }}>
+              <div style={{
+                background: "white", borderRadius: "12px", padding: "24px",
+                maxWidth: "400px", width: "90%", boxShadow: "0 10px 40px rgba(0,0,0,0.2)",
+              }}>
+                <h3 style={{ marginTop: 0, marginBottom: "16px", fontSize: "16px", fontWeight: "700" }}>
+                  Select Pre-orthodontic Procedures
+                </h3>
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "16px" }}>
+                  {PROCEDURE_OPTIONS.map((proc) => (
+                    <label
+                      key={proc}
+                      style={{
+                        display: "flex", alignItems: "center", gap: "10px",
+                        padding: "10px 12px", borderRadius: "8px", border: "1px solid #e5e7eb",
+                        cursor: "pointer", background: selectedProcedures.includes(proc) ? "#f0fdf4" : "white",
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedProcedures.includes(proc)}
+                        onChange={() => handleProcedureToggle(proc)}
+                        style={{ cursor: "pointer", width: "18px", height: "18px" }}
+                      />
+                      <span style={{ fontSize: "14px", fontWeight: "500", color: "#111827" }}>{proc}</span>
+                    </label>
+                  ))}
+                </div>
+                {selectedProcedures.includes("Others") && (
+                  <div style={{ marginBottom: "16px" }}>
+                    <span style={lbl}>Other Procedures</span>
+                    <textarea
+                      value={procedureOthersText}
+                      onChange={(e) => setProcedureOthersText(e.target.value)}
+                      style={{ ...inp, minHeight: "60px", resize: "vertical" }}
+                      placeholder="Describe other pre-orthodontic procedures..."
+                    />
+                  </div>
+                )}
+                <div style={{ display: "flex", gap: "10px" }}>
+                  <button
+                    onClick={() => setShowProcedureModal(false)}
+                    style={{
+                      flex: 1, padding: "10px", borderRadius: "8px",
+                      border: "1px solid #e5e7eb", background: "white",
+                      color: "#111827", fontWeight: "600", fontSize: "13px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={submitProcedures}
+                    style={{
+                      flex: 1, padding: "10px", borderRadius: "8px",
+                      border: "none", background: "#111827",
+                      color: "white", fontWeight: "600", fontSize: "13px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Apply
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Upload Documents */}
           <div style={{ marginBottom: "16px" }}>
