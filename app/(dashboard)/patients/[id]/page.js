@@ -163,6 +163,7 @@ function PaymentSummaryRow({ label: lbl, value }) {
 }
 
 function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
+  const [appt, setAppt] = useState(null);
   const hasSaved = !!(initialData && (initialData.full_amount || initialData.down_payment || initialData.final_amount));
 
   const [saving, setSaving] = useState(false);
@@ -171,6 +172,15 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
   const [data, setData] = useState({ ...EMPTY_PAYMENT, ...initialData });
   const [markingPaid, setMarkingPaid] = useState(null);
   const lastSaved = useRef({ ...EMPTY_PAYMENT, ...initialData });
+  const [paymentType, setPaymentType] = useState(initialData?.payment_type_to_collect || "down_payment");
+  const [customAmount, setCustomAmount] = useState(initialData?.payment_custom_amount ? String(initialData.payment_custom_amount) : "");
+  const [pushing, setPushing] = useState(false);
+  const [pushed, setPushed] = useState(false);
+
+  useEffect(() => {
+    supabase.from("appointments_booking").select("*").eq("id", appointmentId).single()
+      .then(({ data }) => setAppt(data || null));
+  }, [appointmentId]);
 
   const set = (key, val) => setData((prev) => ({ ...prev, [key]: val }));
 
@@ -217,6 +227,38 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
   const handleCancel = () => {
     setData({ ...EMPTY_PAYMENT, ...initialData });
     setEditing(false);
+  };
+
+  const pushPaymentType = async () => {
+    if (paymentType === "others" && !(parseFloat(customAmount) > 0)) {
+      alert("Enter a valid custom amount.");
+      return;
+    }
+    setPushing(true);
+    try {
+      const res = await fetch("/api/set-payment-type", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          appointmentId,
+          paymentType,
+          customAmount: paymentType === "others" ? parseFloat(customAmount) : undefined,
+          actorEmail: actor?.email,
+          actorRole: actor?.role,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || json.error) {
+        alert("Failed: " + (json.error || "Unknown error"));
+        return;
+      }
+      setPushed(true);
+      setTimeout(() => setPushed(false), 3000);
+    } catch {
+      alert("Network error. Please try again.");
+    } finally {
+      setPushing(false);
+    }
   };
 
   const markInstallmentPaid = async (num) => {
@@ -430,6 +472,31 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
             )}
           </div>
         )}
+
+        {/* Payment to push to patient */}
+        <div style={{ marginBottom: "24px", paddingTop: "24px", borderTop: "1px dashed #e5e7eb" }}>
+          <span style={label}>PAYMENT TO PUSH TO PATIENT</span>
+          <select style={select} value={paymentType} onChange={(e) => setPaymentType(e.target.value)}>
+            {PAYMENT_PUSH_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+          {paymentType === "others" && (
+            <input
+              style={input}
+              type="number"
+              placeholder="Enter amount (₹)"
+              value={customAmount}
+              onChange={(e) => setCustomAmount(e.target.value)}
+            />
+          )}
+          <button
+            style={pushing ? { ...btnPrimary, opacity: 0.6 } : btnPrimary}
+            onClick={pushPaymentType}
+            disabled={pushing}
+          >
+            {pushing ? "Pushing..." : pushed ? "Pushed ✓" : "Push to Patient"}
+          </button>
+        </div>
+
         <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
           <button style={saving ? { ...btnPrimary, opacity: 0.6 } : btnPrimary}
             onClick={handleSave} disabled={saving}>
@@ -805,12 +872,6 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
   const [savingScanningLink, setSavingScanningLink] = useState(false);
   const [scanningLinkSaved, setScanningLinkSaved] = useState(false);
 
-  // Part B — Price & Payment: payment type to push
-  const [paymentType, setPaymentType] = useState(appt.payment_type_to_collect || "down_payment");
-  const [customAmount, setCustomAmount] = useState(appt.payment_custom_amount ? String(appt.payment_custom_amount) : "");
-  const [pushing, setPushing] = useState(false);
-  const [pushed, setPushed] = useState(false);
-
   // Part C — Planning Done: review link
   const [reviewLink, setReviewLink] = useState(appt.review_link || "");
   const [savingLink, setSavingLink] = useState(false);
@@ -854,38 +915,6 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
     if (error) { alert("Failed to remove video: " + error.message); return; }
     setScanningVideoUrl("");
     logAudit({ appointmentId, actor, action: "Scanning & Planning Video Removed", entity: "scanning_video_url", newData: { scanning_video_url: null } });
-  };
-
-  const pushPaymentType = async () => {
-    if (paymentType === "others" && !(parseFloat(customAmount) > 0)) {
-      alert("Enter a valid custom amount.");
-      return;
-    }
-    setPushing(true);
-    try {
-      const res = await fetch("/api/set-payment-type", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          appointmentId,
-          paymentType,
-          customAmount: paymentType === "others" ? parseFloat(customAmount) : undefined,
-          actorEmail: actor?.email,
-          actorRole: actor?.role,
-        }),
-      });
-      const json = await res.json();
-      if (!res.ok || json.error) {
-        alert("Failed: " + (json.error || "Unknown error"));
-        return;
-      }
-      setPushed(true);
-      setTimeout(() => setPushed(false), 3000);
-    } catch {
-      alert("Network error. Please try again.");
-    } finally {
-      setPushing(false);
-    }
   };
 
   const saveAlignerPlan = async () => {
@@ -1092,31 +1121,6 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                 </div>
               )}
 
-              {/* Part B — Price & Payment: select which payment to push */}
-              {isAdmin && step.key === "payment_done" && (
-                <div style={subBox}>
-                  <span style={label}>PAYMENT TO PUSH TO PATIENT</span>
-                  <select style={select} value={paymentType} onChange={(e) => setPaymentType(e.target.value)}>
-                    {PAYMENT_PUSH_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                  </select>
-                  {paymentType === "others" && (
-                    <input
-                      style={input}
-                      type="number"
-                      placeholder="Enter amount (₹)"
-                      value={customAmount}
-                      onChange={(e) => setCustomAmount(e.target.value)}
-                    />
-                  )}
-                  <button
-                    style={pushing ? { ...btnPrimary, opacity: 0.6 } : btnPrimary}
-                    onClick={pushPaymentType}
-                    disabled={pushing}
-                  >
-                    {pushing ? "Pushing..." : pushed ? "Pushed ✓" : "Push to Patient"}
-                  </button>
-                </div>
-              )}
 
               {/* Part C0 — Planning Done: aligner set plan */}
               {isAdmin && step.key === "planning_done" && (
