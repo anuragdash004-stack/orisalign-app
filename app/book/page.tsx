@@ -69,6 +69,10 @@ export default function BookPage() {
       alert("Please accept the terms and conditions and privacy policy.")
       return
     }
+    if (!agreeComm) {
+      alert("Please agree to receive communications from OrisAlign.")
+      return
+    }
 
     setLoading(true)
     try {
@@ -397,11 +401,25 @@ export default function BookPage() {
               </label>
             </div>
 
+            <div style={{ marginTop: "12px", padding: "12px", background: "#f9fafb", borderRadius: "8px", border: "1px solid #e5e7eb" }}>
+              <label style={{ display: "flex", alignItems: "flex-start", gap: "8px", cursor: "pointer", fontSize: "13px", color: "#111827" }}>
+                <input
+                  type="checkbox"
+                  checked={agreeComm}
+                  onChange={(e) => setAgreeComm(e.target.checked)}
+                  style={{ marginTop: "2px", cursor: "pointer", width: "18px", height: "18px", flexShrink: 0 }}
+                />
+                <span>
+                  I agree to receive all forms of communication from OrisAlign regarding my appointment and treatment.
+                </span>
+              </label>
+            </div>
+
             <button
               className="btn center-btn"
               onClick={bookScan}
-              disabled={loading || !acceptTerms}
-              style={{ marginTop: "20px", opacity: !acceptTerms ? 0.5 : 1, cursor: !acceptTerms ? "not-allowed" : "pointer" }}
+              disabled={loading || !acceptTerms || !agreeComm}
+              style={{ marginTop: "20px", opacity: !acceptTerms || !agreeComm ? 0.5 : 1, cursor: !acceptTerms || !agreeComm ? "not-allowed" : "pointer" }}
             >
               {loading ? "Booking..." : "BOOK YOUR SCAN"}
             </button>
