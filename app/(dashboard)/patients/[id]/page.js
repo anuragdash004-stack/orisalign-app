@@ -1223,12 +1223,25 @@ function pillStyle(bg, color) {
 // ─── Report Tab ───────────────────────────────────────────────────────────────
 function ReportTab({ appointmentId, appt }) {
   const [logs, setLogs] = useState([]);
+  const [staffMap, setStaffMap] = useState({});
 
   useEffect(() => {
     fetch(`/api/audit-log?appointmentId=${appointmentId}`)
       .then((r) => r.json())
       .then((d) => setLogs(d.logs || []))
       .catch(() => {});
+
+    const uuids = [appt.assigned_dentist, appt.assigned_ortho].filter(Boolean);
+    if (uuids.length > 0) {
+      supabase.from("users").select("id, email, full_name, role").in("id", uuids)
+        .then(({ data }) => {
+          if (data) {
+            const m = {};
+            data.forEach((u) => { m[u.id] = u; });
+            setStaffMap(m);
+          }
+        });
+    }
   }, [appointmentId]);
 
   const steps = deriveSteps(appt);
@@ -1244,229 +1257,318 @@ function ReportTab({ appointmentId, appt }) {
   const pendingAmt = pd.pending_amount !== undefined && pd.pending_amount !== "" && pd.pending_amount !== null
     ? Number(pd.pending_amount)
     : Math.max(0, finalAmt - downPmt);
-  const hasPaymentData = !!(pd.full_amount || pd.down_payment || appt.payment_data?.final_amount);
   const manufacturingData = appt.manufacturing_data || {};
   const manufacturingBatches = manufacturingData.batches || [];
   const logisticsBatches = appt.logistics_data?.batches || [];
 
   const fmt = (iso) => {
     if (!iso) return null;
-    return new Date(iso).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
+    return new Date(iso).toLocaleString("en-IN", { dateStyle: "long", timeStyle: "short", timeZone: "Asia/Kolkata" });
+  };
+  const fmtDate = (iso) => {
+    if (!iso) return null;
+    return new Date(iso).toLocaleDateString("en-IN", { dateStyle: "long", timeZone: "Asia/Kolkata" });
   };
 
-  // audit-log entries are returned newest-first, so the first match is the latest one
   const findDoneLog = (label) => logs.find((l) => l.action === `Step Marked Done: ${label}`);
+  const staffLabel = (uuid) => {
+    if (!uuid) return null;
+    const u = staffMap[uuid];
+    if (!u) return null;
+    return u.full_name ? `${u.full_name} (${u.email})` : u.email;
+  };
 
-  const stepInfo = ALL_STEPS.map((step) => {
-    const done = !!steps[step.key];
-    let timestamp = null;
-    let actorEmail = null;
-    let note = null;
+  // Build chronological events
+  const events = [];
 
-    if (step.key === "booked") {
-      timestamp = appt.created_at;
-    } else if (step.key === "scanning_done" && appt.appointment_started_at) {
-      timestamp = appt.appointment_started_at;
-      note = "Verified via patient OTP";
-    } else if (step.key === "plan_approved" && (js.plan_approved_at || appt.plan_approved_at)) {
-      timestamp = js.plan_approved_at || appt.plan_approved_at;
-      note = `Verified via patient OTP${appt.plan_approval_ip ? ` · IP ${appt.plan_approval_ip}` : ""}`;
-    } else {
-      const log = findDoneLog(step.label);
-      if (log) {
-        timestamp = log.created_at;
-        actorEmail = log.actor_email;
-      }
-    }
-
-    return { ...step, done, timestamp, actorEmail, note };
+  // 1. Booking
+  events.push({
+    done: true,
+    title: "Appointment Booked",
+    by: "patient (self-registered)",
+    at: appt.created_at,
+    detail: [
+      appt.date && appt.time ? `Appointment requested for ${appt.date} at ${appt.time}.` : null,
+      appt.doctor ? `Preferred doctor: ${appt.doctor}.` : null,
+      appt.chief_complaint ? `Chief complaint: "${appt.chief_complaint}".` : null,
+      appt.problem ? `Additional notes: "${appt.problem}".` : null,
+    ].filter(Boolean),
   });
 
-  const doneCount = stepInfo.filter((s) => s.done).length;
+  // 2. Staff assignment
+  const dentist = staffLabel(appt.assigned_dentist);
+  const ortho = staffLabel(appt.assigned_ortho);
+  if (dentist || ortho || appt.assigned_at) {
+    const parts = [];
+    if (dentist) parts.push(`Treating dentist assigned: ${dentist}.`);
+    if (ortho) parts.push(`Supervising orthodontist assigned: ${ortho}.`);
+    events.push({
+      done: !!(dentist || ortho),
+      title: "Staff Assignment",
+      by: "OrisAlign admin",
+      at: appt.assigned_at || null,
+      detail: parts,
+    });
+  }
+
+  // 3. Confirmation
+  const confirmLog = findDoneLog("Appointment Confirmed");
+  events.push({
+    done: !!steps.confirmed,
+    title: "Appointment Confirmed",
+    by: confirmLog?.actor_email ? `counsellor / admin (${confirmLog.actor_email})` : "OrisAlign team",
+    at: confirmLog?.created_at || null,
+    detail: [],
+  });
+
+  // 4. Appointment started / Scanning
+  const scanLog = findDoneLog("Scanning and Provisional Planning");
+  events.push({
+    done: !!steps.scanning_done,
+    title: "Scanning & Provisional Planning",
+    by: scanLog?.actor_email ? `admin (${scanLog.actor_email})` : "OrisAlign team",
+    at: appt.appointment_started_at || scanLog?.created_at || null,
+    detail: [
+      appt.appointment_started_at ? `Scanning session started at the clinic on ${fmt(appt.appointment_started_at)}.` : null,
+      appt.scanning_video_url ? `Provisional planning video recorded and uploaded.` : null,
+      appt.scanning_review_link ? `Pre-treatment scanning review link shared with patient.` : null,
+    ].filter(Boolean),
+  });
+
+  // 5. Payment
+  const payLog = findDoneLog("Price & Payment");
+  events.push({
+    done: !!steps.payment_done,
+    title: "Price & Payment",
+    by: payLog?.actor_email ? `counsellor / admin (${payLog.actor_email})` : "OrisAlign team",
+    at: payLog?.created_at || null,
+    detail: [
+      fullAmt > 0 ? `Full treatment cost quoted at ${inr(pd.full_amount)}.` : null,
+      disc > 0 ? `A discount of ${inr(pd.discount)} was applied.` : null,
+      (pd.coupon_code || couponDisc > 0) ? `Coupon${pd.coupon_code ? ` "${pd.coupon_code}"` : ""} applied: ${inr(pd.coupon_discount)} off.` : null,
+      finalAmt > 0 ? `Final payable amount after discounts: ${inr(finalAmt)}.` : null,
+      pd.down_payment > 0 ? `Down payment of ${inr(pd.down_payment)} collected via ${pd.down_payment_mode}${pd.down_payment_mode === "Finance" ? ` (${pd.finance_provider})` : ""}.` : null,
+      pendingAmt > 0 ? `Pending balance of ${inr(pendingAmt)} to be paid via ${pd.pending_mode}${pd.pending_mode === "Finance" ? ` (${pd.finance_provider})` : ""}.` : null,
+      ...((pd.pending_mode === "Installment" && pd.installment_plan?.installments?.length > 0)
+        ? pd.installment_plan.installments.map((inst) =>
+            `  • Instalment ${inst.num}: ${inr(inst.amount)} — ${inst.paid ? `paid${inst.paid_date ? ` on ${inst.paid_date}` : ""}` : "pending"}.`
+          )
+        : []),
+    ].filter(Boolean),
+  });
+
+  // 6. Planning done
+  const planLog = findDoneLog("Planning Done");
+  events.push({
+    done: !!steps.planning_done,
+    title: "Treatment Planning Done",
+    by: planLog?.actor_email ? `admin / orthodontist (${planLog.actor_email})` : "OrisAlign team",
+    at: planLog?.created_at || null,
+    detail: [
+      appt.aligner_total_sets ? `Treatment plan consists of ${appt.aligner_total_sets} aligner set${appt.aligner_total_sets !== 1 ? "s" : ""}${appt.aligner_days_per_set ? `, worn ${appt.aligner_days_per_set} days per set` : ""}.` : null,
+      appt.aligner_total_sets && appt.aligner_days_per_set
+        ? `Total estimated treatment duration: ${appt.aligner_total_sets * appt.aligner_days_per_set} days (approximately ${Math.round((appt.aligner_total_sets * appt.aligner_days_per_set) / 30)} months).`
+        : null,
+      appt.review_link ? `3D treatment plan review link shared with patient.` : null,
+    ].filter(Boolean),
+  });
+
+  // 7. Plan approved
+  const planApprovedAt = js.plan_approved_at || appt.plan_approved_at;
+  events.push({
+    done: !!steps.plan_approved,
+    title: "Treatment Plan Approved",
+    by: `patient (${appt.name || "patient"})`,
+    at: planApprovedAt || null,
+    detail: [
+      planApprovedAt ? `${appt.name || "The patient"} reviewed the 3D treatment plan and gave legal authorisation for aligner fabrication.` : null,
+      appt.plan_approval_ip ? `Approval verified via patient OTP from IP address ${appt.plan_approval_ip}.` : null,
+    ].filter(Boolean),
+  });
+
+  // 8. Manufacturing started
+  const mfgStartLog = findDoneLog("Manufacturing Started");
+  events.push({
+    done: !!steps.manufacturing_started,
+    title: "Manufacturing Started",
+    by: mfgStartLog?.actor_email ? `admin (${mfgStartLog.actor_email})` : "OrisAlign team",
+    at: mfgStartLog?.created_at || null,
+    detail: manufacturingBatches.length > 0
+      ? manufacturingBatches.map((b) =>
+          `Batch ${b.num} (Aligners ${b.start}–${b.end}): started ${b.mfg_started || "date not recorded"}${b.mfg_done ? `, completed ${b.mfg_done}` : ""}.`
+        )
+      : [],
+  });
+
+  // 9. Manufacturing completed
+  const mfgDoneLog = findDoneLog("Manufacturing Completed");
+  events.push({
+    done: !!steps.manufacturing_completed,
+    title: "Manufacturing Completed",
+    by: mfgDoneLog?.actor_email ? `admin (${mfgDoneLog.actor_email})` : "OrisAlign team",
+    at: mfgDoneLog?.created_at || null,
+    detail: [
+      manufacturingData.aligner_delivered ? `All aligners delivered to the OrisAlign clinic on ${manufacturingData.aligner_delivered}.` : null,
+    ].filter(Boolean),
+  });
+
+  // 10. Aligners dispatched
+  const dispatchLog = findDoneLog("Aligners Dispatched");
+  events.push({
+    done: !!steps.aligners_dispatched,
+    title: "Aligners Dispatched to Patient",
+    by: dispatchLog?.actor_email ? `admin (${dispatchLog.actor_email})` : "OrisAlign team",
+    at: dispatchLog?.created_at || null,
+    detail: logisticsBatches.length > 0
+      ? logisticsBatches.map((b) => {
+          const partner = b.delivery_partner === "Other" ? (b.delivery_partner_other || "courier") : b.delivery_partner;
+          return `Batch ${b.num} dispatched via ${partner || "courier"}${b.shipment_id ? ` (Shipment ID: ${b.shipment_id})` : ""}${b.aligner_received ? `; received by patient on ${b.aligner_received}` : ""}.`;
+        })
+      : [],
+  });
+
+  // 11. Aligners received (by delivery partner)
+  const rcvLog = findDoneLog("Appointment Book");
+  events.push({
+    done: !!steps.aligners_received,
+    title: "Aligners Received by Local Delivery Partner",
+    by: rcvLog?.actor_email ? `admin (${rcvLog.actor_email})` : "OrisAlign team",
+    at: rcvLog?.created_at || null,
+    detail: ["Aligners passed to the local delivery partner for last-mile delivery to the patient."],
+  });
+
+  // 12. Follow-up appointment
+  const followLog = findDoneLog("Appointment Book");
+  events.push({
+    done: !!steps.followup_appointment,
+    title: "Follow-Up Appointment Booked",
+    by: followLog?.actor_email ? `admin (${followLog.actor_email})` : "OrisAlign team",
+    at: followLog?.created_at || null,
+    detail: ["A follow-up clinic appointment was scheduled for progress review and any required adjustments."],
+  });
+
+  // 13. Aligners delivered
+  const delivLog = findDoneLog("Aligners Delivered");
+  events.push({
+    done: !!steps.aligners_delivered,
+    title: "Aligners Delivered to Patient",
+    by: delivLog?.actor_email ? `admin (${delivLog.actor_email})` : "OrisAlign team",
+    at: delivLog?.created_at || null,
+    detail: [`The aligner package was successfully delivered to ${appt.name || "the patient"} at their address.`],
+  });
+
+  // 14. Smile correction
+  const smileLog = findDoneLog("Smile Correction Started");
+  events.push({
+    done: !!steps.smile_correction,
+    title: "Smile Correction Phase Started",
+    by: smileLog?.actor_email ? `admin (${smileLog.actor_email})` : "OrisAlign team",
+    at: smileLog?.created_at || null,
+    detail: [`${appt.name || "The patient"} began wearing their aligners. Active treatment is now in progress.`],
+  });
+
+  // 15. Treatment completed
+  const completeLog = findDoneLog("Treatment Completed");
+  events.push({
+    done: !!steps.treatment_completed,
+    title: "Treatment Completed",
+    by: completeLog?.actor_email ? `admin (${completeLog.actor_email})` : "OrisAlign team",
+    at: completeLog?.created_at || null,
+    detail: [`The OrisAlign aligner treatment for ${appt.name || "the patient"} has been successfully completed.`],
+  });
+
+  // 16. Feedback
+  const feedbackLog = findDoneLog("Feedback Submitted");
+  events.push({
+    done: !!steps.feedback_submitted,
+    title: "Feedback Submitted",
+    by: feedbackLog?.actor_email ? `admin (${feedbackLog.actor_email})` : "patient",
+    at: feedbackLog?.created_at || null,
+    detail: [`${appt.name || "The patient"} submitted their post-treatment feedback.`],
+  });
+
+  const doneCount = events.filter((e) => e.done).length;
+  const generatedOn = new Date().toLocaleString("en-IN", { dateStyle: "long", timeStyle: "short", timeZone: "Asia/Kolkata" });
 
   return (
     <div>
-      <div style={{ ...card, marginBottom: "16px" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "8px" }}>
-          <h3 style={{ margin: 0, fontSize: "16px", color: "#111827" }}>Patient Journey Report</h3>
-          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-            <span style={{ fontSize: "13px", color: "#6b7280" }}>{doneCount} / {stepInfo.length} steps completed</span>
-            <div style={{ height: "8px", width: "120px", borderRadius: "99px", background: "#e5e7eb", overflow: "hidden" }}>
-              <div style={{ height: "100%", borderRadius: "99px", width: `${Math.round((doneCount / stepInfo.length) * 100)}%`, background: "linear-gradient(90deg, #22c55e, #16a34a)", transition: "width 0.4s ease" }} />
-            </div>
+      {/* Report header */}
+      <div style={{ ...card, marginBottom: "20px", background: "linear-gradient(135deg, #1B2A4A, #0f2027)", color: "white", border: "none" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "12px" }}>
+          <div>
+            <p style={{ margin: "0 0 4px", fontSize: "11px", fontWeight: "700", letterSpacing: "1.5px", color: "#C9A84C", textTransform: "uppercase" }}>Patient Journey Report</p>
+            <h2 style={{ margin: "0 0 6px", fontSize: "22px", fontWeight: "900", color: "white" }}>{appt.name || "Unknown Patient"}</h2>
+            <p style={{ margin: "0 0 4px", fontSize: "13px", color: "#94a3b8" }}>
+              {[appt.age ? `Age ${appt.age}` : null, appt.sex, appt.phone, appt.email].filter(Boolean).join("  ·  ")}
+            </p>
+            {appt.address && <p style={{ margin: "0 0 4px", fontSize: "13px", color: "#94a3b8" }}>{appt.address}</p>}
+            {appt.occupation && <p style={{ margin: "0 0 4px", fontSize: "13px", color: "#94a3b8" }}>Occupation: {appt.occupation}</p>}
+            <p style={{ margin: "8px 0 0", fontSize: "12px", color: "#64748b" }}>Patient ID: {appt.id?.substring(0, 8).toUpperCase()}  ·  Generated on {generatedOn} IST</p>
+          </div>
+          <div style={{ textAlign: "right", flexShrink: 0 }}>
+            <p style={{ margin: "0 0 4px", fontSize: "28px", fontWeight: "900", color: "#C9A84C" }}>{doneCount}/{events.length}</p>
+            <p style={{ margin: 0, fontSize: "12px", color: "#94a3b8" }}>milestones completed</p>
+            <button
+              onClick={() => window.print()}
+              style={{ marginTop: "12px", padding: "8px 16px", borderRadius: "8px", border: "1px solid #C9A84C", background: "transparent", color: "#C9A84C", fontWeight: "700", fontSize: "12px", cursor: "pointer", letterSpacing: "0.5px" }}
+            >
+              Print Report
+            </button>
           </div>
         </div>
-        <p style={{ margin: "10px 0 0", fontSize: "12px", color: "#9ca3af" }}>
-          A complete stepwise record of this patient&apos;s treatment journey — dates, times, and details for every milestone.
-        </p>
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-        {stepInfo.map((step, i) => (
+      {/* Narrative events */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+        {events.map((ev, idx) => (
           <div
-            key={step.key}
+            key={idx}
             style={{
               ...card,
               marginBottom: 0,
-              border: `1px solid ${step.done ? "#bbf7d0" : "#e5e7eb"}`,
-              background: step.done ? "linear-gradient(135deg, #f9fefb, #ffffff)" : "white",
+              borderLeft: `4px solid ${ev.done ? "#22c55e" : "#e5e7eb"}`,
+              background: ev.done ? "white" : "#fafafa",
+              opacity: ev.done ? 1 : 0.65,
             }}
           >
-            <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
+            <div style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}>
               <div style={{
-                width: "32px", height: "32px", borderRadius: "8px", flexShrink: 0,
-                background: step.done ? "linear-gradient(135deg, #22c55e, #16a34a)" : "#f3f4f6",
+                width: "28px", height: "28px", borderRadius: "50%", flexShrink: 0, marginTop: "2px",
+                background: ev.done ? "linear-gradient(135deg, #22c55e, #16a34a)" : "#e5e7eb",
                 display: "flex", alignItems: "center", justifyContent: "center",
-                color: step.done ? "white" : "#9ca3af", fontWeight: "700", fontSize: "13px",
+                color: ev.done ? "white" : "#9ca3af", fontWeight: "800", fontSize: "12px",
               }}>
-                {step.done ? "✓" : i + 1}
+                {ev.done ? "✓" : idx + 1}
               </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-                  <h4 style={{ margin: 0, fontSize: "14px", color: step.done ? "#15803d" : "#374151" }}>{step.label}</h4>
-                  <span style={pillStyle(step.done ? "#dcfce7" : "#f3f4f6", step.done ? "#16a34a" : "#9ca3af")}>
-                    {step.done ? "COMPLETED" : "PENDING"}
+              <div style={{ flex: 1 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "6px", marginBottom: "6px" }}>
+                  <h4 style={{ margin: 0, fontSize: "14px", fontWeight: "800", color: ev.done ? "#111827" : "#9ca3af" }}>
+                    {idx + 1}. {ev.title}
+                  </h4>
+                  <span style={pillStyle(ev.done ? "#dcfce7" : "#f3f4f6", ev.done ? "#16a34a" : "#9ca3af")}>
+                    {ev.done ? "COMPLETED" : "PENDING"}
                   </span>
                 </div>
 
-                {step.done && step.timestamp && (
-                  <p style={{ margin: "6px 0 0", fontSize: "13px", color: "#6b7280" }}>
-                    {fmt(step.timestamp)}
-                    {step.actorEmail ? ` · by ${step.actorEmail}` : ""}
-                    {step.note ? ` · ${step.note}` : ""}
+                {ev.done ? (
+                  <p style={{ margin: "0 0 8px", fontSize: "14px", color: "#374151", lineHeight: "1.7" }}>
+                    {ev.at
+                      ? <>This milestone was completed on <strong>{fmt(ev.at)}</strong> by <strong>{ev.by}</strong>.</>
+                      : <>This milestone was completed by <strong>{ev.by}</strong> (exact timestamp not recorded).</>
+                    }
+                  </p>
+                ) : (
+                  <p style={{ margin: "0 0 8px", fontSize: "13px", color: "#9ca3af", fontStyle: "italic" }}>
+                    Not yet reached.
                   </p>
                 )}
-                {step.done && !step.timestamp && (
-                  <p style={{ margin: "6px 0 0", fontSize: "13px", color: "#9ca3af" }}>Completed (timestamp not recorded)</p>
-                )}
 
-                {/* Payment breakdown */}
-                {step.key === "payment_done" && hasPaymentData && (
-                  <div style={{ marginTop: "12px", paddingTop: "12px", borderTop: "1px dashed #e5e7eb" }}>
-                    <PaymentSummaryRow label="Full Amount" value={inr(pd.full_amount)} />
-                    {parseFloat(pd.discount) > 0 && (
-                      <PaymentSummaryRow label="Discount" value={`− ${inr(pd.discount)}`} />
-                    )}
-                    {(pd.coupon_code || parseFloat(pd.coupon_discount) > 0) && (
-                      <PaymentSummaryRow
-                        label={pd.coupon_code ? `Coupon (${pd.coupon_code})` : "Coupon"}
-                        value={`− ${inr(pd.coupon_discount)}`}
-                      />
-                    )}
-                    <PaymentSummaryRow label="Final Amount (after discount)" value={inr(finalAmt)} />
-                    <PaymentSummaryRow
-                      label="Down Payment Given"
-                      value={`${inr(pd.down_payment)} · ${pd.down_payment_mode}${pd.down_payment_mode === "Finance" ? ` (${pd.finance_provider})` : ""}`}
-                    />
-                    <PaymentSummaryRow
-                      label="Pending Amount"
-                      value={`${inr(pendingAmt)} · to be paid via ${pd.pending_mode}${pd.pending_mode === "Finance" ? ` (${pd.finance_provider})` : ""}`}
-                    />
-                    {pd.pending_mode === "Installment" && pd.installment_plan?.installments?.length > 0 && (
-                      <div style={{ marginTop: "8px" }}>
-                        <p style={{ margin: "2px 0 8px", fontSize: "11px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Installment Plan</p>
-                        <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                          {pd.installment_plan.installments.map((inst) => (
-                            <div key={inst.num} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: inst.paid ? "#f0fdf4" : "#f8f7f5", borderRadius: "8px", border: inst.paid ? "1px solid #bbf7d0" : "none" }}>
-                              <span style={{ fontSize: "13px", color: "#111827", fontWeight: "600" }}>Installment {inst.num} · {inr(inst.amount)}</span>
-                              <span style={{ fontSize: "12px", fontWeight: "700", color: inst.paid ? "#16a34a" : "#9ca3af" }}>
-                                {inst.paid ? `Paid ✓${inst.paid_date ? ` on ${inst.paid_date}` : ""}` : "Pending"}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Scanning & Provisional Planning extras */}
-                {step.key === "scanning_done" && (appt.scanning_video_url || appt.scanning_review_link) && (
-                  <div style={{ marginTop: "10px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                    {appt.scanning_video_url && (
-                      <a href={appt.scanning_video_url} target="_blank" rel="noopener noreferrer" style={{ ...infoPill, textDecoration: "none" }}>
-                        📹 Provisional Planning Video
-                      </a>
-                    )}
-                    {appt.scanning_review_link && (
-                      <a href={appt.scanning_review_link} target="_blank" rel="noopener noreferrer" style={{ ...infoPill, textDecoration: "none" }}>
-                        🔗 Pre-Treatment Scanning Review
-                      </a>
-                    )}
-                  </div>
-                )}
-
-                {/* Planning Done extras */}
-                {step.key === "planning_done" && (appt.aligner_total_sets || appt.review_link) && (
-                  <div style={{ marginTop: "12px", paddingTop: "12px", borderTop: "1px dashed #e5e7eb" }}>
-                    {appt.aligner_total_sets && appt.aligner_days_per_set && (
-                      <div style={{ marginBottom: "10px" }}>
-                        <PaymentSummaryRow label="Total Number of Sets" value={appt.aligner_total_sets} />
-                        <PaymentSummaryRow label="Wear Duration per Set" value={`${appt.aligner_days_per_set} days`} />
-                        <PaymentSummaryRow
-                          label="Total Treatment Duration"
-                          value={`${appt.aligner_total_sets * appt.aligner_days_per_set} days (~${Math.round((appt.aligner_total_sets * appt.aligner_days_per_set) / 30)} months)`}
-                        />
-                      </div>
-                    )}
-                    {appt.review_link && (
-                      <a href={appt.review_link} target="_blank" rel="noopener noreferrer" style={{ ...infoPill, textDecoration: "none" }}>
-                        🔗 Treatment Plan Review
-                      </a>
-                    )}
-                  </div>
-                )}
-
-                {/* Manufacturing Completed extras */}
-                {step.key === "manufacturing_completed" && (manufacturingBatches.length > 0 || manufacturingData.aligner_delivered) && (
-                  <div style={{ marginTop: "12px", paddingTop: "12px", borderTop: "1px dashed #e5e7eb" }}>
-                    <p style={{ margin: "0 0 8px", fontSize: "11px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Manufacturing Batches</p>
-                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                      {manufacturingBatches.map((b) => (
-                        <div key={b.num} style={{ padding: "8px 12px", background: "#f8f7f5", borderRadius: "8px" }}>
-                          <p style={{ margin: 0, fontSize: "13px", fontWeight: "700", color: "#111827" }}>Batch {b.num} · Aligners {b.start}–{b.end}</p>
-                          <p style={{ margin: "4px 0 0", fontSize: "12px", color: "#6b7280" }}>
-                            {b.mfg_started ? `Started: ${b.mfg_started}` : "Not started"}{b.mfg_done ? ` · Done: ${b.mfg_done}` : ""}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                    {manufacturingData.aligner_delivered && (
-                      <p style={{ margin: "10px 0 0", fontSize: "13px", color: "#374151" }}>
-                        <strong>Aligners Delivered to Clinic:</strong> {manufacturingData.aligner_delivered}
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                {/* Aligners Dispatched extras */}
-                {step.key === "aligners_dispatched" && logisticsBatches.length > 0 && (
-                  <div style={{ marginTop: "12px", paddingTop: "12px", borderTop: "1px dashed #e5e7eb" }}>
-                    <p style={{ margin: "0 0 8px", fontSize: "11px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Shipment Details</p>
-                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                      {logisticsBatches.map((b) => {
-                        const partnerName = b.delivery_partner === "Other" ? (b.delivery_partner_other || "Other") : b.delivery_partner;
-                        return (
-                          <div key={b.num} style={{ padding: "8px 12px", background: "#f8f7f5", borderRadius: "8px" }}>
-                            <p style={{ margin: 0, fontSize: "13px", fontWeight: "700", color: "#111827" }}>
-                              Batch {b.num}{partnerName ? ` · ${partnerName}` : ""}
-                            </p>
-                            {b.shipment_id && (
-                              <p style={{ margin: "4px 0 0", fontSize: "12px", color: "#6b7280" }}>Shipment ID: {b.shipment_id}</p>
-                            )}
-                            {b.aligner_received && (
-                              <p style={{ margin: "4px 0 0", fontSize: "12px", color: "#6b7280" }}>Received by patient: {b.aligner_received}</p>
-                            )}
-                            {b.shipment_link && (
-                              <a href={b.shipment_link} target="_blank" rel="noopener noreferrer" style={{ ...infoPill, textDecoration: "none", marginTop: "6px", display: "inline-block" }}>
-                                🔗 Track Shipment
-                              </a>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
+                {ev.done && ev.detail.length > 0 && (
+                  <ul style={{ margin: "0", paddingLeft: "18px", display: "flex", flexDirection: "column", gap: "4px" }}>
+                    {ev.detail.map((line, li) => (
+                      <li key={li} style={{ fontSize: "13px", color: "#6b7280", lineHeight: "1.7" }}>{line}</li>
+                    ))}
+                  </ul>
                 )}
               </div>
             </div>
