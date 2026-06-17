@@ -6,7 +6,7 @@ import { logAudit } from "@/lib/logAudit";
 
 const supabase = getSupabaseClient();
 
-const TABS = ["Payment", "Manufacturing", "Logistics", "Journey", "Patient Page", "Messages", "Report"];
+const TABS = ["Payment", "Manufacturing", "Logistics", "Journey", "Patient Page", "Report"];
 
 const ALL_STEPS = [
   { key: "booked",                  label: "Appointment Booked" },
@@ -765,6 +765,24 @@ function PatientPageTab({ appointmentId }) {
   );
 }
 
+// ─── Default step messages ────────────────────────────────────────────────────
+const DEFAULT_STEP_MESSAGES = {
+  confirmed:               { subject: "Your Appointment is Confirmed — OrisAlign", body: "Great news! Your appointment with OrisAlign has been confirmed. Our dentist will be in touch with you very soon to guide you through what to expect. Please carry any previous dental records if you have them." },
+  scanning_done:           { subject: "Scanning & Planning Complete — OrisAlign", body: "Your scanning session and initial planning have been completed successfully. Our orthodontic team is now working on your personalised treatment proposal. We’ll notify you as soon as your plan is ready." },
+  payment_done:            { subject: "Payment Confirmed — OrisAlign", body: "Your payment details have been finalised. Thank you for your trust in OrisAlign. Our team will now proceed with your treatment planning and keep you updated at every step." },
+  planning_done:           { subject: "Your Treatment Plan is Ready — OrisAlign", body: "Your personalised 3D treatment plan has been prepared by our orthodontic team! Please visit your journey page to review it. Once you’re satisfied, click the Approve Plan button to authorise us to begin fabricating your aligners." },
+  plan_approved:           { subject: "Plan Approved — Manufacturing Begins Soon — OrisAlign", body: "Your treatment plan has been approved. Thank you for authorising OrisAlign to begin fabrication of your custom aligners. Our manufacturing team will start work on your aligners shortly. This process typically takes a few weeks — we’ll keep you posted." },
+  manufacturing_started:   { subject: "Your Aligners Are Being Made — OrisAlign", body: "Exciting news — manufacturing of your custom aligners has officially begun! Each set is precisely crafted to move your teeth gently and accurately according to your treatment plan. We’ll notify you as soon as they’re ready." },
+  manufacturing_completed: { subject: "Your Aligners Are Ready — OrisAlign", body: "Your custom aligners have been manufactured and quality-checked. They are now being prepared for dispatch to you. You’ll receive a tracking update very soon. Get ready to start your smile journey!" },
+  aligners_dispatched:     { subject: "Your Aligners Are On Their Way — OrisAlign", body: "Your aligners are on the move! They have been handed over to our delivery partner and are heading your way. Please ensure someone is available to receive the package. You can track your shipment using the details on your journey page." },
+  aligners_received:       { subject: "Aligners Received by Delivery Partner — OrisAlign", body: "Your aligners have been received by our local delivery partner and are on the final leg of their journey to you. Expect delivery very soon. Please have your ID ready if required at the time of delivery." },
+  followup_appointment:    { subject: "Follow-Up Appointment Scheduled — OrisAlign", body: "Your follow-up appointment has been scheduled with OrisAlign. This visit is an important part of your treatment — our team will review your progress, make any necessary adjustments, and ensure everything is on track for your smile transformation." },
+  aligners_delivered:      { subject: "Aligners Delivered — Start Your Smile Correction — OrisAlign", body: "Your aligners have arrived! Please begin wearing them as instructed by your orthodontist. Consistent wear (20–22 hours per day) is the key to the best results. If you have any questions, reach out to our team — we’re always here to help." },
+  smile_correction:        { subject: "Smile Correction Phase Started — OrisAlign", body: "Your Smile Correction phase has officially started! You’re now actively on your journey to a more confident smile. Wear your aligners consistently and follow the schedule provided. We’ll be with you every step of the way." },
+  treatment_completed:     { subject: "Treatment Complete — Congratulations from OrisAlign!", body: "Congratulations — your OrisAlign treatment is complete! Your smile has been transformed through precision, care, and your own commitment. We are incredibly proud to have been part of your journey. Share your smile with the world — you’ve earned it!" },
+  feedback_submitted:      { subject: "Thank You for Your Feedback — OrisAlign", body: "Thank you so much for taking the time to share your experience with us. Your feedback helps us improve and inspire others. Your ₹5,000 hamper will be sent to you shortly as a token of our appreciation. Thank you for choosing OrisAlign and trusting us with your smile." },
+};
+
 // ─── Journey Tab (admin only) ─────────────────────────────────────────────────
 const PAYMENT_PUSH_OPTIONS = [
   { value: "down_payment", label: "Down Payment" },
@@ -776,6 +794,7 @@ const PAYMENT_PUSH_OPTIONS = [
 function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
   const [steps, setSteps] = useState(() => deriveSteps(appt));
   const [saving, setSaving] = useState(null);
+  const [stepMessages, setStepMessages] = useState(() => JSON.parse(JSON.stringify(DEFAULT_STEP_MESSAGES)));
 
   // Part A — Scanning & Provisional Planning video
   const [scanningVideoUrl, setScanningVideoUrl] = useState(appt.scanning_video_url || "");
@@ -940,11 +959,17 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
     if (key === "feedback_submitted") {
       logAudit({ appointmentId, actor, action: newVal ? "Feedback Submitted" : "Feedback Marked Undone", entity: "feedback_submitted", newData: { [key]: newVal } });
     }
-    if (newVal) {
+    if (newVal && stepMessages[key]) {
       fetch("/api/notify-step", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ appointmentId, stepKey: key, email: appt.email || null }),
+        body: JSON.stringify({
+          appointmentId,
+          stepKey: key,
+          email: appt.email || null,
+          customSubject: stepMessages[key].subject,
+          customBody: stepMessages[key].body,
+        }),
       })
         .then((r) => r.json())
         .then((j) => { if (j.skipped) console.warn("notify-step skipped:", j.reason); })
@@ -1159,6 +1184,25 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                   </p>
                 </div>
               )}
+
+              {/* Email message — editable, sent when step is marked done */}
+              {isAdmin && !done && stepMessages[step.key] && (
+                <div style={{ ...subBox, border: "1px solid #dbeafe", background: "#f0f7ff" }}>
+                  <span style={{ ...label, color: "#1e40af" }}>EMAIL TO PATIENT (sent on Mark Done)</span>
+                  <input
+                    style={input}
+                    type="text"
+                    placeholder="Subject"
+                    value={stepMessages[step.key].subject}
+                    onChange={(e) => setStepMessages((prev) => ({ ...prev, [step.key]: { ...prev[step.key], subject: e.target.value } }))}
+                  />
+                  <textarea
+                    style={{ ...input, minHeight: "90px", fontFamily: "inherit", resize: "vertical" }}
+                    value={stepMessages[step.key].body}
+                    onChange={(e) => setStepMessages((prev) => ({ ...prev, [step.key]: { ...prev[step.key], body: e.target.value } }))}
+                  />
+                </div>
+              )}
             </div>
           );
         })}
@@ -1166,9 +1210,6 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
     </div>
   );
 }
-
-// ─── Messages Tab ─────────────────────────────────────────────────────────────
-const MESSAGE_SUBSECTIONS = ["Templates", "History"];
 
 function pillStyle(bg, color) {
   return {
@@ -1178,266 +1219,6 @@ function pillStyle(bg, color) {
   };
 }
 
-function deliveryBadge(status) {
-  if (status === "sent") return pillStyle("#dcfce7", "#16a34a");
-  if (status === "failed") return pillStyle("#fee2e2", "#dc2626");
-  return pillStyle("#f3f4f6", "#6b7280");
-}
-
-function MessageTemplatesPanel({ actor }) {
-  const [templates, setTemplates] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [editingStep, setEditingStep] = useState(null);
-  const [formData, setFormData] = useState({ subject: "", body: "" });
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(null);
-
-  useEffect(() => {
-    fetch("/api/message-templates")
-      .then((r) => r.json())
-      .then((d) => setTemplates(d.templates || []))
-      .finally(() => setLoading(false));
-  }, []);
-
-  const handleEdit = (template) => {
-    setEditingStep(template.step_key);
-    setFormData({ subject: template.subject_line || "", body: template.email_body || "" });
-    setSaved(null);
-  };
-
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      const res = await fetch("/api/message-templates", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          stepKey: editingStep,
-          subjectLine: formData.subject,
-          emailBody: formData.body,
-          actorEmail: actor?.email,
-          actorRole: actor?.role,
-        }),
-      });
-      const json = await res.json();
-      if (json.success) {
-        setTemplates((prev) => prev.map((t) => t.step_key === editingStep
-          ? { ...t, subject_line: formData.subject, email_body: formData.body, updated_at: new Date().toISOString(), updated_by: actor?.email || t.updated_by }
-          : t));
-        setSaved(editingStep);
-        setEditingStep(null);
-        setTimeout(() => setSaved(null), 3000);
-      } else {
-        alert("Error saving template: " + (json.error || "Unknown error"));
-      }
-    } catch {
-      alert("Network error saving template.");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (loading) return <p style={{ color: "#6b7280", fontSize: "14px" }}>Loading templates...</p>;
-
-  return (
-    <div>
-      {templates.map((t) => {
-        const isEditing = editingStep === t.step_key;
-        return (
-          <div key={t.step_key} style={card}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "10px", marginBottom: "12px", flexWrap: "wrap" }}>
-              <div>
-                <h4 style={{ margin: "0 0 4px", fontSize: "14px", color: "#111827" }}>{t.step_label || t.step_key}</h4>
-                <p style={{ margin: 0, fontSize: "11px", color: "#9ca3af" }}>
-                  {t.updated_at ? `Updated ${new Date(t.updated_at).toLocaleDateString()}${t.updated_by ? ` by ${t.updated_by}` : ""}` : "Default template"}
-                </p>
-              </div>
-              {saved === t.step_key && <span style={pillStyle("#dcfce7", "#16a34a")}>SAVED ✓</span>}
-            </div>
-
-            {isEditing ? (
-              <div>
-                <div style={{ marginBottom: "12px" }}>
-                  <span style={label}>SUBJECT LINE</span>
-                  <input style={input} type="text" value={formData.subject}
-                    onChange={(e) => setFormData((p) => ({ ...p, subject: e.target.value }))} />
-                </div>
-                <div style={{ marginBottom: "12px" }}>
-                  <span style={label}>EMAIL BODY</span>
-                  <textarea style={{ ...input, minHeight: "140px", fontFamily: "inherit", resize: "vertical" }} rows={8}
-                    value={formData.body}
-                    onChange={(e) => setFormData((p) => ({ ...p, body: e.target.value }))} />
-                </div>
-                <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-                  <button style={saving ? { ...btnPrimary, opacity: 0.6 } : btnPrimary} onClick={handleSave} disabled={saving}>
-                    {saving ? "Saving..." : "Save Changes"}
-                  </button>
-                  <button onClick={() => setEditingStep(null)}
-                    style={{ padding: "10px 22px", borderRadius: "10px", border: "1px solid #e5e7eb", background: "white", color: "#374151", fontWeight: "700", fontSize: "13px", cursor: "pointer" }}>
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div>
-                <p style={{ margin: "0 0 10px", fontSize: "13px", color: "#374151" }}>
-                  <strong>Subject:</strong> {t.subject_line}
-                </p>
-                <p style={{ margin: "0 0 14px", fontSize: "13px", color: "#9ca3af", lineHeight: "1.6", whiteSpace: "pre-wrap", maxHeight: "80px", overflow: "hidden" }}>
-                  {t.email_body}
-                </p>
-                <button style={btnGold} onClick={() => handleEdit(t)}>Edit</button>
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function MessageHistoryPanel({ appointmentId, recipientEmail, actor }) {
-  const [messages, setMessages] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [draft, setDraft] = useState({ subject: "", body: "" });
-  const [sending, setSending] = useState(false);
-  const [sent, setSent] = useState(false);
-
-  const loadMessages = async () => {
-    const res = await fetch(`/api/message-history?appointmentId=${appointmentId}`);
-    const json = await res.json();
-    setMessages(json.messages || []);
-    setLoading(false);
-  };
-
-  useEffect(() => { loadMessages(); }, [appointmentId]);
-
-  const handleSend = async () => {
-    if (!recipientEmail) { alert("This patient has no email on file."); return; }
-    setSending(true);
-    try {
-      const res = await fetch("/api/message-history", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          appointmentId,
-          recipientEmail,
-          subject: draft.subject,
-          body: draft.body,
-          messageType: "email",
-          actorEmail: actor?.email,
-          actorRole: actor?.role,
-        }),
-      });
-      const json = await res.json();
-      if (json.success) {
-        setDraft({ subject: "", body: "" });
-        setSent(true);
-        setTimeout(() => setSent(false), 3000);
-        loadMessages();
-      } else {
-        alert("Error sending message: " + (json.error || "Unknown error"));
-      }
-    } catch {
-      alert("Network error sending message.");
-    } finally {
-      setSending(false);
-    }
-  };
-
-  const canSend = !!draft.subject && !!draft.body && !sending && !!recipientEmail;
-
-  return (
-    <div>
-      <div style={card}>
-        <h3 style={{ margin: "0 0 16px", fontSize: "16px", color: "#111827" }}>📝 Send New Message</h3>
-        <div style={{ marginBottom: "12px" }}>
-          <span style={label}>SUBJECT</span>
-          <input style={input} type="text" placeholder="Email subject" value={draft.subject}
-            onChange={(e) => setDraft((p) => ({ ...p, subject: e.target.value }))} />
-        </div>
-        <div style={{ marginBottom: "16px" }}>
-          <span style={label}>MESSAGE BODY</span>
-          <textarea style={{ ...input, minHeight: "120px", fontFamily: "inherit", resize: "vertical" }} rows={6}
-            placeholder="Message body... (HTML supported)" value={draft.body}
-            onChange={(e) => setDraft((p) => ({ ...p, body: e.target.value }))} />
-        </div>
-        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-          <button style={canSend ? btnPrimary : { ...btnPrimary, opacity: 0.6, cursor: "not-allowed" }} onClick={handleSend} disabled={!canSend}>
-            {sending ? "Sending..." : sent ? "Sent ✓" : `Send to ${recipientEmail || "patient"}`}
-          </button>
-          <button onClick={() => setDraft({ subject: "", body: "" })}
-            style={{ padding: "10px 22px", borderRadius: "10px", border: "1px solid #e5e7eb", background: "white", color: "#6b7280", fontWeight: "700", fontSize: "13px", cursor: "pointer" }}>
-            Clear
-          </button>
-        </div>
-        {!recipientEmail && (
-          <p style={{ margin: "10px 0 0", fontSize: "12px", color: "#dc2626" }}>This patient has no email on file — sending is disabled.</p>
-        )}
-      </div>
-
-      <div style={card}>
-        <h3 style={{ margin: "0 0 16px", fontSize: "16px", color: "#111827" }}>Sent Messages</h3>
-        {loading ? (
-          <p style={{ color: "#6b7280", fontSize: "13px" }}>Loading...</p>
-        ) : messages.length === 0 ? (
-          <p style={{ color: "#9ca3af", fontStyle: "italic", fontSize: "13px" }}>No messages sent yet.</p>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-            {messages.map((msg) => (
-              <div key={msg.id} style={{ border: "1px solid #e5e7eb", borderRadius: "12px", padding: "14px 16px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "10px", marginBottom: "6px", flexWrap: "wrap" }}>
-                  <strong style={{ fontSize: "14px", color: "#111827" }}>{msg.subject}</strong>
-                  <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
-                    <span style={pillStyle(msg.is_template ? "#dbeafe" : "#fef3c7", msg.is_template ? "#1e40af" : "#92400e")}>
-                      {msg.is_template ? "Template" : "Custom"}
-                    </span>
-                    <span style={deliveryBadge(msg.delivery_status)}>{msg.delivery_status}</span>
-                  </div>
-                </div>
-                <p style={{ margin: "0 0 6px", fontSize: "12px", color: "#9ca3af" }}>
-                  {new Date(msg.sent_at).toLocaleString()} · To: {msg.recipient_email} · By: {msg.sent_by}
-                </p>
-                <p style={{ margin: 0, fontSize: "13px", color: "#6b7280", lineHeight: "1.6" }}>
-                  {(msg.body || "").replace(/<[^>]*>/g, "").substring(0, 200)}{(msg.body || "").length > 200 ? "..." : ""}
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function MessagesTab({ appointmentId, recipientEmail, actor }) {
-  const [sub, setSub] = useState("Templates");
-  return (
-    <div>
-      <div style={{ display: "flex", gap: "8px", marginBottom: "16px", flexWrap: "wrap" }}>
-        {MESSAGE_SUBSECTIONS.map((s) => (
-          <button
-            key={s}
-            onClick={() => setSub(s)}
-            style={{
-              padding: "8px 18px", borderRadius: "8px", border: "1px solid #e5e7eb",
-              background: sub === s ? "#b8905a" : "white",
-              color: sub === s ? "white" : "#374151",
-              fontWeight: "700", fontSize: "12px", cursor: "pointer", letterSpacing: "0.5px",
-            }}
-          >
-            {s === "Templates" ? "Message Templates" : "Message History"}
-          </button>
-        ))}
-      </div>
-      {sub === "Templates" ? (
-        <MessageTemplatesPanel actor={actor} />
-      ) : (
-        <MessageHistoryPanel appointmentId={appointmentId} recipientEmail={recipientEmail} actor={actor} />
-      )}
-    </div>
-  );
-}
 
 // ─── Report Tab ───────────────────────────────────────────────────────────────
 function ReportTab({ appointmentId, appt }) {
@@ -1806,9 +1587,6 @@ export default function PatientDetailPage() {
       </div>
       <div style={{ display: activeTab === "Patient Page" ? "block" : "none" }}>
         <PatientPageTab appointmentId={id} />
-      </div>
-      <div style={{ display: activeTab === "Messages" ? "block" : "none" }}>
-        <MessagesTab appointmentId={id} recipientEmail={appt.email} actor={actor} />
       </div>
       <div style={{ display: activeTab === "Report" ? "block" : "none" }}>
         <ReportTab appointmentId={id} appt={appt} />

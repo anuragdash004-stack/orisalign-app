@@ -180,7 +180,7 @@ function buildEmailHtml(params: {
 
 export async function POST(req: Request) {
   try {
-    const { appointmentId, stepKey, email: emailOverride } = await req.json()
+    const { appointmentId, stepKey, email: emailOverride, customSubject, customBody } = await req.json()
 
     if (!appointmentId || !stepKey) {
       return NextResponse.json({ error: "Missing appointmentId or stepKey" }, { status: 400 })
@@ -211,7 +211,12 @@ export async function POST(req: Request) {
     }
 
     const shortId = appt.id.substring(0, 8).toUpperCase()
-    const html = buildEmailHtml({ name: appt.name || "Patient", shortId, journeyUrl, content })
+    const mergedContent = {
+      ...content,
+      subject: customSubject || content.subject,
+      body: customBody || content.body,
+    }
+    const html = buildEmailHtml({ name: appt.name || "Patient", shortId, journeyUrl, content: mergedContent })
 
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -222,7 +227,7 @@ export async function POST(req: Request) {
       body: JSON.stringify({
         from: "OrisAlign <no-reply@orisalign.com>",
         to: [recipientEmail],
-        subject: content.subject,
+        subject: mergedContent.subject,
         html,
       }),
     })
