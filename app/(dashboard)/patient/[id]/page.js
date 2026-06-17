@@ -409,18 +409,12 @@ export default function PatientJourney() {
                           )
                         )}
                         {step.key === "booked" && (
-                          patient.age ? (
-                            <span style={{ flexShrink: 0, padding: "4px 10px", borderRadius: "99px", background: "#dcfce7", color: "#16a34a", fontSize: "12px", fontWeight: "700", whiteSpace: "nowrap" }}>
-                              ✓ Details Filled
-                            </span>
-                          ) : (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); router.push(`/patient/${id}/details`); }}
-                              style={{ flexShrink: 0, padding: "7px 14px", borderRadius: "8px", border: "none", background: "#b8905a", color: "white", fontWeight: "700", fontSize: "12px", cursor: "pointer", whiteSpace: "nowrap" }}
-                            >
-                              Fill Your Details
-                            </button>
-                          )
+                          <button
+                            onClick={(e) => { e.stopPropagation(); router.push(`/patient/${id}/details`); }}
+                            style={{ flexShrink: 0, padding: patient.age ? "4px 10px" : "7px 14px", borderRadius: "8px", border: "none", background: patient.age ? "#dcfce7" : "#b8905a", color: patient.age ? "#16a34a" : "white", fontWeight: "700", fontSize: "12px", cursor: "pointer", whiteSpace: "nowrap" }}
+                          >
+                            {patient.age ? "✓ Details Filled" : "Fill Your Details"}
+                          </button>
                         )}
                         {step.key === "scanning_done" && patient.scanning_review_link && (
                           <button

@@ -47,10 +47,6 @@ export default function PatientDetailsPage() {
   const [bookedSlots, setBookedSlots] = useState<string[]>([])
   const [slotLoading, setSlotLoading] = useState(false)
 
-  const [agreeComm, setAgreeComm] = useState(true)
-  const [agreeTnc, setAgreeTnc] = useState(true)
-  const [tncError, setTncError] = useState(false)
-
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
@@ -146,11 +142,6 @@ export default function PatientDetailsPage() {
   }
 
   const handleSubmit = async () => {
-    if (!agreeTnc) {
-      setTncError(true)
-      return
-    }
-    setTncError(false)
     if (!chiefComplaint || !date || !time || !consultationType) {
       alert("Please select your concern, date, time slot and consultation type.")
       return
@@ -265,7 +256,7 @@ export default function PatientDetailsPage() {
             />
 
             <button className="btn mt-6" onClick={proceedToStep2}>
-              Confirm & Proceed →
+              Save
             </button>
           </motion.div>
         )}
@@ -351,28 +342,10 @@ export default function PatientDetailsPage() {
               <option value="online">💻 Online Consultation — Video call with our expert</option>
             </select>
 
-            <div style={{ marginTop: "20px", display: "flex", flexDirection: "column", gap: "10px" }}>
-              <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer", fontSize: "13px", color: "#374151" }}>
-                <input type="checkbox" checked={agreeComm} onChange={e => setAgreeComm(e.target.checked)}
-                  style={{ marginTop: "2px", accentColor: "#b8905a", flexShrink: 0, width: "16px", height: "16px" }} />
-                I agree to receive all forms of communication from OrisAlign regarding my appointment and treatment.
-              </label>
-              <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer", fontSize: "13px", color: "#374151" }}>
-                <input type="checkbox" checked={agreeTnc} onChange={e => { setAgreeTnc(e.target.checked); setTncError(false) }}
-                  style={{ marginTop: "2px", accentColor: "#b8905a", flexShrink: 0, width: "16px", height: "16px" }} />
-                I agree to the <a href="/terms" style={{ color: "#b8905a", fontWeight: "600", textDecoration: "underline" }}>terms and conditions and privacy policy</a>.
-              </label>
-              {tncError && (
-                <p style={{ color: "#dc2626", fontSize: "13px", margin: 0, fontWeight: "600" }}>
-                  ⚠️ Please agree to T&amp;C to confirm your booking.
-                </p>
-              )}
-            </div>
-
-            <div className="flex gap-3 mt-4">
+            <div className="flex gap-3 mt-6">
               <button className="btn-back" onClick={() => setStep(1)}>← Back</button>
               <button className="btn flex-1" onClick={handleSubmit} disabled={submitting}>
-                {submitting ? "Saving..." : "SAVE DETAILS"}
+                {submitting ? "Submitting..." : "Submit"}
               </button>
             </div>
           </motion.div>
