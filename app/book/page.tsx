@@ -46,7 +46,7 @@ export default function BookPage() {
   const [date, setDate] = useState("")
   const [time, setTime] = useState("")
   const [showSlots, setShowSlots] = useState(false)
-  const [bookedSlots, setBookedSlots] = useState([])
+  const [bookedSlots, setBookedSlots] = useState<string[]>([])
   const [slotLoading, setSlotLoading] = useState(false)
 
   const [agreeComm, setAgreeComm] = useState(true)
@@ -145,7 +145,7 @@ export default function BookPage() {
     if (!selectedDate) return
     setSlotLoading(true)
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabase!
         .from("appointments_booking")
         .select("time")
         .eq("date", selectedDate)
@@ -169,7 +169,7 @@ export default function BookPage() {
 
   const checkDuplicateBooking = async () => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabase!
         .from("appointments_booking")
         .select("id")
         .or(`phone.eq.${phone},email.eq.${email}`)
