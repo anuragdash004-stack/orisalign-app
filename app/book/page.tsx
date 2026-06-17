@@ -49,17 +49,48 @@ export default function BookPage() {
 
   const [agreeComm, setAgreeComm] = useState(true)
   const [agreeTnc, setAgreeTnc] = useState(true)
+  const [acceptTerms, setAcceptTerms] = useState(true)
   const [tncError, setTncError] = useState(false)
 
   const [loading, setLoading] = useState(false)
   const [showConfirmation, setShowConfirmation] = useState(false)
+  const [showBookingPopup, setShowBookingPopup] = useState(false)
+  const [proceedWithOtp, setProceedWithOtp] = useState(false)
   const [bookedInfo, setBookedInfo] = useState({ date: "", time: "", patientId: "" })
 
-  const sendOTP = async () => {
+  const bookScan = async () => {
     if (!name || !phone || !email) {
       alert("Please enter your name, phone number, and email.")
       return
     }
+    if (!acceptTerms) {
+      alert("Please accept the terms and conditions and privacy policy.")
+      return
+    }
+
+    setLoading(true)
+    try {
+      // Save lead to database via API
+      const res = await fetch("/api/save-booking-lead", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, phone, email }),
+      })
+
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.message || "Failed to save booking")
+      }
+
+      setShowBookingPopup(true)
+    } catch (err: any) {
+      alert(`Error: ${err.message || "Failed to book scan"}`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const sendOTP = async () => {
     setLoading(true)
     const res = await fetch("/api/send-booking-otp", {
       method: "POST",
@@ -70,7 +101,6 @@ export default function BookPage() {
     if (!res.ok) { alert("Failed to send OTP. Please try again."); return }
     const { token } = await res.json()
     setOtpToken(token)
-    setStep(2)
   }
 
   const verifyOTP = async () => {
@@ -84,6 +114,20 @@ export default function BookPage() {
     setLoading(false)
     if (!res.ok) { alert("Invalid OTP. Please try again."); return }
     setStep(3)
+  }
+
+  const handleProceedWithInfo = async () => {
+    // Send OTP when "Add additional information" is selected
+    setLoading(true)
+    const res = await fetch("/api/send-booking-otp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, name }),
+    })
+    setLoading(false)
+    if (!res.ok) { alert("Failed to send OTP. Please try again."); return }
+    const { token } = await res.json()
+    setOtpToken(token)
   }
 
   const handlePincode = async (val: string) => {
@@ -173,6 +217,76 @@ export default function BookPage() {
     >
       <style>{styles}</style>
 
+      {/* Booking Confirmation Popup */}
+      {showBookingPopup && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "20px" }}>
+          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
+            style={{ background: "white", borderRadius: "24px", padding: "36px", maxWidth: "420px", width: "100%", textAlign: "center", boxShadow: "0 30px 80px rgba(0,0,0,0.2)" }}
+          >
+            <div style={{ fontSize: "48px", marginBottom: "12px" }}>✅</div>
+            <h2 style={{ fontSize: "22px", fontWeight: "700", marginBottom: "12px", color: "#111" }}>Your Scan is Booked!</h2>
+            <p style={{ color: "#555", fontSize: "15px", lineHeight: "1.6", marginBottom: "28px" }}>You'll soon get a call from our counselors to schedule your appointment and answer any questions.</p>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "10px" }}>
+              <button
+                onClick={async () => {
+                  setProceedWithOtp(true)
+                  setShowBookingPopup(false)
+                  setStep(2)
+                  // Send OTP
+                  setLoading(true)
+                  const res = await fetch("/api/send-booking-otp", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email, name }),
+                  })
+                  setLoading(false)
+                  if (!res.ok) { alert("Failed to send OTP. Please try again."); return }
+                  const { token } = await res.json()
+                  setOtpToken(token)
+                }}
+                style={{
+                  padding: "14px 16px",
+                  borderRadius: "10px",
+                  border: "none",
+                  background: "#111827",
+                  color: "white",
+                  fontWeight: "700",
+                  fontSize: "14px",
+                  cursor: "pointer",
+                  transition: "0.3s",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "#2d2d3d")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "#111827")}
+              >
+                Add Additional Information
+              </button>
+              <button
+                onClick={() => {
+                  setShowBookingPopup(false)
+                  window.location.href = "/"
+                }}
+                style={{
+                  padding: "14px 16px",
+                  borderRadius: "10px",
+                  border: "2px solid #e5e7eb",
+                  background: "white",
+                  color: "#111827",
+                  fontWeight: "600",
+                  fontSize: "14px",
+                  cursor: "pointer",
+                  transition: "0.3s",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "#f9fafb")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "white")}
+              >
+                Wait for Counsellor's Call
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
       {showConfirmation && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "20px" }}>
           <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
@@ -201,12 +315,32 @@ export default function BookPage() {
         {step === 1 && (
           <motion.div key="step1" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, y: -30 }} className="card">
             <Logo />
-            <h2 className="title">Enter Details</h2>
+            <h2 className="title">Book Your Smile Assessment</h2>
             <Input placeholder="Full Name" value={name} set={setName} />
             <Input placeholder="Phone Number" value={phone} set={setPhone} type="tel" />
             <Input placeholder="Email Address" value={email} set={setEmail} type="email" />
-            <button className="btn center-btn" onClick={sendOTP} disabled={loading}>
-              {loading ? "Sending OTP..." : "SEND OTP"}
+
+            <div style={{ marginTop: "16px", padding: "12px", background: "#f9fafb", borderRadius: "8px", border: "1px solid #e5e7eb" }}>
+              <label style={{ display: "flex", alignItems: "flex-start", gap: "8px", cursor: "pointer", fontSize: "13px", color: "#111827" }}>
+                <input
+                  type="checkbox"
+                  checked={acceptTerms}
+                  onChange={(e) => setAcceptTerms(e.target.checked)}
+                  style={{ marginTop: "2px", cursor: "pointer", width: "18px", height: "18px", flexShrink: 0 }}
+                />
+                <span>
+                  I accept the <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: "#b8905a", textDecoration: "none", fontWeight: "600" }}>terms and conditions</a> and <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" style={{ color: "#b8905a", textDecoration: "none", fontWeight: "600" }}>privacy policy</a>
+                </span>
+              </label>
+            </div>
+
+            <button
+              className="btn center-btn"
+              onClick={bookScan}
+              disabled={loading || !acceptTerms}
+              style={{ marginTop: "20px", opacity: !acceptTerms ? 0.5 : 1, cursor: !acceptTerms ? "not-allowed" : "pointer" }}
+            >
+              {loading ? "Booking..." : "BOOK YOUR SCAN"}
             </button>
           </motion.div>
         )}
@@ -215,8 +349,25 @@ export default function BookPage() {
         {step === 2 && (
           <motion.div key="step2" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="card">
             <Logo />
-            <h2 className="title">Verify OTP</h2>
-            <p className="subtitle-small">OTP sent to {email}</p>
+            {proceedWithOtp ? (
+              <>
+                <h2 className="title">Verify Your Email</h2>
+                <div style={{ marginBottom: "16px", padding: "12px", background: "#f0fdf4", borderRadius: "8px", border: "1px solid #bbf7d0" }}>
+                  <p style={{ margin: "0 0 6px", fontSize: "11px", fontWeight: "700", color: "#16a34a", textTransform: "uppercase" }}>Your Information</p>
+                  <div style={{ fontSize: "13px", color: "#111827", lineHeight: "1.6" }}>
+                    <p style={{ margin: "0 0 4px" }}><strong>Name:</strong> {name}</p>
+                    <p style={{ margin: "0 0 4px" }}><strong>Phone:</strong> {phone}</p>
+                    <p style={{ margin: 0 }}><strong>Email:</strong> {email}</p>
+                  </div>
+                </div>
+                <p className="subtitle-small">OTP sent to {email}. Please enter it below to verify and proceed with additional information.</p>
+              </>
+            ) : (
+              <>
+                <h2 className="title">Verify OTP</h2>
+                <p className="subtitle-small">OTP sent to {email}</p>
+              </>
+            )}
             <Input placeholder="Enter OTP" value={otp} set={setOtp} />
             <button className="btn mt-6" onClick={verifyOTP} disabled={loading}>
               {loading ? "Verifying..." : "VERIFY OTP"}
