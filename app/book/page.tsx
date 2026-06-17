@@ -84,10 +84,19 @@ export default function BookPage() {
         throw new Error(error.message || "Failed to save booking")
       }
 
-      setShowBookingPopup(true)
+      const { leadId } = await res.json()
+
+      // Send welcome email with patient ID
+      await fetch("/api/send-welcome-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, name, patientId: leadId }),
+      }).catch(() => {})
+
+      // Redirect directly to patient journey page
+      window.location.href = `/patient/${leadId}`
     } catch (err: any) {
       alert(`Error: ${err.message || "Failed to book scan"}`)
-    } finally {
       setLoading(false)
     }
   }
