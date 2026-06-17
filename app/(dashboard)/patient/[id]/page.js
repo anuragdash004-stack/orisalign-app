@@ -52,16 +52,13 @@ function fmt(n) {
   return `₹ ${parseFloat(n).toLocaleString("en-IN")}`;
 }
 
-function calculateFinalAmount(pd, appliedCouponIds) {
+function calculateFinalAmount(pd, appliedCoupons) {
   let fullAmt = parseFloat(pd.full_amount) || 0;
   fullAmt = fullAmt - (parseFloat(pd.discount) || 0);
 
-  // Apply all selected coupons
-  appliedCouponIds.forEach((couponId) => {
-    const coupon = coupons.find((c) => c.id === couponId);
-    if (coupon) {
-      fullAmt = Math.max(0, fullAmt - (parseFloat(coupon.discount_amount) || 0));
-    }
+  // Apply all applied coupons
+  appliedCoupons.forEach((coupon) => {
+    fullAmt = Math.max(0, fullAmt - parseFloat(coupon.discount));
   });
 
   return Math.round(fullAmt * 100) / 100;
@@ -75,10 +72,11 @@ export default function PatientJourney() {
   const [expandedStep, setExpandedStep] = useState(null);
   const [approving, setApproving] = useState(false);
   const [copiedNum, setCopiedNum] = useState(null);
-  const [coupons, setCoupons] = useState([]);
   const [paymentMode, setPaymentMode] = useState("down"); // "down" or "full"
-  const [appliedCoupons, setAppliedCoupons] = useState([]);
-  const [showCouponSelector, setShowCouponSelector] = useState(false);
+  const [appliedCoupons, setAppliedCoupons] = useState([]); // Array of {code, discount}
+  const [couponInput, setCouponInput] = useState("");
+  const [couponMessage, setCouponMessage] = useState("");
+  const [applyingCoupon, setApplyingCoupon] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -93,17 +91,53 @@ export default function PatientJourney() {
     load();
   }, [id]);
 
-  useEffect(() => {
-    const fetchCoupons = async () => {
-      const { data } = await supabase
+  const applyCoupon = async () => {
+    if (!couponInput.trim()) {
+      setCouponMessage("Please enter a coupon code.");
+      return;
+    }
+
+    setApplyingCoupon(true);
+    setCouponMessage("");
+
+    try {
+      const { data, error } = await supabase
         .from("coupons")
         .select("*")
+        .eq("code", couponInput.trim().toUpperCase())
         .eq("is_active", true)
-        .order("created_at", { ascending: false });
-      setCoupons(data || []);
-    };
-    fetchCoupons();
-  }, []);
+        .single();
+
+      if (error || !data) {
+        setCouponMessage("No valid coupon found with this code.");
+        setApplyingCoupon(false);
+        return;
+      }
+
+      const discountAmount = parseFloat(data.discount_amount) || 0;
+      if (discountAmount <= 0) {
+        setCouponMessage("This coupon has no discount available.");
+        setApplyingCoupon(false);
+        return;
+      }
+
+      // Check if coupon already applied
+      if (appliedCoupons.find((c) => c.code === data.code)) {
+        setCouponMessage("This coupon is already applied.");
+        setApplyingCoupon(false);
+        return;
+      }
+
+      // Add coupon to applied list
+      setAppliedCoupons([...appliedCoupons, { code: data.code, discount: discountAmount }]);
+      setCouponMessage(`✓ Coupon "${data.code}" applied! Discount: ${fmt(discountAmount)}`);
+      setCouponInput("");
+    } catch (err) {
+      setCouponMessage("Error validating coupon. Please try again.");
+    } finally {
+      setApplyingCoupon(false);
+    }
+  };
 
   if (loading) return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
@@ -484,73 +518,76 @@ export default function PatientJourney() {
                             </p>
                           </div>
 
-                          {/* Coupon Section */}
-                          <div>
-                            <button
-                              onClick={() => setShowCouponSelector(!showCouponSelector)}
+                          {/* Coupon Input Section */}
+                          <div style={{ display: "flex", gap: "8px" }}>
+                            <input
+                              type="text"
+                              placeholder="Enter coupon code"
+                              value={couponInput}
+                              onChange={(e) => setCouponInput(e.target.value)}
+                              onKeyPress={(e) => e.key === "Enter" && applyCoupon()}
                               style={{
-                                width: "100%",
-                                padding: "10px",
+                                flex: 1,
+                                padding: "10px 12px",
                                 borderRadius: "8px",
                                 border: "1px solid #e5e7eb",
-                                background: "white",
-                                color: "#111827",
+                                fontSize: "13px",
+                                outline: "none",
+                              }}
+                            />
+                            <button
+                              onClick={applyCoupon}
+                              disabled={applyingCoupon}
+                              style={{
+                                padding: "10px 16px",
+                                borderRadius: "8px",
+                                border: "none",
+                                background: "#b8905a",
+                                color: "white",
                                 fontWeight: "700",
                                 fontSize: "13px",
-                                cursor: "pointer",
+                                cursor: applyingCoupon ? "not-allowed" : "pointer",
+                                opacity: applyingCoupon ? 0.6 : 1,
                               }}
                             >
-                              {showCouponSelector ? "▼ Apply Coupon" : "► Apply Coupon"}
+                              {applyingCoupon ? "..." : "Apply"}
                             </button>
-                            {showCouponSelector && coupons.length > 0 && (
-                              <div style={{ marginTop: "8px", display: "flex", flexDirection: "column", gap: "6px" }}>
-                                {coupons.map((coupon) => (
-                                  <div
-                                    key={coupon.id}
-                                    onClick={() => {
-                                      if (appliedCoupons.includes(coupon.id)) {
-                                        setAppliedCoupons(appliedCoupons.filter((id) => id !== coupon.id));
-                                      } else {
-                                        setAppliedCoupons([...appliedCoupons, coupon.id]);
-                                      }
-                                    }}
-                                    style={{
-                                      padding: "10px 12px",
-                                      borderRadius: "8px",
-                                      border: appliedCoupons.includes(coupon.id) ? "2px solid #16a34a" : "1px solid #e5e7eb",
-                                      background: appliedCoupons.includes(coupon.id) ? "#f0fdf4" : "#f8f7f5",
-                                      cursor: "pointer",
-                                      display: "flex",
-                                      justifyContent: "space-between",
-                                      alignItems: "center",
-                                    }}
-                                  >
-                                    <div>
-                                      <p style={{ margin: "0 0 2px", fontSize: "13px", fontWeight: "700", color: "#111827" }}>{coupon.code}</p>
-                                      <p style={{ margin: 0, fontSize: "12px", color: "#6b7280" }}>Discount: {fmt(coupon.discount_amount)}</p>
-                                    </div>
-                                    <span style={{ fontSize: "12px", fontWeight: "700", color: appliedCoupons.includes(coupon.id) ? "#16a34a" : "#9ca3af" }}>
-                                      {appliedCoupons.includes(coupon.id) ? "✓ Applied" : ""}
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
                           </div>
+
+                          {/* Coupon Message */}
+                          {couponMessage && (
+                            <div style={{
+                              padding: "10px 12px",
+                              borderRadius: "8px",
+                              background: couponMessage.includes("✓") ? "#f0fdf4" : "#fee2e2",
+                              border: couponMessage.includes("✓") ? "1px solid #bbf7d0" : "1px solid #fecaca",
+                              color: couponMessage.includes("✓") ? "#16a34a" : "#dc2626",
+                              fontSize: "13px",
+                              fontWeight: "600",
+                            }}>
+                              {couponMessage}
+                            </div>
+                          )}
 
                           {/* Applied Coupons Summary */}
                           {appliedCoupons.length > 0 && (
                             <div style={{ padding: "10px 12px", background: "#fef3c7", borderRadius: "8px" }}>
-                              <p style={{ margin: "0 0 4px", fontSize: "11px", fontWeight: "700", color: "#92400e", textTransform: "uppercase" }}>Coupons Applied</p>
-                              <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
-                                {appliedCoupons.map((couponId) => {
-                                  const coupon = coupons.find((c) => c.id === couponId);
-                                  return (
-                                    <span key={couponId} style={{ fontSize: "12px", fontWeight: "700", padding: "3px 8px", background: "white", borderRadius: "4px", border: "1px solid #fbbf24", color: "#92400e" }}>
-                                      {coupon?.code} - {fmt(coupon?.discount_amount)}
-                                    </span>
-                                  );
-                                })}
+                              <p style={{ margin: "0 0 8px", fontSize: "11px", fontWeight: "700", color: "#92400e", textTransform: "uppercase" }}>Coupons Applied</p>
+                              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                                {appliedCoupons.map((coupon, idx) => (
+                                  <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 8px", background: "white", borderRadius: "4px" }}>
+                                    <span style={{ fontSize: "13px", fontWeight: "700", color: "#111827" }}>{coupon.code}</span>
+                                    <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                                      <span style={{ fontSize: "12px", color: "#6b7280" }}>- {fmt(coupon.discount)}</span>
+                                      <button
+                                        onClick={() => setAppliedCoupons(appliedCoupons.filter((_, i) => i !== idx))}
+                                        style={{ background: "none", border: "none", color: "#dc2626", fontWeight: "700", cursor: "pointer", fontSize: "12px" }}
+                                      >
+                                        ✕
+                                      </button>
+                                    </div>
+                                  </div>
+                                ))}
                               </div>
                             </div>
                           )}
