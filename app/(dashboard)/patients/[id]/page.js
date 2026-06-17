@@ -932,6 +932,7 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
 
   const toggle = async (key) => {
     if (!isAdmin) return;
+    if (key === "plan_approved") return; // patient-only — cannot be controlled from backend
     const currentVal = !!steps[key];
     const newVal = !currentVal;
     const updated = { ...steps, [key]: newVal };
@@ -940,12 +941,6 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
     const js = appt.journey_steps || {};
     const newJs = { ...js, [key]: newVal };
     const updatePayload = { journey_steps: newJs };
-    if (key === "plan_approved" && !newVal) {
-      updatePayload.plan_approved = false;
-      updatePayload.plan_approved_at = null;
-      updatePayload.plan_approval_ip = null;
-      delete newJs.plan_approved_at;
-    }
     const { error } = await supabase
       .from("appointments_booking")
       .update(updatePayload)
@@ -1017,7 +1012,7 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                 <p style={{ margin: 0, flex: 1, fontSize: "14px", fontWeight: done ? "700" : "500", color: done ? "#15803d" : "#374151" }}>
                   {step.label}
                 </p>
-                {isAdmin && (
+                {isAdmin && step.key !== "plan_approved" && (
                   <button
                     onClick={() => toggle(step.key)}
                     disabled={isSaving}
@@ -1031,6 +1026,16 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                   >
                     {isSaving ? "..." : done ? "Undo" : "Mark Done"}
                   </button>
+                )}
+                {step.key === "plan_approved" && (
+                  <span style={{
+                    padding: "6px 12px", borderRadius: "8px", fontSize: "11px", fontWeight: "700", flexShrink: 0,
+                    background: done ? "#dcfce7" : steps.planning_done ? "#fef3c7" : "#f3f4f6",
+                    color: done ? "#16a34a" : steps.planning_done ? "#92400e" : "#9ca3af",
+                    letterSpacing: "0.5px",
+                  }}>
+                    {done ? "APPROVED BY PATIENT" : steps.planning_done ? "AWAITING PATIENT" : "LOCKED"}
+                  </span>
                 )}
               </div>
 
@@ -1186,7 +1191,7 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
               )}
 
               {/* Email message — editable, sent when step is marked done */}
-              {isAdmin && !done && stepMessages[step.key] && (
+              {isAdmin && !done && stepMessages[step.key] && step.key !== "plan_approved" && (
                 <div style={{ ...subBox, border: "1px solid #dbeafe", background: "#f0f7ff" }}>
                   <span style={{ ...label, color: "#1e40af" }}>EMAIL TO PATIENT (sent on Mark Done)</span>
                   <input
