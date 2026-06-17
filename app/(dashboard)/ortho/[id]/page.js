@@ -58,6 +58,17 @@ const SHEET_CATS = {
   "Retainer":            [3, 5, 8, 10, 13, 17, 18, 19, 21, 22],
 };
 
+const DURATION_OPTIONS = [
+  "6-8 months",
+  "8-10 months",
+  "10-12 months",
+  "12-14 months",
+  "14-16 months",
+  "16-18 months",
+];
+
+const PROVISIONAL_PLAN_NOTE = "Your tooth will be rotated to required degree. Alignment will be corrected. Spaces will be gained. Your plan might involve IPR and buttons.";
+
 export default function OrthoCase() {
   const { id } = useParams();
   const router = useRouter();
@@ -69,11 +80,12 @@ export default function OrthoCase() {
   const [actor, setActor] = useState(null);
 
   // Planning state
+  const [treatmentDuration, setTreatmentDuration] = useState("");
   const [provisionalPlan, setProvisionalPlan] = useState("");
   const [provisionalSubmitted, setProvisionalSubmitted] = useState(false);
   const [provisionalSaving, setProvisionalSaving] = useState(false);
 
-  const [orthoNote, setOrthoNote] = useState("");
+  const [orthoNote, setOrthoNote] = useState(PROVISIONAL_PLAN_NOTE);
   const [noteSaving, setNoteSaving] = useState(false);
 
   const [finalPlan, setFinalPlan] = useState("");
@@ -390,13 +402,46 @@ export default function OrthoCase() {
 
           <div style={{ padding: "20px", display: "grid", gap: "24px" }}>
 
-            {/* ── Provisional Planning + Notes ── */}
+            {/* ── Provisional Planning + Duration + Notes ── */}
             <div>
               <label style={{ fontWeight: "600", fontSize: "14px", color: "#111827", display: "block", marginBottom: "8px" }}>
                 Provisional Planning
               </label>
+
+              {!provisionalSubmitted && (
+                <div style={{ marginBottom: "16px" }}>
+                  <label style={{ fontWeight: "600", fontSize: "13px", color: "#111827", display: "block", marginBottom: "6px" }}>
+                    Treatment Duration
+                  </label>
+                  <select
+                    value={treatmentDuration}
+                    onChange={(e) => setTreatmentDuration(e.target.value)}
+                    style={{
+                      ...inputStyle,
+                      width: "100%",
+                      padding: "10px 12px",
+                      borderRadius: "8px",
+                      border: "1px solid #d1d5db",
+                      fontSize: "14px",
+                      outline: "none",
+                    }}
+                  >
+                    <option value="">Select duration</option>
+                    {DURATION_OPTIONS.map((duration) => (
+                      <option key={duration} value={duration}>{duration}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               {provisionalSubmitted ? (
                 <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "8px", padding: "14px", fontSize: "14px", color: "#111827", whiteSpace: "pre-wrap" }}>
+                  {treatmentDuration && (
+                    <div style={{ marginBottom: "12px", paddingBottom: "12px", borderBottom: "1px solid #bbf7d0" }}>
+                      <p style={{ fontSize: "11px", fontWeight: "700", color: "#16a34a", textTransform: "uppercase", letterSpacing: "0.5px", margin: "0 0 4px" }}>Duration</p>
+                      <p style={{ margin: 0, fontSize: "14px", color: "#111827" }}>{treatmentDuration}</p>
+                    </div>
+                  )}
                   {provisionalPlan}
                   {orthoNote ? (
                     <div style={{ marginTop: "12px", paddingTop: "12px", borderTop: "1px solid #bbf7d0" }}>
