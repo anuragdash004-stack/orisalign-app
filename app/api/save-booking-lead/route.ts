@@ -20,15 +20,16 @@ export async function POST(req: Request) {
 
     const bookedAt = new Date().toISOString()
 
-    // Save lead to scan_booking_leads table
+    // Save lead to leads table
     const { data, error } = await supabase
-      .from("scan_booking_leads")
+      .from("leads")
       .insert([
         {
           name,
           phone,
           email,
-          booked_at: bookedAt,
+          created_at: bookedAt,
+          status: "new",
         },
       ])
       .select("id")
