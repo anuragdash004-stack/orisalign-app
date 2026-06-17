@@ -605,7 +605,7 @@ export default function BookPage() {
             >
               <option value="" disabled>Choose consultation type</option>
               <option value="home">🏠 Home Consultation — Dentist visits your home</option>
-              <option value="clinic">🏥 Clinic Consultation — Visit our clinic in Bhubaneswar</option>
+              <option value="clinic">🏥 Clinic Consultation — Visit our clinic in Bhubaneswar (address will be shared in mail)</option>
               <option value="online">💻 Online Consultation — Video call with our expert</option>
             </select>
 
