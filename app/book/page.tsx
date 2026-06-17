@@ -46,6 +46,8 @@ export default function BookPage() {
   const [date, setDate] = useState("")
   const [time, setTime] = useState("")
   const [showSlots, setShowSlots] = useState(false)
+  const [bookedSlots, setBookedSlots] = useState([])
+  const [slotLoading, setSlotLoading] = useState(false)
 
   const [agreeComm, setAgreeComm] = useState(true)
   const [agreeTnc, setAgreeTnc] = useState(true)
@@ -130,6 +132,51 @@ export default function BookPage() {
     setOtpToken(token)
   }
 
+  const fetchBookedSlots = async (selectedDate: string) => {
+    if (!selectedDate) return
+    setSlotLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from("appointments_booking")
+        .select("time")
+        .eq("date", selectedDate)
+        .neq("status", "lead")
+
+      if (!error) {
+        const slots = data?.map(d => d.time) || []
+        setBookedSlots(slots)
+      }
+    } catch (err) {
+      console.error("Error fetching booked slots:", err)
+    }
+    setSlotLoading(false)
+  }
+
+  const handleDateChange = (selectedDate: string) => {
+    setDate(selectedDate)
+    setTime("")
+    fetchBookedSlots(selectedDate)
+  }
+
+  const checkDuplicateBooking = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("appointments_booking")
+        .select("id")
+        .or(`phone.eq.${phone},email.eq.${email}`)
+        .neq("status", "lead")
+
+      if (!error && data && data.length > 0) {
+        alert("This phone number or email already has an active booking.")
+        return false
+      }
+      return true
+    } catch (err) {
+      console.error("Error checking booking:", err)
+      return true
+    }
+  }
+
   const handlePincode = async (val: string) => {
     setPincode(val)
     if (val.length === 6 && /^\d{6}$/.test(val)) {
@@ -181,6 +228,13 @@ export default function BookPage() {
       alert("Please select your concern, date, time slot and consultation type.")
       return
     }
+
+    // Check for duplicate booking
+    const canProceed = await checkDuplicateBooking()
+    if (!canProceed) {
+      return
+    }
+
     setLoading(true)
     const locationLink = mapsLink || mapsLinkManual
     const address = [fullAddress, city && `${city}, ${district}, ${areaState}`, `PIN: ${pincode}`, locationLink ? `Maps: ${locationLink}` : ""].filter(Boolean).join(" | ")
@@ -482,7 +536,7 @@ export default function BookPage() {
               type="date"
               className="input"
               value={date}
-              onChange={(e) => setDate(e.target.value)}
+              onChange={(e) => handleDateChange(e.target.value)}
               style={{ color: date ? "#111" : "#9ca3af" }}
             />
 
@@ -497,14 +551,20 @@ export default function BookPage() {
             <AnimatePresence>
               {showSlots && (
                 <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.25 }} className="grid grid-cols-2 gap-3 mt-3">
-                  {["9 AM", "11 AM", "4 PM", "6 PM"].map((t) => (
-                    <motion.button key={t} whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.05 }}
-                      onClick={() => { setTime(t); setShowSlots(false) }}
-                      className={`slot ${time === t ? "slot-active" : ""}`}
-                    >
-                      {t}
-                    </motion.button>
-                  ))}
+                  {["9 AM", "11 AM", "3:30 PM", "5:30 PM"].map((t) => {
+                    const isBooked = bookedSlots.includes(t)
+                    return (
+                      <motion.button key={t} whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.05 }}
+                        onClick={() => { if (!isBooked) { setTime(t); setShowSlots(false) } }}
+                        disabled={isBooked}
+                        className={`slot ${time === t ? "slot-active" : ""} ${isBooked ? "slot-disabled" : ""}`}
+                        style={{ opacity: isBooked ? 0.5 : 1, cursor: isBooked ? "not-allowed" : "pointer" }}
+                        title={isBooked ? "This slot is already booked" : ""}
+                      >
+                        {t} {isBooked ? "❌" : ""}
+                      </motion.button>
+                    )
+                  })}
                 </motion.div>
               )}
             </AnimatePresence>
