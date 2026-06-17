@@ -237,24 +237,6 @@ export default function PatientDetailsPage() {
               </div>
             )}
 
-            <button
-              type="button"
-              onClick={detectLocation}
-              className="input mt-3 text-left"
-              style={{ color: mapsLink ? "#16a34a" : "#9ca3af", cursor: "pointer" }}
-            >
-              {locLoading ? "📍 Detecting location..." : mapsLink ? "✅ GPS location detected (tap to refresh)" : "📍 Tap to detect your GPS location (optional)"}
-            </button>
-
-            <input
-              type="url"
-              className="input mt-3"
-              placeholder="🗺️ Or paste Google Maps link here (optional)"
-              value={mapsLinkManual}
-              onChange={(e) => setMapsLinkManual(e.target.value)}
-              style={{ color: "#111" }}
-            />
-
             <button className="btn mt-6" onClick={proceedToStep2}>
               Save
             </button>
@@ -314,14 +296,13 @@ export default function PatientDetailsPage() {
                   {["9 AM", "11 AM", "3:30 PM", "5:30 PM"].map((t) => {
                     const isBooked = bookedSlots.includes(t)
                     return (
-                      <motion.button key={t} whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.05 }}
+                      <motion.button key={t} whileTap={{ scale: 0.95 }} whileHover={{ scale: isBooked ? 1 : 1.05 }}
                         onClick={() => { if (!isBooked) { setTime(t); setShowSlots(false) } }}
                         disabled={isBooked}
                         className={`slot ${time === t ? "slot-active" : ""} ${isBooked ? "slot-disabled" : ""}`}
-                        style={{ opacity: isBooked ? 0.5 : 1, cursor: isBooked ? "not-allowed" : "pointer" }}
                         title={isBooked ? "This slot is already booked" : ""}
                       >
-                        {t} {isBooked ? "❌" : ""}
+                        {t}
                       </motion.button>
                     )
                   })}
@@ -341,6 +322,30 @@ export default function PatientDetailsPage() {
               <option value="clinic">🏥 Clinic Consultation — Visit our clinic in Bhubaneswar</option>
               <option value="online">💻 Online Consultation — Video call with our expert</option>
             </select>
+
+            {consultationType === "home" && (
+              <>
+                <div className="section-label">Location Details</div>
+
+                <button
+                  type="button"
+                  onClick={detectLocation}
+                  className="input mt-3 text-left"
+                  style={{ color: mapsLink ? "#16a34a" : "#9ca3af", cursor: "pointer" }}
+                >
+                  {locLoading ? "📍 Detecting location..." : mapsLink ? "✅ GPS location detected (tap to refresh)" : "📍 Tap to detect your GPS location (optional)"}
+                </button>
+
+                <input
+                  type="url"
+                  className="input mt-3"
+                  placeholder="🗺️ Or paste Google Maps link here (optional)"
+                  value={mapsLinkManual}
+                  onChange={(e) => setMapsLinkManual(e.target.value)}
+                  style={{ color: "#111" }}
+                />
+              </>
+            )}
 
             <div className="flex gap-3 mt-6">
               <button className="btn-back" onClick={() => setStep(1)}>← Back</button>
@@ -481,26 +486,30 @@ const styles = `
 .mt-4 { margin-top: 16px; }
 .slot {
   padding: 12px 14px;
-  background: #f9fafb;
-  border: 2px solid #e5e7eb;
+  background: #f0fdf4;
+  border: 2px solid #bbf7d0;
   border-radius: 10px;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
+  color: #15803d;
 }
 .slot:hover:not(.slot-disabled) {
-  border-color: #b8905a;
-  background: white;
+  border-color: #16a34a;
+  background: #dcfce7;
 }
 .slot-active {
-  background: #b8905a;
+  background: #16a34a;
   color: white;
-  border-color: #b8905a;
+  border-color: #16a34a;
 }
 .slot-disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
+  background: #e5e7eb;
+  border-color: #d1d5db;
+  color: #9ca3af;
 }
 .grid {
   display: grid;
