@@ -60,15 +60,29 @@ export default function PatientDetailsPage() {
         setPatient(data)
         setAge(data.age || "")
         setSex(data.sex || "")
-        setFullAddress(data.address || "")
         setPincode(data.pincode || "")
-        setChiefComplaint(data.chief_complaint || "")
-        setConsultationType(data.consultation_type || "")
-        setExplainConcern(data.explain_concern || "")
         setDate(data.date || "")
         setTime(data.time || "")
-        setMapsLink(data.maps_link || "")
-        setMapsLinkManual(data.maps_link_manual || "")
+
+        // Parse address: "fullAddress | city, district, state | PIN: xxx | Maps: link"
+        const addressParts = (data.address || "").split(" | ")
+        setFullAddress(addressParts[0] || "")
+        const mapsPart = addressParts.find((p: string) => p.startsWith("Maps: "))
+        if (mapsPart) setMapsLink(mapsPart.replace("Maps: ", ""))
+
+        // Parse problem: "[CONSULTATIONTYPE] complaint — explanation"
+        const problemMatch = (data.problem || "").match(/^\[(\w+)\]\s*(.*)$/)
+        if (problemMatch) {
+          setConsultationType(problemMatch[1].toLowerCase())
+          const rest = problemMatch[2]
+          const dashIdx = rest.indexOf(" — ")
+          if (dashIdx >= 0) {
+            setChiefComplaint(rest.substring(0, dashIdx))
+            setExplainConcern(rest.substring(dashIdx + 3))
+          } else {
+            setChiefComplaint(rest)
+          }
+        }
       }
       setLoading(false)
     }
@@ -153,28 +167,16 @@ export default function PatientDetailsPage() {
       const address = [fullAddress, city && `${city}, ${district}, ${areaState}`, `PIN: ${pincode}`, locationLink ? `Maps: ${locationLink}` : ""].filter(Boolean).join(" | ")
       const problem = chiefComplaint === "Others" ? `Others — ${explainConcern}` : chiefComplaint + (explainConcern ? ` — ${explainConcern}` : "")
 
-      console.log("Submitting details for patient:", id)
-      console.log("Update data:", {
-        age, sex, address, pincode, chief_complaint: chiefComplaint, consultation_type: consultationType,
-        explain_concern: explainConcern, date, time, problem: `[${consultationType.toUpperCase()}] ${problem}`
-      })
-
-      const { error, data } = await supabase!
+      const { error } = await supabase!
         .from("appointments_booking")
         .update({
-          age, sex, address, pincode, chief_complaint: chiefComplaint, consultation_type: consultationType,
-          explain_concern: explainConcern, date, time, problem: `[${consultationType.toUpperCase()}] ${problem}`,
-          maps_link: mapsLink, maps_link_manual: mapsLinkManual
+          age, sex, address, pincode, date, time,
+          problem: `[${consultationType.toUpperCase()}] ${problem}`,
         })
         .eq("id", id)
 
-      if (error) {
-        console.error("Supabase error:", error)
-        throw error
-      }
-
-      console.log("Update successful, redirecting to patient page")
-      setTimeout(() => router.push(`/patient/${id}`), 500)
+      if (error) throw error
+      router.push(`/patient/${id}`)
     } catch (err: any) {
       console.error("Full error:", err)
       alert(`Failed to save details: ${err.message || err}`)
