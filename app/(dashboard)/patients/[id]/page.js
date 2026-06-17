@@ -393,54 +393,56 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
 
   return (
     <div>
+      {/* Model Selector Card */}
+      <div style={card}>
+        <h3 style={{ margin: "0 0 16px", fontSize: "16px", color: "#111827" }}>Select Treatment Model</h3>
+        <button
+          onClick={() => setShowModelSelector(!showModelSelector)}
+          style={{
+            width: "100%",
+            padding: "12px 16px",
+            borderRadius: "10px",
+            border: "2px solid #b8905a",
+            background: "white",
+            color: "#111827",
+            fontWeight: "700",
+            fontSize: "14px",
+            cursor: "pointer",
+          }}
+        >
+          {showModelSelector ? "▼ Select Model" : "► Select Model"}
+        </button>
+        {showModelSelector && (
+          <div style={{ marginTop: "12px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+            {MODEL_OPTIONS.map((model) => (
+              <button
+                key={model.value}
+                onClick={() => applyModel(model)}
+                disabled={applyingModel}
+                style={{
+                  padding: "10px 12px",
+                  borderRadius: "8px",
+                  border: "1px solid #e5e7eb",
+                  background: "#f8f7f5",
+                  color: "#111827",
+                  fontWeight: "600",
+                  fontSize: "13px",
+                  cursor: applyingModel ? "not-allowed" : "pointer",
+                  opacity: applyingModel ? 0.6 : 1,
+                }}
+              >
+                {model.label} — {inr(model.fullAmount)}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Payment Details Card */}
       <div style={card}>
         <h3 style={{ margin: "0 0 20px", fontSize: "16px", color: "#111827" }}>
           {hasSaved ? "Edit Payment Details" : "Payment Details"}
         </h3>
-
-        {/* Model Selector */}
-        <div style={{ marginBottom: "24px", paddingBottom: "24px", borderBottom: "1px dashed #e5e7eb" }}>
-          <button
-            onClick={() => setShowModelSelector(!showModelSelector)}
-            style={{
-              width: "100%",
-              padding: "12px 16px",
-              borderRadius: "10px",
-              border: "2px solid #b8905a",
-              background: "white",
-              color: "#111827",
-              fontWeight: "700",
-              fontSize: "14px",
-              cursor: "pointer",
-            }}
-          >
-            {showModelSelector ? "▼ Select Model" : "► Select Model"}
-          </button>
-          {showModelSelector && (
-            <div style={{ marginTop: "12px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-              {MODEL_OPTIONS.map((model) => (
-                <button
-                  key={model.value}
-                  onClick={() => applyModel(model)}
-                  disabled={applyingModel}
-                  style={{
-                    padding: "10px 12px",
-                    borderRadius: "8px",
-                    border: "1px solid #e5e7eb",
-                    background: "#f8f7f5",
-                    color: "#111827",
-                    fontWeight: "600",
-                    fontSize: "13px",
-                    cursor: applyingModel ? "not-allowed" : "pointer",
-                    opacity: applyingModel ? 0.6 : 1,
-                  }}
-                >
-                  {model.label} — {inr(model.fullAmount)}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
 
         <div style={row}>
           <div>
