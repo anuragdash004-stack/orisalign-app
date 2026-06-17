@@ -18,8 +18,9 @@ export default function LeadsPage() {
     setLoading(true);
     try {
       const { data, error } = await supabase
-        .from("leads")
-        .select("*")
+        .from("appointments_booking")
+        .select("id, name, phone, email, created_at, status")
+        .eq("status", "lead")
         .order("created_at", { ascending: false });
 
       if (error) throw error;
