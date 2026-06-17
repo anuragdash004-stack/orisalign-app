@@ -7,6 +7,8 @@ import Image from "next/image";
 
 const supabase = getSupabaseClient();
 
+const PROVISIONAL_PLAN_NOTE = "Your tooth will be rotated to required degree. Alignment will be corrected. Spaces will be gained. Your plan might involve IPR and buttons.";
+
 const ORISPRO_MODELS = {
   "6-8": {
     one: { duration: "6-8 months", fullAmount: 65000, downPayment: 12500 },
@@ -104,7 +106,8 @@ export default function PatientJourney() {
   const [couponInput, setCouponInput] = useState("");
   const [couponMessage, setCouponMessage] = useState("");
   const [applyingCoupon, setApplyingCoupon] = useState(false);
-  const [orisproVariant, setOrisproVariant] = useState("one"); // "one" or "two"
+  const [orisproVariant, setOrisproVariant] = useState("one"); // "one" or "two" for payment
+  const [scanningVariant, setScanningVariant] = useState("one"); // "one" or "two" for scanning view
 
   useEffect(() => {
     const load = async () => {
@@ -385,6 +388,59 @@ export default function PatientJourney() {
                   {/* Expanded Panel — Scanning and Provisional Planning */}
                   {step.key === "scanning_done" && isExpanded && (
                     <div style={{ marginLeft: "58px", marginTop: "8px", background: "white", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+                      {/* Orispro Variant Selector */}
+                      {patient?.treatment_model && (
+                        <>
+                          <div style={{ padding: "10px 12px", background: "#f3f4f6", borderRadius: "8px", marginBottom: "12px" }}>
+                            <p style={{ margin: "0 0 8px", fontSize: "11px", fontWeight: "700", color: "#6b7280", textTransform: "uppercase" }}>Treatment Plan</p>
+                            <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
+                              <button
+                                onClick={() => setScanningVariant("one")}
+                                style={{
+                                  flex: 1,
+                                  padding: "10px",
+                                  borderRadius: "8px",
+                                  border: scanningVariant === "one" ? "2px solid #111827" : "1px solid #d1d5db",
+                                  background: scanningVariant === "one" ? "#ffffff" : "#f9fafb",
+                                  color: "#111827",
+                                  fontWeight: scanningVariant === "one" ? "700" : "600",
+                                  fontSize: "13px",
+                                  cursor: "pointer",
+                                }}
+                              >
+                                Orispro
+                              </button>
+                              <button
+                                onClick={() => setScanningVariant("two")}
+                                style={{
+                                  flex: 1,
+                                  padding: "10px",
+                                  borderRadius: "8px",
+                                  border: scanningVariant === "two" ? "2px solid #111827" : "1px solid #d1d5db",
+                                  background: scanningVariant === "two" ? "#ffffff" : "#f9fafb",
+                                  color: "#111827",
+                                  fontWeight: scanningVariant === "two" ? "700" : "600",
+                                  fontSize: "13px",
+                                  cursor: "pointer",
+                                }}
+                              >
+                                Orispro Plus
+                              </button>
+                            </div>
+                            {(() => {
+                              const modelData = ORISPRO_MODELS[patient.treatment_model];
+                              const variantData = modelData?.[scanningVariant];
+                              return variantData ? (
+                                <div style={{ padding: "8px 10px", background: "#ede9fe", borderRadius: "6px" }}>
+                                  <p style={{ margin: "0 0 4px", fontSize: "10px", fontWeight: "700", color: "#6d28d9", textTransform: "uppercase" }}>Duration</p>
+                                  <p style={{ margin: 0, fontSize: "13px", fontWeight: "700", color: "#4c1d95" }}>{variantData.duration}</p>
+                                </div>
+                              ) : null;
+                            })()}
+                          </div>
+                        </>
+                      )}
+
                       <p style={{ margin: "0 0 10px", fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Your Provisional Plan</p>
                       {patient.provisional_plan ? (
                         <p style={{ margin: 0, fontSize: "14px", color: "#111827", lineHeight: "1.6", whiteSpace: "pre-wrap" }}>{patient.provisional_plan}</p>
