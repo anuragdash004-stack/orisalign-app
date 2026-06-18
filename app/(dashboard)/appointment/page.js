@@ -98,10 +98,19 @@ export default function AppointmentPage() {
   };
 
   const handleConfirm = async (id) => {
+    const target = appointments.find((a) => a.id === id);
+    const newJourneySteps = { ...(target?.journey_steps || {}), confirmed: true };
     const { error } = await supabase
-      .from("appointments_booking").update({ status: "confirmed" }).eq("id", id);
+      .from("appointments_booking")
+      .update({ status: "confirmed", journey_steps: newJourneySteps })
+      .eq("id", id);
     if (error) { alert("Confirm failed"); return; }
     logAudit({ appointmentId: id, actor: { email: user?.email, role: userRole }, action: "Appointment Confirmed", entity: "status", newData: { status: "confirmed" } });
+    fetch("/api/notify-step", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ appointmentId: id, stepKey: "confirmed", email: target?.email || null }),
+    }).catch(() => {});
     alert("Appointment confirmed!");
     fetchAppointments();
   };

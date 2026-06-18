@@ -92,6 +92,7 @@ export async function POST(req: Request) {
               </div>
               <p style="color:#374151;font-size:15px;">Dear <strong>${name}</strong>,</p>
               <p style="color:#374151;font-size:14px;line-height:1.7;">Thank you for booking with OrisAlign. Your appointment has been confirmed. Please save your Patient ID below — you will need it to track your treatment journey.</p>
+              <p style="color:#374151;font-size:14px;line-height:1.7;">Please visit your journey page to fill in your other details before your appointment.</p>
               <div style="background:white;border-radius:12px;padding:20px;margin:20px 0;text-align:center;border:2px solid #C9A84C;">
                 <p style="margin:0 0 4px;font-size:11px;color:#9ca3af;font-weight:700;letter-spacing:1px;text-transform:uppercase;">YOUR PATIENT ID</p>
                 <p style="margin:0;font-size:28px;font-weight:900;color:#1B2A4A;letter-spacing:4px;">${shortId}</p>

@@ -31,6 +31,7 @@ export async function POST(req: Request) {
       ...(existing.journey_steps || {}),
       plan_approved: true,
       plan_approved_at: approvalTimestamp,
+      manufacturing_started: true,
     }
 
     const { error } = await supabase
@@ -56,7 +57,7 @@ export async function POST(req: Request) {
       },
       body: JSON.stringify({
         from: "OrisAlign <no-reply@orisalign.com>",
-        to: "anurag@orisalign.com",
+        to: "leads@orisalign.com",
         subject: `Plan Approved — ${existing.name}`,
         html: `
           <div style="font-family:sans-serif;max-width:520px;margin:0 auto;">
@@ -93,6 +94,16 @@ export async function POST(req: Request) {
       ipAddress: ip,
       userAgent,
     })
+
+    // Notify patient — plan approved, manufacturing starting
+    const baseUrl = `https://${req.headers.get("host") || "orisalign.com"}`
+    for (const stepKey of ["plan_approved", "manufacturing_started"]) {
+      fetch(`${baseUrl}/api/notify-step`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ appointmentId: patientId, stepKey, email: existing.email || null }),
+      }).catch(() => {})
+    }
 
     return NextResponse.json({ success: true })
   } catch (err) {

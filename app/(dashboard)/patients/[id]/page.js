@@ -205,12 +205,23 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
     };
     setData(newData);
 
-    await supabase
+    const newJourneySteps = { ...(appt?.journey_steps || {}), payment_done: true };
+    const { error } = await supabase
       .from("appointments_booking")
-      .update({ treatment_model: selectedModelForApply.value })
-      .eq("id", id)
-      .then(() => {})
-      .catch(() => {});
+      .update({ treatment_model: selectedModelForApply.value, journey_steps: newJourneySteps })
+      .eq("id", appointmentId);
+
+    if (!error) {
+      setAppt((prev) => prev && { ...prev, treatment_model: selectedModelForApply.value, journey_steps: newJourneySteps });
+      logAudit({ appointmentId, actor, action: "Treatment Model Selected", entity: "treatment_model", newData: { treatment_model: selectedModelForApply.value } });
+      if (!appt?.journey_steps?.payment_done) {
+        fetch("/api/notify-step", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ appointmentId, stepKey: "payment_done", email: patientEmail || null }),
+        }).catch(() => {});
+      }
+    }
 
     setShowModelSelector(false);
     setSelectedModelForApply(null);
@@ -960,8 +971,8 @@ function deriveSteps(appt) {
   if (!appt) return {};
   const js = appt.journey_steps || {};
   return {
-    booked:                  js.booked               !== undefined ? !!js.booked               : true,
-    confirmed:               js.confirmed            !== undefined ? !!js.confirmed            : appt.status !== "pending",
+    booked:                  true,
+    confirmed:               appt.status === "confirmed" || appt.status === "completed",
     scanning_done:           js.scanning_done        !== undefined ? !!js.scanning_done        : !!appt.stl_submitted,
     payment_done:            js.payment_done         !== undefined ? !!js.payment_done         : !!(appt.payment_data?.final_amount),
     planning_done:           js.planning_done        !== undefined ? !!js.planning_done        : !!appt.provisional_plan_submitted,
@@ -1200,7 +1211,7 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                 <p style={{ margin: 0, flex: 1, fontSize: "14px", fontWeight: done ? "700" : "500", color: done ? "#15803d" : "#374151" }}>
                   {step.label}
                 </p>
-                {isAdmin && step.key !== "plan_approved" && (
+                {isAdmin && step.key !== "plan_approved" && step.key !== "booked" && step.key !== "confirmed" && (
                   <button
                     onClick={() => toggle(step.key)}
                     disabled={isSaving}
@@ -1214,6 +1225,16 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                   >
                     {isSaving ? "..." : done ? "Undo" : "Mark Done"}
                   </button>
+                )}
+                {(step.key === "booked" || step.key === "confirmed") && (
+                  <span style={{
+                    padding: "6px 12px", borderRadius: "8px", fontSize: "11px", fontWeight: "700", flexShrink: 0,
+                    background: done ? "#dcfce7" : "#f3f4f6",
+                    color: done ? "#16a34a" : "#9ca3af",
+                    letterSpacing: "0.5px",
+                  }}>
+                    {done ? "AUTOMATIC ✓" : "PENDING"}
+                  </span>
                 )}
                 {step.key === "plan_approved" && (
                   <span style={{

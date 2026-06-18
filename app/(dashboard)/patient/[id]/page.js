@@ -58,8 +58,8 @@ function deriveSteps(appt) {
   if (!appt) return {};
   const js = appt.journey_steps || {};
   return {
-    booked:                  js.booked               !== undefined ? !!js.booked               : true,
-    confirmed:               js.confirmed            !== undefined ? !!js.confirmed            : false,
+    booked:                  true,
+    confirmed:               appt.status === "confirmed" || appt.status === "completed",
     scanning_done:           js.scanning_done        !== undefined ? !!js.scanning_done        : !!appt.stl_submitted,
     payment_done:            js.payment_done         !== undefined ? !!js.payment_done         : !!(appt.payment_data?.final_amount),
     planning_done:           js.planning_done        !== undefined ? !!js.planning_done        : !!appt.provisional_plan_submitted,
