@@ -60,13 +60,14 @@ export default function PatientDetailsPage() {
         setPatient(data)
         setAge(data.age || "")
         setSex(data.sex || "")
-        setPincode(data.pincode || "")
         setDate(data.date || "")
         setTime(data.time || "")
 
         // Parse address: "fullAddress | city, district, state | PIN: xxx | Maps: link"
         const addressParts = (data.address || "").split(" | ")
         setFullAddress(addressParts[0] || "")
+        const pinPart = addressParts.find((p: string) => p.startsWith("PIN: "))
+        if (pinPart) setPincode(pinPart.replace("PIN: ", ""))
         const mapsPart = addressParts.find((p: string) => p.startsWith("Maps: "))
         if (mapsPart) setMapsLink(mapsPart.replace("Maps: ", ""))
 
@@ -170,7 +171,7 @@ export default function PatientDetailsPage() {
       const { error } = await supabase!
         .from("appointments_booking")
         .update({
-          age, sex, address, pincode, date, time,
+          age, sex, address, date, time,
           problem: `[${consultationType.toUpperCase()}] ${problem}`,
         })
         .eq("id", id)
