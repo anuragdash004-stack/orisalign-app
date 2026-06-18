@@ -105,6 +105,48 @@ const DURATION_OPTIONS = [
 
 const PROVISIONAL_PLAN_NOTE = "Your tooth will be rotated to required degree. Alignment will be corrected. Spaces will be gained. Your plan might involve IPR and buttons.";
 
+function ViewSection({ title, done, activeSection, setActiveSection, children }) {
+  const isOpen = activeSection === title;
+  return (
+    <div style={{
+      background: "white", border: `1px solid ${done ? "#22c55e" : "#e5e7eb"}`,
+      borderRadius: "16px", overflow: "hidden",
+      boxShadow: "0 4px 12px rgba(0,0,0,0.04)",
+    }}>
+      <div
+        onClick={() => setActiveSection(isOpen ? null : title)}
+        style={{
+          padding: "18px 20px", display: "flex", justifyContent: "space-between",
+          alignItems: "center", cursor: "pointer",
+          background: done ? "#f0fdf4" : "white",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <span style={{
+            width: "24px", height: "24px", borderRadius: "50%",
+            background: done ? "#22c55e" : "#e5e7eb",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            color: "white", fontSize: "13px", fontWeight: "700", flexShrink: 0,
+          }}>
+            {done ? "✓" : ""}
+          </span>
+          <span style={{ fontWeight: "600", color: done ? "#16a34a" : "#111827" }}>
+            {title}
+          </span>
+        </div>
+        <span style={{ color: "gray", fontSize: "13px" }}>
+          {done ? (isOpen ? "▲" : "▼") : "Pending"}
+        </span>
+      </div>
+      {isOpen && (
+        <div style={{ padding: "20px", borderTop: "1px solid #e5e7eb" }}>
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function OrthoCase() {
   const { id } = useParams();
   const router = useRouter();
@@ -282,48 +324,6 @@ export default function OrthoCase() {
     fontWeight: "600", cursor: active ? "pointer" : "not-allowed",
   });
 
-  const ViewSection = ({ title, done, children }) => {
-    const isOpen = activeSection === title;
-    return (
-      <div style={{
-        background: "white", border: `1px solid ${done ? "#22c55e" : "#e5e7eb"}`,
-        borderRadius: "16px", overflow: "hidden",
-        boxShadow: "0 4px 12px rgba(0,0,0,0.04)",
-      }}>
-        <div
-          onClick={() => setActiveSection(isOpen ? null : title)}
-          style={{
-            padding: "18px 20px", display: "flex", justifyContent: "space-between",
-            alignItems: "center", cursor: "pointer",
-            background: done ? "#f0fdf4" : "white",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <span style={{
-              width: "24px", height: "24px", borderRadius: "50%",
-              background: done ? "#22c55e" : "#e5e7eb",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              color: "white", fontSize: "13px", fontWeight: "700", flexShrink: 0,
-            }}>
-              {done ? "✓" : ""}
-            </span>
-            <span style={{ fontWeight: "600", color: done ? "#16a34a" : "#111827" }}>
-              {title}
-            </span>
-          </div>
-          <span style={{ color: "gray", fontSize: "13px" }}>
-            {done ? (isOpen ? "▲" : "▼") : "Pending"}
-          </span>
-        </div>
-        {isOpen && (
-          <div style={{ padding: "20px", borderTop: "1px solid #e5e7eb" }}>
-            {children}
-          </div>
-        )}
-      </div>
-    );
-  };
-
   return (
     <div style={{ maxWidth: "720px" }}>
       {/* Header */}
@@ -343,7 +343,7 @@ export default function OrthoCase() {
       <div style={{ display: "grid", gap: "14px" }}>
 
         {/* ── SECTION 1: PATIENT FORM ── */}
-        <ViewSection title="1. Patient Form" done={patient.form_submitted}>
+        <ViewSection title="1. Patient Form" done={patient.form_submitted} activeSection={activeSection} setActiveSection={setActiveSection}>
           {patient.form_submitted ? (
             <div style={{ display: "grid", gap: "10px" }}>
               {[
@@ -367,7 +367,7 @@ export default function OrthoCase() {
         </ViewSection>
 
         {/* ── SECTION 2: IMAGES ── */}
-        <ViewSection title="2. Patient Images" done={patient.images_submitted}>
+        <ViewSection title="2. Patient Images" done={patient.images_submitted} activeSection={activeSection} setActiveSection={setActiveSection}>
           {patient.images_submitted ? (
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px" }}>
               {IMAGE_SLOTS.map((slot) => (
@@ -402,7 +402,7 @@ export default function OrthoCase() {
         </ViewSection>
 
         {/* ── SECTION 3: STL FILES ── */}
-        <ViewSection title="3. STL Scan Files" done={patient.stl_submitted}>
+        <ViewSection title="3. STL Scan Files" done={patient.stl_submitted} activeSection={activeSection} setActiveSection={setActiveSection}>
           {patient.stl_submitted ? (
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
               {STL_SLOTS.map((slot) => (

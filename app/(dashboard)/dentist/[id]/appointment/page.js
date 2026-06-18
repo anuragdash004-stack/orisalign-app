@@ -38,6 +38,35 @@ const EMPTY_FORM = {
   pre_orthodontic_others: "",
 };
 
+function SectionCard({ sectionKey, label, done, activeSection, setActiveSection, children }) {
+  const isOpen = activeSection === sectionKey;
+  return (
+    <div style={{ background: "white", border: `1px solid ${done ? "#22c55e" : "#e5e7eb"}`, borderRadius: "16px", overflow: "hidden", boxShadow: "0 4px 12px rgba(0,0,0,0.04)" }}>
+      <div
+        onClick={() => !done && setActiveSection(isOpen ? null : sectionKey)}
+        style={{ padding: "18px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: done ? "default" : "pointer", background: done ? "#f0fdf4" : "white" }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <span style={{ width: "24px", height: "24px", borderRadius: "50%", background: done ? "#22c55e" : "#e5e7eb", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: "13px", fontWeight: "700", flexShrink: 0 }}>
+            {done ? "✓" : ""}
+          </span>
+          <span style={{ fontWeight: "600", color: done ? "#16a34a" : "#111827" }}>{label}</span>
+        </div>
+        {done ? (
+          <span style={{ color: "#16a34a", fontSize: "13px", fontWeight: "600" }}>Completed</span>
+        ) : (
+          <span style={{ color: "gray", fontSize: "13px" }}>{isOpen ? "▲" : "▼"}</span>
+        )}
+      </div>
+      {isOpen && !done && (
+        <div style={{ padding: "20px", borderTop: "1px solid #e5e7eb" }}>
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AppointmentWorkflow() {
   const { id } = useParams();
   const router = useRouter();
@@ -298,36 +327,6 @@ export default function AppointmentWorkflow() {
     router.push("/dentist");
   };
 
-  // ─── SECTION CARD ─────────────────────────────────────────────────
-  const SectionCard = ({ sectionKey, label, done, children }) => {
-    const isOpen = activeSection === sectionKey;
-    return (
-      <div style={{ background: "white", border: `1px solid ${done ? "#22c55e" : "#e5e7eb"}`, borderRadius: "16px", overflow: "hidden", boxShadow: "0 4px 12px rgba(0,0,0,0.04)" }}>
-        <div
-          onClick={() => !done && setActiveSection(isOpen ? null : sectionKey)}
-          style={{ padding: "18px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: done ? "default" : "pointer", background: done ? "#f0fdf4" : "white" }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <span style={{ width: "24px", height: "24px", borderRadius: "50%", background: done ? "#22c55e" : "#e5e7eb", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: "13px", fontWeight: "700", flexShrink: 0 }}>
-              {done ? "✓" : ""}
-            </span>
-            <span style={{ fontWeight: "600", color: done ? "#16a34a" : "#111827" }}>{label}</span>
-          </div>
-          {done ? (
-            <span style={{ color: "#16a34a", fontSize: "13px", fontWeight: "600" }}>Completed</span>
-          ) : (
-            <span style={{ color: "gray", fontSize: "13px" }}>{isOpen ? "▲" : "▼"}</span>
-          )}
-        </div>
-        {isOpen && !done && (
-          <div style={{ padding: "20px", borderTop: "1px solid #e5e7eb" }}>
-            {children}
-          </div>
-        )}
-      </div>
-    );
-  };
-
   // ─── STYLES ───────────────────────────────────────────────────────
   const inp = {
     width: "100%", padding: "11px 12px", borderRadius: "8px",
@@ -352,7 +351,7 @@ export default function AppointmentWorkflow() {
       <div style={{ display: "grid", gap: "14px" }}>
 
         {/* ── SECTION 1: PATIENT FORM ── */}
-        <SectionCard sectionKey="form" label="1. Patient Form" done={formSubmitted}>
+        <SectionCard sectionKey="form" label="1. Patient Form" done={formSubmitted} activeSection={activeSection} setActiveSection={setActiveSection}>
 
           {/* Basic Info */}
           <div style={gr}>
@@ -630,7 +629,7 @@ export default function AppointmentWorkflow() {
         </SectionCard>
 
         {/* ── SECTION 2: IMAGES ── */}
-        <SectionCard sectionKey="images" label="2. Upload Images (9 required)" done={imagesSubmitted}>
+        <SectionCard sectionKey="images" label="2. Upload Images (9 required)" done={imagesSubmitted} activeSection={activeSection} setActiveSection={setActiveSection}>
           <p style={{ fontSize: "13px", color: "gray", marginBottom: "16px" }}>Upload all 9 required photos before submitting.</p>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", marginBottom: "16px" }}>
             {IMAGE_SLOTS.map((slot) => (
@@ -660,7 +659,7 @@ export default function AppointmentWorkflow() {
         </SectionCard>
 
         {/* ── SECTION 3: STL FILES ── */}
-        <SectionCard sectionKey="stl" label="3. Upload STL Files (4 required)" done={stlSubmitted}>
+        <SectionCard sectionKey="stl" label="3. Upload STL Files (4 required)" done={stlSubmitted} activeSection={activeSection} setActiveSection={setActiveSection}>
           <p style={{ fontSize: "13px", color: "gray", marginBottom: "16px" }}>Upload all 4 scan files before submitting.</p>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "16px" }}>
             {STL_SLOTS.map((slot) => (
