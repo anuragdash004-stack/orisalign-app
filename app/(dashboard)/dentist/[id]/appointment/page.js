@@ -240,6 +240,14 @@ export default function AppointmentWorkflow() {
     setImages((prev) => ({ ...prev, [key]: file }));
   };
 
+  const removeImage = (key) => {
+    setImages((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
+
   const allImagesSelected = IMAGE_SLOTS.every((s) => images[s.key]);
 
   const submitImages = async () => {
@@ -638,7 +646,13 @@ export default function AppointmentWorkflow() {
                 {images[slot.key] ? (
                   <div>
                     <p style={{ fontSize: "10px", color: "#16a34a", margin: "0 0 4px" }}>✓ Selected</p>
-                    <p style={{ fontSize: "10px", color: "gray", margin: 0, wordBreak: "break-all" }}>{images[slot.key].name.substring(0, 16)}...</p>
+                    <p style={{ fontSize: "10px", color: "gray", margin: "0 0 6px", wordBreak: "break-all" }}>{images[slot.key].name.substring(0, 16)}...</p>
+                    <button
+                      onClick={() => removeImage(slot.key)}
+                      style={{ padding: "4px 10px", borderRadius: "6px", border: "1px solid #fecaca", background: "#fef2f2", color: "#dc2626", fontWeight: "700", fontSize: "10px", cursor: "pointer" }}
+                    >
+                      Cancel
+                    </button>
                   </div>
                 ) : (
                   <label style={{ cursor: "pointer" }}>
