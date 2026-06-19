@@ -19,7 +19,7 @@ export default function LeadsPage() {
     try {
       const { data, error } = await supabase
         .from("appointments_booking")
-        .select("id, name, phone, email, created_at, status")
+        .select("id, name, phone, email, created_at, status, lead_verified")
         .eq("status", "lead")
         .order("created_at", { ascending: false });
 
@@ -83,6 +83,10 @@ export default function LeadsPage() {
         </h1>
         <p style={{ fontSize: "14px", color: "#6b7280", margin: "4px 0 0" }}>
           Total: {leads.length} leads
+          {"  ·  "}
+          <span style={{ color: "#16a34a", fontWeight: "700" }}>{leads.filter((l) => l.lead_verified).length} verified</span>
+          {"  ·  "}
+          <span style={{ color: "#b45309", fontWeight: "700" }}>{leads.filter((l) => !l.lead_verified).length} unverified</span>
         </p>
       </div>
 
@@ -212,34 +216,23 @@ export default function LeadsPage() {
                                   {lead.email}
                                 </div>
                               </div>
-                              {lead.status && (
-                                <div style={{ marginTop: "6px" }}>
-                                  <span
-                                    style={{
-                                      display: "inline-block",
-                                      padding: "4px 8px",
-                                      background:
-                                        lead.status === "new"
-                                          ? "#ede9fe"
-                                          : lead.status === "contacted"
-                                          ? "#fef3c7"
-                                          : "#d1fae5",
-                                      color:
-                                        lead.status === "new"
-                                          ? "#6d28d9"
-                                          : lead.status === "contacted"
-                                          ? "#92400e"
-                                          : "#065f46",
-                                      borderRadius: "4px",
-                                      fontSize: "10px",
-                                      fontWeight: "600",
-                                      textTransform: "capitalize",
-                                    }}
-                                  >
-                                    {lead.status}
-                                  </span>
-                                </div>
-                              )}
+                              <div style={{ marginTop: "6px" }}>
+                                <span
+                                  style={{
+                                    display: "inline-block",
+                                    padding: "4px 10px",
+                                    background: lead.lead_verified ? "#d1fae5" : "#fef3c7",
+                                    color: lead.lead_verified ? "#065f46" : "#92400e",
+                                    border: `1px solid ${lead.lead_verified ? "#6ee7b7" : "#fcd34d"}`,
+                                    borderRadius: "99px",
+                                    fontSize: "10px",
+                                    fontWeight: "700",
+                                    letterSpacing: "0.3px",
+                                  }}
+                                >
+                                  {lead.lead_verified ? "✓ Verified" : "🕗 Unverified"}
+                                </span>
+                              </div>
                             </div>
                           </div>
                         </div>

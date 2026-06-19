@@ -60,6 +60,7 @@ export default function BookPage() {
   const [showBookingPopup, setShowBookingPopup] = useState(false)
   const [proceedWithOtp, setProceedWithOtp] = useState(false)
   const [bookedInfo, setBookedInfo] = useState({ date: "", time: "", patientId: "" })
+  const [leadId, setLeadId] = useState("")
 
   const bookScan = async () => {
     if (!name || !phone || !email) {
@@ -82,7 +83,7 @@ export default function BookPage() {
 
     setLoading(true)
     try {
-      // Save lead to database via API
+      // 1. Save the lead immediately as UNVERIFIED (also emails leads@orisalign.com)
       const res = await fetch("/api/save-booking-lead", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -94,24 +95,51 @@ export default function BookPage() {
         throw new Error(error.message || "Failed to save booking")
       }
 
-      const { leadId } = await res.json()
+      const { leadId: newLeadId } = await res.json()
+      setLeadId(newLeadId)
 
-      // Send welcome email with patient ID
-      await fetch("/api/send-welcome-email", {
+      // 2. Send an OTP to the patient's email to verify it
+      const otpRes = await fetch("/api/send-booking-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, name, patientId: leadId }),
-      }).catch(() => {})
+        body: JSON.stringify({ email, name }),
+      })
+      if (!otpRes.ok) {
+        throw new Error("Lead saved, but we couldn't send the verification OTP. Please try again.")
+      }
+      const { token } = await otpRes.json()
+      setOtpToken(token)
+      setOtp("")
 
-      // Redirect directly to patient journey page
-      window.location.href = `/patient/${leadId}`
+      // 3. Move to the OTP step — the lead stays unverified until verified here
+      setLoading(false)
+      setStep(2)
     } catch (err: any) {
       alert(`Error: ${err.message || "Failed to book scan"}`)
       setLoading(false)
     }
   }
 
-  const sendOTP = async () => {
+  // Step 2 — enter OTP + "Book the Scan" again → verify lead, then go to journey page
+  const verifyAndBookScan = async () => {
+    if (!otp) return alert("Please enter the OTP sent to your email.")
+    if (!leadId) return alert("Something went wrong. Please start the booking again.")
+    setLoading(true)
+    const res = await fetch("/api/verify-lead", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ leadId, email, name, otp, token: otpToken }),
+    })
+    if (!res.ok) {
+      setLoading(false)
+      alert("Invalid OTP. Please check your email and try again.")
+      return
+    }
+    // Verified — go to the patient journey page
+    window.location.href = `/patient/${leadId}`
+  }
+
+  const resendBookingOtp = async () => {
     setLoading(true)
     const res = await fetch("/api/send-booking-otp", {
       method: "POST",
@@ -119,36 +147,10 @@ export default function BookPage() {
       body: JSON.stringify({ email, name }),
     })
     setLoading(false)
-    if (!res.ok) { alert("Failed to send OTP. Please try again."); return }
+    if (!res.ok) { alert("Failed to resend OTP. Please try again."); return }
     const { token } = await res.json()
     setOtpToken(token)
-  }
-
-  const verifyOTP = async () => {
-    if (!otp) return alert("Please enter the OTP.")
-    setLoading(true)
-    const res = await fetch("/api/verify-booking-otp", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, otp, token: otpToken }),
-    })
-    setLoading(false)
-    if (!res.ok) { alert("Invalid OTP. Please try again."); return }
-    setStep(3)
-  }
-
-  const handleProceedWithInfo = async () => {
-    // Send OTP when "Add additional information" is selected
-    setLoading(true)
-    const res = await fetch("/api/send-booking-otp", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, name }),
-    })
-    setLoading(false)
-    if (!res.ok) { alert("Failed to send OTP. Please try again."); return }
-    const { token } = await res.json()
-    setOtpToken(token)
+    alert("A new OTP has been sent to your email.")
   }
 
   const fetchBookedSlots = async (selectedDate: string) => {
@@ -437,32 +439,31 @@ export default function BookPage() {
           </motion.div>
         )}
 
-        {/* STEP 2 — OTP */}
+        {/* STEP 2 — OTP verification (lead stays UNVERIFIED until completed here) */}
         {step === 2 && (
           <motion.div key="step2" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="card">
             <Logo />
-            {proceedWithOtp ? (
-              <>
-                <h2 className="title">Verify Your Email</h2>
-                <div style={{ marginBottom: "16px", padding: "12px", background: "#f0fdf4", borderRadius: "8px", border: "1px solid #bbf7d0" }}>
-                  <p style={{ margin: "0 0 6px", fontSize: "11px", fontWeight: "700", color: "#16a34a", textTransform: "uppercase" }}>Your Information</p>
-                  <div style={{ fontSize: "13px", color: "#111827", lineHeight: "1.6" }}>
-                    <p style={{ margin: "0 0 4px" }}><strong>Name:</strong> {name}</p>
-                    <p style={{ margin: "0 0 4px" }}><strong>Phone:</strong> {phone}</p>
-                    <p style={{ margin: 0 }}><strong>Email:</strong> {email}</p>
-                  </div>
-                </div>
-                <p className="subtitle-small">OTP sent to {email}. Please enter it below to verify and proceed with additional information.</p>
-              </>
-            ) : (
-              <>
-                <h2 className="title">Verify OTP</h2>
-                <p className="subtitle-small">OTP sent to {email}</p>
-              </>
-            )}
+            <h2 className="title">Verify Your Email</h2>
+            <div style={{ marginBottom: "16px", padding: "12px", background: "#f0fdf4", borderRadius: "8px", border: "1px solid #bbf7d0" }}>
+              <p style={{ margin: "0 0 6px", fontSize: "11px", fontWeight: "700", color: "#16a34a", textTransform: "uppercase" }}>Your Information</p>
+              <div style={{ fontSize: "13px", color: "#111827", lineHeight: "1.6" }}>
+                <p style={{ margin: "0 0 4px" }}><strong>Name:</strong> {name}</p>
+                <p style={{ margin: "0 0 4px" }}><strong>Phone:</strong> {phone}</p>
+                <p style={{ margin: 0 }}><strong>Email:</strong> {email}</p>
+              </div>
+            </div>
+            <p className="subtitle-small">We&apos;ve sent a 6-digit OTP to {email}. Enter it below and tap &quot;Book the Scan&quot; to confirm your booking.</p>
             <Input placeholder="Enter OTP" value={otp} set={setOtp} />
-            <button className="btn mt-6" onClick={verifyOTP} disabled={loading}>
-              {loading ? "Verifying..." : "VERIFY OTP"}
+            <button className="btn mt-6" onClick={verifyAndBookScan} disabled={loading}>
+              {loading ? "Verifying..." : "BOOK THE SCAN"}
+            </button>
+            <button
+              type="button"
+              onClick={resendBookingOtp}
+              disabled={loading}
+              style={{ marginTop: "14px", background: "none", border: "none", color: "#b8905a", fontWeight: "600", fontSize: "13px", cursor: loading ? "not-allowed" : "pointer", width: "100%" }}
+            >
+              Didn&apos;t get the code? Resend OTP
             </button>
           </motion.div>
         )}

@@ -64,7 +64,9 @@ export async function POST(req: Request) {
 
     const bookedAt = new Date().toISOString()
 
-    // Save lead to appointments_booking table as lead entry
+    // Save lead to appointments_booking table as an UNVERIFIED lead entry.
+    // It becomes verified only after the patient confirms the OTP (see
+    // /api/verify-lead).
     const { data, error } = await supabase
       .from("appointments_booking")
       .insert([
@@ -73,6 +75,7 @@ export async function POST(req: Request) {
           phone,
           email,
           status: "lead",
+          lead_verified: false,
           created_at: bookedAt,
         },
       ])
@@ -92,12 +95,13 @@ export async function POST(req: Request) {
     const emailResult = await resend.emails.send({
       from: "OrisAlign Leads <noreply@orisalign.com>",
       to: "leads@orisalign.com",
-      subject: `New Lead: ${name}`,
+      subject: `🕗 Unverified Lead: ${name}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="text-align: center; margin-bottom: 24px;">
             <h1 style="color: #111827; margin: 0;">New Lead Received</h1>
             <p style="color: #6b7280; margin: 8px 0 0;">Scan Booking Lead Information</p>
+            <p style="display:inline-block;margin:12px 0 0;padding:4px 12px;background:#fef3c7;color:#92400e;border-radius:99px;font-size:12px;font-weight:700;">UNVERIFIED — awaiting email OTP</p>
           </div>
 
           <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
