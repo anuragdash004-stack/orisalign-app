@@ -58,6 +58,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
     ortho:        userRole === "admin" || userRole === "orthodontist",
     patients:     userRole === "admin" || userRole === "counselor",
     leads:        userRole === "admin",
+    templates:    userRole === "admin",
     audit:        userRole === "admin",
   };
 
@@ -205,6 +206,11 @@ export default function Sidebar({ collapsed, setCollapsed }) {
               {showContent ? "DASHBOARD" : ""}
             </Link>
           )}
+          {show.leads && (
+            <Link href="/leads" style={linkStyle("/leads")}>
+              {showContent ? "LEADS" : ""}
+            </Link>
+          )}
           {show.appointments && (
             <Link href="/appointment" style={linkStyle("/appointment")}>
               {showContent ? "APPOINTMENTS" : ""}
@@ -225,9 +231,12 @@ export default function Sidebar({ collapsed, setCollapsed }) {
               {showContent ? "PATIENTS" : ""}
             </Link>
           )}
-          {show.leads && (
-            <Link href="/leads" style={linkStyle("/leads")}>
-              {showContent ? "LEADS" : ""}
+          {show.templates && (
+            <Link href="/templates" style={{
+              ...linkStyle("/templates"),
+              ...(path.startsWith("/templates") ? { background: "#ffffff90" } : {}),
+            }}>
+              {showContent ? "MESSAGE TEMPLATES" : ""}
             </Link>
           )}
           {show.audit && (

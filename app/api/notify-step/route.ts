@@ -210,11 +210,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ skipped: true, reason: "No email on record" })
     }
 
+    // Admin-editable template (Message Templates page) overrides the built-in
+    // default. An explicit custom subject/body still wins over both.
+    const { data: tmpl } = await supabase
+      .from("message_templates")
+      .select("subject_line, email_body")
+      .eq("step_key", stepKey)
+      .eq("is_active", true)
+      .single()
+
     const shortId = appt.id.substring(0, 8).toUpperCase()
     const mergedContent = {
       ...content,
-      subject: customSubject || content.subject,
-      body: customBody || content.body,
+      subject: customSubject || tmpl?.subject_line || content.subject,
+      body: customBody || tmpl?.email_body || content.body,
     }
     const html = buildEmailHtml({ name: appt.name || "Patient", shortId, journeyUrl, content: mergedContent })
 

@@ -6,7 +6,7 @@ import { logAudit } from "@/lib/logAudit";
 
 const supabase = getSupabaseClient();
 
-const TABS = ["Payment", "Manufacturing", "Logistics", "Journey", "Patient Page", "Report"];
+const TABS = ["Payment", "Manufacturing", "Logistics", "Journey", "Message", "Patient Page", "Report"];
 
 const ALL_STEPS = [
   { key: "booked",                  label: "Appointment Booked" },
@@ -1033,6 +1033,27 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
   const [saving, setSaving] = useState(null);
   const [stepMessages, setStepMessages] = useState(() => JSON.parse(JSON.stringify(DEFAULT_STEP_MESSAGES)));
 
+  // Prefill each step's editable message from the saved Message Templates so
+  // what gets sent here always reflects the latest admin-edited template.
+  useEffect(() => {
+    fetch("/api/message-templates")
+      .then((r) => r.json())
+      .then((j) => {
+        const rows = j.templates || [];
+        if (!rows.length) return;
+        setStepMessages((prev) => {
+          const next = { ...prev };
+          rows.forEach((t) => {
+            if (t.subject_line && t.email_body) {
+              next[t.step_key] = { subject: t.subject_line, body: t.email_body };
+            }
+          });
+          return next;
+        });
+      })
+      .catch(() => {});
+  }, []);
+
   // Part A — Scanning & Provisional Planning video
   const [scanningVideoUrl, setScanningVideoUrl] = useState(appt.scanning_video_url || "");
   const [uploadingVideo, setUploadingVideo] = useState(false);
@@ -1768,6 +1789,124 @@ function ReportTab({ appointmentId, appt }) {
   );
 }
 
+// ─── Message Tab — send a free-form one-off email to this patient ──────────────
+function MessageTab({ appointmentId, patientEmail, patientName, actor }) {
+  const [subject, setSubject] = useState("");
+  const [body, setBody] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [history, setHistory] = useState([]);
+
+  const loadHistory = async () => {
+    try {
+      const res = await fetch(`/api/message-history?appointmentId=${appointmentId}`);
+      const json = await res.json();
+      setHistory(json.messages || []);
+    } catch { /* ignore */ }
+  };
+
+  useEffect(() => { loadHistory(); }, [appointmentId]);
+
+  const send = async () => {
+    if (!patientEmail) { alert("This patient has no email address on record."); return; }
+    if (!subject.trim() || !body.trim()) { alert("Please enter a subject and a message."); return; }
+    setSending(true);
+    try {
+      const res = await fetch("/api/message-history", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          appointmentId,
+          recipientEmail: patientEmail,
+          subject,
+          body,
+          messageType: "email",
+          actorEmail: actor?.email,
+          actorRole: actor?.role,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || json.error) { alert("Failed to send: " + (json.error || "Unknown error")); return; }
+      setSent(true);
+      setSubject(""); setBody("");
+      setTimeout(() => setSent(false), 3000);
+      loadHistory();
+    } catch {
+      alert("Network error. Please try again.");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const inputStyle = {
+    width: "100%", padding: "11px 12px", borderRadius: "8px",
+    border: "1px solid #e5e7eb", fontSize: "14px", outline: "none",
+    boxSizing: "border-box", background: "white", color: "#111827",
+  };
+
+  return (
+    <div>
+      <div style={card}>
+        <h3 style={{ margin: "0 0 6px", fontSize: "16px", color: "#111827" }}>Send a Message</h3>
+        <p style={{ margin: "0 0 18px", fontSize: "13px", color: "#6b7280" }}>
+          Write a custom message and email it to{" "}
+          <strong>{patientName || "this patient"}</strong>{patientEmail ? ` (${patientEmail})` : ""}.
+          A &quot;Track Your Journey&quot; button is included automatically.
+        </p>
+
+        <div style={{ marginBottom: "14px" }}>
+          <span style={label}>Subject</span>
+          <input style={inputStyle} value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="e.g. A quick update on your treatment" />
+        </div>
+        <div style={{ marginBottom: "18px" }}>
+          <span style={label}>Message</span>
+          <textarea
+            style={{ ...inputStyle, minHeight: "140px", resize: "vertical", fontFamily: "inherit", lineHeight: 1.6 }}
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            placeholder="Type your message to the patient here..."
+          />
+        </div>
+        <button
+          onClick={send}
+          disabled={sending || !patientEmail}
+          style={{
+            ...btnPrimary,
+            background: sent ? "#16a34a" : "#111827",
+            opacity: sending || !patientEmail ? 0.6 : 1,
+            cursor: sending || !patientEmail ? "not-allowed" : "pointer",
+          }}
+        >
+          {sending ? "Sending..." : sent ? "Sent ✓" : "Send Message"}
+        </button>
+        {!patientEmail && (
+          <p style={{ margin: "10px 0 0", fontSize: "12px", color: "#dc2626" }}>No email on record for this patient.</p>
+        )}
+      </div>
+
+      {history.length > 0 && (
+        <div style={card}>
+          <h3 style={{ margin: "0 0 14px", fontSize: "15px", color: "#111827" }}>Previously Sent</h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            {history.map((m) => (
+              <div key={m.id} style={{ padding: "12px 14px", background: "#f8f7f5", borderRadius: "10px", border: "1px solid #eee" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", flexWrap: "wrap" }}>
+                  <span style={{ fontSize: "13px", fontWeight: "700", color: "#111827" }}>{m.subject}</span>
+                  <span style={{ fontSize: "11px", color: "#9ca3af" }}>
+                    {m.sent_at ? new Date(m.sent_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }) : ""}
+                    {m.delivery_status ? `  ·  ${m.delivery_status}` : ""}
+                  </span>
+                </div>
+                <p style={{ margin: "6px 0 0", fontSize: "13px", color: "#6b7280", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{m.body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function PatientDetailPage() {
   const { id } = useParams();
@@ -1875,6 +2014,9 @@ export default function PatientDetailPage() {
       </div>
       <div style={{ display: activeTab === "Logistics" ? "block" : "none" }}>
         <LogisticsTab appointmentId={id} manufacturingData={appt.manufacturing_data || null} initialData={appt.logistics_data || null} actor={actor} />
+      </div>
+      <div style={{ display: activeTab === "Message" ? "block" : "none" }}>
+        <MessageTab appointmentId={id} patientEmail={appt.email} patientName={appt.name} actor={actor} />
       </div>
       <div style={{ display: activeTab === "Patient Page" ? "block" : "none" }}>
         <PatientPageTab appointmentId={id} />
