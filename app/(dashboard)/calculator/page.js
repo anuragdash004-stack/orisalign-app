@@ -135,8 +135,8 @@ export default function EMICalculator() {
 
   // "Know the cost" mode inputs
   const [invoice, setInvoice] = useState(50000);
-  const [gstPct, setGstPct] = useState(18);
-  const [gstType, setGstType] = useState("exclusive");
+  const [gstInc, setGstInc] = useState(0);   // GST already included inside the invoice
+  const [gstExc, setGstExc] = useState(18);  // GST added on top of the invoice
   const [dpAmount, setDpAmount] = useState(0);
 
   const product = PRODUCTS[productKey];
@@ -169,18 +169,15 @@ export default function EMICalculator() {
 
   // ── "Know the cost" calculations ──────────────────────────────────────────
   const invNum = Number(invoice) || 0;
-  const gstNum = Number(gstPct) || 0;
+  const gstIncP = Number(gstInc) || 0; // inclusive: GST already sitting inside the invoice
+  const gstExcP = Number(gstExc) || 0; // exclusive: GST charged on top of the invoice
   const dpNum = Math.max(Number(dpAmount) || 0, 0);
-  let costCustomerTotal, costTaxable, costGstAmt;
-  if (gstType === "inclusive") {
-    costCustomerTotal = invNum;
-    costTaxable = invNum / (1 + gstNum / 100);
-    costGstAmt = costCustomerTotal - costTaxable;
-  } else {
-    costTaxable = invNum;
-    costGstAmt = invNum * (gstNum / 100);
-    costCustomerTotal = invNum + costGstAmt;
-  }
+  // Inclusive GST is extracted from within the invoice; exclusive GST is added on top.
+  const costTaxable = invNum / (1 + gstIncP / 100);
+  const costGstIncAmt = invNum - costTaxable;
+  const costGstExcAmt = invNum * (gstExcP / 100);
+  const costGstAmt = costGstIncAmt + costGstExcAmt;
+  const costCustomerTotal = invNum + costGstExcAmt;
   const costFinanced = Math.max(costCustomerTotal - dpNum, 0);
   const costResults = SUBVENTION_MODELS.map((m) => {
     const subvAmt = (m.subv / 100) * costFinanced;
@@ -387,19 +384,32 @@ export default function EMICalculator() {
               style={{ width: "100%", fontFamily: "'Fraunces', serif", fontSize: 18, fontWeight: 600, border: `1px solid ${colors.rule}`, borderRadius: 8, padding: "8px 12px", background: "#fff", marginBottom: 18 }}
             />
 
-            <Step n={2} label="GST" />
-            <div className="flex gap-2 mb-3" style={{ alignItems: "center" }}>
-              <input
-                type="number"
-                value={gstPct}
-                onChange={(e) => setGstPct(e.target.value)}
-                style={{ width: 90, fontFamily: "'Fraunces', serif", fontSize: 18, fontWeight: 600, border: `1px solid ${colors.rule}`, borderRadius: 8, padding: "8px 12px", background: "#fff" }}
-              />
-              <span style={{ fontSize: 13, color: colors.inkFaint }}>% on invoice</span>
-            </div>
-            <div className="flex gap-2 mb-5">
-              <Pill active={gstType === "exclusive"} onClick={() => setGstType("exclusive")}>GST exclusive</Pill>
-              <Pill active={gstType === "inclusive"} onClick={() => setGstType("inclusive")}>GST inclusive</Pill>
+            <Step n={2} label="GST (enter both if needed)" />
+            <div className="flex gap-3 mb-5" style={{ flexWrap: "wrap" }}>
+              <div style={{ flex: 1, minWidth: 150 }}>
+                <div style={{ fontSize: 11, color: colors.inkFaint, marginBottom: 4 }}>GST inclusive (%)</div>
+                <div className="flex" style={{ alignItems: "center", gap: 6 }}>
+                  <input
+                    type="number"
+                    value={gstInc}
+                    onChange={(e) => setGstInc(e.target.value)}
+                    style={{ width: "100%", fontFamily: "'Fraunces', serif", fontSize: 18, fontWeight: 600, border: `1px solid ${colors.rule}`, borderRadius: 8, padding: "8px 12px", background: "#fff" }}
+                  />
+                </div>
+                <div style={{ fontSize: 10.5, color: colors.inkFaint, marginTop: 3 }}>already inside the invoice</div>
+              </div>
+              <div style={{ flex: 1, minWidth: 150 }}>
+                <div style={{ fontSize: 11, color: colors.inkFaint, marginBottom: 4 }}>GST exclusive (%)</div>
+                <div className="flex" style={{ alignItems: "center", gap: 6 }}>
+                  <input
+                    type="number"
+                    value={gstExc}
+                    onChange={(e) => setGstExc(e.target.value)}
+                    style={{ width: "100%", fontFamily: "'Fraunces', serif", fontSize: 18, fontWeight: 600, border: `1px solid ${colors.rule}`, borderRadius: 8, padding: "8px 12px", background: "#fff" }}
+                  />
+                </div>
+                <div style={{ fontSize: 10.5, color: colors.inkFaint, marginTop: 3 }}>added on top of the invoice</div>
+              </div>
             </div>
 
             <Step n={3} label="Down payment" />
@@ -413,10 +423,12 @@ export default function EMICalculator() {
 
           {/* Invoice GST breakdown */}
           <div style={{ background: colors.card, borderRadius: 14, padding: 20, border: `1px solid ${colors.rule}`, marginBottom: 18 }}>
-            <div style={{ fontSize: 11, letterSpacing: 1.5, color: colors.inkFaint, textTransform: "uppercase", marginBottom: 10 }}>Invoice ({gstType === "inclusive" ? "GST inclusive" : "GST exclusive"})</div>
-            <LedgerRow label="Taxable value" value={formatINR(costTaxable)} />
-            <LedgerRow label={`GST (${gstNum}%)`} value={formatINR(costGstAmt)} />
-            <LedgerRow label="Customer invoice total" bold value={formatINR(costCustomerTotal)} />
+            <div style={{ fontSize: 11, letterSpacing: 1.5, color: colors.inkFaint, textTransform: "uppercase", marginBottom: 10 }}>Invoice</div>
+            <LedgerRow label="Taxable value" sub="Invoice less inclusive GST" value={formatINR(costTaxable)} />
+            <LedgerRow label={`GST inclusive (${gstIncP}%)`} sub="Already inside the invoice" value={formatINR(costGstIncAmt)} />
+            <LedgerRow label={`GST exclusive (${gstExcP}%)`} sub="Added on top of the invoice" value={formatINR(costGstExcAmt)} />
+            <LedgerRow label="Total GST" value={formatINR(costGstAmt)} />
+            <LedgerRow label="Customer invoice total" sub="Invoice + exclusive GST" bold value={formatINR(costCustomerTotal)} />
             <div style={{ borderTop: `1px dashed ${colors.ruleSoft}`, margin: "8px 0" }} />
             <LedgerRow label="Down payment" sub="Collected upfront" value={formatINR(dpNum)} />
             <LedgerRow label="Financed amount" sub="Invoice total − down payment" value={formatINR(costFinanced)} accentColor={colors.brandDark} />
