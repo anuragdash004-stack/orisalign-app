@@ -29,8 +29,16 @@ export default function DashboardLayout({ children }) {
   const path = usePathname();
   const router = useRouter();
 
-  // Role-based route guard
+  // Patient journey pages and checkout are public — no auth required
+  const isPublicPage =
+    path === "/patient" || path?.startsWith("/patient/") || path?.startsWith("/checkout");
+
+  // Patient journey pages are public — no sidebar
+  const isPublicPatientPage = path === "/patient" || path?.startsWith("/patient/");
+
+  // Role-based route guard (skipped entirely for public pages)
   useEffect(() => {
+    if (isPublicPage) return;
     const check = async () => {
       const { data: authData } = await supabase.auth.getUser();
       if (!authData?.user) { router.replace("/login"); return; }
@@ -38,15 +46,12 @@ export default function DashboardLayout({ children }) {
       const role = data?.role || "";
       const allowed = ROLE_ALLOWED[role] || [];
       const permitted = allowed.some((prefix) => path.startsWith(prefix));
-      if (!permitted && !path.startsWith("/patient") && !path.startsWith("/checkout")) {
+      if (!permitted) {
         router.replace(ROLE_HOME[role] || "/login");
       }
     };
     check();
-  }, [path]);
-
-  // Patient journey pages are public — no sidebar
-  const isPublicPatientPage = path === "/patient" || path?.startsWith("/patient/");
+  }, [path, isPublicPage]);
 
   useEffect(() => {
     const check = () => {
