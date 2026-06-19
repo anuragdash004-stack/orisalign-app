@@ -82,8 +82,11 @@ export default function LeadsPage() {
           Booking Leads
         </h1>
         <p style={{ fontSize: "14px", color: "#6b7280", margin: "4px 0 0" }}>
-          {leads.length} unverified {leads.length === 1 ? "lead" : "leads"} · awaiting email verification.
-          Once a lead verifies their email it moves to Appointments.
+          Total: {leads.length} {leads.length === 1 ? "lead" : "leads"}
+          {"  ·  "}
+          <span style={{ color: "#16a34a", fontWeight: "700" }}>{leads.filter((l) => l.lead_verified).length} verified</span>
+          {"  ·  "}
+          <span style={{ color: "#b45309", fontWeight: "700" }}>{leads.filter((l) => !l.lead_verified).length} unverified</span>
         </p>
       </div>
 

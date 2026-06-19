@@ -29,9 +29,9 @@ export default function AppointmentPage() {
     let query = supabase
       .from("appointments_booking")
       .select("*")
-      // Unverified booking leads never appear here — they only show under Leads.
-      // A lead becomes an appointment (status "pending") once its email is verified.
-      .neq("status", "lead")
+      // Show real appointments + VERIFIED leads. Unverified leads are excluded
+      // here (they only show under Leads until they confirm their email).
+      .or("status.neq.lead,lead_verified.eq.true")
       .order("created_at", { ascending: false });
 
     // 👑 ADMIN → see everything

@@ -25,11 +25,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid OTP" }, { status: 401 })
     }
 
-    // Flip the lead to verified AND promote it into the appointments list
-    // (status "lead" -> "pending"). Unverified leads never become appointments.
+    // Flip the lead to verified. It stays status "lead" so it remains on the
+    // Leads page for the record, but a verified lead also surfaces in the
+    // Appointments list (unverified leads do not).
     const { error } = await supabase
       .from("appointments_booking")
-      .update({ lead_verified: true, status: "pending" })
+      .update({ lead_verified: true })
       .eq("id", leadId)
 
     if (error) {
