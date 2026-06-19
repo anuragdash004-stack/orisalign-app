@@ -1,11 +1,32 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
+import { promises as dns } from "dns"
 import { logAuditEntry, getClientInfo } from "@/lib/auditLog"
+import { validateName, validatePhone, validateEmail } from "@/lib/validateContact"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
+
+async function emailDomainIsReal(email: string): Promise<boolean> {
+  const domain = email.split("@")[1]
+  if (!domain) return false
+  const notFound = (e: any) => e?.code === "ENOTFOUND" || e?.code === "ENODATA" || e?.code === "ESERVFAIL"
+  try {
+    const mx = await dns.resolveMx(domain)
+    if (mx && mx.length > 0) return true
+  } catch (e) {
+    if (!notFound(e)) return true
+  }
+  try {
+    const a = await dns.resolve(domain)
+    return Array.isArray(a) && a.length > 0
+  } catch (e) {
+    if (notFound(e)) return false
+    return true
+  }
+}
 
 export async function POST(req: Request) {
   try {
@@ -19,6 +40,18 @@ export async function POST(req: Request) {
       return NextResponse.json({
         success: false,
         message: "Missing required fields",
+      })
+    }
+
+    // ✅ Reject fake names / phone numbers / emails
+    const contactError = validateName(name) || validatePhone(phone) || (email ? validateEmail(email) : null)
+    if (contactError) {
+      return NextResponse.json({ success: false, message: contactError })
+    }
+    if (email && !(await emailDomainIsReal(email))) {
+      return NextResponse.json({
+        success: false,
+        message: "Please enter a real email address — we couldn't verify this email provider.",
       })
     }
 

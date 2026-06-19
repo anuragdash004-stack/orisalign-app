@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { Resend } from "resend"
+import { promises as dns } from "dns"
+import { validateName, validatePhone, validateEmail } from "@/lib/validateContact"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -8,6 +10,31 @@ const supabase = createClient(
 )
 
 const resend = new Resend(process.env.RESEND_API_KEY)
+
+/**
+ * Confirms the email's domain can actually receive mail by looking up its
+ * MX records (falling back to an A record for the rare MX-less domain).
+ * Returns false only when the domain genuinely does not resolve — transient
+ * DNS errors fail open so we never block a real customer over a network blip.
+ */
+async function emailDomainIsReal(email: string): Promise<boolean> {
+  const domain = email.split("@")[1]
+  if (!domain) return false
+  const notFound = (e: any) => e?.code === "ENOTFOUND" || e?.code === "ENODATA" || e?.code === "ESERVFAIL"
+  try {
+    const mx = await dns.resolveMx(domain)
+    if (mx && mx.length > 0) return true
+  } catch (e) {
+    if (!notFound(e)) return true // transient error → don't block
+  }
+  try {
+    const a = await dns.resolve(domain)
+    return Array.isArray(a) && a.length > 0
+  } catch (e) {
+    if (notFound(e)) return false
+    return true // transient error → don't block
+  }
+}
 
 export async function POST(req: Request) {
   try {
@@ -18,6 +45,20 @@ export async function POST(req: Request) {
       return NextResponse.json({
         success: false,
         message: "Missing required fields (name, phone, email)",
+      }, { status: 400 })
+    }
+
+    // ✅ Reject fake names / phone numbers / malformed emails
+    const contactError = validateName(name) || validatePhone(phone) || validateEmail(email)
+    if (contactError) {
+      return NextResponse.json({ success: false, message: contactError }, { status: 400 })
+    }
+
+    // ✅ Confirm the email address is real (its domain can receive mail)
+    if (!(await emailDomainIsReal(email))) {
+      return NextResponse.json({
+        success: false,
+        message: "Please enter a real email address — we couldn't verify this email provider.",
       }, { status: 400 })
     }
 
