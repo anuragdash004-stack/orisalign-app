@@ -3,7 +3,6 @@
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { getSupabaseClient } from "@/lib/supabaseClient"
-import { validateName, validatePhone, validateEmail } from "@/lib/validateContact"
 
 const supabase = getSupabaseClient()
 
@@ -65,11 +64,6 @@ export default function BookPage() {
   const bookScan = async () => {
     if (!name || !phone || !email) {
       alert("Please enter your name, phone number, and email.")
-      return
-    }
-    const contactError = validateName(name) || validatePhone(phone) || validateEmail(email)
-    if (contactError) {
-      alert(contactError)
       return
     }
     if (!acceptTerms) {
@@ -247,11 +241,6 @@ export default function BookPage() {
     setTncError(false)
     if (!chiefComplaint || !date || !time || !consultationType) {
       alert("Please select your concern, date, time slot and consultation type.")
-      return
-    }
-    const contactError = validateName(name) || validatePhone(phone) || validateEmail(email)
-    if (contactError) {
-      alert(contactError)
       return
     }
 
