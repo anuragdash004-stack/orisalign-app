@@ -59,6 +59,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
     patients:     userRole === "admin" || userRole === "counselor",
     leads:        userRole === "admin",
     templates:    userRole === "admin",
+    calculator:   userRole === "admin",
     audit:        userRole === "admin",
   };
 
@@ -237,6 +238,14 @@ export default function Sidebar({ collapsed, setCollapsed }) {
               ...(path.startsWith("/templates") ? { background: "#ffffff90" } : {}),
             }}>
               {showContent ? "MESSAGE TEMPLATES" : ""}
+            </Link>
+          )}
+          {show.calculator && (
+            <Link href="/calculator" style={{
+              ...linkStyle("/calculator"),
+              ...(path.startsWith("/calculator") ? { background: "#ffffff90" } : {}),
+            }}>
+              {showContent ? "EMI CALCULATOR" : ""}
             </Link>
           )}
           {show.audit && (
