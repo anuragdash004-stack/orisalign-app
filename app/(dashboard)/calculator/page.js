@@ -32,6 +32,20 @@ const FIXED_COST = 5000; // ortho 3000 + CAC 2000
 const GST_RATE = 0.18;
 const TARGET_PROFIT = 0.4;
 
+// Fibe "Full Subvention Model" — 9 tenure options.
+// dpEmi = scheme's nominal down-payment (in advance EMIs); minTxn = eligibility floor.
+const SUBVENTION_MODELS = [
+  { sr: 1, gross: 3,  net: 3,  subv: 4.50,  dpEmi: 0, minTxn: 15000, pf: 0.00 },
+  { sr: 2, gross: 6,  net: 6,  subv: 5.50,  dpEmi: 0, minTxn: 20000, pf: 2.00 },
+  { sr: 3, gross: 6,  net: 5,  subv: 3.50,  dpEmi: 1, minTxn: 30000, pf: 2.00 },
+  { sr: 4, gross: 8,  net: 6,  subv: 3.90,  dpEmi: 2, minTxn: 30000, pf: 2.00 },
+  { sr: 5, gross: 9,  net: 9,  subv: 8.50,  dpEmi: 0, minTxn: 30000, pf: 2.00 },
+  { sr: 6, gross: 9,  net: 8,  subv: 6.50,  dpEmi: 1, minTxn: 30000, pf: 2.00 },
+  { sr: 7, gross: 10, net: 10, subv: 9.50,  dpEmi: 0, minTxn: 30000, pf: 2.00 },
+  { sr: 8, gross: 12, net: 8,  subv: 4.50,  dpEmi: 4, minTxn: 30000, pf: 2.00 },
+  { sr: 9, gross: 12, net: 0,  subv: 11.40, dpEmi: 0, minTxn: 30000, pf: 2.00 },
+];
+
 function formatINR(n) {
   if (!isFinite(n)) return "—";
   const sign = n < 0 ? "-" : "";
@@ -119,6 +133,12 @@ export default function EMICalculator() {
   const [tenure, setTenure] = useState(6);
   const [checkTicket, setCheckTicket] = useState(70000);
 
+  // "Know the cost" mode inputs
+  const [invoice, setInvoice] = useState(50000);
+  const [gstPct, setGstPct] = useState(18);
+  const [gstType, setGstType] = useState("exclusive");
+  const [dpAmount, setDpAmount] = useState(0);
+
   const product = PRODUCTS[productKey];
   const availableTenures = dpOption === "withDp" ? [6, 9, 12] : [6, 9];
 
@@ -147,6 +167,35 @@ export default function EMICalculator() {
   const profitDelta = profitPct - TARGET_PROFIT * 100;
   const isGood = profitPct >= TARGET_PROFIT * 100 - 0.3;
 
+  // ── "Know the cost" calculations ──────────────────────────────────────────
+  const invNum = Number(invoice) || 0;
+  const gstNum = Number(gstPct) || 0;
+  const dpNum = Math.max(Number(dpAmount) || 0, 0);
+  let costCustomerTotal, costTaxable, costGstAmt;
+  if (gstType === "inclusive") {
+    costCustomerTotal = invNum;
+    costTaxable = invNum / (1 + gstNum / 100);
+    costGstAmt = costCustomerTotal - costTaxable;
+  } else {
+    costTaxable = invNum;
+    costGstAmt = invNum * (gstNum / 100);
+    costCustomerTotal = invNum + costGstAmt;
+  }
+  const costFinanced = Math.max(costCustomerTotal - dpNum, 0);
+  const costResults = SUBVENTION_MODELS.map((m) => {
+    const subvAmt = (m.subv / 100) * costFinanced;
+    const subvGst = GST_RATE * subvAmt;
+    const subvTotal = subvAmt + subvGst;       // merchant bears this
+    const pfAmt = (m.pf / 100) * costFinanced;
+    const pfGst = GST_RATE * pfAmt;
+    const pfTotal = pfAmt + pfGst;             // charged separately to customer
+    const emi = m.net > 0 ? costFinanced / m.net : 0;
+    const merchantGets = costCustomerTotal - subvTotal;
+    const customerOutflow = costCustomerTotal + pfTotal; // DP + EMIs + PF(incl GST)
+    const belowMin = costCustomerTotal < m.minTxn;
+    return { ...m, subvAmt, subvGst, subvTotal, pfAmt, pfGst, pfTotal, emi, merchantGets, customerOutflow, belowMin };
+  });
+
   return (
     <div style={{ background: colors.bg, minHeight: "100vh", fontFamily: "'Inter', system-ui, sans-serif", color: colors.ink }}>
       <style>{`
@@ -154,7 +203,7 @@ export default function EMICalculator() {
         input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
       `}</style>
 
-      <div className="max-w-md mx-auto px-5 py-8">
+      <div className={`${mode === "cost" ? "max-w-3xl" : "max-w-md"} mx-auto px-5 py-8`}>
         <div style={{ fontSize: 11, letterSpacing: 2, color: colors.brand, textTransform: "uppercase", fontWeight: 600 }}>
           Orisalign · Finance Desk
         </div>
@@ -166,15 +215,20 @@ export default function EMICalculator() {
         </p>
 
         {/* Mode toggle */}
-        <div className="flex gap-2 mb-6">
+        <div className="flex gap-2 mb-6" style={{ flexWrap: "wrap" }}>
           <Pill active={mode === "solve"} onClick={() => setMode("solve")}>
             Solve the price
           </Pill>
           <Pill active={mode === "check"} onClick={() => setMode("check")}>
             Check a price
           </Pill>
+          <Pill active={mode === "cost"} onClick={() => setMode("cost")}>
+            Know the cost
+          </Pill>
         </div>
 
+        {mode !== "cost" && (
+        <>
         <div style={{ background: colors.card, borderRadius: 14, padding: 20, border: `1px solid ${colors.rule}`, marginBottom: 18 }}>
           <Step n={1} label="Product" />
           <div className="flex gap-2 mb-5">
@@ -318,10 +372,109 @@ export default function EMICalculator() {
           </div>
         </div>
         <div style={{ height: 4, background: colors.bg }} />
+        </>
+        )}
 
+        {mode === "cost" && (
+        <>
+          {/* Inputs */}
+          <div style={{ background: colors.card, borderRadius: 14, padding: 20, border: `1px solid ${colors.rule}`, marginBottom: 18 }}>
+            <Step n={1} label="Invoice amount" />
+            <input
+              type="number"
+              value={invoice}
+              onChange={(e) => setInvoice(e.target.value)}
+              style={{ width: "100%", fontFamily: "'Fraunces', serif", fontSize: 18, fontWeight: 600, border: `1px solid ${colors.rule}`, borderRadius: 8, padding: "8px 12px", background: "#fff", marginBottom: 18 }}
+            />
+
+            <Step n={2} label="GST" />
+            <div className="flex gap-2 mb-3" style={{ alignItems: "center" }}>
+              <input
+                type="number"
+                value={gstPct}
+                onChange={(e) => setGstPct(e.target.value)}
+                style={{ width: 90, fontFamily: "'Fraunces', serif", fontSize: 18, fontWeight: 600, border: `1px solid ${colors.rule}`, borderRadius: 8, padding: "8px 12px", background: "#fff" }}
+              />
+              <span style={{ fontSize: 13, color: colors.inkFaint }}>% on invoice</span>
+            </div>
+            <div className="flex gap-2 mb-5">
+              <Pill active={gstType === "exclusive"} onClick={() => setGstType("exclusive")}>GST exclusive</Pill>
+              <Pill active={gstType === "inclusive"} onClick={() => setGstType("inclusive")}>GST inclusive</Pill>
+            </div>
+
+            <Step n={3} label="Down payment" />
+            <input
+              type="number"
+              value={dpAmount}
+              onChange={(e) => setDpAmount(e.target.value)}
+              style={{ width: "100%", fontFamily: "'Fraunces', serif", fontSize: 18, fontWeight: 600, border: `1px solid ${colors.rule}`, borderRadius: 8, padding: "8px 12px", background: "#fff" }}
+            />
+          </div>
+
+          {/* Invoice GST breakdown */}
+          <div style={{ background: colors.card, borderRadius: 14, padding: 20, border: `1px solid ${colors.rule}`, marginBottom: 18 }}>
+            <div style={{ fontSize: 11, letterSpacing: 1.5, color: colors.inkFaint, textTransform: "uppercase", marginBottom: 10 }}>Invoice ({gstType === "inclusive" ? "GST inclusive" : "GST exclusive"})</div>
+            <LedgerRow label="Taxable value" value={formatINR(costTaxable)} />
+            <LedgerRow label={`GST (${gstNum}%)`} value={formatINR(costGstAmt)} />
+            <LedgerRow label="Customer invoice total" bold value={formatINR(costCustomerTotal)} />
+            <div style={{ borderTop: `1px dashed ${colors.ruleSoft}`, margin: "8px 0" }} />
+            <LedgerRow label="Down payment" sub="Collected upfront" value={formatINR(dpNum)} />
+            <LedgerRow label="Financed amount" sub="Invoice total − down payment" value={formatINR(costFinanced)} accentColor={colors.brandDark} />
+          </div>
+
+          {/* All 9 subvention options */}
+          <div style={{ fontSize: 11, letterSpacing: 1.5, color: colors.inkFaint, textTransform: "uppercase", marginBottom: 8 }}>
+            Cost on all 9 subvention options
+          </div>
+          <div style={{ overflowX: "auto", border: `1px solid ${colors.rule}`, borderRadius: 14, background: colors.card }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 720 }}>
+              <thead>
+                <tr style={{ background: "#F0E7D6", color: colors.inkSoft, textAlign: "right" }}>
+                  <th style={{ padding: "10px 10px", textAlign: "left", fontWeight: 600 }}>#</th>
+                  <th style={{ padding: "10px 8px", textAlign: "center", fontWeight: 600 }}>Tenure<br/>G / N</th>
+                  <th style={{ padding: "10px 8px", textAlign: "center", fontWeight: 600 }}>Subv %</th>
+                  <th style={{ padding: "10px 10px", fontWeight: 600 }}>Merchant cost<br/>(subv + 18% GST)</th>
+                  <th style={{ padding: "10px 10px", fontWeight: 600 }}>Customer PF<br/>(PF + 18% GST)</th>
+                  <th style={{ padding: "10px 10px", fontWeight: 600 }}>EMI / mo<br/>× net</th>
+                  <th style={{ padding: "10px 10px", fontWeight: 600 }}>Customer<br/>total</th>
+                  <th style={{ padding: "10px 10px", fontWeight: 600 }}>Merchant<br/>realization</th>
+                </tr>
+              </thead>
+              <tbody>
+                {costResults.map((r) => (
+                  <tr key={r.sr} style={{ borderTop: `1px solid ${colors.ruleSoft}`, textAlign: "right", background: r.belowMin ? colors.badBg : "transparent" }}>
+                    <td style={{ padding: "10px 10px", textAlign: "left", fontWeight: 700, color: colors.ink }}>
+                      {r.sr}
+                      {r.belowMin && <span title={`Below minimum ${formatINR(r.minTxn)}`} style={{ color: colors.bad, marginLeft: 4 }}>!</span>}
+                    </td>
+                    <td style={{ padding: "10px 8px", textAlign: "center", color: colors.inkSoft }}>{r.gross} / {r.net}</td>
+                    <td style={{ padding: "10px 8px", textAlign: "center", color: colors.inkSoft }}>{r.subv.toFixed(2)}%</td>
+                    <td style={{ padding: "10px 10px", fontVariantNumeric: "tabular-nums", color: colors.bad, fontWeight: 600 }}>{formatINR(r.subvTotal)}</td>
+                    <td style={{ padding: "10px 10px", fontVariantNumeric: "tabular-nums", color: colors.inkSoft }}>{formatINR(r.pfTotal)}</td>
+                    <td style={{ padding: "10px 10px", fontVariantNumeric: "tabular-nums", color: colors.brandDark, fontWeight: 700 }}>
+                      {r.net > 0 ? <>{formatINR(r.emi)}<span style={{ color: colors.inkFaint, fontWeight: 400 }}> ×{r.net}</span></> : <span style={{ color: colors.inkFaint }}>—</span>}
+                    </td>
+                    <td style={{ padding: "10px 10px", fontVariantNumeric: "tabular-nums", color: colors.ink }}>{formatINR(r.customerOutflow)}</td>
+                    <td style={{ padding: "10px 10px", fontVariantNumeric: "tabular-nums", color: colors.good, fontWeight: 700 }}>{formatINR(r.merchantGets)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p style={{ fontSize: 11, color: colors.inkFaint, marginTop: 10, lineHeight: 1.6 }}>
+            Subvention &amp; processing fee are charged on the <strong>financed amount</strong> (invoice total − down payment).
+            18% GST is added to both. The <strong>processing fee + its GST is billed separately to the customer</strong>;
+            the <strong>subvention + its GST is borne by the merchant</strong> (reflected in “Merchant realization”).
+            Rows shaded red are below that option’s minimum transaction amount. Option 9 has a 0-month net tenure (no customer EMI).
+          </p>
+        </>
+        )}
+
+        {mode !== "cost" && (
         <p style={{ fontSize: 11, color: colors.inkFaint, textAlign: "center", marginTop: 18, lineHeight: 1.5 }}>
           Finance fee rates are all-in (Fibe subvention + 18% GST on subvention + 2% platform fee), as confirmed with Fibe.
         </p>
+        )}
       </div>
     </div>
   );
