@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 
 const supabase = getSupabaseClient();
@@ -69,9 +69,10 @@ const label = { display: "block", fontSize: "11px", fontWeight: "700", color: "#
 export default function LeadTrackerPage() {
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeStage, setActiveStage] = useState("fresh");
+  const [selectedDate, setSelectedDate] = useState("all"); // "all" or YYYY-MM-DD
   const [editing, setEditing] = useState(null); // lead object or "new" or null
   const [actor, setActor] = useState(null);
+  const todayRef = useRef(null);
 
   useEffect(() => {
     const init = async () => {
@@ -98,27 +99,36 @@ export default function LeadTrackerPage() {
   };
 
   const stageOf = (lead) => lead.lead_stage || "fresh";
-  const stageLeads = leads.filter((l) => stageOf(l) === activeStage);
-  const countFor = (key) => leads.filter((l) => stageOf(l) === key).length;
-
-  // group by date (created_at)
-  const grouped = {};
-  stageLeads.forEach((l) => {
-    const d = new Date(l.created_at);
-    const day = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" });
-    (grouped[day] = grouped[day] || []).push(l);
-  });
 
   const quickStage = async (lead, newStage) => {
     setLeads((prev) => prev.map((l) => (l.id === lead.id ? { ...l, lead_stage: newStage } : l)));
     await supabase.from("appointments_booking").update({ lead_stage: newStage }).eq("id", lead.id);
   };
 
+  // Calendar strip: 14 days back → 7 days forward, today centered/highlighted.
+  const today = new Date();
+  const tKey = dateKey(today);
+  const stripDates = [];
+  for (let i = -14; i <= 7; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    stripDates.push(d);
+  }
+
+  // Bring "today" into view in the horizontal strip once loaded.
+  useEffect(() => {
+    if (!loading) todayRef.current?.scrollIntoView({ inline: "center", block: "nearest" });
+  }, [loading]);
+
+  const visibleLeads = selectedDate === "all"
+    ? leads
+    : leads.filter((l) => dateKey(l.created_at) === selectedDate);
+
   if (loading) return <div style={{ padding: "40px", textAlign: "center", color: "#6b7280" }}>Loading lead tracker...</div>;
 
   return (
     <div style={{ padding: "24px", maxWidth: "1100px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "12px", marginBottom: "18px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "12px", marginBottom: "16px" }}>
         <div>
           <h1 style={{ fontSize: "28px", fontWeight: "700", color: "#111827", margin: 0 }}>Lead Tracker</h1>
           <p style={{ fontSize: "14px", color: "#6b7280", margin: "4px 0 0" }}>{leads.length} total leads in the pipeline</p>
@@ -131,80 +141,57 @@ export default function LeadTrackerPage() {
         </button>
       </div>
 
-      {/* Stage tabs */}
-      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "20px" }}>
-        {STAGES.map((s) => (
-          <button
-            key={s.key}
-            onClick={() => setActiveStage(s.key)}
-            style={{
-              padding: "9px 16px", borderRadius: "99px", border: activeStage === s.key ? "none" : "1px solid #e5e7eb",
-              background: activeStage === s.key ? "#111827" : "white",
-              color: activeStage === s.key ? "white" : "#374151",
-              fontWeight: "700", fontSize: "13px", cursor: "pointer", letterSpacing: "0.3px",
-            }}
-          >
-            {s.label} <span style={{ opacity: 0.7 }}>({countFor(s.key)})</span>
-          </button>
-        ))}
+      {/* Calendar row */}
+      <div style={{ display: "flex", gap: "6px", overflowX: "auto", padding: "4px 2px 12px" }}>
+        <DateChip active={selectedDate === "all"} onClick={() => setSelectedDate("all")} top="" mid="All" bot="dates" />
+        {stripDates.map((d) => {
+          const k = dateKey(d);
+          const isToday = k === tKey;
+          return (
+            <span key={k} ref={isToday ? todayRef : null}>
+              <DateChip
+                active={selectedDate === k}
+                today={isToday}
+                onClick={() => setSelectedDate(k)}
+                top={d.toLocaleDateString("en-US", { weekday: "short" })}
+                mid={d.getDate()}
+                bot={d.toLocaleDateString("en-US", { month: "short" })}
+              />
+            </span>
+          );
+        })}
       </div>
+      <p style={{ fontSize: "12px", color: "#9ca3af", margin: "2px 0 20px" }}>
+        {selectedDate === "all"
+          ? "Showing all leads"
+          : `Showing leads from ${new Date(selectedDate).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}`}
+        {"  ·  "}{visibleLeads.length} {visibleLeads.length === 1 ? "lead" : "leads"}
+      </p>
 
-      {stageLeads.length === 0 ? (
-        <div style={{ padding: "40px 24px", background: "white", borderRadius: "12px", border: "1px solid #e5e7eb", textAlign: "center", color: "#9ca3af" }}>
-          No leads in this section.
-        </div>
-      ) : (
-        <div style={{ display: "grid", gap: "20px" }}>
-          {Object.entries(grouped).map(([day, dayLeads]) => (
-            <div key={day}>
-              <div style={{ fontSize: "12px", fontWeight: "700", color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "10px" }}>📆 {day}</div>
-              <div style={{ display: "grid", gap: "10px" }}>
-                {dayLeads.map((lead) => (
-                  <div key={lead.id} style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "14px 16px", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", alignItems: "flex-start" }}>
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBottom: "4px" }}>
-                          <span style={{ fontFamily: "monospace", fontWeight: "800", color: "#b8905a", fontSize: "13px" }}>#{lead.lead_number || "—"}</span>
-                          <span style={{ fontSize: "15px", fontWeight: "700", color: "#111827" }}>{lead.name || "Unnamed"}</span>
-                          {lead.booking_confirmed && <span style={pill("#dcfce7", "#16a34a")}>✓ Patient ID issued</span>}
-                        </div>
-                        <div style={{ fontSize: "13px", color: "#6b7280", display: "flex", gap: "14px", flexWrap: "wrap" }}>
-                          <span>📱 {lead.phone || "N/A"}</span>
-                          {lead.email && <span>✉️ {lead.email}</span>}
-                        </div>
-                        <div style={{ marginTop: "8px", display: "flex", gap: "6px", flexWrap: "wrap" }}>
-                          <span style={pill("#eef2ff", "#4338ca")}>{sourceLabel(lead.lead_source)}</span>
-                          {lead.lead_response && <span style={pill("#fef3c7", "#92400e")}>{responseLabel(lead.lead_response)}</span>}
-                          {lead.lead_source === "website" && (
-                            <span style={pill(lead.lead_verified ? "#dcfce7" : "#fef3c7", lead.lead_verified ? "#065f46" : "#92400e")}>
-                              {lead.lead_verified ? "✓ Verified" : "🕗 Unverified"}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <div style={{ display: "flex", flexDirection: "column", gap: "8px", alignItems: "flex-end" }}>
-                        <select
-                          value={stageOf(lead)}
-                          onChange={(e) => quickStage(lead, e.target.value)}
-                          style={{ ...input, width: "auto", padding: "6px 10px", fontSize: "12px", cursor: "pointer" }}
-                        >
-                          {STAGES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
-                        </select>
-                        <button
-                          onClick={() => setEditing(lead)}
-                          style={{ padding: "6px 14px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "white", color: "#111827", fontWeight: "700", fontSize: "12px", cursor: "pointer" }}
-                        >
-                          View / Edit
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+      {/* All stages, stacked one after another */}
+      <div style={{ display: "grid", gap: "22px" }}>
+        {STAGES.map((s) => {
+          const list = visibleLeads.filter((l) => stageOf(l) === s.key);
+          return (
+            <div key={s.key}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" }}>
+                <h2 style={{ margin: 0, fontSize: "16px", fontWeight: "800", color: "#111827" }}>{s.label}</h2>
+                <span style={{ fontSize: "12px", fontWeight: "700", color: "#6b7280", background: "#f3f4f6", borderRadius: "99px", padding: "2px 10px" }}>{list.length}</span>
+                <div style={{ flex: 1, height: "1px", background: "#eee" }} />
               </div>
+              {list.length === 0 ? (
+                <div style={{ padding: "14px", background: "white", border: "1px dashed #e5e7eb", borderRadius: "12px", textAlign: "center", color: "#9ca3af", fontSize: "13px" }}>No leads</div>
+              ) : (
+                <div style={{ display: "grid", gap: "10px" }}>
+                  {list.map((lead) => (
+                    <LeadCard key={lead.id} lead={lead} onStage={quickStage} onEdit={() => setEditing(lead)} />
+                  ))}
+                </div>
+              )}
             </div>
-          ))}
-        </div>
-      )}
+          );
+        })}
+      </div>
 
       {editing && (
         <LeadForm
@@ -214,6 +201,75 @@ export default function LeadTrackerPage() {
           onSaved={() => { setEditing(null); fetchLeads(); }}
         />
       )}
+    </div>
+  );
+}
+
+function dateKey(d) {
+  const dt = new Date(d);
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+}
+
+function DateChip({ active, today, onClick, top, mid, bot }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        flexShrink: 0, minWidth: "52px", padding: "8px 6px", borderRadius: "12px", cursor: "pointer",
+        border: active ? "none" : today ? "1px solid #b8905a" : "1px solid #e5e7eb",
+        background: active ? "#111827" : today ? "#fff7ed" : "white",
+        color: active ? "white" : today ? "#b8905a" : "#374151",
+        display: "flex", flexDirection: "column", alignItems: "center", gap: "1px", lineHeight: 1.2,
+      }}
+    >
+      <span style={{ fontSize: "10px", fontWeight: 600, opacity: 0.8 }}>{top}</span>
+      <span style={{ fontSize: "16px", fontWeight: 800 }}>{mid}</span>
+      <span style={{ fontSize: "10px", fontWeight: 600, opacity: 0.8 }}>{bot}</span>
+    </button>
+  );
+}
+
+function LeadCard({ lead, onStage, onEdit }) {
+  const stage = lead.lead_stage || "fresh";
+  return (
+    <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "14px 16px", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", alignItems: "flex-start" }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBottom: "4px" }}>
+            <span style={{ fontFamily: "monospace", fontWeight: "800", color: "#b8905a", fontSize: "13px" }}>#{lead.lead_number || "—"}</span>
+            <span style={{ fontSize: "15px", fontWeight: "700", color: "#111827" }}>{lead.name || "Unnamed"}</span>
+            {lead.booking_confirmed && <span style={pill("#dcfce7", "#16a34a")}>✓ Patient ID issued</span>}
+          </div>
+          <div style={{ fontSize: "13px", color: "#6b7280", display: "flex", gap: "14px", flexWrap: "wrap" }}>
+            <span>📱 {lead.phone || "N/A"}</span>
+            {lead.email && <span>✉️ {lead.email}</span>}
+          </div>
+          <div style={{ marginTop: "8px", display: "flex", gap: "6px", flexWrap: "wrap" }}>
+            <span style={pill("#eef2ff", "#4338ca")}>{sourceLabel(lead.lead_source)}</span>
+            {lead.lead_response && <span style={pill("#fef3c7", "#92400e")}>{responseLabel(lead.lead_response)}</span>}
+            {lead.lead_source === "website" && (
+              <span style={pill(lead.lead_verified ? "#dcfce7" : "#fef3c7", lead.lead_verified ? "#065f46" : "#92400e")}>
+                {lead.lead_verified ? "✓ Verified" : "🕗 Unverified"}
+              </span>
+            )}
+          </div>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: "8px", alignItems: "flex-end" }}>
+          <select
+            value={stage}
+            onChange={(e) => onStage(lead, e.target.value)}
+            style={{ ...input, width: "auto", padding: "6px 10px", fontSize: "12px", cursor: "pointer" }}
+          >
+            {STAGES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+          </select>
+          <button
+            onClick={onEdit}
+            style={{ padding: "6px 14px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "white", color: "#111827", fontWeight: "700", fontSize: "12px", cursor: "pointer" }}
+          >
+            View / Edit
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
