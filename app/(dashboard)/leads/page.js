@@ -70,7 +70,8 @@ export default function LeadTrackerPage() {
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(() => dateKey(new Date())); // defaults to today; "all" or YYYY-MM-DD
-  const [editing, setEditing] = useState(null); // lead object or "new" or null
+  const [editing, setEditing] = useState(null); // null or { mode: "normal"|"cold", lead: leadObj|null }
+  const [view, setView] = useState("tracker"); // "tracker" | "cold"
   const [actor, setActor] = useState(null);
   const todayRef = useRef(null);
 
@@ -105,6 +106,15 @@ export default function LeadTrackerPage() {
     await supabase.from("appointments_booking").update({ lead_stage: newStage }).eq("id", lead.id);
   };
 
+  // Cold lead → promote into the live tracker as a Fresh lead.
+  const promoteToLead = async (lead) => {
+    setLeads((prev) => prev.map((l) => (l.id === lead.id ? { ...l, lead_stage: "fresh" } : l)));
+    await supabase.from("appointments_booking").update({ lead_stage: "fresh" }).eq("id", lead.id);
+  };
+
+  const coldLeads = leads.filter((l) => stageOf(l) === "cold");
+  const pipelineLeads = leads.filter((l) => stageOf(l) !== "cold");
+
   // Calendar strip: 14 days back → 7 days forward, today centered/highlighted.
   const today = new Date();
   const tKey = dateKey(today);
@@ -121,24 +131,69 @@ export default function LeadTrackerPage() {
   }, [loading]);
 
   const visibleLeads = selectedDate === "all"
-    ? leads
-    : leads.filter((l) => dateKey(l.created_at) === selectedDate);
+    ? pipelineLeads
+    : pipelineLeads.filter((l) => dateKey(l.created_at) === selectedDate);
 
   if (loading) return <div style={{ padding: "40px", textAlign: "center", color: "#6b7280" }}>Loading lead tracker...</div>;
+
+  // ── Cold leads view ──
+  if (view === "cold") {
+    return (
+      <div style={{ padding: "24px", maxWidth: "1100px" }}>
+        <button onClick={() => setView("tracker")} style={{ background: "none", border: "none", color: "#b8905a", fontSize: "13px", fontWeight: "700", cursor: "pointer", padding: 0, marginBottom: "12px", letterSpacing: "0.5px" }}>
+          ← Back to Tracker
+        </button>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "12px", marginBottom: "18px" }}>
+          <div>
+            <h1 style={{ fontSize: "28px", fontWeight: "700", color: "#111827", margin: 0 }}>Cold Leads</h1>
+            <p style={{ fontSize: "14px", color: "#6b7280", margin: "4px 0 0" }}>{coldLeads.length} cold {coldLeads.length === 1 ? "lead" : "leads"} · add a cold lead to the live tracker when you reconnect</p>
+          </div>
+          <button
+            onClick={() => setEditing({ mode: "cold", lead: null })}
+            style={{ padding: "11px 20px", borderRadius: "10px", border: "none", background: "#64748b", color: "white", fontWeight: "700", fontSize: "13px", cursor: "pointer", letterSpacing: "0.5px" }}
+          >
+            + Add Cold Lead
+          </button>
+        </div>
+        {coldLeads.length === 0 ? (
+          <div style={{ padding: "40px 24px", background: "white", borderRadius: "12px", border: "1px solid #e5e7eb", textAlign: "center", color: "#9ca3af" }}>
+            No cold leads yet.
+          </div>
+        ) : (
+          <div style={{ display: "grid", gap: "10px" }}>
+            {coldLeads.map((lead) => (
+              <LeadCard key={lead.id} lead={lead} cold onPromote={() => promoteToLead(lead)} onEdit={() => setEditing({ mode: "cold", lead })} />
+            ))}
+          </div>
+        )}
+        {editing && (
+          <LeadForm lead={editing.lead} mode={editing.mode} actor={actor} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); fetchLeads(); }} />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div style={{ padding: "24px", maxWidth: "1100px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "12px", marginBottom: "16px" }}>
         <div>
           <h1 style={{ fontSize: "28px", fontWeight: "700", color: "#111827", margin: 0 }}>Lead Tracker</h1>
-          <p style={{ fontSize: "14px", color: "#6b7280", margin: "4px 0 0" }}>{leads.length} total leads in the pipeline</p>
+          <p style={{ fontSize: "14px", color: "#6b7280", margin: "4px 0 0" }}>{pipelineLeads.length} total leads in the pipeline</p>
         </div>
-        <button
-          onClick={() => setEditing("new")}
-          style={{ padding: "11px 20px", borderRadius: "10px", border: "none", background: "#b8905a", color: "white", fontWeight: "700", fontSize: "13px", cursor: "pointer", letterSpacing: "0.5px" }}
-        >
-          + Add Lead
-        </button>
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+          <button
+            onClick={() => setView("cold")}
+            style={{ padding: "11px 18px", borderRadius: "10px", border: "1px solid #cbd5e1", background: "white", color: "#475569", fontWeight: "700", fontSize: "13px", cursor: "pointer", letterSpacing: "0.5px" }}
+          >
+            Cold Leads ({coldLeads.length})
+          </button>
+          <button
+            onClick={() => setEditing({ mode: "normal", lead: null })}
+            style={{ padding: "11px 20px", borderRadius: "10px", border: "none", background: "#b8905a", color: "white", fontWeight: "700", fontSize: "13px", cursor: "pointer", letterSpacing: "0.5px" }}
+          >
+            + Add Lead
+          </button>
+        </div>
       </div>
 
       {/* Calendar row */}
@@ -184,7 +239,7 @@ export default function LeadTrackerPage() {
               ) : (
                 <div style={{ display: "grid", gap: "10px" }}>
                   {list.map((lead) => (
-                    <LeadCard key={lead.id} lead={lead} onStage={quickStage} onEdit={() => setEditing(lead)} />
+                    <LeadCard key={lead.id} lead={lead} onStage={quickStage} onEdit={() => setEditing({ mode: "normal", lead })} />
                   ))}
                 </div>
               )}
@@ -195,7 +250,8 @@ export default function LeadTrackerPage() {
 
       {editing && (
         <LeadForm
-          lead={editing === "new" ? null : editing}
+          lead={editing.lead}
+          mode={editing.mode}
           actor={actor}
           onClose={() => setEditing(null)}
           onSaved={() => { setEditing(null); fetchLeads(); }}
@@ -229,7 +285,7 @@ function DateChip({ active, today, onClick, top, mid, bot }) {
   );
 }
 
-function LeadCard({ lead, onStage, onEdit }) {
+function LeadCard({ lead, onStage, onEdit, cold, onPromote }) {
   const stage = lead.lead_stage || "fresh";
   return (
     <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "14px 16px", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
@@ -255,13 +311,22 @@ function LeadCard({ lead, onStage, onEdit }) {
           </div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: "8px", alignItems: "flex-end" }}>
-          <select
-            value={stage}
-            onChange={(e) => onStage(lead, e.target.value)}
-            style={{ ...input, width: "auto", padding: "6px 10px", fontSize: "12px", cursor: "pointer" }}
-          >
-            {STAGES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
-          </select>
+          {cold ? (
+            <button
+              onClick={onPromote}
+              style={{ padding: "7px 14px", borderRadius: "8px", border: "none", background: "#16a34a", color: "white", fontWeight: "700", fontSize: "12px", cursor: "pointer", whiteSpace: "nowrap" }}
+            >
+              + Add to Lead
+            </button>
+          ) : (
+            <select
+              value={stage}
+              onChange={(e) => onStage(lead, e.target.value)}
+              style={{ ...input, width: "auto", padding: "6px 10px", fontSize: "12px", cursor: "pointer" }}
+            >
+              {STAGES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+            </select>
+          )}
           <button
             onClick={onEdit}
             style={{ padding: "6px 14px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "white", color: "#111827", fontWeight: "700", fontSize: "12px", cursor: "pointer" }}
@@ -278,9 +343,10 @@ function pill(bg, color) {
   return { display: "inline-block", padding: "3px 9px", borderRadius: "99px", background: bg, color, fontSize: "11px", fontWeight: "700", whiteSpace: "nowrap" };
 }
 
-function LeadForm({ lead, actor, onClose, onSaved }) {
+function LeadForm({ lead, actor, onClose, onSaved, mode = "normal" }) {
+  const isCold = mode === "cold";
   const [form, setForm] = useState(() => {
-    if (!lead) return { ...EMPTY_FORM };
+    if (!lead) return { ...EMPTY_FORM, lead_stage: isCold ? "cold" : "fresh" };
     const { consultationType, complaint } = parseProblem(lead.problem);
     return {
       lead_source: lead.lead_source || "website",
@@ -354,7 +420,7 @@ function LeadForm({ lead, actor, onClose, onSaved }) {
       <div style={{ background: "white", borderRadius: "16px", padding: "24px", width: "100%", maxWidth: "560px", boxShadow: "0 20px 60px rgba(0,0,0,0.25)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "18px" }}>
           <h2 style={{ margin: 0, fontSize: "18px", fontWeight: "700", color: "#111827" }}>
-            {lead ? `Lead #${lead.lead_number || ""}` : "Add New Lead"}
+            {lead ? `${isCold ? "Cold Lead" : "Lead"} #${lead.lead_number || ""}` : isCold ? "Add Cold Lead" : "Add New Lead"}
           </h2>
           <button onClick={onClose} style={{ background: "none", border: "none", fontSize: "22px", color: "#9ca3af", cursor: "pointer", lineHeight: 1 }}>×</button>
         </div>
@@ -442,12 +508,14 @@ function LeadForm({ lead, actor, onClose, onSaved }) {
               {TIME_SLOTS.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
-          <div>
-            <span style={label}>Stage</span>
-            <select style={input} value={form.lead_stage} onChange={(e) => set("lead_stage", e.target.value)}>
-              {STAGES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
-            </select>
-          </div>
+          {!isCold && (
+            <div>
+              <span style={label}>Stage</span>
+              <select style={input} value={form.lead_stage} onChange={(e) => set("lead_stage", e.target.value)}>
+                {STAGES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+              </select>
+            </div>
+          )}
         </div>
 
         <div style={{ display: "flex", gap: "10px", marginTop: "22px", flexWrap: "wrap" }}>
@@ -456,19 +524,26 @@ function LeadForm({ lead, actor, onClose, onSaved }) {
             disabled={saving}
             style={{ flex: 1, minWidth: "120px", padding: "12px", borderRadius: "10px", border: "1px solid #e5e7eb", background: "white", color: "#111827", fontWeight: "700", fontSize: "14px", cursor: saving ? "not-allowed" : "pointer" }}
           >
-            {saving ? "Saving..." : lead ? "Save Changes" : "Add Lead"}
+            {saving ? "Saving..." : lead ? "Save Changes" : isCold ? "Add Cold Lead" : "Add Lead"}
           </button>
-          <button
-            onClick={() => save({ confirm: true })}
-            disabled={saving}
-            style={{ flex: 1, minWidth: "120px", padding: "12px", borderRadius: "10px", border: "none", background: "#16a34a", color: "white", fontWeight: "700", fontSize: "14px", cursor: saving ? "not-allowed" : "pointer" }}
-          >
-            {lead?.booking_confirmed ? "Update (Booked)" : "Confirm Lead → Booked"}
-          </button>
+          {!isCold && (
+            <button
+              onClick={() => save({ confirm: true })}
+              disabled={saving}
+              style={{ flex: 1, minWidth: "120px", padding: "12px", borderRadius: "10px", border: "none", background: "#16a34a", color: "white", fontWeight: "700", fontSize: "14px", cursor: saving ? "not-allowed" : "pointer" }}
+            >
+              {lead?.booking_confirmed ? "Update (Booked)" : "Confirm Lead → Booked"}
+            </button>
+          )}
         </div>
-        {!lead?.booking_confirmed && (
+        {!isCold && !lead?.booking_confirmed && (
           <p style={{ margin: "10px 0 0", fontSize: "11px", color: "#9ca3af", textAlign: "center" }}>
             Confirming moves the lead to <strong>Booked</strong>, adds it to Appointments, and issues a Patient ID (emailed if an address is on file).
+          </p>
+        )}
+        {isCold && (
+          <p style={{ margin: "10px 0 0", fontSize: "11px", color: "#9ca3af", textAlign: "center" }}>
+            Cold leads stay separate. Use <strong>+ Add to Lead</strong> on a cold lead to move it into the live tracker as a Fresh lead.
           </p>
         )}
       </div>
