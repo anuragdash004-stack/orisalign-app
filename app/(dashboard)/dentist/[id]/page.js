@@ -1,91 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { getSupabaseClient } from "@/lib/supabaseClient";
-import { useParams } from "next/navigation";
+import { useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
 
-const supabase = getSupabaseClient();
-
-export default function DentistCase() {
+// Legacy /dentist/[id] route — the real dentist workflow lives at
+// /dentist/[id]/appointment. Redirect there so nothing lands on the old stub.
+export default function DentistCaseRedirect() {
   const { id } = useParams();
-
-  const [patient, setPatient] = useState(null);
-  const [notes, setNotes] = useState("");
-  const [history, setHistory] = useState("");
+  const router = useRouter();
 
   useEffect(() => {
-    const fetch = async () => {
-      const { data } = await supabase
-        .from("appointments_booking")
-        .select("*")
-        .eq("id", id)
-        .single();
-
-      setPatient(data);
-    };
-
-    fetch();
+    if (id) router.replace(`/dentist/${id}/appointment`);
   }, [id]);
 
-  const submitCase = async () => {
-    await supabase
-      .from("appointments_booking")
-      .update({
-        notes,
-        history,
-        status: "submitted",
-      })
-      .eq("id", id);
-
-    alert("Sent to Orthodontist");
-  };
-
-  if (!patient) return <p>Loading...</p>;
-
-  return (
-    <div className="space-y-4">
-
-      <h1 className="text-xl">Patient Case</h1>
-
-      {/* BASIC INFO */}
-      <div className="card">
-        <p>Name: {patient.patient_name}</p>
-        <p>Age: {patient.age}</p>
-        <p>Sex: {patient.sex}</p>
-        <p>Complaint: {patient.complaint}</p>
-      </div>
-
-      {/* NOTES */}
-      <textarea
-        placeholder="Notes"
-        value={notes}
-        onChange={(e) => setNotes(e.target.value)}
-        className="input"
-      />
-
-      {/* HISTORY */}
-      <textarea
-        placeholder="History Taking"
-        value={history}
-        onChange={(e) => setHistory(e.target.value)}
-        className="input"
-      />
-
-      {/* IMAGE UPLOAD (simple version) */}
-      <input type="file" multiple />
-
-      {/* SUBMIT */}
-      <button onClick={submitCase} className="btn">
-        Submit Case
-      </button>
-
-      {/* TREATMENT PLAN */}
-      {patient.treatment_plan && (
-        <div className="card">
-          <h3>Treatment Plan</h3>
-          <p>{patient.treatment_plan}</p>
-        </div>
-      )}
-    </div>
-  );
+  return <p style={{ padding: "24px", color: "#6b7280" }}>Redirecting…</p>;
 }

@@ -182,42 +182,6 @@ export default function PatientJourney() {
     }
   };
 
-  const handlePatientUpdate = (field, value) => {
-    setPatient((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
-
-  const handlePatientDetailsSubmit = async () => {
-    if (!patient.age || !patient.sex || !patient.fullAddress || !patient.pincode) {
-      alert("Please fill in all required fields (Age, Sex, Address, Pincode).");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const { error } = await supabase
-        .from("appointments_booking")
-        .update({
-          age: patient.age,
-          sex: patient.sex,
-          address: patient.fullAddress,
-          pincode: patient.pincode,
-        })
-        .eq("id", id);
-
-      if (error) throw error;
-
-      setExpandedStep(null);
-      alert("Your details have been submitted successfully!");
-    } catch (err) {
-      alert("Failed to submit details. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   if (loading) return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
       <p style={{ color: "#6b7280" }}>Loading your journey...</p>
