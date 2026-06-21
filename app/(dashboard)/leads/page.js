@@ -69,7 +69,7 @@ const label = { display: "block", fontSize: "11px", fontWeight: "700", color: "#
 export default function LeadTrackerPage() {
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedDate, setSelectedDate] = useState("all"); // "all" or YYYY-MM-DD
+  const [selectedDate, setSelectedDate] = useState(() => dateKey(new Date())); // defaults to today; "all" or YYYY-MM-DD
   const [editing, setEditing] = useState(null); // lead object or "new" or null
   const [actor, setActor] = useState(null);
   const todayRef = useRef(null);
