@@ -300,8 +300,8 @@ function LeadForm({ lead, actor, onClose, onSaved }) {
       ? `[${form.consultationType.toUpperCase()}] ${form.complaint}`
       : form.complaint;
     return {
-      name: form.name, age: form.age || null, sex: form.sex || null,
-      phone: form.phone, alt_phone: form.alt_phone || null, email: form.email || null,
+      name: form.name || null, age: form.age || null, sex: form.sex || null,
+      phone: form.phone || null, alt_phone: form.alt_phone || null, email: form.email || null,
       address: form.address || null, problem: problem || null, lead_notes: form.lead_notes || null,
       lead_source: form.lead_source, lead_response: form.lead_response || null,
       lead_stage: stageOverride || form.lead_stage,
@@ -312,7 +312,10 @@ function LeadForm({ lead, actor, onClose, onSaved }) {
   };
 
   const save = async (opts = {}) => {
-    if (!form.name || !form.phone) { alert("Name and phone number are required."); return; }
+    if (!form.name && !form.phone && !form.email) {
+      alert("Add at least one detail — a name, phone number, or email — to save the lead.");
+      return;
+    }
     const confirm = !!opts.confirm;
     setSaving(true);
     try {
@@ -371,7 +374,7 @@ function LeadForm({ lead, actor, onClose, onSaved }) {
             </select>
           </div>
           <div>
-            <span style={label}>Name *</span>
+            <span style={label}>Name</span>
             <input style={input} value={form.name} onChange={(e) => set("name", e.target.value)} />
           </div>
           <div>
@@ -379,7 +382,7 @@ function LeadForm({ lead, actor, onClose, onSaved }) {
             <input style={input} type="number" value={form.age} onChange={(e) => set("age", e.target.value)} />
           </div>
           <div>
-            <span style={label}>Phone *</span>
+            <span style={label}>Phone</span>
             <input style={input} value={form.phone} onChange={(e) => set("phone", e.target.value)} />
           </div>
           <div>
