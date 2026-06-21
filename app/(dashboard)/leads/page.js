@@ -57,7 +57,7 @@ function parseProblem(problem) {
 const EMPTY_FORM = {
   lead_source: "walk_in", lead_response: "", name: "", age: "", phone: "", alt_phone: "",
   address: "", sex: "", email: "", complaint: "", lead_notes: "", consultationType: "",
-  clinic_location: "", date: "", time: "", lead_stage: "fresh",
+  clinic_location: "", date: "", time: "", callback_date: "", callback_time: "", lead_stage: "fresh",
 };
 
 const input = {
@@ -241,7 +241,7 @@ export default function LeadTrackerPage() {
           let list = visibleLeads.filter((l) => stageOf(l) === s.key);
           if (s.key === "callback") {
             // Earliest callback time first, so the counselor sees what's due next.
-            list = [...list].sort((a, b) => `${a.date || ""} ${a.time || ""}`.localeCompare(`${b.date || ""} ${b.time || ""}`));
+            list = [...list].sort((a, b) => `${a.callback_date || ""} ${a.callback_time || ""}`.localeCompare(`${b.callback_date || ""} ${b.callback_time || ""}`));
           }
           return (
             <div key={s.key}>
@@ -285,7 +285,7 @@ function dateKey(d) {
 // The date a lead belongs to in the calendar: callbacks sit on their callback
 // date, everyone else on the date they came in.
 function leadCalendarKey(lead) {
-  if ((lead.lead_stage || "fresh") === "callback" && lead.date) return dateKey(lead.date);
+  if ((lead.lead_stage || "fresh") === "callback" && lead.callback_date) return dateKey(lead.callback_date);
   return dateKey(lead.created_at);
 }
 
@@ -330,13 +330,13 @@ function LeadCard({ lead, onStage, onEdit, cold, onPromote, onDelete }) {
   const isCallback = stage === "callback";
   return (
     <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "14px 16px", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
-      {isCallback && (lead.time || lead.date) && (
+      {isCallback && (lead.callback_time || lead.callback_date) && (
         <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: "8px", padding: "8px 12px", marginBottom: "10px" }}>
           <span style={{ fontSize: "16px" }}>📞</span>
           <span style={{ fontSize: "15px", fontWeight: "800", color: "#b45309" }}>
-            {formatTime(lead.time) || "Time not set"}
+            {formatTime(lead.callback_time) || "Time not set"}
           </span>
-          {lead.date && <span style={{ fontSize: "13px", fontWeight: "600", color: "#92400e" }}>· {formatDate(lead.date)}</span>}
+          {lead.callback_date && <span style={{ fontSize: "13px", fontWeight: "600", color: "#92400e" }}>· {formatDate(lead.callback_date)}</span>}
           <span style={{ marginLeft: "auto", fontSize: "11px", fontWeight: "700", color: "#9a6a2f", textTransform: "uppercase", letterSpacing: "0.4px" }}>Call Back</span>
         </div>
       )}
@@ -412,7 +412,9 @@ function LeadForm({ lead, actor, onClose, onSaved, mode = "normal" }) {
       alt_phone: lead.alt_phone || "", address: lead.address || "", sex: lead.sex || "",
       email: lead.email || "", complaint, lead_notes: lead.lead_notes || "",
       consultationType, clinic_location: lead.clinic_location || "",
-      date: lead.date || "", time: lead.time || "", lead_stage: lead.lead_stage || "fresh",
+      date: lead.date || "", time: lead.time || "",
+      callback_date: lead.callback_date || "", callback_time: lead.callback_time || "",
+      lead_stage: lead.lead_stage || "fresh",
     };
   });
   const [saving, setSaving] = useState(false);
@@ -431,6 +433,8 @@ function LeadForm({ lead, actor, onClose, onSaved, mode = "normal" }) {
       lead_stage: stageOverride || form.lead_stage,
       clinic_location: form.consultationType === "clinic" ? (form.clinic_location || null) : null,
       date: form.date || null, time: form.time || null,
+      callback_date: form.lead_response === "callback" ? (form.callback_date || null) : null,
+      callback_time: form.lead_response === "callback" ? (form.callback_time || null) : null,
       ...(confirm ? { booking_confirmed: true } : {}),
     };
   };
@@ -504,6 +508,18 @@ function LeadForm({ lead, actor, onClose, onSaved, mode = "normal" }) {
               {RESPONSE_OPTIONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
             </select>
           </div>
+          {isCallback && (
+            <>
+              <div>
+                <span style={{ ...label, color: "#b45309" }}>Callback Date</span>
+                <input style={input} type="date" value={form.callback_date} onChange={(e) => set("callback_date", e.target.value)} />
+              </div>
+              <div>
+                <span style={{ ...label, color: "#b45309" }}>Callback Time</span>
+                <input style={input} type="time" value={form.callback_time} onChange={(e) => set("callback_time", e.target.value)} />
+              </div>
+            </>
+          )}
           <div>
             <span style={label}>Name</span>
             <input style={input} value={form.name} onChange={(e) => set("name", e.target.value)} />
@@ -563,19 +579,15 @@ function LeadForm({ lead, actor, onClose, onSaved, mode = "normal" }) {
             </div>
           )}
           <div>
-            <span style={label}>{isCallback ? "Callback Date" : "Preferred Date"}</span>
+            <span style={label}>Consultation Date</span>
             <input style={input} type="date" value={form.date} onChange={(e) => set("date", e.target.value)} />
           </div>
           <div>
-            <span style={label}>{isCallback ? "Callback Time" : "Preferred Timing"}</span>
-            {isCallback ? (
-              <input style={input} type="time" value={form.time} onChange={(e) => set("time", e.target.value)} />
-            ) : (
-              <select style={input} value={form.time} onChange={(e) => set("time", e.target.value)}>
-                <option value="">— Select —</option>
-                {TIME_SLOTS.map((t) => <option key={t} value={t}>{t}</option>)}
-              </select>
-            )}
+            <span style={label}>Consultation Slot</span>
+            <select style={input} value={form.time} onChange={(e) => set("time", e.target.value)}>
+              <option value="">— Select —</option>
+              {TIME_SLOTS.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
           </div>
           {!isCold && (
             <div>
