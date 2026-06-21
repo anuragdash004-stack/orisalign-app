@@ -233,6 +233,7 @@ export default function PatientJourney() {
 
   const steps = deriveSteps(patient);
   const shortId = id.substring(0, 8).toUpperCase();
+  const patientIdLabel = patient.booking_confirmed ? shortId : "Pending";
   const completedCount = Object.values(steps).filter(Boolean).length;
   const progressPct = Math.round((completedCount / JOURNEY_STEPS.length) * 100);
   const pd = patient.payment_data || {};
@@ -321,7 +322,7 @@ export default function PatientJourney() {
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "16px" }}>
-            {[["Patient ID", shortId], ["Phone", patient.phone || "N/A"], ["Date", patient.date || "N/A"], ["Time", patient.time || "N/A"]].map(([lbl, val]) => (
+            {[["Patient ID", patientIdLabel], ["Phone", patient.phone || "N/A"], ["Date", patient.date || "N/A"], ["Time", patient.time || "N/A"]].map(([lbl, val]) => (
               <div key={lbl} style={{ background: "#f8f7f5", borderRadius: "10px", padding: "10px 12px" }}>
                 <p style={{ margin: 0, fontSize: "10px", color: "#9ca3af", fontWeight: "700", letterSpacing: "0.6px", textTransform: "uppercase" }}>{lbl}</p>
                 <p style={{ margin: "2px 0 0", fontSize: "14px", fontWeight: "600", color: "#111827" }}>{val}</p>
@@ -818,7 +819,9 @@ export default function PatientJourney() {
             <a href="mailto:hello@orisalign.com" style={{ color: "#b8905a", fontWeight: "600" }}>hello@orisalign.com</a>
           </p>
           <p style={{ margin: "6px 0 0", fontSize: "11px", color: "#9ca3af" }}>
-            Your Patient ID: <strong style={{ color: "#374151" }}>{shortId}</strong>
+            {patient.booking_confirmed
+              ? <>Your Patient ID: <strong style={{ color: "#374151" }}>{shortId}</strong></>
+              : <>Fill your details and confirm your booking to receive your Patient ID.</>}
           </p>
         </div>
       </div>

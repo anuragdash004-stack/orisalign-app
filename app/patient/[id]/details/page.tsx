@@ -168,15 +168,28 @@ export default function PatientDetailsPage() {
       const address = [fullAddress, city && `${city}, ${district}, ${areaState}`, `PIN: ${pincode}`, locationLink ? `Maps: ${locationLink}` : ""].filter(Boolean).join(" | ")
       const problem = chiefComplaint === "Others" ? `Others — ${explainConcern}` : chiefComplaint + (explainConcern ? ` — ${explainConcern}` : "")
 
+      const alreadyConfirmed = patient?.booking_confirmed
+
       const { error } = await supabase!
         .from("appointments_booking")
         .update({
           age, sex, address, date, time,
           problem: `[${consultationType.toUpperCase()}] ${problem}`,
+          booking_confirmed: true,
         })
         .eq("id", id)
 
       if (error) throw error
+
+      // First time confirming → issue the Patient ID via the welcome email.
+      if (!alreadyConfirmed && patient?.email) {
+        fetch("/api/send-welcome-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: patient.email, name: patient.name || "Patient", patientId: id }),
+        }).catch(() => {})
+      }
+
       router.push(`/patient/${id}`)
     } catch (err: any) {
       console.error("Full error:", err)
@@ -365,7 +378,7 @@ export default function PatientDetailsPage() {
             <div className="flex gap-3 mt-6">
               <button className="btn-back" onClick={() => setStep(1)}>← Back</button>
               <button className="btn flex-1" onClick={handleSubmit} disabled={submitting}>
-                {submitting ? "Submitting..." : "Submit"}
+                {submitting ? "Confirming..." : "Confirm Booking"}
               </button>
             </div>
           </motion.div>

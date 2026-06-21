@@ -441,10 +441,10 @@ export default function BookPage() {
                 <p style={{ margin: 0 }}><strong>Email:</strong> {email}</p>
               </div>
             </div>
-            <p className="subtitle-small">We&apos;ve sent a 6-digit OTP to {email}. Enter it below and tap &quot;Book the Scan&quot; to confirm your booking.</p>
+            <p className="subtitle-small">We&apos;ve sent a 6-digit OTP to {email}. Enter it below and tap &quot;Confirm Scan&quot; to verify your booking.</p>
             <Input placeholder="Enter OTP" value={otp} set={setOtp} />
             <button className="btn mt-6" onClick={verifyAndBookScan} disabled={loading}>
-              {loading ? "Verifying..." : "BOOK THE SCAN"}
+              {loading ? "Verifying..." : "CONFIRM SCAN"}
             </button>
             <button
               type="button"

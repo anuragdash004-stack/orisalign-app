@@ -27,24 +27,16 @@ export async function POST(req: Request) {
 
     // Flip the lead to verified. It stays status "lead" so it remains on the
     // Leads page for the record, but a verified lead also surfaces in the
-    // Appointments list (unverified leads do not).
+    // Appointments list (unverified leads do not). The Patient ID is NOT issued
+    // here — only after the patient fills details and confirms the booking.
     const { error } = await supabase
       .from("appointments_booking")
-      .update({ lead_verified: true })
+      .update({ lead_verified: true, lead_verified_at: new Date().toISOString() })
       .eq("id", leadId)
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
-
-    const baseUrl = `https://${req.headers.get("host") || "orisalign.com"}`
-
-    // Welcome email to the patient (now that the email is confirmed)
-    fetch(`${baseUrl}/api/send-welcome-email`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, name: name || "Patient", patientId: leadId }),
-    }).catch(() => {})
 
     // Tell the clinic this lead is now verified
     fetch("https://api.resend.com/emails", {

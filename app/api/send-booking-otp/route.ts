@@ -37,6 +37,10 @@ export async function POST(req: Request) {
               <span style="font-size:40px;font-weight:700;letter-spacing:10px;color:#111827;">${otp}</span>
             </div>
             <p style="color:#6b7280;font-size:13px;">This OTP expires in 10 minutes. Do not share it with anyone.</p>
+            <p style="color:#6b7280;font-size:12px;line-height:1.6;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px;">
+              By entering this OTP and confirming your scan, you consent to receive all forms of communication from
+              OrisAlign — phone calls, SMS, WhatsApp and email — regarding the aligner treatment you have chosen.
+            </p>
             <p>— OrisAlign Team</p>
           </div>
         `,
