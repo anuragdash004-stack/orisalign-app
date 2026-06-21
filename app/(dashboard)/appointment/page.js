@@ -344,11 +344,17 @@ export default function AppointmentPage() {
                         <option value="">Select Dentist</option>
                         {dentists.map((d) => <option key={d.id} value={d.id}>{d.email}</option>)}
                       </select>
-                      <select value={selectedOrtho} onChange={(e) => setSelectedOrtho(e.target.value)}>
+                      {selectedDentist && (
+                        <button onClick={() => setSelectedDentist("")} title="Clear" style={{ marginLeft: "6px", padding: "4px 10px", borderRadius: "6px", border: "1px solid #fecaca", background: "#fef2f2", color: "#dc2626", fontWeight: "700", fontSize: "12px", cursor: "pointer" }}>✕</button>
+                      )}
+                      <select value={selectedOrtho} onChange={(e) => setSelectedOrtho(e.target.value)} style={{ marginLeft: "8px" }}>
                         <option value="">Select Orthodontist</option>
                         {orthodontists.map((o) => <option key={o.id} value={o.id}>{o.email}</option>)}
                       </select>
-                      <button onClick={() => handleAssignConfirm(appointment.id)}>Confirm Assignment</button>
+                      {selectedOrtho && (
+                        <button onClick={() => setSelectedOrtho("")} title="Clear" style={{ marginLeft: "6px", padding: "4px 10px", borderRadius: "6px", border: "1px solid #fecaca", background: "#fef2f2", color: "#dc2626", fontWeight: "700", fontSize: "12px", cursor: "pointer" }}>✕</button>
+                      )}
+                      <button onClick={() => handleAssignConfirm(appointment.id)} style={{ marginLeft: "8px" }}>Confirm Assignment</button>
                     </div>
                   )}
                 </>

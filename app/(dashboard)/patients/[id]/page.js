@@ -171,6 +171,25 @@ function PaymentSummaryRow({ label: lbl, value }) {
   );
 }
 
+// Wraps a single-choice control with a Cancel (✕) button when it has a value.
+function Clearable({ show, onClear, children }) {
+  return (
+    <div style={{ display: "flex", gap: "6px", alignItems: "stretch" }}>
+      <div style={{ flex: 1, minWidth: 0 }}>{children}</div>
+      {show && (
+        <button
+          type="button"
+          onClick={onClear}
+          title="Clear selection"
+          style={{ flexShrink: 0, padding: "0 12px", borderRadius: "8px", border: "1px solid #fecaca", background: "#fef2f2", color: "#dc2626", fontWeight: "700", fontSize: "13px", cursor: "pointer" }}
+        >
+          ✕
+        </button>
+      )}
+    </div>
+  );
+}
+
 function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
   const [appt, setAppt] = useState(null);
   const hasSaved = !!(initialData && (initialData.full_amount || initialData.down_payment || initialData.final_amount));
@@ -594,19 +613,25 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
           </div>
           <div>
             <span style={label}>MODE OF PAYMENT</span>
-            <select style={select} value={data.down_payment_mode}
-              onChange={(e) => set("down_payment_mode", e.target.value)}>
-              {MODE_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
-            </select>
+            <Clearable show={!!data.down_payment_mode} onClear={() => set("down_payment_mode", "")}>
+              <select style={select} value={data.down_payment_mode}
+                onChange={(e) => set("down_payment_mode", e.target.value)}>
+                <option value="">— Select —</option>
+                {MODE_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </Clearable>
           </div>
         </div>
         {data.down_payment_mode === "Finance" && (
           <div style={{ marginBottom: "16px" }}>
             <span style={label}>FINANCE PROVIDER</span>
-            <select style={select} value={data.finance_provider}
-              onChange={(e) => set("finance_provider", e.target.value)}>
-              {FINANCE_OPTIONS.map((f) => <option key={f} value={f}>{f}</option>)}
-            </select>
+            <Clearable show={!!data.finance_provider} onClear={() => set("finance_provider", "")}>
+              <select style={select} value={data.finance_provider}
+                onChange={(e) => set("finance_provider", e.target.value)}>
+                <option value="">— Select —</option>
+                {FINANCE_OPTIONS.map((f) => <option key={f} value={f}>{f}</option>)}
+              </select>
+            </Clearable>
           </div>
         )}
         <div style={{ marginBottom: "20px" }}>
@@ -615,18 +640,24 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
         </div>
         <div style={{ marginBottom: "24px" }}>
           <span style={label}>PENDING AMOUNT MODE OF PAYMENT</span>
-          <select style={select} value={data.pending_mode}
-            onChange={(e) => set("pending_mode", e.target.value)}>
-            {PENDING_MODE_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
-          </select>
+          <Clearable show={!!data.pending_mode} onClear={() => set("pending_mode", "")}>
+            <select style={select} value={data.pending_mode}
+              onChange={(e) => set("pending_mode", e.target.value)}>
+              <option value="">— Select —</option>
+              {PENDING_MODE_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
+            </select>
+          </Clearable>
         </div>
         {data.pending_mode === "Finance" && (
           <div style={{ marginBottom: "24px" }}>
             <span style={label}>PENDING FINANCE PROVIDER</span>
-            <select style={select} value={data.finance_provider}
-              onChange={(e) => set("finance_provider", e.target.value)}>
-              {FINANCE_OPTIONS.map((f) => <option key={f} value={f}>{f}</option>)}
-            </select>
+            <Clearable show={!!data.finance_provider} onClear={() => set("finance_provider", "")}>
+              <select style={select} value={data.finance_provider}
+                onChange={(e) => set("finance_provider", e.target.value)}>
+                <option value="">— Select —</option>
+                {FINANCE_OPTIONS.map((f) => <option key={f} value={f}>{f}</option>)}
+              </select>
+            </Clearable>
           </div>
         )}
         {data.pending_mode === "Installment" && (
@@ -660,9 +691,12 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
         {/* Payment to push to patient */}
         <div style={{ marginBottom: "24px", paddingTop: "24px", borderTop: "1px dashed #e5e7eb" }}>
           <span style={label}>PAYMENT TO PUSH TO PATIENT</span>
-          <select style={select} value={paymentType} onChange={(e) => setPaymentType(e.target.value)}>
-            {PAYMENT_PUSH_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
+          <Clearable show={!!paymentType} onClear={() => setPaymentType("")}>
+            <select style={select} value={paymentType} onChange={(e) => setPaymentType(e.target.value)}>
+              <option value="">— Select —</option>
+              {PAYMENT_PUSH_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </Clearable>
           {paymentType === "others" && (
             <input
               style={input}
@@ -918,11 +952,13 @@ function LogisticsTab({ appointmentId, manufacturingData, initialData, actor }) 
             </div>
             <div>
               <span style={label}>DELIVERY PARTNER</span>
-              <select style={select} value={batch.delivery_partner}
-                onChange={(e) => updateBatch(batch.num, "delivery_partner", e.target.value)}>
-                <option value="">Select...</option>
-                {DELIVERY_PARTNERS.map((p) => <option key={p} value={p}>{p}</option>)}
-              </select>
+              <Clearable show={!!batch.delivery_partner} onClear={() => updateBatch(batch.num, "delivery_partner", "")}>
+                <select style={select} value={batch.delivery_partner}
+                  onChange={(e) => updateBatch(batch.num, "delivery_partner", e.target.value)}>
+                  <option value="">Select...</option>
+                  {DELIVERY_PARTNERS.map((p) => <option key={p} value={p}>{p}</option>)}
+                </select>
+              </Clearable>
             </div>
           </div>
           {batch.delivery_partner === "Other" && (
