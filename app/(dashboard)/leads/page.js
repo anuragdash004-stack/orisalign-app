@@ -141,7 +141,7 @@ export default function LeadTrackerPage() {
 
   const visibleLeads = selectedDate === "all"
     ? pipelineLeads
-    : pipelineLeads.filter((l) => dateKey(l.created_at) === selectedDate);
+    : pipelineLeads.filter((l) => leadCalendarKey(l) === selectedDate);
 
   if (loading) return <div style={{ padding: "40px", textAlign: "center", color: "#6b7280" }}>Loading lead tracker...</div>;
 
@@ -235,7 +235,11 @@ export default function LeadTrackerPage() {
       {/* All stages, stacked one after another */}
       <div style={{ display: "grid", gap: "22px" }}>
         {STAGES.map((s) => {
-          const list = visibleLeads.filter((l) => stageOf(l) === s.key);
+          let list = visibleLeads.filter((l) => stageOf(l) === s.key);
+          if (s.key === "callback") {
+            // Earliest callback time first, so the counselor sees what's due next.
+            list = [...list].sort((a, b) => `${a.date || ""} ${a.time || ""}`.localeCompare(`${b.date || ""} ${b.time || ""}`));
+          }
           return (
             <div key={s.key}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" }}>
@@ -275,6 +279,30 @@ function dateKey(d) {
   return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
 }
 
+// The date a lead belongs to in the calendar: callbacks sit on their callback
+// date, everyone else on the date they came in.
+function leadCalendarKey(lead) {
+  if ((lead.lead_stage || "fresh") === "callback" && lead.date) return dateKey(lead.date);
+  return dateKey(lead.created_at);
+}
+
+function formatTime(t) {
+  if (!t) return "";
+  const m = /^(\d{1,2}):(\d{2})/.exec(t);
+  if (m) {
+    let h = +m[1];
+    const ap = h >= 12 ? "PM" : "AM";
+    h = h % 12 || 12;
+    return `${h}:${m[2]} ${ap}`;
+  }
+  return t; // already like "9 AM"
+}
+
+function formatDate(d) {
+  if (!d) return "";
+  return new Date(d).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+}
+
 function DateChip({ active, today, onClick, top, mid, bot }) {
   return (
     <button
@@ -296,8 +324,19 @@ function DateChip({ active, today, onClick, top, mid, bot }) {
 
 function LeadCard({ lead, onStage, onEdit, cold, onPromote, onDelete }) {
   const stage = lead.lead_stage || "fresh";
+  const isCallback = stage === "callback";
   return (
     <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "14px 16px", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
+      {isCallback && (lead.time || lead.date) && (
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: "8px", padding: "8px 12px", marginBottom: "10px" }}>
+          <span style={{ fontSize: "16px" }}>📞</span>
+          <span style={{ fontSize: "15px", fontWeight: "800", color: "#b45309" }}>
+            {formatTime(lead.time) || "Time not set"}
+          </span>
+          {lead.date && <span style={{ fontSize: "13px", fontWeight: "600", color: "#92400e" }}>· {formatDate(lead.date)}</span>}
+          <span style={{ marginLeft: "auto", fontSize: "11px", fontWeight: "700", color: "#9a6a2f", textTransform: "uppercase", letterSpacing: "0.4px" }}>Call Back</span>
+        </div>
+      )}
       <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", alignItems: "flex-start" }}>
         <div style={{ minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBottom: "4px" }}>
@@ -375,6 +414,7 @@ function LeadForm({ lead, actor, onClose, onSaved, mode = "normal" }) {
   });
   const [saving, setSaving] = useState(false);
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
+  const isCallback = form.lead_response === "callback";
 
   const buildPayload = (stageOverride, confirm) => {
     const problem = form.consultationType
@@ -449,7 +489,14 @@ function LeadForm({ lead, actor, onClose, onSaved, mode = "normal" }) {
           </div>
           <div>
             <span style={label}>Response</span>
-            <select style={input} value={form.lead_response} onChange={(e) => set("lead_response", e.target.value)}>
+            <select
+              style={input}
+              value={form.lead_response}
+              onChange={(e) => {
+                const v = e.target.value;
+                setForm((p) => ({ ...p, lead_response: v, ...(v === "callback" ? { lead_stage: "callback" } : {}) }));
+              }}
+            >
               <option value="">— Select —</option>
               {RESPONSE_OPTIONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
             </select>
@@ -513,15 +560,19 @@ function LeadForm({ lead, actor, onClose, onSaved, mode = "normal" }) {
             </div>
           )}
           <div>
-            <span style={label}>Preferred Date</span>
+            <span style={label}>{isCallback ? "Callback Date" : "Preferred Date"}</span>
             <input style={input} type="date" value={form.date} onChange={(e) => set("date", e.target.value)} />
           </div>
           <div>
-            <span style={label}>Preferred Timing</span>
-            <select style={input} value={form.time} onChange={(e) => set("time", e.target.value)}>
-              <option value="">— Select —</option>
-              {TIME_SLOTS.map((t) => <option key={t} value={t}>{t}</option>)}
-            </select>
+            <span style={label}>{isCallback ? "Callback Time" : "Preferred Timing"}</span>
+            {isCallback ? (
+              <input style={input} type="time" value={form.time} onChange={(e) => set("time", e.target.value)} />
+            ) : (
+              <select style={input} value={form.time} onChange={(e) => set("time", e.target.value)}>
+                <option value="">— Select —</option>
+                {TIME_SLOTS.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+            )}
           </div>
           {!isCold && (
             <div>
