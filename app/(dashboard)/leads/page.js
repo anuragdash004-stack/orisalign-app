@@ -89,7 +89,7 @@ export default function LeadTrackerPage() {
     setLoading(true);
     const { data, error } = await supabase
       .from("appointments_booking")
-      .select("id, lead_number, name, phone, alt_phone, email, age, sex, address, problem, lead_notes, lead_source, lead_response, lead_stage, clinic_location, date, time, lead_verified, booking_confirmed, created_at")
+      .select("*")
       .eq("status", "lead")
       .order("created_at", { ascending: false });
     if (error) console.error("Error fetching leads:", error);
