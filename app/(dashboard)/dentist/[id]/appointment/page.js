@@ -28,15 +28,111 @@ const STL_SLOTS = [
 
 const PROCEDURE_OPTIONS = ["Restorations", "Root Canal", "Scaling", "Extraction", "Gingival Therapy", "Others"];
 
+// FDI tooth numbering — four quadrant columns.
+const ADULT_QUADRANTS = [
+  [11, 12, 13, 14, 15, 16, 17, 18],
+  [21, 22, 23, 24, 25, 26, 27, 28],
+  [31, 32, 33, 34, 35, 36, 37, 38],
+  [41, 42, 43, 44, 45, 46, 47, 48],
+];
+const CHILD_QUADRANTS = [
+  [51, 52, 53, 54, 55],
+  [61, 62, 63, 64, 65],
+  [71, 72, 73, 74, 75],
+  [81, 82, 83, 84, 85],
+];
+const GRADE_OPTIONS = ["+", "++", "+++"];
+
+const asArr = (v) => (Array.isArray(v) ? v : []);
+
 const EMPTY_FORM = {
   name: "", age: "", sex: "", weight: "", occupation: "",
-  medical_history: "", chief_complaint: "",
-  missing_tooth: "", dental_caries: "", deciduous_tooth: "",
+  medical_history: "", chief_complaint: "", notes: "",
+  missing_tooth: [], dental_caries: [], deciduous_tooth: [],
   stains: "", calculus: "", recession: "",
-  mobile: "", pain: "", sensitivity: "", pregnancy: "",
+  mobility: [], pain: [], sensitivity: [], pregnancy: "",
   pre_orthodontic_procedures: [],
   pre_orthodontic_others: "",
 };
+
+// Multi-select FDI tooth picker. `dentition` = "adult" | "child".
+function ToothField({ label, dentition, value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const [temp, setTemp] = useState([]);
+  const quadrants = dentition === "child" ? CHILD_QUADRANTS : ADULT_QUADRANTS;
+  const selected = Array.isArray(value) ? value : [];
+
+  const openPicker = () => { setTemp(selected); setOpen(true); };
+  const toggleTooth = (t) => setTemp((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
+  const add = () => { onChange([...temp].sort((a, b) => a - b)); setOpen(false); };
+
+  const lblStyle = { display: "block", fontSize: "13px", fontWeight: "700", color: "#111827", marginBottom: "6px" };
+
+  return (
+    <div style={{ marginBottom: "14px" }}>
+      <span style={lblStyle}>{label}</span>
+      <button
+        type="button"
+        onClick={openPicker}
+        style={{
+          width: "100%", minHeight: "42px", padding: "9px 12px", borderRadius: "8px",
+          border: "1px solid #e5e7eb", background: "white", textAlign: "left",
+          fontSize: "14px", cursor: "pointer", color: selected.length ? "#111827" : "#9ca3af",
+        }}
+      >
+        {selected.length ? selected.join(", ") : "Tap to select teeth"}
+      </button>
+
+      {open && (
+        <div style={{ marginTop: "8px", border: "1px solid #e5e7eb", borderRadius: "10px", padding: "12px", background: "#fafafa" }}>
+          <p style={{ margin: "0 0 8px", fontSize: "11px", fontWeight: "700", color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+            {dentition === "child" ? "Child Dentition" : "Adult Dentition"}
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "6px" }}>
+            {quadrants.map((col, ci) => (
+              <div key={ci} style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
+                {col.map((t) => {
+                  const on = temp.includes(t);
+                  return (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => toggleTooth(t)}
+                      style={{
+                        padding: "8px 0", borderRadius: "7px", fontSize: "13px", fontWeight: "700", cursor: "pointer",
+                        border: on ? "none" : "1px solid #d1d5db",
+                        background: on ? "#16a34a" : "white",
+                        color: on ? "white" : "#374151",
+                      }}
+                    >
+                      {t}
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              style={{ flex: 1, padding: "10px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "white", color: "#374151", fontWeight: "700", fontSize: "13px", cursor: "pointer" }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={add}
+              style={{ flex: 1, padding: "10px", borderRadius: "8px", border: "none", background: "#111827", color: "white", fontWeight: "700", fontSize: "13px", cursor: "pointer" }}
+            >
+              Add ({temp.length})
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function SectionCard({ sectionKey, label, done, activeSection, setActiveSection, children }) {
   const isOpen = activeSection === sectionKey;
@@ -122,15 +218,16 @@ export default function AppointmentWorkflow() {
           occupation: data.occupation || pfd.occupation || "",
           medical_history: pfd.medical_history || data.complete_history || "",
           chief_complaint: data.chief_complaint || pfd.chief_complaint || "",
-          missing_tooth: pfd.missing_tooth || "",
-          dental_caries: pfd.dental_caries || "",
-          deciduous_tooth: pfd.deciduous_tooth || "",
+          notes: pfd.notes || "",
+          missing_tooth: asArr(pfd.missing_tooth),
+          dental_caries: asArr(pfd.dental_caries),
+          deciduous_tooth: asArr(pfd.deciduous_tooth),
           stains: pfd.stains || "",
           calculus: pfd.calculus || "",
           recession: pfd.recession || "",
-          mobile: pfd.mobile || "",
-          pain: pfd.pain || "",
-          sensitivity: pfd.sensitivity || "",
+          mobility: asArr(pfd.mobility),
+          pain: asArr(pfd.pain),
+          sensitivity: asArr(pfd.sensitivity),
           pregnancy: pfd.pregnancy || "",
           pre_orthodontic_procedures: pfd.pre_orthodontic_procedures || [],
           pre_orthodontic_others: pfd.pre_orthodontic_others || "",
@@ -160,6 +257,7 @@ export default function AppointmentWorkflow() {
     setFormSaving(true);
     const updatedForm = {
       ...form,
+      pregnancy: form.sex === "FEMALE" ? form.pregnancy : "Not Applicable",
       pre_orthodontic_procedures: selectedProcedures,
       pre_orthodontic_others: procedureOthersText,
     };
@@ -401,58 +499,53 @@ export default function AppointmentWorkflow() {
             <span style={lbl}>Chief Complaint *</span>
             <textarea style={{ ...inp, minHeight: "80px", resize: "vertical" }} value={form.chief_complaint} onChange={sf("chief_complaint")} />
           </div>
+          <div style={{ marginBottom: "16px" }}>
+            <span style={lbl}>Notes</span>
+            <textarea style={{ ...inp, minHeight: "70px", resize: "vertical" }} value={form.notes} onChange={sf("notes")} placeholder="Any additional notes..." />
+          </div>
 
           {/* Dental Examination */}
           <p style={{ fontSize: "11px", fontWeight: "800", color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 12px" }}>Dental Examination</p>
 
+          <ToothField label="Dental Caries" dentition="adult" value={form.dental_caries} onChange={(v) => setForm((p) => ({ ...p, dental_caries: v }))} />
+          <ToothField label="Missing Tooth" dentition="adult" value={form.missing_tooth} onChange={(v) => setForm((p) => ({ ...p, missing_tooth: v }))} />
+          <ToothField label="Pain" dentition="adult" value={form.pain} onChange={(v) => setForm((p) => ({ ...p, pain: v }))} />
+          <ToothField label="Sensitivity" dentition="adult" value={form.sensitivity} onChange={(v) => setForm((p) => ({ ...p, sensitivity: v }))} />
+          <ToothField label="Mobility" dentition="adult" value={form.mobility} onChange={(v) => setForm((p) => ({ ...p, mobility: v }))} />
+          <ToothField label="Deciduous Tooth" dentition="child" value={form.deciduous_tooth} onChange={(v) => setForm((p) => ({ ...p, deciduous_tooth: v }))} />
+
           <div style={gr}>
-            <div>
-              <span style={lbl}>Missing Tooth</span>
-              <input style={inp} type="text" value={form.missing_tooth} onChange={sf("missing_tooth")} />
-            </div>
-            <div>
-              <span style={lbl}>Dental Caries</span>
-              <input style={inp} type="text" value={form.dental_caries} onChange={sf("dental_caries")} />
-            </div>
-          </div>
-          <div style={gr}>
-            <div>
-              <span style={lbl}>Deciduous Tooth</span>
-              <input style={inp} type="text" value={form.deciduous_tooth} onChange={sf("deciduous_tooth")} />
-            </div>
             <div>
               <span style={lbl}>Stains</span>
-              <input style={inp} type="text" value={form.stains} onChange={sf("stains")} />
+              <select style={inp} value={form.stains} onChange={sf("stains")}>
+                <option value="">—</option>
+                {GRADE_OPTIONS.map((g) => <option key={g} value={g}>{g}</option>)}
+              </select>
             </div>
-          </div>
-          <div style={gr}>
             <div>
               <span style={lbl}>Calculus</span>
-              <input style={inp} type="text" value={form.calculus} onChange={sf("calculus")} />
-            </div>
-            <div>
-              <span style={lbl}>Recession</span>
-              <input style={inp} type="text" value={form.recession} onChange={sf("recession")} />
-            </div>
-          </div>
-          <div style={gr}>
-            <div>
-              <span style={lbl}>Mobile</span>
-              <input style={inp} type="text" value={form.mobile} onChange={sf("mobile")} />
-            </div>
-            <div>
-              <span style={lbl}>Pain</span>
-              <input style={inp} type="text" value={form.pain} onChange={sf("pain")} />
+              <select style={inp} value={form.calculus} onChange={sf("calculus")}>
+                <option value="">—</option>
+                {GRADE_OPTIONS.map((g) => <option key={g} value={g}>{g}</option>)}
+              </select>
             </div>
           </div>
           <div style={{ ...gr, marginBottom: "16px" }}>
             <div>
-              <span style={lbl}>Sensitivity</span>
-              <input style={inp} type="text" value={form.sensitivity} onChange={sf("sensitivity")} />
+              <span style={lbl}>Recession</span>
+              <input style={inp} type="text" value={form.recession} onChange={sf("recession")} />
             </div>
             <div>
               <span style={lbl}>Pregnancy</span>
-              <input style={inp} type="text" value={form.pregnancy} onChange={sf("pregnancy")} />
+              {form.sex === "FEMALE" ? (
+                <select style={inp} value={form.pregnancy} onChange={sf("pregnancy")}>
+                  <option value="">—</option>
+                  <option value="YES">Yes</option>
+                  <option value="NO">No</option>
+                </select>
+              ) : (
+                <input style={{ ...inp, background: "#f3f4f6", color: "#9ca3af" }} type="text" value="Not Applicable" readOnly />
+              )}
             </div>
           </div>
 
