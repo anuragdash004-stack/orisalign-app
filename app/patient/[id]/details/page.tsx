@@ -176,6 +176,7 @@ export default function PatientDetailsPage() {
           age, sex, address, date, time,
           problem: `[${consultationType.toUpperCase()}] ${problem}`,
           booking_confirmed: true,
+          lead_stage: "booked",
         })
         .eq("id", id)
 

@@ -5,238 +5,198 @@ import { getSupabaseClient } from "@/lib/supabaseClient";
 
 const supabase = getSupabaseClient();
 
-export default function LeadsPage() {
+const STAGES = [
+  { key: "fresh",     label: "Fresh Leads" },
+  { key: "followups", label: "Follow-ups" },
+  { key: "callback",  label: "Call Back" },
+  { key: "booked",    label: "Booked" },
+  { key: "denied",    label: "Denied" },
+];
+
+const SOURCE_OPTIONS = [
+  { value: "website",    label: "Website" },
+  { value: "meta_ads",   label: "Meta Ads" },
+  { value: "google_ads", label: "Google Ads" },
+  { value: "walk_in",    label: "Walk-in" },
+  { value: "referral",   label: "Referral" },
+  { value: "others",     label: "Others" },
+];
+const sourceLabel = (v) => SOURCE_OPTIONS.find((s) => s.value === v)?.label || "Website";
+
+const RESPONSE_OPTIONS = [
+  { value: "responded",   label: "Responded" },
+  { value: "no_response", label: "No Response" },
+  { value: "callback",    label: "Call Back" },
+];
+const responseLabel = (v) => RESPONSE_OPTIONS.find((r) => r.value === v)?.label || "—";
+
+const CONSULT_OPTIONS = [
+  { value: "home",   label: "🏠 Home Consultation" },
+  { value: "clinic", label: "🏥 Clinic Consultation" },
+  { value: "online", label: "💻 Video Consultation" },
+];
+const CLINIC_OPTIONS = ["Nayapalli", "Patia"];
+const SEX_OPTIONS = ["MALE", "FEMALE", "OTHERS"];
+const TIME_SLOTS = ["9 AM", "11 AM", "3:30 PM", "5:30 PM"];
+const CHIEF_COMPLAINTS = [
+  "Crowding — misalignment of teeth",
+  "Spacing — gaps in between teeth",
+  "Deep bite — upper teeth overlap lower teeth",
+  "Underbite — upper teeth close inside lower teeth",
+  "Open bite — gap between upper and lower teeth on biting",
+  "General smile improvement",
+  "Others",
+];
+
+function parseProblem(problem) {
+  const m = (problem || "").match(/^\[(\w+)\]\s*(.*)$/);
+  if (m) return { consultationType: m[1].toLowerCase(), complaint: m[2] };
+  return { consultationType: "", complaint: problem || "" };
+}
+
+const EMPTY_FORM = {
+  lead_source: "walk_in", lead_response: "", name: "", age: "", phone: "", alt_phone: "",
+  address: "", sex: "", email: "", complaint: "", lead_notes: "", consultationType: "",
+  clinic_location: "", date: "", time: "", lead_stage: "fresh",
+};
+
+const input = {
+  width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #e5e7eb",
+  fontSize: "14px", outline: "none", background: "white", color: "#111827", boxSizing: "border-box",
+};
+const label = { display: "block", fontSize: "11px", fontWeight: "700", color: "#6b7280", marginBottom: "5px", letterSpacing: "0.4px", textTransform: "uppercase" };
+
+export default function LeadTrackerPage() {
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [groupedLeads, setGroupedLeads] = useState({});
+  const [activeStage, setActiveStage] = useState("fresh");
+  const [editing, setEditing] = useState(null); // lead object or "new" or null
+  const [actor, setActor] = useState(null);
 
   useEffect(() => {
-    fetchLeads();
+    const init = async () => {
+      const { data: authData } = await supabase.auth.getUser();
+      if (authData?.user) {
+        const { data: roleData } = await supabase.from("users").select("role").eq("id", authData.user.id).single();
+        setActor({ email: authData.user.email || null, role: roleData?.role || "admin" });
+      }
+      await fetchLeads();
+    };
+    init();
   }, []);
 
   const fetchLeads = async () => {
     setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from("appointments_booking")
-        .select("id, name, phone, email, created_at, status, lead_verified")
-        .eq("status", "lead")
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-
-      setLeads(data || []);
-      groupLeadsByDate(data || []);
-    } catch (err) {
-      console.error("Error fetching leads:", err);
-    } finally {
-      setLoading(false);
-    }
+    const { data, error } = await supabase
+      .from("appointments_booking")
+      .select("id, lead_number, name, phone, alt_phone, email, age, sex, address, problem, lead_notes, lead_source, lead_response, lead_stage, clinic_location, date, time, lead_verified, booking_confirmed, created_at")
+      .eq("status", "lead")
+      .order("created_at", { ascending: false });
+    if (error) console.error("Error fetching leads:", error);
+    setLeads(data || []);
+    setLoading(false);
   };
 
-  const groupLeadsByDate = (leadsData) => {
-    const grouped = {};
+  const stageOf = (lead) => lead.lead_stage || "fresh";
+  const stageLeads = leads.filter((l) => stageOf(l) === activeStage);
+  const countFor = (key) => leads.filter((l) => stageOf(l) === key).length;
 
-    leadsData.forEach((lead) => {
-      const date = new Date(lead.created_at);
-      const monthYear = date.toLocaleDateString("en-US", {
-        month: "long",
-        year: "numeric",
-      });
-      const dayDate = date.toLocaleDateString("en-US", {
-        weekday: "short",
-        month: "short",
-        day: "numeric",
-      });
+  // group by date (created_at)
+  const grouped = {};
+  stageLeads.forEach((l) => {
+    const d = new Date(l.created_at);
+    const day = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" });
+    (grouped[day] = grouped[day] || []).push(l);
+  });
 
-      if (!grouped[monthYear]) {
-        grouped[monthYear] = {};
-      }
-      if (!grouped[monthYear][dayDate]) {
-        grouped[monthYear][dayDate] = [];
-      }
-
-      grouped[monthYear][dayDate].push(lead);
-    });
-
-    setGroupedLeads(grouped);
+  const quickStage = async (lead, newStage) => {
+    setLeads((prev) => prev.map((l) => (l.id === lead.id ? { ...l, lead_stage: newStage } : l)));
+    await supabase.from("appointments_booking").update({ lead_stage: newStage }).eq("id", lead.id);
   };
 
-  const formatPhoneNumber = (phone) => {
-    if (!phone) return "N/A";
-    return phone.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3");
-  };
-
-  if (loading) {
-    return (
-      <div style={{ padding: "24px", textAlign: "center" }}>
-        <p style={{ fontSize: "16px", color: "#6b7280" }}>Loading leads...</p>
-      </div>
-    );
-  }
+  if (loading) return <div style={{ padding: "40px", textAlign: "center", color: "#6b7280" }}>Loading lead tracker...</div>;
 
   return (
-    <div style={{ padding: "24px", maxWidth: "1200px" }}>
-      <div style={{ marginBottom: "24px" }}>
-        <h1 style={{ fontSize: "28px", fontWeight: "700", color: "#111827", margin: 0 }}>
-          Booking Leads
-        </h1>
-        <p style={{ fontSize: "14px", color: "#6b7280", margin: "4px 0 0" }}>
-          Total: {leads.length} {leads.length === 1 ? "lead" : "leads"}
-          {"  ·  "}
-          <span style={{ color: "#16a34a", fontWeight: "700" }}>{leads.filter((l) => l.lead_verified).length} verified</span>
-          {"  ·  "}
-          <span style={{ color: "#b45309", fontWeight: "700" }}>{leads.filter((l) => !l.lead_verified).length} unverified</span>
-        </p>
+    <div style={{ padding: "24px", maxWidth: "1100px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "12px", marginBottom: "18px" }}>
+        <div>
+          <h1 style={{ fontSize: "28px", fontWeight: "700", color: "#111827", margin: 0 }}>Lead Tracker</h1>
+          <p style={{ fontSize: "14px", color: "#6b7280", margin: "4px 0 0" }}>{leads.length} total leads in the pipeline</p>
+        </div>
+        <button
+          onClick={() => setEditing("new")}
+          style={{ padding: "11px 20px", borderRadius: "10px", border: "none", background: "#b8905a", color: "white", fontWeight: "700", fontSize: "13px", cursor: "pointer", letterSpacing: "0.5px" }}
+        >
+          + Add Lead
+        </button>
       </div>
 
-      {leads.length === 0 ? (
-        <div
-          style={{
-            padding: "40px 24px",
-            background: "white",
-            borderRadius: "12px",
-            border: "1px solid #e5e7eb",
-            textAlign: "center",
-          }}
-        >
-          <p style={{ fontSize: "16px", color: "#9ca3af", margin: 0 }}>
-            No leads yet
-          </p>
+      {/* Stage tabs */}
+      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "20px" }}>
+        {STAGES.map((s) => (
+          <button
+            key={s.key}
+            onClick={() => setActiveStage(s.key)}
+            style={{
+              padding: "9px 16px", borderRadius: "99px", border: activeStage === s.key ? "none" : "1px solid #e5e7eb",
+              background: activeStage === s.key ? "#111827" : "white",
+              color: activeStage === s.key ? "white" : "#374151",
+              fontWeight: "700", fontSize: "13px", cursor: "pointer", letterSpacing: "0.3px",
+            }}
+          >
+            {s.label} <span style={{ opacity: 0.7 }}>({countFor(s.key)})</span>
+          </button>
+        ))}
+      </div>
+
+      {stageLeads.length === 0 ? (
+        <div style={{ padding: "40px 24px", background: "white", borderRadius: "12px", border: "1px solid #e5e7eb", textAlign: "center", color: "#9ca3af" }}>
+          No leads in this section.
         </div>
       ) : (
-        <div style={{ display: "grid", gap: "24px" }}>
-          {Object.entries(groupedLeads).map(([monthYear, dayGroups]) => (
-            <div
-              key={monthYear}
-              style={{
-                background: "white",
-                border: "1px solid #e5e7eb",
-                borderRadius: "12px",
-                overflow: "hidden",
-              }}
-            >
-              {/* Month Header */}
-              <div
-                style={{
-                  padding: "16px 20px",
-                  background: "#f8f7f5",
-                  borderBottom: "1px solid #e5e7eb",
-                  fontWeight: "700",
-                  fontSize: "14px",
-                  color: "#111827",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.5px",
-                }}
-              >
-                📅 {monthYear}
-              </div>
-
-              <div style={{ padding: "0" }}>
-                {Object.entries(dayGroups).map(([dayDate, dayLeads], dayIndex) => (
-                  <div key={dayDate} style={{ borderBottom: dayIndex < Object.keys(dayGroups).length - 1 ? "1px solid #e5e7eb" : "none" }}>
-                    {/* Day Header */}
-                    <div
-                      style={{
-                        padding: "12px 20px",
-                        background: "#fafafa",
-                        borderBottom: "1px solid #e5e7eb",
-                        fontSize: "13px",
-                        fontWeight: "600",
-                        color: "#374151",
-                      }}
-                    >
-                      📆 {dayDate}
-                    </div>
-
-                    {/* Leads for this day */}
-                    <div style={{ padding: "0" }}>
-                      {dayLeads.map((lead, index) => (
-                        <div
-                          key={lead.id}
-                          style={{
-                            padding: "14px 20px",
-                            borderBottom:
-                              index < dayLeads.length - 1
-                                ? "1px solid #f3f4f6"
-                                : "none",
-                            background: index % 2 === 0 ? "white" : "#fafafa",
-                          }}
-                        >
-                          <div
-                            style={{
-                              display: "grid",
-                              gridTemplateColumns: "auto 1fr",
-                              gap: "16px",
-                              alignItems: "start",
-                            }}
-                          >
-                            {/* Lead ID */}
-                            <div
-                              style={{
-                                padding: "6px 10px",
-                                background: "#b8905a",
-                                color: "white",
-                                borderRadius: "6px",
-                                fontSize: "11px",
-                                fontWeight: "700",
-                                whiteSpace: "nowrap",
-                              }}
-                            >
-                              #{lead.id.substring(0, 8).toUpperCase()}
-                            </div>
-
-                            {/* Lead Info */}
-                            <div style={{ display: "grid", gap: "6px" }}>
-                              <p
-                                style={{
-                                  margin: 0,
-                                  fontSize: "14px",
-                                  fontWeight: "700",
-                                  color: "#111827",
-                                }}
-                              >
-                                {lead.name}
-                              </p>
-                              <div
-                                style={{
-                                  display: "grid",
-                                  gridTemplateColumns: "auto auto",
-                                  gap: "16px",
-                                  fontSize: "12px",
-                                  color: "#6b7280",
-                                }}
-                              >
-                                <div>
-                                  <span style={{ fontWeight: "600" }}>📱</span>{" "}
-                                  {lead.phone}
-                                </div>
-                                <div>
-                                  <span style={{ fontWeight: "600" }}>✉️</span>{" "}
-                                  {lead.email}
-                                </div>
-                              </div>
-                              <div style={{ marginTop: "6px" }}>
-                                <span
-                                  style={{
-                                    display: "inline-block",
-                                    padding: "4px 10px",
-                                    background: lead.lead_verified ? "#d1fae5" : "#fef3c7",
-                                    color: lead.lead_verified ? "#065f46" : "#92400e",
-                                    border: `1px solid ${lead.lead_verified ? "#6ee7b7" : "#fcd34d"}`,
-                                    borderRadius: "99px",
-                                    fontSize: "10px",
-                                    fontWeight: "700",
-                                    letterSpacing: "0.3px",
-                                  }}
-                                >
-                                  {lead.lead_verified ? "✓ Verified" : "🕗 Unverified"}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
+        <div style={{ display: "grid", gap: "20px" }}>
+          {Object.entries(grouped).map(([day, dayLeads]) => (
+            <div key={day}>
+              <div style={{ fontSize: "12px", fontWeight: "700", color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "10px" }}>📆 {day}</div>
+              <div style={{ display: "grid", gap: "10px" }}>
+                {dayLeads.map((lead) => (
+                  <div key={lead.id} style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "14px 16px", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", alignItems: "flex-start" }}>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBottom: "4px" }}>
+                          <span style={{ fontFamily: "monospace", fontWeight: "800", color: "#b8905a", fontSize: "13px" }}>#{lead.lead_number || "—"}</span>
+                          <span style={{ fontSize: "15px", fontWeight: "700", color: "#111827" }}>{lead.name || "Unnamed"}</span>
+                          {lead.booking_confirmed && <span style={pill("#dcfce7", "#16a34a")}>✓ Patient ID issued</span>}
                         </div>
-                      ))}
+                        <div style={{ fontSize: "13px", color: "#6b7280", display: "flex", gap: "14px", flexWrap: "wrap" }}>
+                          <span>📱 {lead.phone || "N/A"}</span>
+                          {lead.email && <span>✉️ {lead.email}</span>}
+                        </div>
+                        <div style={{ marginTop: "8px", display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                          <span style={pill("#eef2ff", "#4338ca")}>{sourceLabel(lead.lead_source)}</span>
+                          {lead.lead_response && <span style={pill("#fef3c7", "#92400e")}>{responseLabel(lead.lead_response)}</span>}
+                          {lead.lead_source === "website" && (
+                            <span style={pill(lead.lead_verified ? "#dcfce7" : "#fef3c7", lead.lead_verified ? "#065f46" : "#92400e")}>
+                              {lead.lead_verified ? "✓ Verified" : "🕗 Unverified"}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "8px", alignItems: "flex-end" }}>
+                        <select
+                          value={stageOf(lead)}
+                          onChange={(e) => quickStage(lead, e.target.value)}
+                          style={{ ...input, width: "auto", padding: "6px 10px", fontSize: "12px", cursor: "pointer" }}
+                        >
+                          {STAGES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+                        </select>
+                        <button
+                          onClick={() => setEditing(lead)}
+                          style={{ padding: "6px 14px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "white", color: "#111827", fontWeight: "700", fontSize: "12px", cursor: "pointer" }}
+                        >
+                          View / Edit
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -246,13 +206,213 @@ export default function LeadsPage() {
         </div>
       )}
 
-      <style>{`
-        @media (max-width: 768px) {
-          div {
-            font-size: calc(100% - 2px);
-          }
-        }
-      `}</style>
+      {editing && (
+        <LeadForm
+          lead={editing === "new" ? null : editing}
+          actor={actor}
+          onClose={() => setEditing(null)}
+          onSaved={() => { setEditing(null); fetchLeads(); }}
+        />
+      )}
+    </div>
+  );
+}
+
+function pill(bg, color) {
+  return { display: "inline-block", padding: "3px 9px", borderRadius: "99px", background: bg, color, fontSize: "11px", fontWeight: "700", whiteSpace: "nowrap" };
+}
+
+function LeadForm({ lead, actor, onClose, onSaved }) {
+  const [form, setForm] = useState(() => {
+    if (!lead) return { ...EMPTY_FORM };
+    const { consultationType, complaint } = parseProblem(lead.problem);
+    return {
+      lead_source: lead.lead_source || "website",
+      lead_response: lead.lead_response || "",
+      name: lead.name || "", age: lead.age || "", phone: lead.phone || "",
+      alt_phone: lead.alt_phone || "", address: lead.address || "", sex: lead.sex || "",
+      email: lead.email || "", complaint, lead_notes: lead.lead_notes || "",
+      consultationType, clinic_location: lead.clinic_location || "",
+      date: lead.date || "", time: lead.time || "", lead_stage: lead.lead_stage || "fresh",
+    };
+  });
+  const [saving, setSaving] = useState(false);
+  const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
+
+  const buildPayload = (stageOverride, confirm) => {
+    const problem = form.consultationType
+      ? `[${form.consultationType.toUpperCase()}] ${form.complaint}`
+      : form.complaint;
+    return {
+      name: form.name, age: form.age || null, sex: form.sex || null,
+      phone: form.phone, alt_phone: form.alt_phone || null, email: form.email || null,
+      address: form.address || null, problem: problem || null, lead_notes: form.lead_notes || null,
+      lead_source: form.lead_source, lead_response: form.lead_response || null,
+      lead_stage: stageOverride || form.lead_stage,
+      clinic_location: form.consultationType === "clinic" ? (form.clinic_location || null) : null,
+      date: form.date || null, time: form.time || null,
+      ...(confirm ? { booking_confirmed: true } : {}),
+    };
+  };
+
+  const save = async (opts = {}) => {
+    if (!form.name || !form.phone) { alert("Name and phone number are required."); return; }
+    const confirm = !!opts.confirm;
+    setSaving(true);
+    try {
+      const payload = buildPayload(confirm ? "booked" : null, confirm);
+      let leadId = lead?.id;
+      if (lead) {
+        const { error } = await supabase.from("appointments_booking").update(payload).eq("id", lead.id);
+        if (error) throw error;
+      } else {
+        const { data, error } = await supabase
+          .from("appointments_booking")
+          .insert([{ ...payload, status: "lead", lead_verified: false }])
+          .select("id")
+          .single();
+        if (error) throw error;
+        leadId = data?.id;
+      }
+      // On first confirmation, issue the Patient ID via the welcome email.
+      if (confirm && !lead?.booking_confirmed && form.email && leadId) {
+        fetch("/api/send-welcome-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: form.email, name: form.name || "Patient", patientId: leadId }),
+        }).catch(() => {});
+      }
+      onSaved();
+    } catch (err) {
+      alert("Failed to save: " + (err.message || err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-start", justifyContent: "center", zIndex: 1000, padding: "24px", overflowY: "auto" }}>
+      <div style={{ background: "white", borderRadius: "16px", padding: "24px", width: "100%", maxWidth: "560px", boxShadow: "0 20px 60px rgba(0,0,0,0.25)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "18px" }}>
+          <h2 style={{ margin: 0, fontSize: "18px", fontWeight: "700", color: "#111827" }}>
+            {lead ? `Lead #${lead.lead_number || ""}` : "Add New Lead"}
+          </h2>
+          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: "22px", color: "#9ca3af", cursor: "pointer", lineHeight: 1 }}>×</button>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+          <div>
+            <span style={label}>Lead Source</span>
+            <select style={input} value={form.lead_source} onChange={(e) => set("lead_source", e.target.value)}>
+              {SOURCE_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <span style={label}>Response</span>
+            <select style={input} value={form.lead_response} onChange={(e) => set("lead_response", e.target.value)}>
+              <option value="">— Select —</option>
+              {RESPONSE_OPTIONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <span style={label}>Name *</span>
+            <input style={input} value={form.name} onChange={(e) => set("name", e.target.value)} />
+          </div>
+          <div>
+            <span style={label}>Age</span>
+            <input style={input} type="number" value={form.age} onChange={(e) => set("age", e.target.value)} />
+          </div>
+          <div>
+            <span style={label}>Phone *</span>
+            <input style={input} value={form.phone} onChange={(e) => set("phone", e.target.value)} />
+          </div>
+          <div>
+            <span style={label}>Alternative Number</span>
+            <input style={input} value={form.alt_phone} onChange={(e) => set("alt_phone", e.target.value)} />
+          </div>
+          <div>
+            <span style={label}>Email</span>
+            <input style={input} type="email" value={form.email} onChange={(e) => set("email", e.target.value)} />
+          </div>
+          <div>
+            <span style={label}>Sex</span>
+            <select style={input} value={form.sex} onChange={(e) => set("sex", e.target.value)}>
+              <option value="">— Select —</option>
+              {SEX_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+          <div style={{ gridColumn: "1 / -1" }}>
+            <span style={label}>Address</span>
+            <textarea style={{ ...input, minHeight: "56px", resize: "vertical" }} value={form.address} onChange={(e) => set("address", e.target.value)} />
+          </div>
+          <div style={{ gridColumn: "1 / -1" }}>
+            <span style={label}>Complaint / Problem</span>
+            <select style={input} value={form.complaint} onChange={(e) => set("complaint", e.target.value)}>
+              <option value="">— Select —</option>
+              {CHIEF_COMPLAINTS.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+          <div style={{ gridColumn: "1 / -1" }}>
+            <span style={label}>Notes</span>
+            <textarea style={{ ...input, minHeight: "56px", resize: "vertical" }} value={form.lead_notes} onChange={(e) => set("lead_notes", e.target.value)} placeholder="Anything extra to remember about this lead..." />
+          </div>
+          <div>
+            <span style={label}>Consultation Type</span>
+            <select style={input} value={form.consultationType} onChange={(e) => set("consultationType", e.target.value)}>
+              <option value="">— Select —</option>
+              {CONSULT_OPTIONS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+            </select>
+          </div>
+          {form.consultationType === "clinic" && (
+            <div>
+              <span style={label}>Clinic</span>
+              <select style={input} value={form.clinic_location} onChange={(e) => set("clinic_location", e.target.value)}>
+                <option value="">— Select —</option>
+                {CLINIC_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+          )}
+          <div>
+            <span style={label}>Preferred Date</span>
+            <input style={input} type="date" value={form.date} onChange={(e) => set("date", e.target.value)} />
+          </div>
+          <div>
+            <span style={label}>Preferred Timing</span>
+            <select style={input} value={form.time} onChange={(e) => set("time", e.target.value)}>
+              <option value="">— Select —</option>
+              {TIME_SLOTS.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+          <div>
+            <span style={label}>Stage</span>
+            <select style={input} value={form.lead_stage} onChange={(e) => set("lead_stage", e.target.value)}>
+              {STAGES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: "10px", marginTop: "22px", flexWrap: "wrap" }}>
+          <button
+            onClick={() => save()}
+            disabled={saving}
+            style={{ flex: 1, minWidth: "120px", padding: "12px", borderRadius: "10px", border: "1px solid #e5e7eb", background: "white", color: "#111827", fontWeight: "700", fontSize: "14px", cursor: saving ? "not-allowed" : "pointer" }}
+          >
+            {saving ? "Saving..." : lead ? "Save Changes" : "Add Lead"}
+          </button>
+          <button
+            onClick={() => save({ confirm: true })}
+            disabled={saving}
+            style={{ flex: 1, minWidth: "120px", padding: "12px", borderRadius: "10px", border: "none", background: "#16a34a", color: "white", fontWeight: "700", fontSize: "14px", cursor: saving ? "not-allowed" : "pointer" }}
+          >
+            {lead?.booking_confirmed ? "Update (Booked)" : "Confirm Lead → Booked"}
+          </button>
+        </div>
+        {!lead?.booking_confirmed && (
+          <p style={{ margin: "10px 0 0", fontSize: "11px", color: "#9ca3af", textAlign: "center" }}>
+            Confirming moves the lead to <strong>Booked</strong>, adds it to Appointments, and issues a Patient ID (emailed if an address is on file).
+          </p>
+        )}
+      </div>
     </div>
   );
 }

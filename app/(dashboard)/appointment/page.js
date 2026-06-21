@@ -29,9 +29,10 @@ export default function AppointmentPage() {
     let query = supabase
       .from("appointments_booking")
       .select("*")
-      // Show real appointments + VERIFIED leads. Unverified leads are excluded
-      // here (they only show under Leads until they confirm their email).
-      .or("status.neq.lead,lead_verified.eq.true")
+      // Show real appointments + CONFIRMED (booked) leads only. Leads that are
+      // still in the pipeline (fresh / follow-up / call-back / denied) stay in
+      // the Lead Tracker until they are confirmed.
+      .or("status.neq.lead,booking_confirmed.eq.true")
       .order("created_at", { ascending: false });
 
     // 👑 ADMIN → see everything

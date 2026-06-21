@@ -209,7 +209,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
           )}
           {show.leads && (
             <Link href="/leads" style={linkStyle("/leads")}>
-              {showContent ? "LEADS" : ""}
+              {showContent ? "LEAD TRACKER" : ""}
             </Link>
           )}
           {show.appointments && (
