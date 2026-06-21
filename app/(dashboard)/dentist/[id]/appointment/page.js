@@ -49,7 +49,7 @@ const EMPTY_FORM = {
   name: "", age: "", sex: "", weight: "", occupation: "",
   medical_history: "", chief_complaint: "", notes: "",
   missing_tooth: [], dental_caries: [], deciduous_tooth: [],
-  stains: "", calculus: "", recession: "",
+  stains: "", calculus: "", recession: [],
   mobility: [], pain: [], sensitivity: [], pregnancy: "",
   pre_orthodontic_procedures: [],
   pre_orthodontic_others: "",
@@ -224,7 +224,7 @@ export default function AppointmentWorkflow() {
           deciduous_tooth: asArr(pfd.deciduous_tooth),
           stains: pfd.stains || "",
           calculus: pfd.calculus || "",
-          recession: pfd.recession || "",
+          recession: asArr(pfd.recession),
           mobility: asArr(pfd.mobility),
           pain: asArr(pfd.pain),
           sensitivity: asArr(pfd.sensitivity),
@@ -512,6 +512,7 @@ export default function AppointmentWorkflow() {
           <ToothField label="Pain" dentition="adult" value={form.pain} onChange={(v) => setForm((p) => ({ ...p, pain: v }))} />
           <ToothField label="Sensitivity" dentition="adult" value={form.sensitivity} onChange={(v) => setForm((p) => ({ ...p, sensitivity: v }))} />
           <ToothField label="Mobility" dentition="adult" value={form.mobility} onChange={(v) => setForm((p) => ({ ...p, mobility: v }))} />
+          <ToothField label="Recession" dentition="adult" value={form.recession} onChange={(v) => setForm((p) => ({ ...p, recession: v }))} />
           <ToothField label="Deciduous Tooth" dentition="child" value={form.deciduous_tooth} onChange={(v) => setForm((p) => ({ ...p, deciduous_tooth: v }))} />
 
           <div style={gr}>
@@ -531,10 +532,6 @@ export default function AppointmentWorkflow() {
             </div>
           </div>
           <div style={{ ...gr, marginBottom: "16px" }}>
-            <div>
-              <span style={lbl}>Recession</span>
-              <input style={inp} type="text" value={form.recession} onChange={sf("recession")} />
-            </div>
             <div>
               <span style={lbl}>Pregnancy</span>
               {form.sex === "FEMALE" ? (
