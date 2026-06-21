@@ -60,6 +60,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
     leads:        userRole === "admin" || userRole === "counselor",
     templates:    userRole === "admin",
     calculator:   userRole === "admin",
+    coupons:      userRole === "admin",
     audit:        userRole === "admin",
   };
 
@@ -246,6 +247,14 @@ export default function Sidebar({ collapsed, setCollapsed }) {
               ...(path.startsWith("/calculator") ? { background: "#ffffff90" } : {}),
             }}>
               {showContent ? "EMI CALCULATOR" : ""}
+            </Link>
+          )}
+          {show.coupons && (
+            <Link href="/coupons" style={{
+              ...linkStyle("/coupons"),
+              ...(path.startsWith("/coupons") ? { background: "#ffffff90" } : {}),
+            }}>
+              {showContent ? "COUPONS" : ""}
             </Link>
           )}
           {show.audit && (
