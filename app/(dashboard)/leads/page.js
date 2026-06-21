@@ -112,6 +112,15 @@ export default function LeadTrackerPage() {
     await supabase.from("appointments_booking").update({ lead_stage: "fresh" }).eq("id", lead.id);
   };
 
+  // Permanently remove a lead from the system.
+  const deleteLead = async (lead) => {
+    const who = lead.name || lead.phone || lead.email || `#${lead.lead_number || ""}`;
+    if (!window.confirm(`Permanently delete this lead (${who})? This cannot be undone.`)) return;
+    const { error } = await supabase.from("appointments_booking").delete().eq("id", lead.id);
+    if (error) { alert("Failed to delete: " + error.message); return; }
+    setLeads((prev) => prev.filter((l) => l.id !== lead.id));
+  };
+
   const coldLeads = leads.filter((l) => stageOf(l) === "cold");
   const pipelineLeads = leads.filter((l) => stageOf(l) !== "cold");
 
@@ -162,7 +171,7 @@ export default function LeadTrackerPage() {
         ) : (
           <div style={{ display: "grid", gap: "10px" }}>
             {coldLeads.map((lead) => (
-              <LeadCard key={lead.id} lead={lead} cold onPromote={() => promoteToLead(lead)} onEdit={() => setEditing({ mode: "cold", lead })} />
+              <LeadCard key={lead.id} lead={lead} cold onPromote={() => promoteToLead(lead)} onEdit={() => setEditing({ mode: "cold", lead })} onDelete={() => deleteLead(lead)} />
             ))}
           </div>
         )}
@@ -239,7 +248,7 @@ export default function LeadTrackerPage() {
               ) : (
                 <div style={{ display: "grid", gap: "10px" }}>
                   {list.map((lead) => (
-                    <LeadCard key={lead.id} lead={lead} onStage={quickStage} onEdit={() => setEditing({ mode: "normal", lead })} />
+                    <LeadCard key={lead.id} lead={lead} onStage={quickStage} onEdit={() => setEditing({ mode: "normal", lead })} onDelete={() => deleteLead(lead)} />
                   ))}
                 </div>
               )}
@@ -285,7 +294,7 @@ function DateChip({ active, today, onClick, top, mid, bot }) {
   );
 }
 
-function LeadCard({ lead, onStage, onEdit, cold, onPromote }) {
+function LeadCard({ lead, onStage, onEdit, cold, onPromote, onDelete }) {
   const stage = lead.lead_stage || "fresh";
   return (
     <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "14px 16px", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
@@ -332,6 +341,12 @@ function LeadCard({ lead, onStage, onEdit, cold, onPromote }) {
             style={{ padding: "6px 14px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "white", color: "#111827", fontWeight: "700", fontSize: "12px", cursor: "pointer" }}
           >
             View / Edit
+          </button>
+          <button
+            onClick={onDelete}
+            style={{ padding: "6px 14px", borderRadius: "8px", border: "1px solid #fecaca", background: "#fef2f2", color: "#dc2626", fontWeight: "700", fontSize: "12px", cursor: "pointer" }}
+          >
+            Delete
           </button>
         </div>
       </div>
