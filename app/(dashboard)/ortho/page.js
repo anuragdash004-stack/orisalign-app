@@ -32,14 +32,17 @@ export default function OrthoPage() {
         const { data } = await supabase
           .from("appointments_booking")
           .select("*")
+          .neq("status", "lead")
           .eq("assigned_ortho", authData.user.id)
           .order("created_at", { ascending: false });
         setMyAppointments(data || []);
       } else {
-        // admin — load all appointments, no filter
+        // admin — all assigned ortho cases (never leads/cold leads)
         const { data } = await supabase
           .from("appointments_booking")
           .select("*")
+          .neq("status", "lead")
+          .not("assigned_ortho", "is", null)
           .order("created_at", { ascending: false });
         setMyAppointments(data || []);
       }

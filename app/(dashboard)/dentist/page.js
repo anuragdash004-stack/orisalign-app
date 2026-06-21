@@ -34,6 +34,9 @@ export default function DentistDashboard() {
       let query = supabase
         .from("appointments_booking")
         .select("*")
+        // Only assigned appointments reach a dentist — never leads/cold leads.
+        .neq("status", "lead")
+        .not("assigned_dentist", "is", null)
         .order("created_at", { ascending: false });
 
       if (!isAdmin) {
