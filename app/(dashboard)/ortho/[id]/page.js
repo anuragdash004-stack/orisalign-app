@@ -529,9 +529,17 @@ export default function OrthoCase() {
                       ))}
                     </div>
                     {selectedModel && (
-                      <p style={{ fontSize: "12px", color: "#16a34a", fontWeight: "600", margin: "8px 0 0" }}>
-                        ✓ {MODEL_OPTIONS.find(m => m.value === selectedModel)?.label} selected
-                      </p>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", margin: "8px 0 0" }}>
+                        <p style={{ fontSize: "12px", color: "#16a34a", fontWeight: "600", margin: 0 }}>
+                          ✓ {MODEL_OPTIONS.find(m => m.value === selectedModel)?.label} selected
+                        </p>
+                        <button
+                          onClick={() => { setSelectedModel(""); setTreatmentDuration(""); }}
+                          style={{ padding: "4px 12px", borderRadius: "7px", border: "1px solid #fecaca", background: "#fef2f2", color: "#dc2626", fontWeight: "700", fontSize: "12px", cursor: "pointer" }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
                     )}
                   </div>
 

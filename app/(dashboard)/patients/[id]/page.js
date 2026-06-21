@@ -228,6 +228,12 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
     setApplyingModel(false);
   };
 
+  const clearModel = async () => {
+    setData((prev) => ({ ...prev, treatment_model: "", full_amount: "", down_payment: "" }));
+    await supabase.from("appointments_booking").update({ treatment_model: null }).eq("id", appointmentId).catch(() => {});
+    logAudit({ appointmentId, actor, action: "Treatment Model Cleared", entity: "treatment_model", newData: { treatment_model: null } });
+  };
+
   const set = (key, val) => setData((prev) => ({ ...prev, [key]: val }));
 
   const fullAmt = parseFloat(data.full_amount) || 0;
@@ -436,11 +442,19 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
           Select Model
         </button>
         {data.treatment_model && (
-          <div style={{ marginTop: "12px", padding: "12px", background: "#f0fdf4", borderRadius: "8px", border: "1px solid #bbf7d0" }}>
-            <p style={{ margin: "0 0 6px", fontSize: "11px", fontWeight: "700", color: "#16a34a", textTransform: "uppercase" }}>Selected Model</p>
-            <p style={{ margin: 0, fontSize: "14px", fontWeight: "700", color: "#111827" }}>
-              {MODEL_OPTIONS.find(m => m.value === data.treatment_model)?.label}
-            </p>
+          <div style={{ marginTop: "12px", padding: "12px", background: "#f0fdf4", borderRadius: "8px", border: "1px solid #bbf7d0", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px" }}>
+            <div>
+              <p style={{ margin: "0 0 6px", fontSize: "11px", fontWeight: "700", color: "#16a34a", textTransform: "uppercase" }}>Selected Model</p>
+              <p style={{ margin: 0, fontSize: "14px", fontWeight: "700", color: "#111827" }}>
+                {MODEL_OPTIONS.find(m => m.value === data.treatment_model)?.label}
+              </p>
+            </div>
+            <button
+              onClick={clearModel}
+              style={{ padding: "6px 14px", borderRadius: "8px", border: "1px solid #fecaca", background: "#fef2f2", color: "#dc2626", fontWeight: "700", fontSize: "12px", cursor: "pointer", flexShrink: 0 }}
+            >
+              Cancel
+            </button>
           </div>
         )}
       </div>
@@ -1363,7 +1377,7 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                     {[10, 15].map((d) => (
                       <button
                         key={d}
-                        onClick={() => setAlignerDaysPerSet(d)}
+                        onClick={() => setAlignerDaysPerSet(alignerDaysPerSet === d ? null : d)}
                         style={{
                           flex: 1, padding: "10px", borderRadius: "8px",
                           border: alignerDaysPerSet === d ? "2px solid #b8905a" : "1px solid #e5e7eb",
@@ -1442,7 +1456,7 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                     {[10, 15].map((d) => (
                       <button
                         key={d}
-                        onClick={() => setSmileDays(String(d))}
+                        onClick={() => setSmileDays(String(smileDays) === String(d) ? "" : String(d))}
                         style={{
                           flex: 1, padding: "10px", borderRadius: "8px",
                           border: String(d) === String(smileDays) ? "2px solid #b8905a" : "1px solid #e5e7eb",
