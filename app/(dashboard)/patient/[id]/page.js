@@ -41,7 +41,7 @@ const JOURNEY_STEPS = [
   { key: "confirmed",               label: "Appointment Confirmed" },
   { key: "scanning_done",           label: "Scanning and Provisional Planning", expandable: true },
   { key: "payment_done",            label: "Plan and Payment",            expandable: true },
-  { key: "planning_done",           label: "Planning Done", expandable: true },
+  { key: "planning_done",           label: "Full Plan", expandable: true },
   { key: "plan_approved",           label: "Plan Approval", approveAction: true },
   { key: "manufacturing_started",   label: "Manufacturing Started" },
   { key: "manufacturing_completed", label: "Manufacturing Completed" },
@@ -345,6 +345,16 @@ export default function PatientJourney() {
                               Thank you for approving your treatment plan.
                             </p>
                           )}
+                          {step.key === "manufacturing_started" && done && patient.journey_steps?.manufacturing_started_at && (
+                            <p style={{ margin: "2px 0 0", fontSize: "11px", color: "#16a34a", lineHeight: "1.4" }}>
+                              Started on {new Date(patient.journey_steps.manufacturing_started_at + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                            </p>
+                          )}
+                          {step.key === "manufacturing_completed" && done && patient.journey_steps?.manufacturing_completed_at && (
+                            <p style={{ margin: "2px 0 0", fontSize: "11px", color: "#16a34a", lineHeight: "1.4" }}>
+                              Completed on {new Date(patient.journey_steps.manufacturing_completed_at + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                            </p>
+                          )}
                           {step.subtext && (
                             <p style={{ margin: "2px 0 0", fontSize: "11px", color: done ? "#16a34a" : "#9ca3af", lineHeight: "1.4" }}>
                               {step.subtext}
@@ -509,7 +519,18 @@ export default function PatientJourney() {
                     <div style={{ marginLeft: "58px", marginTop: "8px", background: "white", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
                       <p style={{ margin: "0 0 14px", fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Shipment Details</p>
                       {(() => {
-                        const shippedBatches = (patient.logistics_data?.batches || []).filter((b) => b.shipment_id);
+                        // Tracking links now live on the manufacturing batches; merge in any
+                        // legacy logistics shipment IDs by batch number.
+                        const byNum = {};
+                        (patient.manufacturing_data?.batches || []).forEach((b) => {
+                          if (b.shipment_link) byNum[b.num] = { num: b.num, start: b.start, end: b.end, shipment_link: b.shipment_link };
+                        });
+                        (patient.logistics_data?.batches || []).forEach((l) => {
+                          if (l.shipment_id || l.shipment_link) {
+                            byNum[l.num] = { ...(byNum[l.num] || { num: l.num }), shipment_id: l.shipment_id, shipment_link: byNum[l.num]?.shipment_link || l.shipment_link, delivery_partner: l.delivery_partner, delivery_partner_other: l.delivery_partner_other };
+                          }
+                        });
+                        const shippedBatches = Object.values(byNum).sort((a, b) => a.num - b.num);
                         if (shippedBatches.length === 0) {
                           return <p style={{ margin: 0, fontSize: "13px", color: "#9ca3af", fontStyle: "italic" }}>Shipment details will appear here once your aligners are dispatched.</p>;
                         }
@@ -517,26 +538,29 @@ export default function PatientJourney() {
                           <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
                             {shippedBatches.map((batch) => {
                               const partnerName = batch.delivery_partner === "Other" ? (batch.delivery_partner_other || "Other") : batch.delivery_partner;
+                              const range = (batch.start !== undefined && batch.start !== "" && batch.end !== undefined && batch.end !== "") ? ` · Aligners ${batch.start}–${batch.end}` : "";
                               return (
                                 <div key={batch.num} style={{ padding: "12px", background: "#f8f7f5", borderRadius: "10px" }}>
                                   <p style={{ margin: "0 0 8px", fontSize: "13px", fontWeight: "700", color: "#111827" }}>
-                                    Batch {batch.num}{partnerName ? ` • ${partnerName}` : ""}
+                                    Batch {batch.num}{range}{partnerName ? ` • ${partnerName}` : ""}
                                   </p>
-                                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                    <div style={{ flex: 1, padding: "8px 12px", borderRadius: "8px", background: "white", border: "1px solid #e5e7eb", fontSize: "13px", color: "#111827", fontWeight: "600", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                      {batch.shipment_id}
+                                  {batch.shipment_id && (
+                                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                      <div style={{ flex: 1, padding: "8px 12px", borderRadius: "8px", background: "white", border: "1px solid #e5e7eb", fontSize: "13px", color: "#111827", fontWeight: "600", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                        {batch.shipment_id}
+                                      </div>
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); handleCopyShipmentId(batch.num, batch.shipment_id); }}
+                                        style={{ flexShrink: 0, padding: "8px 12px", borderRadius: "8px", border: "none", background: copiedNum === batch.num ? "#16a34a" : "#b8905a", color: "white", fontWeight: "700", fontSize: "12px", cursor: "pointer", whiteSpace: "nowrap" }}
+                                      >
+                                        {copiedNum === batch.num ? "Copied!" : "Copy"}
+                                      </button>
                                     </div>
-                                    <button
-                                      onClick={(e) => { e.stopPropagation(); handleCopyShipmentId(batch.num, batch.shipment_id); }}
-                                      style={{ flexShrink: 0, padding: "8px 12px", borderRadius: "8px", border: "none", background: copiedNum === batch.num ? "#16a34a" : "#b8905a", color: "white", fontWeight: "700", fontSize: "12px", cursor: "pointer", whiteSpace: "nowrap" }}
-                                    >
-                                      {copiedNum === batch.num ? "Copied!" : "Copy"}
-                                    </button>
-                                  </div>
+                                  )}
                                   {batch.shipment_link && (
                                     <button
                                       onClick={(e) => { e.stopPropagation(); window.open(batch.shipment_link, "_blank", "noopener,noreferrer"); }}
-                                      style={{ marginTop: "10px", width: "100%", padding: "10px", borderRadius: "8px", border: "none", background: "linear-gradient(135deg, #b8905a, #f59e0b)", color: "white", fontWeight: "700", fontSize: "13px", cursor: "pointer" }}
+                                      style={{ marginTop: batch.shipment_id ? "10px" : 0, width: "100%", padding: "10px", borderRadius: "8px", border: "none", background: "linear-gradient(135deg, #b8905a, #f59e0b)", color: "white", fontWeight: "700", fontSize: "13px", cursor: "pointer" }}
                                     >
                                       Track Shipment
                                     </button>

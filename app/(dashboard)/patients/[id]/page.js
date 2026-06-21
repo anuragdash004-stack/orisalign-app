@@ -13,7 +13,7 @@ const ALL_STEPS = [
   { key: "confirmed",               label: "Appointment Confirmed" },
   { key: "scanning_done",           label: "Scanning and Provisional Planning" },
   { key: "payment_done",            label: "Plan and Payment" },
-  { key: "planning_done",           label: "Planning Done" },
+  { key: "planning_done",           label: "Full Plan" },
   { key: "plan_approved",           label: "Plan Approved" },
   { key: "manufacturing_started",   label: "Manufacturing Started" },
   { key: "manufacturing_completed", label: "Manufacturing Completed" },
@@ -752,7 +752,7 @@ function ManufacturingTab({ appointmentId, initialData, actor }) {
 
   const addBatch = () => {
     const nextNum = batches.length > 0 ? Math.max(...batches.map((b) => b.num)) + 1 : 1;
-    setBatches((prev) => [...prev, { num: nextNum, start: "", end: "", mfg_started: "", mfg_done: "" }]);
+    setBatches((prev) => [...prev, { num: nextNum, start: "", end: "", mfg_started: "", mfg_done: "", shipment_link: "" }]);
   };
 
   const updateBatch = (num, key, val) => {
@@ -764,13 +764,41 @@ function ManufacturingTab({ appointmentId, initialData, actor }) {
     if (batch.start === "" || batch.end === "") { alert("Enter the aligner set range for this batch."); return; }
     setSaving(num);
     const payload = { batches, aligner_delivered: alignerDelivered };
+
+    // Derive the journey steps from the batch fields.
+    const { data: cur } = await supabase.from("appointments_booking").select("journey_steps, email").eq("id", appointmentId).single();
+    const js = cur?.journey_steps || {};
+    const started = batches.some((b) => b.mfg_started);
+    const completed = batches.length > 0 && batches.every((b) => b.mfg_done);
+    const dispatched = batches.some((b) => b.shipment_link);
+    const startDates = batches.map((b) => b.mfg_started).filter(Boolean).sort();
+    const doneDates = batches.map((b) => b.mfg_done).filter(Boolean).sort();
+    const newJs = {
+      ...js,
+      manufacturing_started: started,
+      manufacturing_completed: completed,
+      aligners_dispatched: dispatched,
+      manufacturing_started_at: startDates[0] || null,
+      manufacturing_completed_at: doneDates[doneDates.length - 1] || null,
+    };
+
     const { error } = await supabase
       .from("appointments_booking")
-      .update({ manufacturing_data: payload })
+      .update({ manufacturing_data: payload, journey_steps: newJs })
       .eq("id", appointmentId);
     setSaving(null);
     if (!error) {
       logAudit({ appointmentId, actor, action: `Manufacturing Batch ${num} Saved`, entity: "manufacturing_data", newData: payload });
+      // Notify the patient for any step that just turned on.
+      [["manufacturing_started", started], ["manufacturing_completed", completed], ["aligners_dispatched", dispatched]].forEach(([key, val]) => {
+        if (val && !js[key]) {
+          fetch("/api/notify-step", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ appointmentId, stepKey: key, email: cur?.email || null }),
+          }).catch(() => {});
+        }
+      });
       setSavedBatch(num);
       setTimeout(() => setSavedBatch(null), 3000);
     } else {
@@ -825,6 +853,15 @@ function ManufacturingTab({ appointmentId, initialData, actor }) {
               <input style={input} type="date" value={batch.mfg_done}
                 onChange={(e) => updateBatch(batch.num, "mfg_done", e.target.value)} />
             </div>
+          </div>
+          <div style={{ marginBottom: "16px" }}>
+            <span style={label}>SHIPMENT TRACKING LINK</span>
+            <input style={input} type="url" placeholder="https://..." value={batch.shipment_link || ""}
+              onChange={(e) => updateBatch(batch.num, "shipment_link", e.target.value)} />
+            <p style={{ margin: "6px 0 0", fontSize: "11px", color: "#9ca3af" }}>
+              Start date → activates &quot;Manufacturing Started&quot;. End date → &quot;Manufacturing Completed&quot;.
+              Tracking link → &quot;Aligners Dispatched&quot; (the patient gets a Track Shipment button).
+            </p>
           </div>
           <button
             style={saving === batch.num ? { ...btnPrimary, opacity: 0.6 } : btnPrimary}
@@ -1082,6 +1119,7 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
   const [steps, setSteps] = useState(() => deriveSteps(appt));
   const [saving, setSaving] = useState(null);
   const [stepMessages, setStepMessages] = useState(() => JSON.parse(JSON.stringify(DEFAULT_STEP_MESSAGES)));
+  const [openEmail, setOpenEmail] = useState({}); // which steps have their email editor expanded
 
   // Prefill each step's editable message from the saved Message Templates so
   // what gets sent here always reflects the latest admin-edited template.
@@ -1523,22 +1561,31 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                 </div>
               )}
 
-              {/* Email message — editable, sent when step is marked done */}
+              {/* Email message — collapsed behind a button; expands to edit */}
               {isAdmin && !done && stepMessages[step.key] && step.key !== "plan_approved" && (
-                <div style={{ ...subBox, border: "1px solid #dbeafe", background: "#f0f7ff" }}>
-                  <span style={{ ...label, color: "#1e40af" }}>EMAIL TO PATIENT (sent on Mark Done)</span>
-                  <input
-                    style={input}
-                    type="text"
-                    placeholder="Subject"
-                    value={stepMessages[step.key].subject}
-                    onChange={(e) => setStepMessages((prev) => ({ ...prev, [step.key]: { ...prev[step.key], subject: e.target.value } }))}
-                  />
-                  <textarea
-                    style={{ ...input, minHeight: "90px", fontFamily: "inherit", resize: "vertical" }}
-                    value={stepMessages[step.key].body}
-                    onChange={(e) => setStepMessages((prev) => ({ ...prev, [step.key]: { ...prev[step.key], body: e.target.value } }))}
-                  />
+                <div style={{ marginTop: "8px" }}>
+                  <button
+                    onClick={() => setOpenEmail((prev) => ({ ...prev, [step.key]: !prev[step.key] }))}
+                    style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 14px", borderRadius: "8px", border: "1px solid #dbeafe", background: "#f0f7ff", color: "#1e40af", fontWeight: "700", fontSize: "12px", cursor: "pointer", letterSpacing: "0.3px" }}
+                  >
+                    ✉ Email to patient (sent on Mark Done) <span style={{ marginLeft: "auto" }}>{openEmail[step.key] ? "▲" : "▼"}</span>
+                  </button>
+                  {openEmail[step.key] && (
+                    <div style={{ ...subBox, border: "1px solid #dbeafe", background: "#f0f7ff", marginTop: "6px" }}>
+                      <input
+                        style={input}
+                        type="text"
+                        placeholder="Subject"
+                        value={stepMessages[step.key].subject}
+                        onChange={(e) => setStepMessages((prev) => ({ ...prev, [step.key]: { ...prev[step.key], subject: e.target.value } }))}
+                      />
+                      <textarea
+                        style={{ ...input, minHeight: "90px", fontFamily: "inherit", resize: "vertical" }}
+                        value={stepMessages[step.key].body}
+                        onChange={(e) => setStepMessages((prev) => ({ ...prev, [step.key]: { ...prev[step.key], body: e.target.value } }))}
+                      />
+                    </div>
+                  )}
                 </div>
               )}
             </div>
