@@ -344,22 +344,68 @@ export default function OrthoCase() {
 
         {/* ── SECTION 1: PATIENT FORM ── */}
         <ViewSection title="1. Patient Form" done={patient.form_submitted} activeSection={activeSection} setActiveSection={setActiveSection}>
-          {patient.form_submitted ? (
-            <div style={{ display: "grid", gap: "10px" }}>
-              {[
-                ["Name", patient.name],
-                ["Age", patient.age],
-                ["Occupation", patient.occupation],
-                ["Chief Complaint", patient.chief_complaint],
-                ["Complete History", patient.complete_history],
-              ].map(([label, val]) => val ? (
-                <div key={label}>
-                  <p style={{ fontSize: "12px", color: "gray", margin: "0 0 2px", textTransform: "uppercase", letterSpacing: "0.5px" }}>{label}</p>
-                  <p style={{ fontSize: "14px", color: "#111827", margin: 0, whiteSpace: "pre-wrap" }}>{val}</p>
-                </div>
-              ) : null)}
-            </div>
-          ) : (
+          {patient.form_submitted ? (() => {
+            const pfd = patient.patient_form_data || {};
+            const teeth = (v) => (Array.isArray(v) && v.length ? v.join(", ") : null);
+            const rows = [
+              ["Name", patient.name || pfd.name],
+              ["Age", patient.age || pfd.age],
+              ["Sex", pfd.sex],
+              ["Weight (kg)", pfd.weight],
+              ["Occupation", patient.occupation || pfd.occupation],
+              ["Medical History", pfd.medical_history || patient.complete_history],
+              ["Chief Complaint", patient.chief_complaint || pfd.chief_complaint],
+              ["Notes", pfd.notes],
+              ["Dental Caries", teeth(pfd.dental_caries)],
+              ["Missing Tooth", teeth(pfd.missing_tooth)],
+              ["Pain", teeth(pfd.pain)],
+              ["Sensitivity", teeth(pfd.sensitivity)],
+              ["Mobility", teeth(pfd.mobility)],
+              ["Recession", teeth(pfd.recession)],
+              ["Deciduous Tooth", teeth(pfd.deciduous_tooth)],
+              ["Stains", pfd.stains],
+              ["Calculus", pfd.calculus],
+              ["Pregnancy", pfd.pregnancy],
+              ["Pre-orthodontic Procedures", teeth(pfd.pre_orthodontic_procedures)],
+              ["Other Procedures", pfd.pre_orthodontic_others],
+            ];
+            const docs = Array.isArray(pfd.documents) ? pfd.documents : [];
+            return (
+              <div style={{ display: "grid", gap: "8px" }}>
+                {rows.map(([label, val]) => {
+                  const has = val !== null && val !== undefined && val !== "";
+                  return (
+                    <div key={label} style={{ display: "flex", justifyContent: "space-between", gap: "12px", borderBottom: "1px solid #f3f4f6", paddingBottom: "6px" }}>
+                      <span style={{ fontSize: "12px", color: "gray", textTransform: "uppercase", letterSpacing: "0.5px", flexShrink: 0, maxWidth: "45%" }}>{label}</span>
+                      <span style={{ fontSize: "14px", color: has ? "#111827" : "#9ca3af", textAlign: "right", whiteSpace: "pre-wrap", fontStyle: has ? "normal" : "italic" }}>
+                        {has ? val : "Not available"}
+                      </span>
+                    </div>
+                  );
+                })}
+                {docs.length > 0 && (
+                  <div style={{ marginTop: "10px" }}>
+                    <p style={{ fontSize: "12px", color: "gray", margin: "0 0 8px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Uploaded Documents</p>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "8px" }}>
+                      {docs.map((doc, i) => (
+                        doc.type?.startsWith("image/") ? (
+                          <a key={i} href={doc.url} target="_blank" rel="noreferrer" style={{ display: "block", border: "1px solid #e5e7eb", borderRadius: "8px", overflow: "hidden", background: "#fafafa" }}>
+                            <img src={doc.url} alt={doc.name} style={{ width: "100%", height: "90px", objectFit: "cover", display: "block" }} />
+                            <p style={{ fontSize: "10px", textAlign: "center", padding: "4px", margin: 0, color: "#374151", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{doc.name}</p>
+                          </a>
+                        ) : (
+                          <a key={i} href={doc.url} target="_blank" rel="noreferrer" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "6px", height: "120px", border: "1px solid #e5e7eb", borderRadius: "8px", background: "#fafafa", textDecoration: "none", color: "#374151", padding: "8px" }}>
+                            <span style={{ fontSize: "26px" }}>📄</span>
+                            <span style={{ fontSize: "10px", textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>{doc.name}</span>
+                          </a>
+                        )
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })() : (
             <p style={{ color: "gray", fontSize: "14px", margin: 0 }}>
               Dentist has not submitted the patient form yet.
             </p>
