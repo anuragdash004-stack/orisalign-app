@@ -123,6 +123,7 @@ export default function LeadTrackerPage() {
 
   const coldLeads = leads.filter((l) => stageOf(l) === "cold");
   const pipelineLeads = leads.filter((l) => stageOf(l) !== "cold");
+  const isAdmin = actor?.role === "admin"; // Cold Leads are admin-only
 
   // Calendar strip: 14 days back → 7 days forward, today centered/highlighted.
   const today = new Date();
@@ -145,8 +146,8 @@ export default function LeadTrackerPage() {
 
   if (loading) return <div style={{ padding: "40px", textAlign: "center", color: "#6b7280" }}>Loading lead tracker...</div>;
 
-  // ── Cold leads view ──
-  if (view === "cold") {
+  // ── Cold leads view (admin only) ──
+  if (view === "cold" && isAdmin) {
     return (
       <div style={{ padding: "24px", maxWidth: "1100px" }}>
         <button onClick={() => setView("tracker")} style={{ background: "none", border: "none", color: "#b8905a", fontSize: "13px", fontWeight: "700", cursor: "pointer", padding: 0, marginBottom: "12px", letterSpacing: "0.5px" }}>
@@ -190,12 +191,14 @@ export default function LeadTrackerPage() {
           <p style={{ fontSize: "14px", color: "#6b7280", margin: "4px 0 0" }}>{pipelineLeads.length} total leads in the pipeline</p>
         </div>
         <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-          <button
-            onClick={() => setView("cold")}
-            style={{ padding: "11px 18px", borderRadius: "10px", border: "1px solid #cbd5e1", background: "white", color: "#475569", fontWeight: "700", fontSize: "13px", cursor: "pointer", letterSpacing: "0.5px" }}
-          >
-            Cold Leads ({coldLeads.length})
-          </button>
+          {isAdmin && (
+            <button
+              onClick={() => setView("cold")}
+              style={{ padding: "11px 18px", borderRadius: "10px", border: "1px solid #cbd5e1", background: "white", color: "#475569", fontWeight: "700", fontSize: "13px", cursor: "pointer", letterSpacing: "0.5px" }}
+            >
+              Cold Leads ({coldLeads.length})
+            </button>
+          )}
           <button
             onClick={() => setEditing({ mode: "normal", lead: null })}
             style={{ padding: "11px 20px", borderRadius: "10px", border: "none", background: "#b8905a", color: "white", fontWeight: "700", fontSize: "13px", cursor: "pointer", letterSpacing: "0.5px" }}
