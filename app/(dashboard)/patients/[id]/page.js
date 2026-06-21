@@ -1074,6 +1074,29 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
   const [savingAligner, setSavingAligner] = useState(false);
   const [alignerSaved, setAlignerSaved] = useState(false);
 
+  // Smile Correction setup — number of sets, start date, days/set (admin-controlled)
+  const [smileSets, setSmileSets] = useState(appt.journey_steps?.smile_sets_count ? String(appt.journey_steps.smile_sets_count) : "");
+  const [smileStart, setSmileStart] = useState(appt.journey_steps?.smile_start_date || "");
+  const [smileDays, setSmileDays] = useState(String(appt.journey_steps?.smile_days_per_set || appt.aligner_days_per_set || 15));
+  const [savingSmile, setSavingSmile] = useState(false);
+  const [smileSaved, setSmileSaved] = useState(false);
+
+  const saveSmileSetup = async () => {
+    const sets = parseInt(smileSets, 10);
+    if (!sets || sets < 1) { alert("Enter the number of aligner sets."); return; }
+    if (!smileStart) { alert("Enter the start date."); return; }
+    setSavingSmile(true);
+    const js = appt.journey_steps || {};
+    const newJs = { ...js, smile_sets_count: sets, smile_start_date: smileStart, smile_days_per_set: parseInt(smileDays, 10) || 15 };
+    const { error } = await supabase.from("appointments_booking").update({ journey_steps: newJs }).eq("id", appointmentId);
+    setSavingSmile(false);
+    if (error) { alert("Failed to save: " + error.message); return; }
+    appt.journey_steps = newJs;
+    logAudit({ appointmentId, actor, action: "Smile Correction Program Set", entity: "smile_correction", newData: { smile_sets_count: sets, smile_start_date: smileStart, smile_days_per_set: parseInt(smileDays, 10) || 15 } });
+    setSmileSaved(true);
+    setTimeout(() => setSmileSaved(false), 3000);
+  };
+
   const handleVideoUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file || !isAdmin) return;
@@ -1391,6 +1414,61 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                   </button>
                   <p style={{ margin: 0, fontSize: "11px", color: "#9ca3af" }}>
                     Appears to the patient as a &quot;Review&quot; button that opens this link in a new tab.
+                  </p>
+                </div>
+              )}
+
+              {/* Smile Correction — admin sets number of sets, start date & days/set */}
+              {isAdmin && step.key === "smile_correction" && (
+                <div style={subBox}>
+                  <span style={label}>NUMBER OF ALIGNER SETS</span>
+                  <input
+                    style={input}
+                    type="number"
+                    min="1"
+                    placeholder="e.g. 10"
+                    value={smileSets}
+                    onChange={(e) => setSmileSets(e.target.value.replace(/\D/g, ""))}
+                  />
+                  <span style={label}>START DATE</span>
+                  <input
+                    style={input}
+                    type="date"
+                    value={smileStart}
+                    onChange={(e) => setSmileStart(e.target.value)}
+                  />
+                  <span style={label}>DAYS PER SET</span>
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    {[10, 15].map((d) => (
+                      <button
+                        key={d}
+                        onClick={() => setSmileDays(String(d))}
+                        style={{
+                          flex: 1, padding: "10px", borderRadius: "8px",
+                          border: String(d) === String(smileDays) ? "2px solid #b8905a" : "1px solid #e5e7eb",
+                          background: String(d) === String(smileDays) ? "#fff7ed" : "white",
+                          color: String(d) === String(smileDays) ? "#b8905a" : "#374151",
+                          fontWeight: "700", fontSize: "13px", cursor: "pointer",
+                        }}
+                      >
+                        {d} Days
+                      </button>
+                    ))}
+                  </div>
+                  {parseInt(smileSets, 10) > 0 && smileStart && (
+                    <p style={{ margin: 0, fontSize: "13px", color: "#16a34a", fontWeight: "700" }}>
+                      {parseInt(smileSets, 10)} sets · changes every {smileDays} days · ~{Math.round((parseInt(smileSets, 10) * (parseInt(smileDays, 10) || 15)) / 30)} months total
+                    </p>
+                  )}
+                  <button
+                    style={savingSmile ? { ...btnPrimary, opacity: 0.6 } : btnPrimary}
+                    onClick={saveSmileSetup}
+                    disabled={savingSmile}
+                  >
+                    {savingSmile ? "Saving..." : smileSaved ? "Saved ✓" : "Save Aligner Program"}
+                  </button>
+                  <p style={{ margin: 0, fontSize: "11px", color: "#9ca3af" }}>
+                    Sets the patient&apos;s set-by-set schedule and changing dates. Mark this step done so the patient can open their Smile Correction page and upload photos.
                   </p>
                 </div>
               )}

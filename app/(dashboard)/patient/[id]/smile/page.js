@@ -11,9 +11,6 @@ export default function SmileCorrectionPage() {
   const router = useRouter();
   const [appt, setAppt] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [setsCount, setSetsCount] = useState("");
-  const [startDate, setStartDate] = useState("");
   const [uploading, setUploading] = useState({});
 
   useEffect(() => {
@@ -28,29 +25,6 @@ export default function SmileCorrectionPage() {
     };
     load();
   }, [id]);
-
-  const setupSmileCorrection = async () => {
-    if (!setsCount || !startDate) {
-      alert("Please enter number of sets and start date.");
-      return;
-    }
-    setSaving(true);
-    const js = appt.journey_steps || {};
-    const updated = {
-      ...js,
-      smile_correction: true,
-      smile_sets_count: parseInt(setsCount),
-      smile_start_date: startDate,
-      smile_set_images: js.smile_set_images || {},
-    };
-    const { error } = await supabase
-      .from("appointments_booking")
-      .update({ journey_steps: updated })
-      .eq("id", id);
-    setSaving(false);
-    if (error) { alert("Save failed: " + error.message); return; }
-    setAppt({ ...appt, journey_steps: updated });
-  };
 
   const uploadImage = async (setNum, type, file) => {
     const key = `${setNum}-${type}`;
@@ -98,9 +72,9 @@ export default function SmileCorrectionPage() {
     router.push(`/patient/${id}`);
   };
 
-  const getSetDate = (index, startDateStr) => {
+  const getSetDate = (index, startDateStr, daysPerSet) => {
     const d = new Date(startDateStr);
-    d.setDate(d.getDate() + index * 15);
+    d.setDate(d.getDate() + index * (daysPerSet || 15));
     return d.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
   };
 
@@ -118,6 +92,7 @@ export default function SmileCorrectionPage() {
 
   const js = appt.journey_steps || {};
   const isSetup = js.smile_sets_count && js.smile_start_date;
+  const daysPerSet = js.smile_days_per_set || appt.aligner_days_per_set || 15;
 
   return (
     <div style={{ minHeight: "100vh", fontFamily: "'Inter', system-ui, sans-serif", paddingBottom: "80px", backgroundColor: "#faf7f2", colorScheme: "light" }}>
@@ -156,69 +131,20 @@ export default function SmileCorrectionPage() {
       <div style={{ maxWidth: "560px", margin: "0 auto", padding: "0 16px" }}>
 
         {!isSetup ? (
-          /* Setup form */
+          /* Waiting for the clinic to set up the program */
           <div style={{
-            background: "white", borderRadius: "20px", padding: "28px",
+            background: "white", borderRadius: "20px", padding: "32px 28px",
             marginTop: "-16px", boxShadow: "0 10px 40px rgba(0,0,0,0.10)",
-            marginBottom: "24px",
+            marginBottom: "24px", textAlign: "center",
           }}>
-            <h2 style={{ fontSize: "17px", fontWeight: "700", color: "#111827", marginBottom: "20px" }}>
-              Set Up Aligner Program
+            <div style={{ fontSize: "40px", marginBottom: "12px" }}>😁</div>
+            <h2 style={{ fontSize: "17px", fontWeight: "700", color: "#111827", marginBottom: "8px" }}>
+              Your Aligner Program is Being Prepared
             </h2>
-
-            <div style={{ marginBottom: "16px" }}>
-              <label style={{
-                fontSize: "11px", fontWeight: "700", color: "#6b7280",
-                letterSpacing: "0.5px", textTransform: "uppercase", display: "block", marginBottom: "6px",
-              }}>
-                Number of Sets
-              </label>
-              <input
-                type="number"
-                min="1"
-                max="100"
-                value={setsCount}
-                onChange={e => setSetsCount(e.target.value)}
-                placeholder="e.g. 10"
-                style={{
-                  width: "100%", padding: "12px 14px", borderRadius: "10px",
-                  border: "1px solid #e5e7eb", fontSize: "15px", outline: "none",
-                  boxSizing: "border-box", color: "#111827", backgroundColor: "white",
-                }}
-              />
-            </div>
-
-            <div style={{ marginBottom: "28px" }}>
-              <label style={{
-                fontSize: "11px", fontWeight: "700", color: "#6b7280",
-                letterSpacing: "0.5px", textTransform: "uppercase", display: "block", marginBottom: "6px",
-              }}>
-                Start Date
-              </label>
-              <input
-                type="date"
-                value={startDate}
-                onChange={e => setStartDate(e.target.value)}
-                style={{
-                  width: "100%", padding: "12px 14px", borderRadius: "10px",
-                  border: "1px solid #e5e7eb", fontSize: "15px", outline: "none",
-                  boxSizing: "border-box", color: "#111827", backgroundColor: "white",
-                }}
-              />
-            </div>
-
-            <button
-              onClick={setupSmileCorrection}
-              disabled={saving}
-              style={{
-                width: "100%", padding: "13px", borderRadius: "12px",
-                background: "#b8905a", color: "white", fontWeight: "700",
-                fontSize: "14px", border: "none", cursor: saving ? "not-allowed" : "pointer",
-                opacity: saving ? 0.6 : 1,
-              }}
-            >
-              {saving ? "Saving..." : "Start Aligner Program"}
-            </button>
+            <p style={{ fontSize: "14px", color: "#6b7280", lineHeight: 1.6, margin: 0 }}>
+              Our team is finalising your aligner schedule. Once it&apos;s ready, your set-by-set plan and
+              photo uploads will appear here. We&apos;ll keep you posted!
+            </p>
           </div>
 
         ) : (
@@ -233,7 +159,7 @@ export default function SmileCorrectionPage() {
               {[
                 ["Total Sets", js.smile_sets_count],
                 ["Start Date", new Date(js.smile_start_date + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })],
-                ["Days / Set", "15"],
+                ["Days / Set", String(daysPerSet)],
               ].map(([label, val]) => (
                 <div key={label} style={{ flex: 1, background: "#f8f7f5", borderRadius: "10px", padding: "10px 12px", textAlign: "center" }}>
                   <p style={{ margin: 0, fontSize: "10px", fontWeight: "700", color: "#9ca3af", letterSpacing: "0.5px", textTransform: "uppercase" }}>{label}</p>
@@ -245,7 +171,7 @@ export default function SmileCorrectionPage() {
             {/* Set cards */}
             {Array.from({ length: js.smile_sets_count }, (_, i) => {
               const setNum = i + 1;
-              const setDate = getSetDate(i, js.smile_start_date);
+              const setDate = getSetDate(i, js.smile_start_date, daysPerSet);
               const setImages = js.smile_set_images?.[setNum] || {};
               const bothUploaded = setImages.edge_to_edge && setImages.complete_bite;
 
