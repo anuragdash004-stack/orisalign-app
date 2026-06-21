@@ -55,6 +55,25 @@ const EMPTY_FORM = {
   pre_orthodontic_others: "",
 };
 
+// Wraps a single-choice control with a Cancel button shown when it has a value.
+function Clearable({ show, onClear, children }) {
+  return (
+    <div style={{ display: "flex", gap: "6px", alignItems: "stretch" }}>
+      <div style={{ flex: 1, minWidth: 0 }}>{children}</div>
+      {show && (
+        <button
+          type="button"
+          onClick={onClear}
+          title="Clear selection"
+          style={{ flexShrink: 0, padding: "0 12px", borderRadius: "8px", border: "1px solid #fecaca", background: "#fef2f2", color: "#dc2626", fontWeight: "700", fontSize: "13px", cursor: "pointer" }}
+        >
+          ✕
+        </button>
+      )}
+    </div>
+  );
+}
+
 // Multi-select FDI tooth picker. `dentition` = "adult" | "child".
 function ToothField({ label, dentition, value, onChange }) {
   const [open, setOpen] = useState(false);
@@ -71,17 +90,29 @@ function ToothField({ label, dentition, value, onChange }) {
   return (
     <div style={{ marginBottom: "14px" }}>
       <span style={lblStyle}>{label}</span>
-      <button
-        type="button"
-        onClick={openPicker}
-        style={{
-          width: "100%", minHeight: "42px", padding: "9px 12px", borderRadius: "8px",
-          border: "1px solid #e5e7eb", background: "white", textAlign: "left",
-          fontSize: "14px", cursor: "pointer", color: selected.length ? "#111827" : "#9ca3af",
-        }}
-      >
-        {selected.length ? selected.join(", ") : "Tap to select teeth"}
-      </button>
+      <div style={{ display: "flex", gap: "6px" }}>
+        <button
+          type="button"
+          onClick={openPicker}
+          style={{
+            flex: 1, minHeight: "42px", padding: "9px 12px", borderRadius: "8px",
+            border: "1px solid #e5e7eb", background: "white", textAlign: "left",
+            fontSize: "14px", cursor: "pointer", color: selected.length ? "#111827" : "#9ca3af",
+          }}
+        >
+          {selected.length ? selected.join(", ") : "Tap to select teeth"}
+        </button>
+        {selected.length > 0 && (
+          <button
+            type="button"
+            onClick={() => onChange([])}
+            title="Clear"
+            style={{ flexShrink: 0, padding: "0 14px", borderRadius: "8px", border: "1px solid #fecaca", background: "#fef2f2", color: "#dc2626", fontWeight: "700", fontSize: "13px", cursor: "pointer" }}
+          >
+            Cancel
+          </button>
+        )}
+      </div>
 
       {open && (
         <div style={{ marginTop: "8px", border: "1px solid #e5e7eb", borderRadius: "10px", padding: "12px", background: "#fafafa" }}>
@@ -371,6 +402,14 @@ export default function AppointmentWorkflow() {
     setStls((prev) => ({ ...prev, [key]: file }));
   };
 
+  const removeStl = (key) => {
+    setStls((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
+
   const allStlsSelected = STL_SLOTS.every((s) => stls[s.key]);
 
   const submitStls = async () => {
@@ -473,12 +512,14 @@ export default function AppointmentWorkflow() {
           <div style={gr}>
             <div>
               <span style={lbl}>Sex</span>
-              <select style={inp} value={form.sex} onChange={sf("sex")}>
-                <option value="">Select</option>
-                <option value="MALE">Male</option>
-                <option value="FEMALE">Female</option>
-                <option value="OTHERS">Others</option>
-              </select>
+              <Clearable show={!!form.sex} onClear={() => setForm((p) => ({ ...p, sex: "" }))}>
+                <select style={inp} value={form.sex} onChange={sf("sex")}>
+                  <option value="">Select</option>
+                  <option value="MALE">Male</option>
+                  <option value="FEMALE">Female</option>
+                  <option value="OTHERS">Others</option>
+                </select>
+              </Clearable>
             </div>
             <div>
               <span style={lbl}>Weight (kg)</span>
@@ -518,28 +559,34 @@ export default function AppointmentWorkflow() {
           <div style={gr}>
             <div>
               <span style={lbl}>Stains</span>
-              <select style={inp} value={form.stains} onChange={sf("stains")}>
-                <option value="">—</option>
-                {GRADE_OPTIONS.map((g) => <option key={g} value={g}>{g}</option>)}
-              </select>
+              <Clearable show={!!form.stains} onClear={() => setForm((p) => ({ ...p, stains: "" }))}>
+                <select style={inp} value={form.stains} onChange={sf("stains")}>
+                  <option value="">—</option>
+                  {GRADE_OPTIONS.map((g) => <option key={g} value={g}>{g}</option>)}
+                </select>
+              </Clearable>
             </div>
             <div>
               <span style={lbl}>Calculus</span>
-              <select style={inp} value={form.calculus} onChange={sf("calculus")}>
-                <option value="">—</option>
-                {GRADE_OPTIONS.map((g) => <option key={g} value={g}>{g}</option>)}
-              </select>
+              <Clearable show={!!form.calculus} onClear={() => setForm((p) => ({ ...p, calculus: "" }))}>
+                <select style={inp} value={form.calculus} onChange={sf("calculus")}>
+                  <option value="">—</option>
+                  {GRADE_OPTIONS.map((g) => <option key={g} value={g}>{g}</option>)}
+                </select>
+              </Clearable>
             </div>
           </div>
           <div style={{ ...gr, marginBottom: "16px" }}>
             <div>
               <span style={lbl}>Pregnancy</span>
               {form.sex === "FEMALE" ? (
-                <select style={inp} value={form.pregnancy} onChange={sf("pregnancy")}>
-                  <option value="">—</option>
-                  <option value="YES">Yes</option>
-                  <option value="NO">No</option>
-                </select>
+                <Clearable show={!!form.pregnancy} onClear={() => setForm((p) => ({ ...p, pregnancy: "" }))}>
+                  <select style={inp} value={form.pregnancy} onChange={sf("pregnancy")}>
+                    <option value="">—</option>
+                    <option value="YES">Yes</option>
+                    <option value="NO">No</option>
+                  </select>
+                </Clearable>
               ) : (
                 <input style={{ ...inp, background: "#f3f4f6", color: "#9ca3af" }} type="text" value="Not Applicable" readOnly />
               )}
@@ -770,7 +817,15 @@ export default function AppointmentWorkflow() {
               <div key={slot.key} style={{ border: `2px dashed ${stls[slot.key] ? "#22c55e" : "#e5e7eb"}`, borderRadius: "10px", padding: "14px", textAlign: "center", background: stls[slot.key] ? "#f0fdf4" : "#fafafa" }}>
                 <p style={{ fontSize: "12px", fontWeight: "600", marginBottom: "8px", color: "#374151" }}>{slot.label}</p>
                 {stls[slot.key] ? (
-                  <p style={{ fontSize: "11px", color: "#16a34a", margin: 0 }}>✓ {stls[slot.key].name.substring(0, 18)}...</p>
+                  <div>
+                    <p style={{ fontSize: "11px", color: "#16a34a", margin: "0 0 6px" }}>✓ {stls[slot.key].name.substring(0, 18)}...</p>
+                    <button
+                      onClick={() => removeStl(slot.key)}
+                      style={{ padding: "4px 10px", borderRadius: "6px", border: "1px solid #fecaca", background: "#fef2f2", color: "#dc2626", fontWeight: "700", fontSize: "10px", cursor: "pointer" }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 ) : (
                   <label style={{ cursor: "pointer" }}>
                     <span style={{ fontSize: "12px", color: "#6b7280" }}>Tap to upload</span>

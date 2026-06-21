@@ -105,6 +105,25 @@ const DURATION_OPTIONS = [
 
 const PROVISIONAL_PLAN_NOTE = "Your tooth will be rotated to required degree. Alignment will be corrected. Spaces will be gained. Your plan might involve IPR and buttons.";
 
+// Wraps a single-choice control with a Cancel (✕) button when it has a value.
+function Clearable({ show, onClear, children }) {
+  return (
+    <div style={{ display: "flex", gap: "6px", alignItems: "stretch" }}>
+      <div style={{ flex: 1, minWidth: 0 }}>{children}</div>
+      {show && (
+        <button
+          type="button"
+          onClick={onClear}
+          title="Clear selection"
+          style={{ flexShrink: 0, padding: "0 12px", borderRadius: "8px", border: "1px solid #fecaca", background: "#fef2f2", color: "#dc2626", fontWeight: "700", fontSize: "13px", cursor: "pointer" }}
+        >
+          ✕
+        </button>
+      )}
+    </div>
+  );
+}
+
 function ViewSection({ title, done, activeSection, setActiveSection, children }) {
   const isOpen = activeSection === title;
   return (
@@ -547,24 +566,26 @@ export default function OrthoCase() {
                     <label style={{ fontWeight: "600", fontSize: "13px", color: "#111827", display: "block", marginBottom: "6px" }}>
                       Treatment Duration
                     </label>
-                    <select
-                      value={treatmentDuration}
-                      onChange={(e) => setTreatmentDuration(e.target.value)}
-                      style={{
-                        ...inputStyle,
-                        width: "100%",
-                        padding: "10px 12px",
-                        borderRadius: "8px",
-                        border: "1px solid #d1d5db",
-                        fontSize: "14px",
-                        outline: "none",
-                      }}
-                    >
-                      <option value="">Select duration</option>
-                      {DURATION_OPTIONS.map((duration) => (
-                        <option key={duration} value={duration}>{duration}</option>
-                      ))}
-                    </select>
+                    <Clearable show={!!treatmentDuration} onClear={() => setTreatmentDuration("")}>
+                      <select
+                        value={treatmentDuration}
+                        onChange={(e) => setTreatmentDuration(e.target.value)}
+                        style={{
+                          ...inputStyle,
+                          width: "100%",
+                          padding: "10px 12px",
+                          borderRadius: "8px",
+                          border: "1px solid #d1d5db",
+                          fontSize: "14px",
+                          outline: "none",
+                        }}
+                      >
+                        <option value="">Select duration</option>
+                        {DURATION_OPTIONS.map((duration) => (
+                          <option key={duration} value={duration}>{duration}</option>
+                        ))}
+                      </select>
+                    </Clearable>
                   </div>
                 </>
               )}
@@ -664,8 +685,15 @@ export default function OrthoCase() {
                   background: "#f0fdf4", border: "1px solid #bbf7d0",
                   borderRadius: "8px", padding: "14px",
                   fontSize: "14px", color: "#16a34a", fontWeight: "600",
+                  display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px",
                 }}>
-                  ✓ Plan PDF uploaded
+                  <span>✓ Plan PDF uploaded</span>
+                  <button
+                    onClick={() => { setPdfSubmitted(false); setPdfFile(null); }}
+                    style={{ padding: "6px 14px", borderRadius: "8px", border: "1px solid #fecaca", background: "#fef2f2", color: "#dc2626", fontWeight: "700", fontSize: "12px", cursor: "pointer", flexShrink: 0 }}
+                  >
+                    Replace
+                  </button>
                 </div>
               ) : (
                 <div style={{

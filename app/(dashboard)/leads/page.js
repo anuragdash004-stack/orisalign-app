@@ -400,6 +400,25 @@ function pill(bg, color) {
   return { display: "inline-block", padding: "3px 9px", borderRadius: "99px", background: bg, color, fontSize: "11px", fontWeight: "700", whiteSpace: "nowrap" };
 }
 
+// Wraps a single-choice control with a Cancel (✕) button when it has a value.
+function Clearable({ show, onClear, children }) {
+  return (
+    <div style={{ display: "flex", gap: "6px", alignItems: "stretch" }}>
+      <div style={{ flex: 1, minWidth: 0 }}>{children}</div>
+      {show && (
+        <button
+          type="button"
+          onClick={onClear}
+          title="Clear selection"
+          style={{ flexShrink: 0, padding: "0 12px", borderRadius: "8px", border: "1px solid #fecaca", background: "#fef2f2", color: "#dc2626", fontWeight: "700", fontSize: "13px", cursor: "pointer" }}
+        >
+          ✕
+        </button>
+      )}
+    </div>
+  );
+}
+
 function LeadForm({ lead, actor, onClose, onSaved, mode = "normal" }) {
   const isCold = mode === "cold";
   const [form, setForm] = useState(() => {
@@ -496,17 +515,19 @@ function LeadForm({ lead, actor, onClose, onSaved, mode = "normal" }) {
           </div>
           <div>
             <span style={label}>Response</span>
-            <select
-              style={input}
-              value={form.lead_response}
-              onChange={(e) => {
-                const v = e.target.value;
-                setForm((p) => ({ ...p, lead_response: v, ...(v === "callback" ? { lead_stage: "callback" } : {}) }));
-              }}
-            >
-              <option value="">— Select —</option>
-              {RESPONSE_OPTIONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
-            </select>
+            <Clearable show={!!form.lead_response} onClear={() => set("lead_response", "")}>
+              <select
+                style={input}
+                value={form.lead_response}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setForm((p) => ({ ...p, lead_response: v, ...(v === "callback" ? { lead_stage: "callback" } : {}) }));
+                }}
+              >
+                <option value="">— Select —</option>
+                {RESPONSE_OPTIONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+              </select>
+            </Clearable>
           </div>
           {isCallback && (
             <>
@@ -542,10 +563,12 @@ function LeadForm({ lead, actor, onClose, onSaved, mode = "normal" }) {
           </div>
           <div>
             <span style={label}>Sex</span>
-            <select style={input} value={form.sex} onChange={(e) => set("sex", e.target.value)}>
-              <option value="">— Select —</option>
-              {SEX_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
+            <Clearable show={!!form.sex} onClear={() => set("sex", "")}>
+              <select style={input} value={form.sex} onChange={(e) => set("sex", e.target.value)}>
+                <option value="">— Select —</option>
+                {SEX_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </Clearable>
           </div>
           <div style={{ gridColumn: "1 / -1" }}>
             <span style={label}>Address</span>
@@ -553,10 +576,12 @@ function LeadForm({ lead, actor, onClose, onSaved, mode = "normal" }) {
           </div>
           <div style={{ gridColumn: "1 / -1" }}>
             <span style={label}>Complaint / Problem</span>
-            <select style={input} value={form.complaint} onChange={(e) => set("complaint", e.target.value)}>
-              <option value="">— Select —</option>
-              {CHIEF_COMPLAINTS.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
+            <Clearable show={!!form.complaint} onClear={() => set("complaint", "")}>
+              <select style={input} value={form.complaint} onChange={(e) => set("complaint", e.target.value)}>
+                <option value="">— Select —</option>
+                {CHIEF_COMPLAINTS.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </Clearable>
           </div>
           <div style={{ gridColumn: "1 / -1" }}>
             <span style={label}>Notes</span>
@@ -564,18 +589,22 @@ function LeadForm({ lead, actor, onClose, onSaved, mode = "normal" }) {
           </div>
           <div>
             <span style={label}>Consultation Type</span>
-            <select style={input} value={form.consultationType} onChange={(e) => set("consultationType", e.target.value)}>
-              <option value="">— Select —</option>
-              {CONSULT_OPTIONS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
-            </select>
+            <Clearable show={!!form.consultationType} onClear={() => set("consultationType", "")}>
+              <select style={input} value={form.consultationType} onChange={(e) => set("consultationType", e.target.value)}>
+                <option value="">— Select —</option>
+                {CONSULT_OPTIONS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+              </select>
+            </Clearable>
           </div>
           {form.consultationType === "clinic" && (
             <div>
               <span style={label}>Clinic</span>
-              <select style={input} value={form.clinic_location} onChange={(e) => set("clinic_location", e.target.value)}>
-                <option value="">— Select —</option>
-                {CLINIC_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
+              <Clearable show={!!form.clinic_location} onClear={() => set("clinic_location", "")}>
+                <select style={input} value={form.clinic_location} onChange={(e) => set("clinic_location", e.target.value)}>
+                  <option value="">— Select —</option>
+                  {CLINIC_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </Clearable>
             </div>
           )}
           <div>
@@ -584,10 +613,12 @@ function LeadForm({ lead, actor, onClose, onSaved, mode = "normal" }) {
           </div>
           <div>
             <span style={label}>Consultation Slot</span>
-            <select style={input} value={form.time} onChange={(e) => set("time", e.target.value)}>
-              <option value="">— Select —</option>
-              {TIME_SLOTS.map((t) => <option key={t} value={t}>{t}</option>)}
-            </select>
+            <Clearable show={!!form.time} onClear={() => set("time", "")}>
+              <select style={input} value={form.time} onChange={(e) => set("time", e.target.value)}>
+                <option value="">— Select —</option>
+                {TIME_SLOTS.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </Clearable>
           </div>
           {!isCold && (
             <div>
