@@ -170,11 +170,7 @@ export default function LeadTrackerPage() {
             No cold leads yet.
           </div>
         ) : (
-          <div style={{ display: "grid", gap: "10px" }}>
-            {coldLeads.map((lead) => (
-              <LeadCard key={lead.id} lead={lead} cold onPromote={() => promoteToLead(lead)} onEdit={() => setEditing({ mode: "cold", lead })} onDelete={() => deleteLead(lead)} />
-            ))}
-          </div>
+          <LeadTable leads={coldLeads} cold onPromote={promoteToLead} onEdit={(lead) => setEditing({ mode: "cold", lead })} onDelete={deleteLead} />
         )}
         {editing && (
           <LeadForm lead={editing.lead} mode={editing.mode} actor={actor} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); fetchLeads(); }} />
@@ -253,11 +249,7 @@ export default function LeadTrackerPage() {
               {list.length === 0 ? (
                 <div style={{ padding: "14px", background: "white", border: "1px dashed #e5e7eb", borderRadius: "12px", textAlign: "center", color: "#9ca3af", fontSize: "13px" }}>No leads</div>
               ) : (
-                <div style={{ display: "grid", gap: "10px" }}>
-                  {list.map((lead) => (
-                    <LeadCard key={lead.id} lead={lead} onStage={quickStage} onEdit={() => setEditing({ mode: "normal", lead })} onDelete={() => deleteLead(lead)} />
-                  ))}
-                </div>
+                <LeadTable leads={list} onStage={quickStage} onEdit={(lead) => setEditing({ mode: "normal", lead })} onDelete={deleteLead} />
               )}
             </div>
           );
@@ -398,6 +390,81 @@ function LeadCard({ lead, onStage, onEdit, cold, onPromote, onDelete }) {
 
 function pill(bg, color) {
   return { display: "inline-block", padding: "3px 9px", borderRadius: "99px", background: bg, color, fontSize: "11px", fontWeight: "700", whiteSpace: "nowrap" };
+}
+
+// Full tabular view of leads — every field in rows & columns.
+function LeadTable({ leads, onStage, onEdit, onDelete, cold, onPromote }) {
+  const th = { padding: "9px 10px", textAlign: "left", fontSize: "10px", fontWeight: "800", color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.4px", whiteSpace: "nowrap", borderBottom: "1px solid #e5e7eb", background: "#f8f7f5", position: "sticky", top: 0 };
+  const td = { padding: "9px 10px", fontSize: "12px", color: "#111827", whiteSpace: "nowrap", borderBottom: "1px solid #f3f4f6", verticalAlign: "top" };
+  const wrapTd = { ...td, whiteSpace: "normal", minWidth: "150px", maxWidth: "220px" };
+  const miniBtn = (bg, color, border) => ({ padding: "5px 10px", borderRadius: "7px", border: border || "none", background: bg, color, fontWeight: "700", fontSize: "11px", cursor: "pointer", whiteSpace: "nowrap" });
+
+  return (
+    <div style={{ overflowX: "auto", border: "1px solid #e5e7eb", borderRadius: "12px", background: "white" }}>
+      <table style={{ borderCollapse: "collapse", width: "100%", minWidth: "1500px" }}>
+        <thead>
+          <tr>
+            {["#", "Name", "Phone", "Alt #", "Email", "Age", "Sex", "Source", "Response", "Complaint", "Consultation", "Clinic", "Consult Date", "Slot", "Callback", "Address", "Notes", "Status", cold ? "Action" : "Stage", ""].map((h, i) => (
+              <th key={i} style={th}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {leads.map((lead) => {
+            const { consultationType, complaint } = parseProblem(lead.problem);
+            const consultLabel = CONSULT_OPTIONS.find((c) => c.value === consultationType)?.label || "—";
+            const callback = (lead.callback_date || lead.callback_time) ? `${formatTime(lead.callback_time)}${lead.callback_date ? " · " + formatDate(lead.callback_date) : ""}`.trim() : "—";
+            const status = lead.booking_confirmed
+              ? "✓ Confirmed"
+              : lead.lead_source === "website"
+                ? (lead.lead_verified ? "Verified" : "Unverified")
+                : "—";
+            return (
+              <tr key={lead.id}>
+                <td style={{ ...td, fontFamily: "monospace", fontWeight: 800, color: "#b8905a" }}>#{lead.lead_number || "—"}</td>
+                <td style={{ ...td, fontWeight: 700 }}>{lead.name || "—"}</td>
+                <td style={td}>{lead.phone || "—"}</td>
+                <td style={td}>{lead.alt_phone || "—"}</td>
+                <td style={td}>{lead.email || "—"}</td>
+                <td style={td}>{lead.age || "—"}</td>
+                <td style={td}>{lead.sex || "—"}</td>
+                <td style={td}>{sourceLabel(lead.lead_source)}</td>
+                <td style={td}>{lead.lead_response ? responseLabel(lead.lead_response) : "—"}</td>
+                <td style={wrapTd}>{complaint || "—"}</td>
+                <td style={td}>{consultLabel}</td>
+                <td style={td}>{lead.clinic_location || "—"}</td>
+                <td style={td}>{lead.date ? formatDate(lead.date) : "—"}</td>
+                <td style={td}>{lead.time || "—"}</td>
+                <td style={td}>{callback}</td>
+                <td style={wrapTd}>{lead.address || "—"}</td>
+                <td style={wrapTd}>{lead.lead_notes || "—"}</td>
+                <td style={td}>{status}</td>
+                <td style={td}>
+                  {cold ? (
+                    <button onClick={() => onPromote(lead)} style={miniBtn("#16a34a", "white")}>+ Add to Lead</button>
+                  ) : (
+                    <select
+                      value={lead.lead_stage || "fresh"}
+                      onChange={(e) => onStage(lead, e.target.value)}
+                      style={{ padding: "5px 8px", borderRadius: "7px", border: "1px solid #e5e7eb", fontSize: "11px", cursor: "pointer", background: "white", color: "#111827" }}
+                    >
+                      {STAGES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+                    </select>
+                  )}
+                </td>
+                <td style={td}>
+                  <div style={{ display: "flex", gap: "6px" }}>
+                    <button onClick={() => onEdit(lead)} style={miniBtn("white", "#111827", "1px solid #e5e7eb")}>Edit</button>
+                    <button onClick={() => onDelete(lead)} style={miniBtn("#fef2f2", "#dc2626", "1px solid #fecaca")}>Delete</button>
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
 }
 
 // Wraps a single-choice control with a Cancel (✕) button when it has a value.
