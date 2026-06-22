@@ -11,6 +11,7 @@ export default function AppointmentPage() {
   const [filter, setFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState(null);
+  const [expandedId, setExpandedId] = useState(null);
   const [formData, setFormData] = useState({});
   const [showAssign, setShowAssign] = useState(null);
   const [dentists, setDentists] = useState([]);
@@ -191,14 +192,40 @@ export default function AppointmentPage() {
 
       {loading ? <p>Loading appointments...</p> : appointments.length === 0 ? <p>No appointments found.</p> : (
         <div style={{ display: "grid", gap: "14px" }}>
-          {appointments.map((appointment) => (
+          {appointments.map((appointment) => {
+            const isOpen = expandedId === appointment.id || editingId === appointment.id;
+            return (
             <div key={appointment.id} style={{
-              position: "relative",
               background: appointment.status === "cancelled" ? "#fef2f2" : "white",
               border: `1px solid ${appointment.status === "cancelled" ? "#fecaca" : "#e5e7eb"}`,
-              borderRadius: "16px", padding: "20px", color: "#111827",
+              borderRadius: "16px", padding: "16px 20px", color: "#111827",
               boxShadow: "0 10px 30px rgba(0,0,0,0.05)",
             }}>
+              {/* Collapsible header — name + appointment date/time only */}
+              <div
+                onClick={() => setExpandedId(isOpen ? null : appointment.id)}
+                style={{ cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px" }}
+              >
+                <div style={{ minWidth: 0 }}>
+                  <strong style={{ fontSize: "17px", color: "#111827" }}>{appointment.name || "Unnamed patient"}</strong>
+                  <p style={{ margin: "4px 0 0", fontSize: "13px", color: "#6b7280" }}>
+                    📅 {[appointment.date, appointment.time].filter(Boolean).join(" at ") || "No date/time set"}
+                  </p>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", flexShrink: 0 }}>
+                  <span style={{
+                    fontSize: "11px", fontWeight: "700", padding: "3px 10px", borderRadius: "99px",
+                    background: appointment.status === "confirmed" ? "#dcfce7" : appointment.status === "cancelled" ? "#fee2e2" : "#fef9c3",
+                    color: appointment.status === "confirmed" ? "#16a34a" : appointment.status === "cancelled" ? "#dc2626" : "#854d0e",
+                  }}>
+                    {(appointment.status || "pending").toUpperCase()}
+                  </span>
+                  <span style={{ color: "#9ca3af", fontSize: "13px" }}>{isOpen ? "▲" : "▼"}</span>
+                </div>
+              </div>
+
+              {!isOpen ? null : (
+              <div style={{ marginTop: "16px", borderTop: "1px solid #f3f4f6", paddingTop: "16px" }}>
               {editingId === appointment.id ? (
                 <div style={{ display: "grid", gap: "8px", marginBottom: "12px" }}>
                   {[
@@ -230,8 +257,7 @@ export default function AppointmentPage() {
                 </div>
               ) : (
                 <>
-                  <strong style={{ fontSize: "17px", color: "#111827" }}>{appointment.name || "Unnamed patient"}</strong>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginTop: "12px" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
                     {userRole !== "orthodontist" && (
                       <>
                         <div style={{ background: "#f8f7f5", borderRadius: "8px", padding: "8px 12px" }}>
@@ -276,10 +302,8 @@ export default function AppointmentPage() {
                 </>
               )}
 
-              {/* TOP RIGHT */}
-              <div style={{ position: "absolute", top: "20px", right: "20px", textAlign: "right", fontSize: "13px" }}>
-                {appointment.status === "confirmed" && <div style={{ color: "green", fontWeight: "600" }}>CONFIRMED</div>}
-                {appointment.status === "cancelled" && <div style={{ color: "#dc2626", fontWeight: "600" }}>CANCELLED</div>}
+              {/* Assignment info */}
+              <div style={{ marginTop: "10px", background: "#f8f7f5", borderRadius: "8px", padding: "10px 12px", fontSize: "12px", color: "#6b7280" }}>
                 <div>Assigned at: {appointment.assigned_at ? new Date(appointment.assigned_at).toLocaleString() : "N/A"}</div>
                 <div>Dentist: {dentistMap[appointment.assigned_dentist] || "N/A"}</div>
                 <div>Ortho: {orthoMap[appointment.assigned_ortho] || "N/A"}</div>
@@ -359,8 +383,11 @@ export default function AppointmentPage() {
                   )}
                 </>
               )}
+              </div>
+              )}
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
