@@ -445,9 +445,9 @@ export default function LandingPage() {
         <div className="max-w-2xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-10 sm:mb-12">
             <h2 className="font-display text-3xl sm:text-4xl font-extrabold mb-4" style={{ color: INK }}>Transparent Pricing</h2>
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl" style={{ background: MINT, border: `1px solid ${MINTD}55` }}>
-              <Shield className="w-4 h-4 flex-shrink-0" style={{ color: MINTD }} />
-              <p className="text-sm font-bold" style={{ color: MINTD }}>No hidden fees. What you see is what you pay.</p>
+            <div className="inline-flex items-center gap-2.5 px-5 py-3 rounded-xl" style={{ background: MINT, border: `1.5px solid ${MINTD}55` }}>
+              <Shield className="w-5 h-5 flex-shrink-0" style={{ color: MINTD }} />
+              <p className="text-base sm:text-lg font-extrabold" style={{ color: MINTD }}>No hidden fees. What you see is what you pay.</p>
             </div>
           </div>
 
@@ -557,7 +557,7 @@ export default function LandingPage() {
           </div>
 
           {/* OrisPromise */}
-          <div id="orispromise" className="mt-6 rounded-[22px] overflow-hidden" style={{ background: INK, boxShadow: CARD_SHADOW }}>
+          <div id="orispromise" className="mt-12 rounded-[22px] overflow-hidden" style={{ background: INK, boxShadow: CARD_SHADOW }}>
             <div className="px-6 pt-8 pb-5 text-center" style={{ borderBottom: '1px solid rgba(184,144,90,0.2)' }}>
               <div className="inline-flex items-center justify-center w-14 h-14 rounded-full mb-3" style={{ background: 'rgba(184,144,90,0.12)', border: `1.5px solid ${GOLD}`, color: GOLD }}>
                 <Shield className="w-6 h-6" />
