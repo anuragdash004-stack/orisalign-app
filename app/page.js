@@ -277,7 +277,7 @@ export default function LandingPage() {
               <a href="/book" className="inline-flex items-center justify-center gap-2 text-base font-semibold px-7 py-3.5 rounded-xl transition-colors text-center" style={{ background: INK, color: '#fff' }}
                 onMouseEnter={e => e.currentTarget.style.background = '#000'}
                 onMouseLeave={e => e.currentTarget.style.background = INK}>
-                Book your smile assessment
+                Book your scan
                 <svg viewBox="0 0 24 24" className="w-4 h-4" {...ic}><path d="M5 12h14M13 6l6 6-6 6" /></svg>
               </a>
               <a href={WA_LINK} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 text-base font-semibold px-7 py-3.5 rounded-xl transition-colors" style={{ background: '#fff', color: INK, border: `1px solid ${LINE}` }}
