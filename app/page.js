@@ -447,7 +447,7 @@ export default function LandingPage() {
             <h2 className="font-display text-3xl sm:text-4xl font-extrabold mb-4" style={{ color: INK }}>Transparent Pricing</h2>
             <div className="inline-flex items-center gap-2.5 px-5 py-3 rounded-xl" style={{ background: MINT, border: `1.5px solid ${MINTD}55` }}>
               <Shield className="w-5 h-5 flex-shrink-0" style={{ color: MINTD }} />
-              <p className="text-base sm:text-lg font-extrabold" style={{ color: MINTD }}>No hidden fees. What you see is what you pay.</p>
+              <p className="text-base sm:text-lg font-extrabold uppercase" style={{ color: MINTD }}>No hidden charges. What you see is what you pay.</p>
             </div>
           </div>
 
