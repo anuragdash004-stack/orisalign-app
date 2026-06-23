@@ -1,9 +1,9 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-  --font-geist-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial,
+  --background: #FAFBFB;
+  --foreground: #13181B;
+  --font-geist-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Arial,
     Helvetica, sans-serif;
   --font-geist-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
 }
@@ -11,21 +11,47 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-bricolage), var(--font-inter), ui-sans-serif, sans-serif;
   --font-mono: var(--font-geist-mono);
-}
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  /* Clinical health-tech design tokens */
+  --color-bg: #FAFBFB;
+  --color-card: #FFFFFF;
+  --color-ink: #13181B;
+  --color-ink2: #5A656B;
+  --color-gold: #B8905A;
+  --color-goldDark: #946F3F;
+  --color-mint: #EAF3EE;
+  --color-mintDeep: #3F9B79;
+  --color-line: #E6E9EA;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
+}
+
+/* Visible keyboard focus */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #B8905A;
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Respect reduced-motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 input::placeholder {

@@ -1,6 +1,21 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import Script from "next/script";
+import { Bricolage_Grotesque, Inter } from "next/font/google";
+
+const bricolage = Bricolage_Grotesque({
+  subsets: ["latin"],
+  weight: ["600", "700", "800"],
+  variable: "--font-bricolage",
+  display: "swap",
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-inter",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "OrisAlign – #1 Clear Aligners in Bhubaneswar, Odisha | OrisAlign.com",
@@ -156,7 +171,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full antialiased">
+    <html lang="en" className={`h-full antialiased ${bricolage.variable} ${inter.variable}`}>
       <head>
         <link rel="icon" type="image/png" href="/pattern-icon.png" />
         <link rel="shortcut icon" type="image/png" href="/pattern-icon.png" />
