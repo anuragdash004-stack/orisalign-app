@@ -416,7 +416,15 @@ export default function LandingPage() {
                 ) : i === 1 ? (
                   <img src="/step-scan.jpg" alt="3D Scan" className="w-full h-44 object-cover" />
                 ) : i === 2 ? (
-                  <img src="/step-plan.jpg" alt="Planning" className="w-full h-44 object-cover" />
+                  <video
+                    src="/step-plan.mp4"
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    aria-label="Planning"
+                    className="w-full h-44 object-cover"
+                  />
                 ) : i === 3 ? (
                   <img src="/alignerwear.png" alt="Aligners Delivered" className="w-full h-44 object-cover" />
                 ) : (
