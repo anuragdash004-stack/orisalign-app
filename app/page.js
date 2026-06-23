@@ -299,7 +299,15 @@ export default function LandingPage() {
                 </span>
               </div>
               <div className="rounded-2xl overflow-hidden aspect-square" style={{ border: `1px solid ${LINE}` }}>
-                <img src="/smiles-collage.jpg" alt="OrisAlign patients – 500+ smiles transformed in Bhubaneswar Odisha" className="w-full h-full object-cover" />
+                <video
+                  src="/hero-video.mp4"
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  aria-label="OrisAlign patients – 500+ smiles transformed in Bhubaneswar Odisha"
+                  className="w-full h-full object-cover"
+                />
               </div>
               {/* progress strip */}
               <div className="grid grid-cols-4 gap-2 mt-4">
@@ -476,7 +484,6 @@ export default function LandingPage() {
                     {[
                       { Icon: Sparkle, label: 'Scaling & polishing ×2' },
                       { Icon: Shield, label: '1 set transparent retainer' },
-                      { Icon: Shield, label: '1 set metal retainer' },
                     ].map((item, i) => (
                       <div key={i} className="flex items-center justify-between px-4 py-2.5" style={{ borderTop: i ? `1px solid ${LINE}` : 'none', background: '#FCFDFD' }}>
                         <span className="flex items-center gap-2.5 text-sm font-medium" style={{ color: INK }}>
@@ -496,7 +503,7 @@ export default function LandingPage() {
                   <div className="flex items-center justify-between px-4 py-3 gap-2">
                     <span className="flex items-center gap-2 text-sm font-medium" style={{ color: INK }}>
                       <IdCard className="w-5 h-5" style={{ color: GOLD }} />
-                      Lifetime membership card <span className="text-xs font-semibold" style={{ color: GOLD }}>worth ₹4,999</span>
+                      Lifetime membership card <span className="text-xs font-semibold" style={{ color: GOLD }}>worth ₹5,999</span>
                       <button
                         onClick={() => setMembershipOpen(!membershipOpen)}
                         className="w-5 h-5 rounded-full inline-flex items-center justify-center font-bold transition-colors flex-shrink-0"
