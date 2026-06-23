@@ -220,7 +220,7 @@ export default function LandingPage() {
             </h1>
             <p className="text-xs mb-5" style={{ color: INK2 }}>*Terms &amp; conditions apply</p>
             <p className="text-lg sm:text-xl mb-5 leading-relaxed" style={{ color: INK2 }}>
-              Clear aligners starting with an easy EMI of <span className="font-bold" style={{ color: INK }}>₹3,999/- per month*</span>. Designed and supervised by our team of expert dentists.
+              International quality and precision, designed and fabricated by expert dentists of India. Now payable in easy EMI's of <span className="font-bold" style={{ color: INK }}>₹3,999/- per month*</span>.
             </p>
             <div className="flex flex-col gap-2.5 mb-8">
               {['🇮🇳 Made in India', 'Invisible', 'No food restrictions'].map((t, i) => (
