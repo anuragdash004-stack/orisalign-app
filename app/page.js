@@ -44,7 +44,7 @@ const STEPS = [
 ]
 
 const FAQS = [
-  { q: 'How much do OrisAlign aligners cost?', a: 'Treatment starts at ₹47,999 (EMI available from ₹3,999/month*). Final cost depends on complexity. We give a full quote after the consultation — no surprises.' },
+  { q: 'How much do OrisAlign aligners cost?', a: 'Treatment starts at ₹49,999 (EMI available from ₹5,999/month*). Final cost depends on complexity. We give a full quote after the consultation — no surprises.' },
   { q: 'Are OrisAlign aligners as effective as other imported brands?', a: 'OrisAlign uses the most advanced clear aligner technology, manufactured in India to international standards, supervised by expert dentists. OrisAlign uses the most premium materials to manufacture its aligners and is completely transparent about its cost.' },
   { q: 'How long does treatment take?', a: 'Most cases: 6–12 months. Mild cases can finish in as little as 5 months. Complex cases may take up to 18 months or more. Our expert dentist will give you an honest timeline at consultation.' },
   { q: 'Why is the consultation not free?', a: 'Our experienced dentist will visit your home or assess you at our clinic. The consultation and 3D scanning normally costs upwards of ₹3,999, but is offered to you at a minimal cost of ₹199. The fee is simply to keep things fair and maintain quality of service.' },
@@ -220,7 +220,7 @@ export default function LandingPage() {
             </h1>
             <p className="text-xs mb-5" style={{ color: INK2 }}>*Terms &amp; conditions apply</p>
             <p className="text-lg sm:text-xl mb-5 leading-relaxed" style={{ color: INK2 }}>
-              International quality and precision, designed and fabricated by expert dentists of India. Now payable in easy EMI's of <span className="font-bold" style={{ color: INK }}>₹3,999/- per month*</span>.
+              International quality and precision, designed and fabricated by expert dentists of India. Now payable in easy EMI's of <span className="font-bold" style={{ color: INK }}>₹5,999/- per month*</span>.
             </p>
             <div className="flex flex-col gap-2.5 mb-8">
               {['🇮🇳 Made in India', 'Invisible', 'No food restrictions'].map((t, i) => (
@@ -290,7 +290,7 @@ export default function LandingPage() {
           </div>
 
           {/* Right — treatment plan card */}
-          <div className="relative">
+          <div className="relative pt-8">
             <div className="rounded-[22px] bg-white p-4 sm:p-5" style={{ border: `1px solid ${LINE}`, boxShadow: CARD_SHADOW }}>
               <div className="flex items-center justify-between mb-3 px-1">
                 <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: INK2 }}>Your treatment plan</span>
@@ -321,11 +321,11 @@ export default function LandingPage() {
               {/* price chip */}
               <div className="mt-4 flex items-center justify-between rounded-xl px-4 py-3" style={{ background: INK }}>
                 <span className="text-xs font-medium" style={{ color: '#9aa6ac' }}>EMI from</span>
-                <span className="text-lg font-extrabold font-display" style={{ color: GOLD }}>₹3,999<span className="text-xs font-medium" style={{ color: '#9aa6ac' }}>/month*</span></span>
+                <span className="text-lg font-extrabold font-display" style={{ color: GOLD }}>₹5,999<span className="text-xs font-medium" style={{ color: '#9aa6ac' }}>/month*</span></span>
               </div>
             </div>
             {/* floating badges */}
-            <div className="absolute -top-3 -left-3 bg-white rounded-xl px-4 py-2.5 flex items-center gap-2.5" style={{ border: `1px solid ${LINE}`, boxShadow: '0 12px 24px -16px rgba(19,24,27,.5)' }}>
+            <div className="absolute top-0 -left-3 bg-white rounded-xl px-4 py-2.5 flex items-center gap-2.5" style={{ border: `1px solid ${LINE}`, boxShadow: '0 12px 24px -16px rgba(19,24,27,.5)' }}>
               <MapPin className="w-5 h-5" style={{ color: GOLD }} />
               <span className="text-sm leading-tight" style={{ color: INK }}>
                 <span className="font-extrabold" style={{ color: GOLD }}>International Quality</span>
@@ -445,7 +445,10 @@ export default function LandingPage() {
         <div className="max-w-2xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-10 sm:mb-12">
             <h2 className="font-display text-3xl sm:text-4xl font-extrabold mb-4" style={{ color: INK }}>Transparent Pricing</h2>
-            <p style={{ color: INK2 }}>No hidden fees. What you see is what you pay.</p>
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl" style={{ background: MINT, border: `1px solid ${MINTD}55` }}>
+              <Shield className="w-4 h-4 flex-shrink-0" style={{ color: MINTD }} />
+              <p className="text-sm font-bold" style={{ color: MINTD }}>No hidden fees. What you see is what you pay.</p>
+            </div>
           </div>
 
           {/* Single pricing card */}
@@ -455,10 +458,10 @@ export default function LandingPage() {
               <div className="flex items-end justify-center gap-2 mb-1 flex-wrap">
                 <span className="text-base font-semibold" style={{ color: '#9aa6ac' }}>Starts at</span>
                 <span className="text-xl font-bold line-through mb-1" style={{ color: '#6b7479' }}>₹54,999</span>
-                <span className="text-5xl font-extrabold font-display" style={{ color: GOLD }}>₹47,999</span>
+                <span className="text-5xl font-extrabold font-display" style={{ color: GOLD }}>₹49,999</span>
                 <span className="text-base font-semibold mb-1" style={{ color: '#9aa6ac' }}>*</span>
               </div>
-              <p className="text-sm mt-2" style={{ color: '#9aa6ac' }}>or ₹3,999/month* — No cost EMI available*</p>
+              <p className="text-sm mt-2" style={{ color: '#9aa6ac' }}>or ₹5,999/month* — No cost EMI available*</p>
             </div>
 
             {/* Freebies */}
@@ -468,7 +471,7 @@ export default function LandingPage() {
                   <span className="flex items-center gap-2.5 text-sm font-medium" style={{ color: INK }}>
                     <Gift className="w-5 h-5" style={{ color: GOLD }} />
                     <span>
-                      Benefits <span className="text-xs font-semibold" style={{ color: GOLD }}>worth ₹9,999</span>
+                      Benefits <span className="text-xs font-semibold" style={{ color: GOLD }}>worth ₹4,599</span>
                       <button
                         onClick={() => setFreebiesOpen(!freebiesOpen)}
                         className="inline-flex items-center justify-center w-5 h-5 rounded-full font-bold transition-colors align-middle ml-1 flex-shrink-0"
@@ -553,21 +556,15 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* EMI note */}
-          <div className="mt-6 rounded-2xl p-5 flex items-center justify-center gap-3 text-center" style={{ background: MINT, border: `1px solid ${LINE}` }}>
-            <CreditCard className="w-5 h-5 flex-shrink-0" style={{ color: MINTD }} />
-            <p className="text-sm" style={{ color: INK }}>
-              <strong>No-cost EMI*</strong> available via HDFC, ICICI, Bajaj Finserv &amp; more.
-            </p>
-          </div>
-
           {/* OrisPromise */}
           <div id="orispromise" className="mt-6 rounded-[22px] overflow-hidden" style={{ background: INK, boxShadow: CARD_SHADOW }}>
             <div className="px-6 pt-8 pb-5 text-center" style={{ borderBottom: '1px solid rgba(184,144,90,0.2)' }}>
               <div className="inline-flex items-center justify-center w-14 h-14 rounded-full mb-3" style={{ background: 'rgba(184,144,90,0.12)', border: `1.5px solid ${GOLD}`, color: GOLD }}>
                 <Shield className="w-6 h-6" />
               </div>
-              <div className="text-xl font-extrabold uppercase tracking-[0.18em] mb-2 font-display" style={{ color: GOLD }}>ORIS-PROMISE</div>
+              <div className="inline-block px-5 py-2 rounded-full mb-3" style={{ background: 'rgba(184,144,90,0.15)', border: `1.5px solid ${GOLD}` }}>
+                <div className="text-2xl sm:text-3xl font-extrabold uppercase tracking-[0.18em] font-display" style={{ color: GOLD }}>ORIS-PROMISE</div>
+              </div>
               <h3 className="font-display text-xl font-extrabold" style={{ color: '#fff' }}>You trust us.</h3>
               <h3 className="font-display text-xl font-extrabold mb-1" style={{ color: '#fff' }}>We take your responsibility.</h3>
             </div>
