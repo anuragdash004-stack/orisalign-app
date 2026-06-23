@@ -325,9 +325,12 @@ export default function LandingPage() {
               </div>
             </div>
             {/* floating badges */}
-            <div className="absolute -top-3 -left-3 bg-white rounded-xl px-3 py-2 flex items-center gap-2" style={{ border: `1px solid ${LINE}`, boxShadow: '0 12px 24px -16px rgba(19,24,27,.5)' }}>
-              <MapPin className="w-4 h-4" style={{ color: GOLD }} />
-              <span className="text-xs font-bold" style={{ color: INK }}>Made in India · 10-day delivery</span>
+            <div className="absolute -top-3 -left-3 bg-white rounded-xl px-4 py-2.5 flex items-center gap-2.5" style={{ border: `1px solid ${LINE}`, boxShadow: '0 12px 24px -16px rgba(19,24,27,.5)' }}>
+              <MapPin className="w-5 h-5" style={{ color: GOLD }} />
+              <span className="text-sm leading-tight" style={{ color: INK }}>
+                <span className="font-extrabold" style={{ color: GOLD }}>International Quality</span>
+                <span className="font-bold"> · Made in India · 10-day delivery</span>
+              </span>
             </div>
             <div className="absolute -bottom-3 -right-3 bg-white rounded-xl px-3 py-2 flex items-center gap-2" style={{ border: `1px solid ${LINE}`, boxShadow: '0 12px 24px -16px rgba(19,24,27,.5)' }}>
               <StarSolid className="w-4 h-4" style={{ color: GOLD }} />
