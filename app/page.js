@@ -38,7 +38,7 @@ const COMPARISON = [
 const STEPS = [
   { icon: '🦷', title: 'Consultation', desc: 'Visit our clinic or book a home consultation. Our expert dentist reviews your teeth — at just ₹199 (regular price ₹599).' },
   { icon: '📡', title: '3D Scan', desc: 'A quick, painless 3D scan of your teeth. No moulds. Done in minutes.' },
-  { icon: '📋', title: 'Planning', desc: 'Your provisional plan and planning video are shared immediately. On enrolling, the final treatment plan and duration will be given within 48 hours.' },
+  { icon: '📋', title: 'Planning', desc: 'Your provisional plan is shared immediately. 48 hours within enrolling, the final treatment plan and duration will be given.' },
   { icon: '📦', title: 'Aligners Delivered', desc: 'Your custom aligners are manufactured in India and delivered to you in just 10 days.' },
   { icon: '😁', title: 'Smile in 6 Months*', desc: 'Wear aligners 20–22 hrs/day, swap sets every 2 weeks. Track progress with monthly check-ins and 24/7 support.' },
 ]
