@@ -63,7 +63,7 @@ function parseProblem(problem) {
 }
 
 const EMPTY_FORM = {
-  lead_source: "walk_in", lead_response: "", lead_priority: "", name: "", age: "", phone: "", alt_phone: "",
+  lead_source: "walk_in", lead_response: "", lead_priority: "", campaign_id: "", name: "", age: "", phone: "", alt_phone: "",
   address: "", sex: "", email: "", complaint: "", lead_notes: "", consultationType: "",
   clinic_location: "", date: "", time: "", callback_date: "", callback_time: "", lead_stage: "fresh",
 };
@@ -81,7 +81,13 @@ export default function LeadTrackerPage() {
   const [editing, setEditing] = useState(null); // null or { mode: "normal"|"cold", lead: leadObj|null }
   const [view, setView] = useState("tracker"); // "tracker" | "cold"
   const [actor, setActor] = useState(null);
+  const [campaigns, setCampaigns] = useState([]);
   const todayRef = useRef(null);
+
+  const fetchCampaigns = async () => {
+    const { data } = await supabase.from("campaigns").select("id, campaign_number").order("campaign_number", { ascending: true });
+    setCampaigns(data || []);
+  };
 
   useEffect(() => {
     const init = async () => {
@@ -91,6 +97,7 @@ export default function LeadTrackerPage() {
         setActor({ email: authData.user.email || null, role: roleData?.role || "admin" });
       }
       await fetchLeads();
+      await fetchCampaigns();
     };
     init();
   }, []);
@@ -178,10 +185,10 @@ export default function LeadTrackerPage() {
             No cold leads yet.
           </div>
         ) : (
-          <LeadTable leads={coldLeads} cold onPromote={promoteToLead} onEdit={(lead) => setEditing({ mode: "cold", lead })} onDelete={deleteLead} />
+          <LeadTable leads={coldLeads} cold campaigns={campaigns} onPromote={promoteToLead} onEdit={(lead) => setEditing({ mode: "cold", lead })} onDelete={deleteLead} />
         )}
         {editing && (
-          <LeadForm lead={editing.lead} mode={editing.mode} actor={actor} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); fetchLeads(); }} />
+          <LeadForm lead={editing.lead} mode={editing.mode} actor={actor} campaigns={campaigns} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); fetchLeads(); }} />
         )}
       </div>
     );
@@ -257,7 +264,7 @@ export default function LeadTrackerPage() {
               {list.length === 0 ? (
                 <div style={{ padding: "14px", background: "white", border: "1px dashed #e5e7eb", borderRadius: "12px", textAlign: "center", color: "#9ca3af", fontSize: "13px" }}>No leads</div>
               ) : (
-                <LeadTable leads={list} onStage={quickStage} onEdit={(lead) => setEditing({ mode: "normal", lead })} onDelete={deleteLead} />
+                <LeadTable leads={list} campaigns={campaigns} onStage={quickStage} onEdit={(lead) => setEditing({ mode: "normal", lead })} onDelete={deleteLead} />
               )}
             </div>
           );
@@ -269,6 +276,7 @@ export default function LeadTrackerPage() {
           lead={editing.lead}
           mode={editing.mode}
           actor={actor}
+          campaigns={campaigns}
           onClose={() => setEditing(null)}
           onSaved={() => { setEditing(null); fetchLeads(); }}
         />
@@ -402,7 +410,11 @@ function pill(bg, color) {
 
 // Full tabular view of leads — every field in rows & columns, with the
 // # and Name columns frozen on the left and a prominent horizontal scrollbar.
-function LeadTable({ leads, onStage, onEdit, onDelete, cold, onPromote }) {
+function LeadTable({ leads, onStage, onEdit, onDelete, cold, onPromote, campaigns = [] }) {
+  const campaignLabel = (id) => {
+    const c = campaigns.find((x) => x.id === id);
+    return c ? `Campaign ${c.campaign_number}` : "—";
+  };
   const thBase = { padding: "9px 10px", textAlign: "left", fontSize: "10px", fontWeight: "800", color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.4px", whiteSpace: "nowrap", borderBottom: "1px solid #e5e7eb", background: "#f1ece3" };
   const td = { padding: "9px 10px", fontSize: "12px", color: "#111827", whiteSpace: "nowrap", borderBottom: "1px solid #f3f4f6", verticalAlign: "top" };
   const wrapTd = { ...td, whiteSpace: "normal", minWidth: "150px", maxWidth: "220px" };
@@ -428,7 +440,7 @@ function LeadTable({ leads, onStage, onEdit, onDelete, cold, onPromote }) {
             <tr>
               <th style={numTh}>#</th>
               <th style={nameTh}>Name</th>
-              {["Phone", "Alt #", "Email", "Age", "Sex", "Source", "Response", "Lead Status", "Complaint", "Consultation", "Clinic", "Consult Date", "Slot", "Callback", "Address", "Notes", "Verification", cold ? "Action" : "Stage", ""].map((h, i) => (
+              {["Phone", "Alt #", "Email", "Age", "Sex", "Source", "Response", "Lead Status", "Campaign", "Complaint", "Consultation", "Clinic", "Consult Date", "Slot", "Callback", "Address", "Notes", "Verification", cold ? "Action" : "Stage", ""].map((h, i) => (
                 <th key={i} style={thBase}>{h}</th>
               ))}
             </tr>
@@ -459,6 +471,7 @@ function LeadTable({ leads, onStage, onEdit, onDelete, cold, onPromote }) {
                       <span style={pill(...priorityPillColor(lead.lead_priority))}>{priorityLabel(lead.lead_priority)}</span>
                     ) : "—"}
                   </td>
+                  <td style={td}>{campaignLabel(lead.campaign_id)}</td>
                   <td style={wrapTd}>{complaint || "—"}</td>
                   <td style={td}>{consultLabel}</td>
                   <td style={td}>{lead.clinic_location || "—"}</td>
@@ -516,7 +529,7 @@ function Clearable({ show, onClear, children }) {
   );
 }
 
-function LeadForm({ lead, actor, onClose, onSaved, mode = "normal" }) {
+function LeadForm({ lead, actor, onClose, onSaved, mode = "normal", campaigns = [] }) {
   const isCold = mode === "cold";
   const [form, setForm] = useState(() => {
     if (!lead) return { ...EMPTY_FORM, lead_stage: isCold ? "cold" : "fresh" };
@@ -525,6 +538,7 @@ function LeadForm({ lead, actor, onClose, onSaved, mode = "normal" }) {
       lead_source: lead.lead_source || "website",
       lead_response: lead.lead_response || "",
       lead_priority: lead.lead_priority || "",
+      campaign_id: lead.campaign_id || "",
       name: lead.name || "", age: lead.age || "", phone: lead.phone || "",
       alt_phone: lead.alt_phone || "", address: lead.address || "", sex: lead.sex || "",
       email: lead.email || "", complaint, lead_notes: lead.lead_notes || "",
@@ -547,7 +561,7 @@ function LeadForm({ lead, actor, onClose, onSaved, mode = "normal" }) {
       phone: form.phone || null, alt_phone: form.alt_phone || null, email: form.email || null,
       address: form.address || null, problem: problem || null, lead_notes: form.lead_notes || null,
       lead_source: form.lead_source, lead_response: form.lead_response || null,
-      lead_priority: form.lead_priority || null,
+      lead_priority: form.lead_priority || null, campaign_id: form.campaign_id || null,
       lead_stage: stageOverride || form.lead_stage,
       clinic_location: form.consultationType === "clinic" ? (form.clinic_location || null) : null,
       date: form.date || null, time: form.time || null,
@@ -634,6 +648,15 @@ function LeadForm({ lead, actor, onClose, onSaved, mode = "normal" }) {
               <select style={input} value={form.lead_priority} onChange={(e) => set("lead_priority", e.target.value)}>
                 <option value="">— Select —</option>
                 {PRIORITY_OPTIONS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+              </select>
+            </Clearable>
+          </div>
+          <div>
+            <span style={label}>Campaign</span>
+            <Clearable show={!!form.campaign_id} onClear={() => set("campaign_id", "")}>
+              <select style={input} value={form.campaign_id} onChange={(e) => set("campaign_id", e.target.value)}>
+                <option value="">— Select —</option>
+                {campaigns.map((c) => <option key={c.id} value={c.id}>Campaign {c.campaign_number}</option>)}
               </select>
             </Clearable>
           </div>

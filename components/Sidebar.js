@@ -61,6 +61,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
     templates:    userRole === "admin",
     calculator:   userRole === "admin",
     coupons:      userRole === "admin",
+    campaigns:    userRole === "admin",
     audit:        userRole === "admin",
   };
 
@@ -255,6 +256,14 @@ export default function Sidebar({ collapsed, setCollapsed }) {
               ...(path.startsWith("/coupons") ? { background: "#ffffff90" } : {}),
             }}>
               {showContent ? "COUPONS" : ""}
+            </Link>
+          )}
+          {show.campaigns && (
+            <Link href="/campaigns" style={{
+              ...linkStyle("/campaigns"),
+              ...(path.startsWith("/campaigns") ? { background: "#ffffff90" } : {}),
+            }}>
+              {showContent ? "CAMPAIGNS" : ""}
             </Link>
           )}
           {show.audit && (
