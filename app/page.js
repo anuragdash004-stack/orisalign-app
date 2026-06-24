@@ -235,7 +235,7 @@ export default function LandingPage() {
             <div className="mb-7 rounded-2xl overflow-hidden" style={{ border: `1px solid ${LINE}`, background: '#fff', boxShadow: '0 1px 2px rgba(19,24,27,.04)' }}>
               <div className="px-5 py-4">
                 <div className="flex items-center gap-1.5 text-sm flex-wrap font-medium" style={{ color: INK }}>
-                  Book your smile assessment for
+                  Book your scan for
                   <button
                     onClick={() => setAssessmentOpen(o => !o)}
                     className="w-5 h-5 rounded-full inline-flex items-center justify-center font-bold transition-colors flex-shrink-0"
@@ -334,7 +334,7 @@ export default function LandingPage() {
             </div>
             <div className="absolute -bottom-3 -right-3 bg-white rounded-xl px-3 py-2 flex items-center gap-2" style={{ border: `1px solid ${LINE}`, boxShadow: '0 12px 24px -16px rgba(19,24,27,.5)' }}>
               <StarSolid className="w-4 h-4" style={{ color: GOLD }} />
-              <span className="text-xs font-bold" style={{ color: INK }}>4.9 · 500+ reviews</span>
+              <span className="text-xs font-bold" style={{ color: INK }}>4.2 · 500+ reviews</span>
             </div>
           </div>
         </div>
@@ -348,7 +348,7 @@ export default function LandingPage() {
               { Icon: Stethoscope, label: 'Designed by expert dentists' },
               { Icon: StarSolid, label: '500+ Smiles Transformed' },
               { Icon: MapPin, label: 'Made in India' },
-              { Icon: StarSolid, label: '4.9 Google Rating' },
+              { Icon: StarSolid, label: '4.2 Google Rating' },
               { Icon: MapPin, label: 'Bhubaneswar, Odisha' },
             ].map(({ Icon, label }, i) => (
               <div key={i} className="flex items-center gap-2.5 rounded-xl px-4 py-3" style={{ background: '#FAFBFB', border: `1px solid ${LINE}` }}>
