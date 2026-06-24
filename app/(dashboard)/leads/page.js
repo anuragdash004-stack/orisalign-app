@@ -30,6 +30,14 @@ const RESPONSE_OPTIONS = [
 ];
 const responseLabel = (v) => RESPONSE_OPTIONS.find((r) => r.value === v)?.label || "—";
 
+const PRIORITY_OPTIONS = [
+  { value: "hot",      label: "Hot" },
+  { value: "moderate", label: "Moderate" },
+  { value: "cold",     label: "Cold" },
+];
+const priorityLabel = (v) => PRIORITY_OPTIONS.find((p) => p.value === v)?.label || "—";
+const priorityPillColor = (v) => v === "hot" ? ["#fee2e2", "#b91c1c"] : v === "moderate" ? ["#fef3c7", "#92400e"] : v === "cold" ? ["#dbeafe", "#1d4ed8"] : null;
+
 const CONSULT_OPTIONS = [
   { value: "home",   label: "🏠 Home Consultation" },
   { value: "clinic", label: "🏥 Clinic Consultation" },
@@ -55,7 +63,7 @@ function parseProblem(problem) {
 }
 
 const EMPTY_FORM = {
-  lead_source: "walk_in", lead_response: "", name: "", age: "", phone: "", alt_phone: "",
+  lead_source: "walk_in", lead_response: "", lead_priority: "", name: "", age: "", phone: "", alt_phone: "",
   address: "", sex: "", email: "", complaint: "", lead_notes: "", consultationType: "",
   clinic_location: "", date: "", time: "", callback_date: "", callback_time: "", lead_stage: "fresh",
 };
@@ -420,7 +428,7 @@ function LeadTable({ leads, onStage, onEdit, onDelete, cold, onPromote }) {
             <tr>
               <th style={numTh}>#</th>
               <th style={nameTh}>Name</th>
-              {["Phone", "Alt #", "Email", "Age", "Sex", "Source", "Response", "Complaint", "Consultation", "Clinic", "Consult Date", "Slot", "Callback", "Address", "Notes", "Status", cold ? "Action" : "Stage", ""].map((h, i) => (
+              {["Phone", "Alt #", "Email", "Age", "Sex", "Source", "Response", "Lead Status", "Complaint", "Consultation", "Clinic", "Consult Date", "Slot", "Callback", "Address", "Notes", "Verification", cold ? "Action" : "Stage", ""].map((h, i) => (
                 <th key={i} style={thBase}>{h}</th>
               ))}
             </tr>
@@ -446,6 +454,11 @@ function LeadTable({ leads, onStage, onEdit, onDelete, cold, onPromote }) {
                   <td style={td}>{lead.sex || "—"}</td>
                   <td style={td}>{sourceLabel(lead.lead_source)}</td>
                   <td style={td}>{lead.lead_response ? responseLabel(lead.lead_response) : "—"}</td>
+                  <td style={td}>
+                    {lead.lead_priority ? (
+                      <span style={pill(...priorityPillColor(lead.lead_priority))}>{priorityLabel(lead.lead_priority)}</span>
+                    ) : "—"}
+                  </td>
                   <td style={wrapTd}>{complaint || "—"}</td>
                   <td style={td}>{consultLabel}</td>
                   <td style={td}>{lead.clinic_location || "—"}</td>
@@ -511,6 +524,7 @@ function LeadForm({ lead, actor, onClose, onSaved, mode = "normal" }) {
     return {
       lead_source: lead.lead_source || "website",
       lead_response: lead.lead_response || "",
+      lead_priority: lead.lead_priority || "",
       name: lead.name || "", age: lead.age || "", phone: lead.phone || "",
       alt_phone: lead.alt_phone || "", address: lead.address || "", sex: lead.sex || "",
       email: lead.email || "", complaint, lead_notes: lead.lead_notes || "",
@@ -533,6 +547,7 @@ function LeadForm({ lead, actor, onClose, onSaved, mode = "normal" }) {
       phone: form.phone || null, alt_phone: form.alt_phone || null, email: form.email || null,
       address: form.address || null, problem: problem || null, lead_notes: form.lead_notes || null,
       lead_source: form.lead_source, lead_response: form.lead_response || null,
+      lead_priority: form.lead_priority || null,
       lead_stage: stageOverride || form.lead_stage,
       clinic_location: form.consultationType === "clinic" ? (form.clinic_location || null) : null,
       date: form.date || null, time: form.time || null,
@@ -610,6 +625,15 @@ function LeadForm({ lead, actor, onClose, onSaved, mode = "normal" }) {
               >
                 <option value="">— Select —</option>
                 {RESPONSE_OPTIONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+              </select>
+            </Clearable>
+          </div>
+          <div>
+            <span style={label}>Status</span>
+            <Clearable show={!!form.lead_priority} onClear={() => set("lead_priority", "")}>
+              <select style={input} value={form.lead_priority} onChange={(e) => set("lead_priority", e.target.value)}>
+                <option value="">— Select —</option>
+                {PRIORITY_OPTIONS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
               </select>
             </Clearable>
           </div>
