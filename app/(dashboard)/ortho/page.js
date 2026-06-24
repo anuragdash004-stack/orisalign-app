@@ -37,12 +37,12 @@ export default function OrthoPage() {
           .order("created_at", { ascending: false });
         setMyAppointments(data || []);
       } else {
-        // admin — all assigned ortho cases (never leads/cold leads)
+        // admin — every non-lead appointment, assigned or not, so unassigned
+        // confirmed bookings stay visible for assignment.
         const { data } = await supabase
           .from("appointments_booking")
           .select("*")
           .neq("status", "lead")
-          .not("assigned_ortho", "is", null)
           .order("created_at", { ascending: false });
         setMyAppointments(data || []);
       }
