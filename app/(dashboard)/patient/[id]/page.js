@@ -108,6 +108,7 @@ export default function PatientJourney() {
   const [applyingCoupon, setApplyingCoupon] = useState(false);
   const [orisproVariant, setOrisproVariant] = useState("one"); // "one" or "two" for payment
   const [scanningVariant, setScanningVariant] = useState("one"); // "one" or "two" for scanning view
+  const [payNowLoading, setPayNowLoading] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -238,6 +239,33 @@ export default function PatientJourney() {
       return;
     }
     if (step.expandable) { setExpandedStep(expandedStep === step.key ? null : step.key); }
+  };
+
+  // Whatever amount is shown on screen (after admin discount + any coupons
+  // the patient applied) must be exactly what the gateway charges. The
+  // gateway only trusts payment_type_to_collect/payment_data on the server,
+  // so we push the displayed amount there as a custom amount before
+  // redirecting — otherwise the server falls back to the stale, undiscounted
+  // down_payment/full_amount and overcharges.
+  const handlePayNow = async (amount) => {
+    setPayNowLoading(true);
+    try {
+      const res = await fetch("/api/set-payment-type", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ appointmentId: id, paymentType: "others", customAmount: amount }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        alert("Couldn't start payment: " + (j.error || "Please try again."));
+        return;
+      }
+      router.push(`/checkout?id=${id}&amount=${amount}`);
+    } catch {
+      alert("Network error. Please try again.");
+    } finally {
+      setPayNowLoading(false);
+    }
   };
 
   const handleCopyShipmentId = async (num, shipmentId) => {
@@ -772,24 +800,33 @@ export default function PatientJourney() {
                           )}
 
                           {/* Pay Now Button */}
-                          <a
-                            href={`/checkout?id=${id}&amount=${paymentMode === "down" ? getVariantPricing().downPayment || pd.down_payment : calculateFinalAmount({ full_amount: getVariantPricing().fullAmount || pd.full_amount, discount: pd.discount }, appliedCoupons)}`}
+                          <button
+                            onClick={() => {
+                              const amount = paymentMode === "down"
+                                ? (getVariantPricing().downPayment || pd.down_payment)
+                                : calculateFinalAmount({ full_amount: getVariantPricing().fullAmount || pd.full_amount, discount: pd.discount }, appliedCoupons);
+                              handlePayNow(amount);
+                            }}
+                            disabled={payNowLoading}
                             style={{
                               display: "block",
+                              width: "100%",
                               padding: "12px",
                               borderRadius: "10px",
+                              border: "none",
                               background: "linear-gradient(135deg, #b8905a, #f59e0b)",
                               color: "white",
                               fontWeight: "800",
                               fontSize: "14px",
                               textAlign: "center",
-                              textDecoration: "none",
                               letterSpacing: "0.3px",
                               boxShadow: "0 4px 10px rgba(184, 144, 90, 0.25)",
+                              cursor: payNowLoading ? "not-allowed" : "pointer",
+                              opacity: payNowLoading ? 0.7 : 1,
                             }}
                           >
-                            Pay Now · {paymentMode === "down" ? fmt(getVariantPricing().downPayment || pd.down_payment) : fmt(calculateFinalAmount({ full_amount: getVariantPricing().fullAmount || pd.full_amount, discount: pd.discount }, appliedCoupons))}
-                          </a>
+                            {payNowLoading ? "Starting payment..." : `Pay Now · ${paymentMode === "down" ? fmt(getVariantPricing().downPayment || pd.down_payment) : fmt(calculateFinalAmount({ full_amount: getVariantPricing().fullAmount || pd.full_amount, discount: pd.discount }, appliedCoupons))}`}
+                          </button>
                         </div>
                       )}
                     </div>
