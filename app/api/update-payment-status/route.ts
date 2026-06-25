@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { logAuditEntry, getClientInfo } from "@/lib/auditLog";
+import { getClientInfo } from "@/lib/auditLog";
+import { recordPaymentReceived } from "@/lib/paymentHelper";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -47,116 +48,36 @@ export async function POST(req: Request) {
 
     const { ip, userAgent } = getClientInfo(req);
 
-    // Validate inputs
-    if (!appointmentId || !amountPaid || amountPaid <= 0) {
-      return NextResponse.json(
-        { error: "appointmentId and amountPaid (> 0) required" },
-        { status: 400 }
-      );
-    }
-
-    // Fetch appointment with payment data
-    const { data: appt, error: fetchError } = await supabase
-      .from("appointments_booking")
-      .select(
-        "id, name, payment_data, amount_paid, amount_to_pay, payment_status, first_payment_date, last_payment_date"
-      )
-      .eq("id", appointmentId)
-      .single();
-
-    if (fetchError || !appt) {
-      return NextResponse.json(
-        { error: "Appointment not found" },
-        { status: 404 }
-      );
-    }
-
-    const pd = (appt.payment_data as Record<string, unknown>) || {};
-    const fullAmount = Number(pd.full_amount) || 0;
-    const previouslyPaid = Number(appt.amount_paid) || 0;
-    const newTotalPaid = previouslyPaid + amountPaid;
-
-    // Validate amount doesn't exceed full amount
-    if (newTotalPaid > fullAmount) {
-      return NextResponse.json(
-        {
-          error: `Payment would exceed total (₹${fullAmount}). Already paid: ₹${previouslyPaid}, trying to add: ₹${amountPaid}`,
-        },
-        { status: 400 }
-      );
-    }
-
-    const newAmountToPay = fullAmount - newTotalPaid;
-    const now = new Date().toISOString();
-
-    // Determine payment status
-    let paymentStatus = "pending";
-    if (newTotalPaid >= fullAmount) {
-      paymentStatus = "paid";
-    } else if (newTotalPaid > 0) {
-      paymentStatus = "partial";
-    }
-
-    // Update appointment
-    const { error: updateError } = await supabase
-      .from("appointments_booking")
-      .update({
-        amount_paid: newTotalPaid,
-        amount_to_pay: newAmountToPay,
-        payment_status: paymentStatus,
-        last_payment_date: now,
-        first_payment_date: previouslyPaid === 0 ? now : appt.first_payment_date,
-      })
-      .eq("id", appointmentId);
-
-    if (updateError) {
-      console.error("[update-payment-status] update failed", updateError);
-      return NextResponse.json(
-        { error: "Failed to update payment status" },
-        { status: 500 }
-      );
-    }
-
-    // 📋 LOG TO AUDIT TRAIL
-    await logAuditEntry({
+    const result = await recordPaymentReceived({
+      supabase,
       appointmentId,
-      actorEmail: actorEmail || paymentMethod || "payment_gateway",
-      actorRole: actorRole || "system",
-      action: "Payment Recorded",
-      entity: "payment_status",
-      newData: {
-        amount_paid: newTotalPaid,
-        amount_to_pay: newAmountToPay,
-        payment_status: paymentStatus,
-        last_payment: {
-          amount: amountPaid,
-          method: paymentMethod,
-          transaction_id: transactionId,
-          notes,
-          timestamp: now,
-        },
-      },
-      oldData: {
-        amount_paid: previouslyPaid,
-        amount_to_pay: appt.amount_to_pay,
-        payment_status: appt.payment_status,
-      },
+      amountPaid,
+      transactionId,
+      paymentMethod,
+      notes,
+      actorEmail,
+      actorRole,
       ipAddress: ip,
       userAgent,
     });
 
+    if (!result.success) {
+      const status = result.error === "Appointment not found" ? 404 : 400;
+      return NextResponse.json({ error: result.error }, { status });
+    }
+
     return NextResponse.json({
       success: true,
       appointmentId,
-      previouslyPaid,
-      newPayment: amountPaid,
-      totalPaid: newTotalPaid,
-      stillToPay: newAmountToPay,
-      paymentStatus,
+      previouslyPaid: result.previouslyPaid,
+      newPayment: result.newPayment,
+      totalPaid: result.totalPaid,
+      stillToPay: result.stillToPay,
+      paymentStatus: result.paymentStatus,
       message:
-        paymentStatus === "paid"
+        result.paymentStatus === "paid"
           ? "✅ Payment Complete! Full amount received."
-          : `💳 Payment recorded. ₹${newAmountToPay} still pending.`,
+          : `💳 Payment recorded. ₹${result.stillToPay} still pending.`,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Server error";

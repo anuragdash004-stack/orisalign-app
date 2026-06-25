@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server"
 import crypto from "crypto"
 import Razorpay from "razorpay"
+import { createClient } from "@supabase/supabase-js"
+import { recordPaymentReceived } from "@/lib/paymentHelper"
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 /**
  * POST /api/verify-payment
@@ -8,9 +15,11 @@ import Razorpay from "razorpay"
  * Body: { razorpay_order_id, razorpay_payment_id, razorpay_signature, appointmentId }
  *
  * Verifies the Razorpay signature, then fetches the order back from Razorpay
- * (never trusts a client-passed amount) and records it via
- * /api/update-payment-status — mirroring what the Cashfree webhook does, so
- * Razorpay payments are tracked the same way.
+ * (never trusts a client-passed amount) and records it directly — mirroring
+ * what the Cashfree webhook does, so Razorpay payments are tracked the same
+ * way. Recording happens via a direct function call, not a self-fetch back
+ * into this app's own API, to avoid the deployment-protection failure mode
+ * documented in recordPaymentReceived.
  */
 export async function POST(req: Request) {
   try {
@@ -56,19 +65,18 @@ export async function POST(req: Request) {
           const order = await razorpay.orders.fetch(razorpay_order_id)
           const amountPaidRupees = Number(order.amount) / 100
 
-          const origin = req.headers.get("origin") || `https://${req.headers.get("host") || "orisalign.com"}`
-          await fetch(`${origin}/api/update-payment-status`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              appointmentId,
-              amountPaid: amountPaidRupees,
-              transactionId: razorpay_payment_id,
-              paymentMethod: "Razorpay",
-              actorEmail: "razorpay_verify",
-              actorRole: "payment_gateway",
-            }),
+          const result = await recordPaymentReceived({
+            supabase,
+            appointmentId,
+            amountPaid: amountPaidRupees,
+            transactionId: razorpay_payment_id,
+            paymentMethod: "Razorpay",
+            actorEmail: "razorpay_verify",
+            actorRole: "payment_gateway",
           })
+          if (!result.success) {
+            console.warn("[verify-payment] failed to record payment status", result.error)
+          }
         }
       } catch (e) {
         console.error("[verify-payment] failed to record payment status", e)

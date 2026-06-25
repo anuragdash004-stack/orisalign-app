@@ -3,6 +3,9 @@
  * Handles payment type selection and amount calculations
  */
 
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { logAuditEntry } from "./auditLog";
+
 export type PaymentType = "down_payment" | "pending" | "full" | "others";
 
 export interface PaymentData {
@@ -130,5 +133,114 @@ export function formatPaymentDisplay(paymentData: PaymentData): {
       : summary.paymentStatus === "partial"
       ? `⏳ Partial (${summary.amountPaid > 0 ? 'Paid' : 'Pending'})`
       : "⏳ Pending",
+  };
+}
+
+export interface RecordPaymentParams {
+  supabase: SupabaseClient;
+  appointmentId: string;
+  amountPaid: number;
+  transactionId?: string | number;
+  paymentMethod?: string;
+  notes?: string;
+  actorEmail?: string;
+  actorRole?: string;
+  ipAddress?: string | null;
+  userAgent?: string | null;
+}
+
+export type RecordPaymentResult =
+  | { success: true; previouslyPaid: number; newPayment: number; totalPaid: number; stillToPay: number; paymentStatus: "pending" | "partial" | "paid" }
+  | { success: false; error: string };
+
+/**
+ * Records a payment directly against the database (amount_paid, amount_to_pay,
+ * payment_status) and writes an audit entry.
+ *
+ * This is called directly — never via a self-fetch back into this app's own
+ * API routes — because server-to-server calls to a deployment's own URL can
+ * be blocked by Vercel's deployment protection, which silently swallowed
+ * payment recording for some patients in the past (the gateway's webhook
+ * still updated payment_data, but amount_paid/payment_status never moved).
+ */
+export async function recordPaymentReceived(params: RecordPaymentParams): Promise<RecordPaymentResult> {
+  const { supabase, appointmentId, amountPaid, transactionId, paymentMethod, notes, actorEmail, actorRole, ipAddress, userAgent } = params;
+
+  if (!appointmentId || !amountPaid || amountPaid <= 0) {
+    return { success: false, error: "appointmentId and amountPaid (> 0) required" };
+  }
+
+  const { data: appt, error: fetchError } = await supabase
+    .from("appointments_booking")
+    .select("id, name, payment_data, amount_paid, amount_to_pay, payment_status, first_payment_date")
+    .eq("id", appointmentId)
+    .single();
+
+  if (fetchError || !appt) {
+    return { success: false, error: "Appointment not found" };
+  }
+
+  const pd = (appt.payment_data as Record<string, unknown>) || {};
+  const fullAmount = Number(pd.full_amount) || 0;
+  const previouslyPaid = Number(appt.amount_paid) || 0;
+  const newTotalPaid = previouslyPaid + amountPaid;
+
+  if (fullAmount > 0 && newTotalPaid > fullAmount) {
+    return {
+      success: false,
+      error: `Payment would exceed total (₹${fullAmount}). Already paid: ₹${previouslyPaid}, trying to add: ₹${amountPaid}`,
+    };
+  }
+
+  const newAmountToPay = Math.max(0, fullAmount - newTotalPaid);
+  const now = new Date().toISOString();
+
+  let paymentStatus: "pending" | "partial" | "paid" = "pending";
+  if (fullAmount > 0 && newTotalPaid >= fullAmount) paymentStatus = "paid";
+  else if (newTotalPaid > 0) paymentStatus = "partial";
+
+  const { error: updateError } = await supabase
+    .from("appointments_booking")
+    .update({
+      amount_paid: newTotalPaid,
+      amount_to_pay: newAmountToPay,
+      payment_status: paymentStatus,
+      last_payment_date: now,
+      first_payment_date: previouslyPaid === 0 ? now : appt.first_payment_date,
+    })
+    .eq("id", appointmentId);
+
+  if (updateError) {
+    return { success: false, error: "Failed to update payment status" };
+  }
+
+  await logAuditEntry({
+    appointmentId,
+    actorEmail: actorEmail || paymentMethod || "payment_gateway",
+    actorRole: actorRole || "system",
+    action: "Payment Recorded",
+    entity: "payment_status",
+    newData: {
+      amount_paid: newTotalPaid,
+      amount_to_pay: newAmountToPay,
+      payment_status: paymentStatus,
+      last_payment: { amount: amountPaid, method: paymentMethod, transaction_id: transactionId, notes, timestamp: now },
+    },
+    oldData: {
+      amount_paid: previouslyPaid,
+      amount_to_pay: appt.amount_to_pay,
+      payment_status: appt.payment_status,
+    },
+    ipAddress,
+    userAgent,
+  });
+
+  return {
+    success: true,
+    previouslyPaid,
+    newPayment: amountPaid,
+    totalPaid: newTotalPaid,
+    stillToPay: newAmountToPay,
+    paymentStatus,
   };
 }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import crypto from "crypto";
 import { logAuditEntry } from "@/lib/auditLog";
+import { recordPaymentReceived } from "@/lib/paymentHelper";
 
 /**
  * POST /api/cashfree/webhook
@@ -194,34 +195,27 @@ async function handleEvent(payload: CashfreeWebhookPayload) {
     });
 
     // 💳 UPDATE PAYMENT STATUS (track how much paid / to pay)
+    // Called directly (not via self-fetch) — a server-to-server fetch back
+    // into this app's own deployment URL can be blocked by Vercel deployment
+    // protection, which silently left amount_paid/payment_status stale for
+    // some patients while payment_data above still updated correctly.
     try {
       // Cashfree reports order/payment amounts in rupees (not paise) — see
       // /api/cashfree/order, which sends order_amount already divided by 100.
       // paymentAmount above is already in rupees; do not divide again.
-      const amountInRupees = paymentAmount;
+      const result = await recordPaymentReceived({
+        supabase,
+        appointmentId,
+        amountPaid: paymentAmount,
+        transactionId: payload.data?.payment?.cf_payment_id,
+        paymentMethod: "Cashfree",
+        notes: `Payment via ${(payload.data?.payment?.payment_method as { type?: string } | undefined)?.type || "online"}`,
+        actorEmail: "cashfree_webhook",
+        actorRole: "payment_gateway",
+      });
 
-      const statusRes = await fetch(
-        `${process.env.VERCEL_URL ? "https://" + process.env.VERCEL_URL : "http://localhost:3000"}/api/update-payment-status`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            appointmentId,
-            amountPaid: amountInRupees,
-            transactionId: payload.data?.payment?.cf_payment_id,
-            paymentMethod: "Cashfree",
-            notes: `Payment via ${(payload.data?.payment?.payment_method as { type?: string } | undefined)?.type || "online"}`,
-            actorEmail: "cashfree_webhook",
-            actorRole: "payment_gateway",
-          }),
-        }
-      );
-
-      if (!statusRes.ok) {
-        console.warn(
-          "[cashfree/webhook] failed to update payment status",
-          await statusRes.text()
-        );
+      if (!result.success) {
+        console.warn("[cashfree/webhook] failed to update payment status", result.error);
       }
     } catch (e) {
       console.error("[cashfree/webhook] payment status update error", e);
