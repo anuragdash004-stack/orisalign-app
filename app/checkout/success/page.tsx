@@ -18,22 +18,45 @@ interface VerifyResult {
 function SuccessInner() {
   const params = useSearchParams();
   const orderId = params.get("order_id");
+  // Razorpay's redirect (see app/checkout/page.tsx openRazorpayModal) carries
+  // ?id=<appointmentId>&payment_id=<razorpay_payment_id> instead of an
+  // order_id — /api/verify-payment already verified + recorded that payment
+  // server-side before redirecting here, so this just reads the trusted
+  // amount back for display.
+  const razorpayAppointmentId = params.get("id");
+  const razorpayPaymentId = params.get("payment_id");
 
   const [loading, setLoading] = useState(true);
   const [result, setResult] = useState<VerifyResult | null>(null);
 
   useEffect(() => {
-    if (!orderId) {
-      setLoading(false);
+    if (orderId) {
+      fetch(`/api/cashfree/verify?order_id=${encodeURIComponent(orderId)}`)
+        .then((r) => r.json())
+        .then((data: VerifyResult) => setResult(data))
+        .catch(() => setResult({ error: "Couldn't reach payment service." }))
+        .finally(() => setLoading(false));
       return;
     }
-    fetch(`/api/cashfree/verify?order_id=${encodeURIComponent(orderId)}`)
-      .then((r) => r.json())
-      .then((data: VerifyResult) => setResult(data))
-      .catch(() => setResult({ error: "Couldn't reach payment service." }))
-      .finally(() => setLoading(false));
-  }, [orderId]);
+    if (razorpayAppointmentId && razorpayPaymentId) {
+      fetch(`/api/update-payment-status?appointmentId=${encodeURIComponent(razorpayAppointmentId)}`)
+        .then((r) => r.json())
+        .then((data) => {
+          setResult({
+            status: "PAID",
+            orderId: razorpayPaymentId,
+            amount: data?.amountPaid || 0,
+            appointmentId: razorpayAppointmentId,
+          });
+        })
+        .catch(() => setResult({ error: "Couldn't reach payment service." }))
+        .finally(() => setLoading(false));
+      return;
+    }
+    setLoading(false);
+  }, [orderId, razorpayAppointmentId, razorpayPaymentId]);
 
+  const hasReference = !!orderId || !!(razorpayAppointmentId && razorpayPaymentId);
   const isPaid = result?.status === "PAID";
   const dashboardHref = result?.appointmentId
     ? `/patient/${result.appointmentId}`
@@ -89,7 +112,7 @@ function SuccessInner() {
           </>
         )}
 
-        {!loading && !orderId && (
+        {!loading && !hasReference && (
           <Failure
             title="Missing order"
             detail="No order reference was supplied. If money was deducted, contact us with your transaction details."
@@ -97,7 +120,7 @@ function SuccessInner() {
           />
         )}
 
-        {!loading && orderId && isPaid && (
+        {!loading && hasReference && isPaid && (
           <>
             <div
               style={{
@@ -139,7 +162,7 @@ function SuccessInner() {
               }}
             >
               <Row label="Amount" value={`₹ ${(result?.amount || 0).toLocaleString("en-IN")}`} bold />
-              <Row label="Order ID" value={result?.orderId || "—"} mono />
+              <Row label={orderId ? "Order ID" : "Payment ID"} value={result?.orderId || "—"} mono />
               <Row label="Status" value={result?.status || "—"} />
             </div>
 
@@ -162,7 +185,7 @@ function SuccessInner() {
           </>
         )}
 
-        {!loading && orderId && !isPaid && (
+        {!loading && hasReference && !isPaid && (
           <Failure
             title={
               result?.status === "ACTIVE"
@@ -175,7 +198,7 @@ function SuccessInner() {
                 : result?.error ||
                   `Status: ${result?.status || "UNKNOWN"}. If you were charged, reach out and we'll sort it out.`
             }
-            orderId={orderId}
+            orderId={orderId || razorpayPaymentId || undefined}
             dashboardHref={dashboardHref}
           />
         )}
