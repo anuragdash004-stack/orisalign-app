@@ -106,7 +106,6 @@ export default function PatientJourney() {
   const [couponInput, setCouponInput] = useState("");
   const [couponMessage, setCouponMessage] = useState("");
   const [applyingCoupon, setApplyingCoupon] = useState(false);
-  const [orisproVariant, setOrisproVariant] = useState("one"); // "one" or "two" for payment
   const [scanningVariant, setScanningVariant] = useState("one"); // "one" or "two" for scanning view
   const [payNowLoading, setPayNowLoading] = useState(false);
 
@@ -122,18 +121,6 @@ export default function PatientJourney() {
     };
     load();
   }, [id]);
-
-  const getVariantPricing = () => {
-    if (!patient || !patient.treatment_model) return { fullAmount: 0, downPayment: 0, duration: "" };
-    const modelData = ORISPRO_MODELS[patient.treatment_model];
-    if (!modelData) return { fullAmount: 0, downPayment: 0, duration: "" };
-    const variantData = modelData[orisproVariant];
-    return {
-      fullAmount: variantData.fullAmount,
-      downPayment: variantData.downPayment,
-      duration: variantData.duration,
-    };
-  };
 
   const applyCoupon = async () => {
     if (!couponInput.trim()) {
@@ -630,203 +617,185 @@ export default function PatientJourney() {
                         <p style={{ margin: 0, fontSize: "13px", color: "#9ca3af", fontStyle: "italic" }}>Payment details will appear here once confirmed.</p>
                       ) : (
                         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                          {/* Orispro Variant Selection */}
-                          {patient?.treatment_model && (
-                            <>
-                              <div style={{ padding: "10px 12px", background: "#f3f4f6", borderRadius: "8px", marginBottom: "4px" }}>
-                                <p style={{ margin: "0 0 8px", fontSize: "11px", fontWeight: "700", color: "#6b7280", textTransform: "uppercase" }}>Treatment Plan</p>
-                                <div style={{ display: "flex", gap: "8px" }}>
-                                  <button
-                                    onClick={() => setOrisproVariant("one")}
-                                    style={{
-                                      flex: 1,
-                                      padding: "10px",
-                                      borderRadius: "8px",
-                                      border: orisproVariant === "one" ? "2px solid #111827" : "1px solid #d1d5db",
-                                      background: orisproVariant === "one" ? "#ffffff" : "#f9fafb",
-                                      color: "#111827",
-                                      fontWeight: orisproVariant === "one" ? "700" : "600",
-                                      fontSize: "13px",
-                                      cursor: "pointer",
-                                    }}
-                                  >
-                                    Orispro
-                                  </button>
-                                  <button
-                                    onClick={() => setOrisproVariant("two")}
-                                    style={{
-                                      flex: 1,
-                                      padding: "10px",
-                                      borderRadius: "8px",
-                                      border: orisproVariant === "two" ? "2px solid #111827" : "1px solid #d1d5db",
-                                      background: orisproVariant === "two" ? "#ffffff" : "#f9fafb",
-                                      color: "#111827",
-                                      fontWeight: orisproVariant === "two" ? "700" : "600",
-                                      fontSize: "13px",
-                                      cursor: "pointer",
-                                    }}
-                                  >
-                                    Orispro Plus
-                                  </button>
-                                </div>
+                          {/* Payment status — what's been paid, what's left, sourced only from
+                              the clinic's saved figures so it always matches the gateway. */}
+                          {patient.payment_status === "paid" ? (
+                            <div style={{ padding: "12px", background: "#f0fdf4", borderRadius: "8px", border: "1px solid #bbf7d0" }}>
+                              <p style={{ margin: "0 0 4px", fontSize: "11px", fontWeight: "700", color: "#16a34a", textTransform: "uppercase" }}>✅ Fully Paid</p>
+                              <p style={{ margin: 0, fontSize: "22px", fontWeight: "900", color: "#15803d" }}>{fmt(patient.amount_paid || pd.full_amount)}</p>
+                            </div>
+                          ) : (
+                            <div style={{ padding: "12px", background: "#fff7ed", borderRadius: "8px", border: "1px solid #fed7aa", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                              <div>
+                                <p style={{ margin: "0 0 2px", fontSize: "10px", fontWeight: "700", color: "#b45309", textTransform: "uppercase" }}>Paid So Far</p>
+                                <p style={{ margin: 0, fontSize: "17px", fontWeight: "800", color: "#92400e" }}>{fmt(patient.amount_paid || 0)}</p>
                               </div>
-                              {getVariantPricing().duration && (
-                                <div style={{ padding: "10px 12px", background: "#ede9fe", borderRadius: "8px", marginBottom: "4px" }}>
-                                  <p style={{ margin: "0 0 4px", fontSize: "11px", fontWeight: "700", color: "#6d28d9", textTransform: "uppercase" }}>Treatment Duration</p>
-                                  <p style={{ margin: 0, fontSize: "14px", fontWeight: "700", color: "#4c1d95" }}>{getVariantPricing().duration}</p>
-                                </div>
-                              )}
-                            </>
-                          )}
-
-                          {/* Payment Mode Selection */}
-                          <div style={{ display: "flex", gap: "8px" }}>
-                            <button
-                              onClick={() => setPaymentMode("down")}
-                              style={{
-                                flex: 1,
-                                padding: "10px",
-                                borderRadius: "8px",
-                                border: paymentMode === "down" ? "2px solid #b8905a" : "1px solid #e5e7eb",
-                                background: paymentMode === "down" ? "#f8f7f5" : "white",
-                                color: "#111827",
-                                fontWeight: "700",
-                                fontSize: "13px",
-                                cursor: "pointer",
-                              }}
-                            >
-                              Down Payment
-                            </button>
-                            <button
-                              onClick={() => setPaymentMode("full")}
-                              style={{
-                                flex: 1,
-                                padding: "10px",
-                                borderRadius: "8px",
-                                border: paymentMode === "full" ? "2px solid #b8905a" : "1px solid #e5e7eb",
-                                background: paymentMode === "full" ? "#f8f7f5" : "white",
-                                color: "#111827",
-                                fontWeight: "700",
-                                fontSize: "13px",
-                                cursor: "pointer",
-                              }}
-                            >
-                              Full Payment
-                            </button>
-                          </div>
-
-                          {/* Amount Display */}
-                          <div style={{ padding: "12px", background: "#f0fdf4", borderRadius: "8px", border: "1px solid #bbf7d0" }}>
-                            <p style={{ margin: "0 0 4px", fontSize: "11px", fontWeight: "700", color: "#16a34a", textTransform: "uppercase" }}>Amount to Pay</p>
-                            <p style={{ margin: 0, fontSize: "24px", fontWeight: "900", color: "#15803d" }}>
-                              {paymentMode === "down"
-                                ? fmt(getVariantPricing().downPayment || pd.down_payment)
-                                : fmt(calculateFinalAmount({ full_amount: getVariantPricing().fullAmount || pd.full_amount, discount: pd.discount }, appliedCoupons))}
-                            </p>
-                          </div>
-
-                          {/* Coupon Input Section */}
-                          <div style={{ display: "flex", gap: "8px" }}>
-                            <input
-                              type="text"
-                              placeholder="Enter coupon code"
-                              value={couponInput}
-                              onChange={(e) => setCouponInput(e.target.value)}
-                              onKeyPress={(e) => e.key === "Enter" && applyCoupon()}
-                              style={{
-                                flex: 1,
-                                padding: "10px 12px",
-                                borderRadius: "8px",
-                                border: "1px solid #e5e7eb",
-                                fontSize: "13px",
-                                outline: "none",
-                              }}
-                            />
-                            <button
-                              onClick={applyCoupon}
-                              disabled={applyingCoupon}
-                              style={{
-                                padding: "10px 16px",
-                                borderRadius: "8px",
-                                border: "none",
-                                background: "#b8905a",
-                                color: "white",
-                                fontWeight: "700",
-                                fontSize: "13px",
-                                cursor: applyingCoupon ? "not-allowed" : "pointer",
-                                opacity: applyingCoupon ? 0.6 : 1,
-                              }}
-                            >
-                              {applyingCoupon ? "..." : "Apply"}
-                            </button>
-                          </div>
-
-                          {/* Coupon Message */}
-                          {couponMessage && (
-                            <div style={{
-                              padding: "10px 12px",
-                              borderRadius: "8px",
-                              background: couponMessage.includes("✓") ? "#f0fdf4" : "#fee2e2",
-                              border: couponMessage.includes("✓") ? "1px solid #bbf7d0" : "1px solid #fecaca",
-                              color: couponMessage.includes("✓") ? "#16a34a" : "#dc2626",
-                              fontSize: "13px",
-                              fontWeight: "600",
-                            }}>
-                              {couponMessage}
+                              <div>
+                                <p style={{ margin: "0 0 2px", fontSize: "10px", fontWeight: "700", color: "#b45309", textTransform: "uppercase" }}>Pending</p>
+                                <p style={{ margin: 0, fontSize: "17px", fontWeight: "800", color: "#92400e" }}>
+                                  {fmt(Math.max(0, (parseFloat(pd.full_amount) || 0) - (parseFloat(patient.amount_paid) || 0)))}
+                                </p>
+                              </div>
                             </div>
                           )}
 
-                          {/* Applied Coupons Summary */}
-                          {appliedCoupons.length > 0 && (
-                            <div style={{ padding: "10px 12px", background: "#fef3c7", borderRadius: "8px" }}>
-                              <p style={{ margin: "0 0 8px", fontSize: "11px", fontWeight: "700", color: "#92400e", textTransform: "uppercase" }}>Coupons Applied</p>
-                              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                                {appliedCoupons.map((coupon, idx) => (
-                                  <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 8px", background: "white", borderRadius: "4px" }}>
-                                    <span style={{ fontSize: "13px", fontWeight: "700", color: "#111827" }}>{coupon.code}</span>
-                                    <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                                      <span style={{ fontSize: "12px", color: "#6b7280" }}>- {fmt(coupon.discount)}</span>
+                          {patient.payment_status !== "paid" && !patient.amount_paid && (
+                            <div style={{ display: "flex", gap: "8px" }}>
+                              <button
+                                onClick={() => setPaymentMode("down")}
+                                style={{
+                                  flex: 1,
+                                  padding: "10px",
+                                  borderRadius: "8px",
+                                  border: paymentMode === "down" ? "2px solid #b8905a" : "1px solid #e5e7eb",
+                                  background: paymentMode === "down" ? "#f8f7f5" : "white",
+                                  color: "#111827",
+                                  fontWeight: "700",
+                                  fontSize: "13px",
+                                  cursor: "pointer",
+                                }}
+                              >
+                                Down Payment
+                              </button>
+                              <button
+                                onClick={() => setPaymentMode("full")}
+                                style={{
+                                  flex: 1,
+                                  padding: "10px",
+                                  borderRadius: "8px",
+                                  border: paymentMode === "full" ? "2px solid #b8905a" : "1px solid #e5e7eb",
+                                  background: paymentMode === "full" ? "#f8f7f5" : "white",
+                                  color: "#111827",
+                                  fontWeight: "700",
+                                  fontSize: "13px",
+                                  cursor: "pointer",
+                                }}
+                              >
+                                Full Payment
+                              </button>
+                            </div>
+                          )}
+
+                          {patient.payment_status !== "paid" && (() => {
+                            // Once any amount has been paid, the only thing left to collect
+                            // is the pending balance — no down/full toggle, no re-deriving
+                            // a different price.
+                            const hasPartialPaid = !!patient.amount_paid;
+                            const amountDue = hasPartialPaid
+                              ? Math.max(0, (parseFloat(pd.full_amount) || 0) - (parseFloat(patient.amount_paid) || 0))
+                              : paymentMode === "down"
+                                ? (parseFloat(pd.down_payment) || 0)
+                                : calculateFinalAmount({ full_amount: pd.full_amount, discount: pd.discount }, appliedCoupons);
+                            return (
+                              <>
+                                {/* Amount Display */}
+                                <div style={{ padding: "12px", background: "#f0fdf4", borderRadius: "8px", border: "1px solid #bbf7d0" }}>
+                                  <p style={{ margin: "0 0 4px", fontSize: "11px", fontWeight: "700", color: "#16a34a", textTransform: "uppercase" }}>Amount to Pay</p>
+                                  <p style={{ margin: 0, fontSize: "24px", fontWeight: "900", color: "#15803d" }}>{fmt(amountDue)}</p>
+                                </div>
+
+                                {/* Coupon Input Section — only before any payment has been made */}
+                                {!hasPartialPaid && (
+                                  <>
+                                    <div style={{ display: "flex", gap: "8px" }}>
+                                      <input
+                                        type="text"
+                                        placeholder="Enter coupon code"
+                                        value={couponInput}
+                                        onChange={(e) => setCouponInput(e.target.value)}
+                                        onKeyPress={(e) => e.key === "Enter" && applyCoupon()}
+                                        style={{
+                                          flex: 1,
+                                          padding: "10px 12px",
+                                          borderRadius: "8px",
+                                          border: "1px solid #e5e7eb",
+                                          fontSize: "13px",
+                                          outline: "none",
+                                        }}
+                                      />
                                       <button
-                                        onClick={() => setAppliedCoupons(appliedCoupons.filter((_, i) => i !== idx))}
-                                        style={{ background: "none", border: "none", color: "#dc2626", fontWeight: "700", cursor: "pointer", fontSize: "12px" }}
+                                        onClick={applyCoupon}
+                                        disabled={applyingCoupon}
+                                        style={{
+                                          padding: "10px 16px",
+                                          borderRadius: "8px",
+                                          border: "none",
+                                          background: "#b8905a",
+                                          color: "white",
+                                          fontWeight: "700",
+                                          fontSize: "13px",
+                                          cursor: applyingCoupon ? "not-allowed" : "pointer",
+                                          opacity: applyingCoupon ? 0.6 : 1,
+                                        }}
                                       >
-                                        ✕
+                                        {applyingCoupon ? "..." : "Apply"}
                                       </button>
                                     </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
 
-                          {/* Pay Now Button */}
-                          <button
-                            onClick={() => {
-                              const amount = paymentMode === "down"
-                                ? (getVariantPricing().downPayment || pd.down_payment)
-                                : calculateFinalAmount({ full_amount: getVariantPricing().fullAmount || pd.full_amount, discount: pd.discount }, appliedCoupons);
-                              handlePayNow(amount);
-                            }}
-                            disabled={payNowLoading}
-                            style={{
-                              display: "block",
-                              width: "100%",
-                              padding: "12px",
-                              borderRadius: "10px",
-                              border: "none",
-                              background: "linear-gradient(135deg, #b8905a, #f59e0b)",
-                              color: "white",
-                              fontWeight: "800",
-                              fontSize: "14px",
-                              textAlign: "center",
-                              letterSpacing: "0.3px",
-                              boxShadow: "0 4px 10px rgba(184, 144, 90, 0.25)",
-                              cursor: payNowLoading ? "not-allowed" : "pointer",
-                              opacity: payNowLoading ? 0.7 : 1,
-                            }}
-                          >
-                            {payNowLoading ? "Starting payment..." : `Pay Now · ${paymentMode === "down" ? fmt(getVariantPricing().downPayment || pd.down_payment) : fmt(calculateFinalAmount({ full_amount: getVariantPricing().fullAmount || pd.full_amount, discount: pd.discount }, appliedCoupons))}`}
-                          </button>
+                                    {couponMessage && (
+                                      <div style={{
+                                        padding: "10px 12px",
+                                        borderRadius: "8px",
+                                        background: couponMessage.includes("✓") ? "#f0fdf4" : "#fee2e2",
+                                        border: couponMessage.includes("✓") ? "1px solid #bbf7d0" : "1px solid #fecaca",
+                                        color: couponMessage.includes("✓") ? "#16a34a" : "#dc2626",
+                                        fontSize: "13px",
+                                        fontWeight: "600",
+                                      }}>
+                                        {couponMessage}
+                                      </div>
+                                    )}
+
+                                    {appliedCoupons.length > 0 && (
+                                      <div style={{ padding: "10px 12px", background: "#fef3c7", borderRadius: "8px" }}>
+                                        <p style={{ margin: "0 0 8px", fontSize: "11px", fontWeight: "700", color: "#92400e", textTransform: "uppercase" }}>Coupons Applied</p>
+                                        <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                                          {appliedCoupons.map((coupon, idx) => (
+                                            <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 8px", background: "white", borderRadius: "4px" }}>
+                                              <span style={{ fontSize: "13px", fontWeight: "700", color: "#111827" }}>{coupon.code}</span>
+                                              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                                                <span style={{ fontSize: "12px", color: "#6b7280" }}>- {fmt(coupon.discount)}</span>
+                                                <button
+                                                  onClick={() => setAppliedCoupons(appliedCoupons.filter((_, i) => i !== idx))}
+                                                  style={{ background: "none", border: "none", color: "#dc2626", fontWeight: "700", cursor: "pointer", fontSize: "12px" }}
+                                                >
+                                                  ✕
+                                                </button>
+                                              </div>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </>
+                                )}
+
+                                {/* Pay Now Button */}
+                                <button
+                                  onClick={() => handlePayNow(amountDue)}
+                                  disabled={payNowLoading}
+                                  style={{
+                                    display: "block",
+                                    width: "100%",
+                                    padding: "12px",
+                                    borderRadius: "10px",
+                                    border: "none",
+                                    background: "linear-gradient(135deg, #b8905a, #f59e0b)",
+                                    color: "white",
+                                    fontWeight: "800",
+                                    fontSize: "14px",
+                                    textAlign: "center",
+                                    letterSpacing: "0.3px",
+                                    boxShadow: "0 4px 10px rgba(184, 144, 90, 0.25)",
+                                    cursor: payNowLoading ? "not-allowed" : "pointer",
+                                    opacity: payNowLoading ? 0.7 : 1,
+                                  }}
+                                >
+                                  {payNowLoading ? "Starting payment..." : `Pay Now · ${fmt(amountDue)}`}
+                                </button>
+                              </>
+                            );
+                          })()}
                         </div>
                       )}
                     </div>

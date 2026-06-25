@@ -278,9 +278,12 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
       };
     }
     const payload = { ...data, final_amount: finalAmt, pending_amount: pendingAmt, installment_plan: installmentPlan };
+    // "Plan and Payment" is never manually marked done — saving valid
+    // payment details here is what completes it automatically.
+    const newJourneySteps = fullAmt > 0 ? { ...(appt?.journey_steps || {}), payment_done: true } : appt?.journey_steps;
     const { error } = await supabase
       .from("appointments_booking")
-      .update({ payment_data: payload })
+      .update({ payment_data: payload, ...(newJourneySteps ? { journey_steps: newJourneySteps } : {}) })
       .eq("id", appointmentId);
     setSaving(false);
     if (!error) {
@@ -289,6 +292,7 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
       setData(payload);
       setSaved(true);
       setEditing(false);
+      if (newJourneySteps) setAppt((prev) => prev && { ...prev, journey_steps: newJourneySteps });
       setTimeout(() => setSaved(false), 3000);
     } else {
       alert("Error saving payment: " + error.message);
@@ -517,6 +521,9 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
                   }}
                 >
                   {model.label}
+                  <span style={{ display: "block", fontSize: "11px", fontWeight: "600", marginTop: "2px", color: selectedModelForApply?.value === model.value ? "#111827" : "#6b7280" }}>
+                    {inr(model.fullAmount)}
+                  </span>
                 </button>
               ))}
             </div>
@@ -525,6 +532,9 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
               <div style={{ padding: "12px", background: "#ede9fe", borderRadius: "8px", marginBottom: "16px" }}>
                 <p style={{ margin: "0 0 4px", fontSize: "10px", fontWeight: "700", color: "#6d28d9", textTransform: "uppercase" }}>Selected</p>
                 <p style={{ margin: 0, fontSize: "14px", fontWeight: "700", color: "#4c1d95" }}>{selectedModelForApply.label}</p>
+                <p style={{ margin: "6px 0 0", fontSize: "13px", color: "#4c1d95" }}>
+                  Full Amount: <strong>{inr(selectedModelForApply.fullAmount)}</strong> · Down Payment: <strong>{inr(DOWN_PAYMENT_FIXED)}</strong>
+                </p>
               </div>
             )}
 
@@ -1343,7 +1353,7 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                 <p style={{ margin: 0, flex: 1, fontSize: "14px", fontWeight: done ? "700" : "500", color: done ? "#15803d" : "#374151" }}>
                   {step.label}
                 </p>
-                {isAdmin && step.key !== "plan_approved" && step.key !== "booked" && step.key !== "confirmed" && (
+                {isAdmin && step.key !== "plan_approved" && step.key !== "booked" && step.key !== "confirmed" && step.key !== "payment_done" && (
                   <button
                     onClick={() => toggle(step.key)}
                     disabled={isSaving}
@@ -1358,7 +1368,7 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                     {isSaving ? "..." : done ? "Undo" : "Mark Done"}
                   </button>
                 )}
-                {(step.key === "booked" || step.key === "confirmed") && (
+                {(step.key === "booked" || step.key === "confirmed" || step.key === "payment_done") && (
                   <span style={{
                     padding: "6px 12px", borderRadius: "8px", fontSize: "11px", fontWeight: "700", flexShrink: 0,
                     background: done ? "#dcfce7" : "#f3f4f6",

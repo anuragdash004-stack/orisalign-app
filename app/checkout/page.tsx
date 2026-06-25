@@ -111,14 +111,12 @@ function PaymentInner() {
     setBusy(true);
     setNotice(null);
     try {
-      // Create order
+      // Create order — server derives the trusted amount from the
+      // appointment itself, never from this page's query string.
       const orderRes = await fetch("/api/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amount: amount * 100, // Convert to paise
-          receipt: id,
-        }),
+        body: JSON.stringify({ appointmentId: id }),
       });
 
       const orderData = await orderRes.json();
@@ -165,6 +163,7 @@ function PaymentInner() {
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
+              appointmentId: id,
             }),
           });
 

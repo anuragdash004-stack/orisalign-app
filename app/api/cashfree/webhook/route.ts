@@ -195,7 +195,10 @@ async function handleEvent(payload: CashfreeWebhookPayload) {
 
     // 💳 UPDATE PAYMENT STATUS (track how much paid / to pay)
     try {
-      const amountInRupees = Math.round(paymentAmount / 100 * 100) / 100; // Convert paise to rupees
+      // Cashfree reports order/payment amounts in rupees (not paise) — see
+      // /api/cashfree/order, which sends order_amount already divided by 100.
+      // paymentAmount above is already in rupees; do not divide again.
+      const amountInRupees = paymentAmount;
 
       const statusRes = await fetch(
         `${process.env.VERCEL_URL ? "https://" + process.env.VERCEL_URL : "http://localhost:3000"}/api/update-payment-status`,

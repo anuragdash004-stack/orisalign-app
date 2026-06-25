@@ -1,20 +1,49 @@
 import { NextResponse } from "next/server"
 import Razorpay from "razorpay"
+import { createClient } from "@supabase/supabase-js"
+import { getAmountToCollect, PaymentType } from "@/lib/paymentHelper"
+
+/**
+ * POST /api/create-order
+ *
+ * Body: { appointmentId: string }
+ *
+ * Creates a Razorpay order using the pending_amount stored on the
+ * appointment (never trusts a client-passed amount) — mirrors
+ * /api/cashfree/order so both gateways always charge exactly what the
+ * patient was shown.
+ */
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 export async function POST(req: Request) {
   try {
-    const { amount, receipt } = await req.json()
+    const { appointmentId } = await req.json()
 
-    if (!amount || amount < 100) {
-      return NextResponse.json(
-        { error: "Amount must be at least 100 paise (₹1)" },
-        { status: 400 }
-      )
+    if (!appointmentId) {
+      return NextResponse.json({ error: "appointmentId required" }, { status: 400 })
     }
 
-    if (!receipt) {
+    const { data: appt, error } = await supabase
+      .from("appointments_booking")
+      .select("id, payment_data, payment_type_to_collect")
+      .eq("id", appointmentId)
+      .single()
+
+    if (error || !appt) {
+      return NextResponse.json({ error: "Appointment not found" }, { status: 404 })
+    }
+
+    const pd = (appt.payment_data as Record<string, unknown>) || {}
+    const paymentType = (appt.payment_type_to_collect || "down_payment") as PaymentType
+    const amountInPaise = getAmountToCollect(pd, paymentType)
+
+    if (amountInPaise < 100) {
       return NextResponse.json(
-        { error: "Receipt is required" },
+        { error: `No ${paymentType.replace("_", " ")} available on this appointment` },
         { status: 400 }
       )
     }
@@ -36,9 +65,9 @@ export async function POST(req: Request) {
     })
 
     const order = await razorpay.orders.create({
-      amount,
+      amount: amountInPaise,
       currency: "INR",
-      receipt,
+      receipt: String(appointmentId),
     })
 
     return NextResponse.json({
