@@ -82,11 +82,31 @@ export default function LeadTrackerPage() {
   const [view, setView] = useState("tracker"); // "tracker" | "cold"
   const [actor, setActor] = useState(null);
   const [campaigns, setCampaigns] = useState([]);
+  const [catered, setCatered] = useState([]); // appointments the dentist has OTP-started
+  const [dentists, setDentists] = useState([]);
   const todayRef = useRef(null);
 
   const fetchCampaigns = async () => {
     const { data } = await supabase.from("campaigns").select("id, campaign_number").order("campaign_number", { ascending: true });
     setCampaigns(data || []);
+  };
+
+  // Catered = the dentist has verified the patient's OTP and started the
+  // appointment. We pull everyone ever started and filter to "today" client
+  // side (consistent with how the rest of this page treats dates).
+  const fetchCatered = async () => {
+    const { data, error } = await supabase
+      .from("appointments_booking")
+      .select("id, name, phone, assigned_dentist, appointment_started_at, status")
+      .eq("appointment_started", true)
+      .order("appointment_started_at", { ascending: false });
+    if (error) console.error("Error fetching catered appointments:", error);
+    setCatered(data || []);
+  };
+
+  const fetchDentists = async () => {
+    const { data } = await supabase.from("users").select("id, email").eq("role", "dentist");
+    setDentists(data || []);
   };
 
   useEffect(() => {
@@ -98,16 +118,22 @@ export default function LeadTrackerPage() {
       }
       await fetchLeads();
       await fetchCampaigns();
+      await fetchCatered();
+      await fetchDentists();
     };
     init();
   }, []);
 
   const fetchLeads = async () => {
     setLoading(true);
+    // Once a lead is confirmed, it also shows up in Appointments and its
+    // status there may advance past "lead" (e.g. to "confirmed"). It should
+    // still show here under Booked, so match on booking_confirmed too —
+    // not status alone.
     const { data, error } = await supabase
       .from("appointments_booking")
       .select("*")
-      .eq("status", "lead")
+      .or("status.eq.lead,booking_confirmed.eq.true")
       .order("created_at", { ascending: false });
     if (error) console.error("Error fetching leads:", error);
     setLeads(data || []);
@@ -139,6 +165,8 @@ export default function LeadTrackerPage() {
   const coldLeads = leads.filter((l) => stageOf(l) === "cold");
   const pipelineLeads = leads.filter((l) => stageOf(l) !== "cold");
   const isAdmin = actor?.role === "admin"; // Cold Leads are admin-only
+  const dentistMap = Object.fromEntries(dentists.map((d) => [d.id, d.email]));
+  const cateredToday = catered.filter((a) => dateKey(a.appointment_started_at) === dateKey(new Date()));
 
   // Calendar strip: 14 days back → 7 days forward, today centered/highlighted.
   const today = new Date();
@@ -245,6 +273,37 @@ export default function LeadTrackerPage() {
           : `Showing leads from ${new Date(selectedDate).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}`}
         {"  ·  "}{visibleLeads.length} {visibleLeads.length === 1 ? "lead" : "leads"}
       </p>
+
+      {/* Catered Today — the dentist has verified the patient's OTP and started the appointment */}
+      <div style={{ marginBottom: "24px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" }}>
+          <h2 style={{ margin: 0, fontSize: "16px", fontWeight: "800", color: "#111827" }}>Catered Today</h2>
+          <span style={{ fontSize: "12px", fontWeight: "700", color: "#16a34a", background: "#dcfce7", borderRadius: "99px", padding: "2px 10px" }}>{cateredToday.length}</span>
+          <div style={{ flex: 1, height: "1px", background: "#eee" }} />
+        </div>
+        {cateredToday.length === 0 ? (
+          <div style={{ padding: "14px", background: "white", border: "1px dashed #e5e7eb", borderRadius: "12px", textAlign: "center", color: "#9ca3af", fontSize: "13px" }}>
+            No appointments started yet today.
+          </div>
+        ) : (
+          <div style={{ display: "grid", gap: "8px" }}>
+            {cateredToday.map((a) => (
+              <a
+                key={a.id}
+                href={`/patients/${a.id}`}
+                style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", background: "white", border: "1px solid #bbf7d0", borderRadius: "10px", padding: "10px 14px", textDecoration: "none" }}
+              >
+                <span style={{ fontSize: "14px", fontWeight: "700", color: "#111827" }}>{a.name || "Unnamed"}</span>
+                <span style={{ fontSize: "13px", color: "#6b7280" }}>{a.phone || "—"}</span>
+                <span style={{ fontSize: "12px", color: "#9ca3af" }}>Dentist: {dentistMap[a.assigned_dentist] || "—"}</span>
+                <span style={{ marginLeft: "auto", fontSize: "12px", fontWeight: "700", color: "#16a34a" }}>
+                  Started {a.appointment_started_at ? new Date(a.appointment_started_at).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" }) : ""}
+                </span>
+              </a>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* All stages, stacked one after another */}
       <div style={{ display: "grid", gap: "22px" }}>
