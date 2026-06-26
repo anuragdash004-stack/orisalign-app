@@ -1074,7 +1074,10 @@ function deriveSteps(appt) {
   if (!appt) return {};
   const js = appt.journey_steps || {};
   return {
-    booked:                  true,
+    // Requires an explicit booking date + Mark Done from the admin (see
+    // markBooked in JourneyTab) — pre-existing rows that never had this set
+    // default to true so already-active patients don't regress.
+    booked:                  js.booked !== undefined ? !!js.booked : true,
     confirmed:               appt.status === "confirmed" || appt.status === "completed",
     scanning_done:           js.scanning_done        !== undefined ? !!js.scanning_done        : !!appt.stl_submitted,
     payment_done:            js.payment_done         !== undefined ? !!js.payment_done         : !!(appt.payment_data?.final_amount),
@@ -1127,6 +1130,7 @@ const DEFAULT_STEP_MESSAGES = {
 function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
   const [steps, setSteps] = useState(() => deriveSteps(appt));
   const [saving, setSaving] = useState(null);
+  const [bookedDate, setBookedDate] = useState(appt.journey_steps?.booked_at || "");
   const [stepMessages, setStepMessages] = useState(() => JSON.parse(JSON.stringify(DEFAULT_STEP_MESSAGES)));
   const [openEmail, setOpenEmail] = useState({}); // which steps have their email editor expanded
 
@@ -1312,6 +1316,26 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
     }
   };
 
+  // "Appointment Booked" needs a date entered before it can be marked done —
+  // unlike the other automatic/derived steps, this one is explicit.
+  const markBooked = async () => {
+    if (!bookedDate) { alert("Enter the booking date first."); return; }
+    const currentVal = !!steps.booked;
+    const newVal = !currentVal;
+    setSteps((prev) => ({ ...prev, booked: newVal }));
+    setSaving("booked");
+    const js = appt.journey_steps || {};
+    const newJs = { ...js, booked: newVal, booked_at: newVal ? bookedDate : null };
+    const { error } = await supabase.from("appointments_booking").update({ journey_steps: newJs }).eq("id", appointmentId);
+    setSaving(null);
+    if (error) {
+      alert("Save failed: " + error.message);
+      setSteps((prev) => ({ ...prev, booked: currentVal }));
+      return;
+    }
+    logAudit({ appointmentId, actor, action: newVal ? "Appointment Booked Date Confirmed" : "Appointment Booked Marked Undone", entity: "booked", newData: { booked: newVal, booked_at: newJs.booked_at } });
+  };
+
   const doneCount = ALL_STEPS.filter((s) => !!steps[s.key]).length;
 
   return (
@@ -1367,7 +1391,40 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                     {isSaving ? "..." : done ? "Undo" : "Mark Done"}
                   </button>
                 )}
-                {(step.key === "booked" || step.key === "confirmed" || step.key === "payment_done") && (
+                {!isAdmin && step.key === "booked" && (
+                  <span style={{
+                    padding: "6px 12px", borderRadius: "8px", fontSize: "11px", fontWeight: "700", flexShrink: 0,
+                    background: done ? "#dcfce7" : "#f3f4f6",
+                    color: done ? "#16a34a" : "#9ca3af",
+                    letterSpacing: "0.5px",
+                  }}>
+                    {done ? "✓ CONFIRMED" : "PENDING"}
+                  </span>
+                )}
+                {isAdmin && step.key === "booked" && (
+                  <>
+                    <input
+                      type="date"
+                      value={bookedDate}
+                      onChange={(e) => setBookedDate(e.target.value)}
+                      style={{ padding: "6px 10px", borderRadius: "8px", border: "1px solid #e5e7eb", fontSize: "12px", flexShrink: 0 }}
+                    />
+                    <button
+                      onClick={markBooked}
+                      disabled={saving === "booked"}
+                      style={{
+                        padding: "6px 14px", borderRadius: "8px", border: "none", cursor: saving === "booked" ? "not-allowed" : "pointer",
+                        background: done ? "#fee2e2" : "#111827",
+                        color: done ? "#dc2626" : "white",
+                        fontWeight: "700", fontSize: "12px", flexShrink: 0,
+                        opacity: saving === "booked" ? 0.6 : 1,
+                      }}
+                    >
+                      {saving === "booked" ? "..." : done ? "Undo" : "Mark Done"}
+                    </button>
+                  </>
+                )}
+                {(step.key === "confirmed" || step.key === "payment_done") && (
                   <span style={{
                     padding: "6px 12px", borderRadius: "8px", fontSize: "11px", fontWeight: "700", flexShrink: 0,
                     background: done ? "#dcfce7" : "#f3f4f6",
