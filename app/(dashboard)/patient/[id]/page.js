@@ -369,16 +369,24 @@ export default function PatientJourney() {
                               Thank you for approving your treatment plan.
                             </p>
                           )}
-                          {step.key === "manufacturing_started" && done && patient.journey_steps?.manufacturing_started_at && (
-                            <p style={{ margin: "2px 0 0", fontSize: "11px", color: "#16a34a", lineHeight: "1.4" }}>
-                              Started on {new Date(patient.journey_steps.manufacturing_started_at + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
-                            </p>
-                          )}
-                          {step.key === "manufacturing_completed" && done && patient.journey_steps?.manufacturing_completed_at && (
-                            <p style={{ margin: "2px 0 0", fontSize: "11px", color: "#16a34a", lineHeight: "1.4" }}>
-                              Completed on {new Date(patient.journey_steps.manufacturing_completed_at + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
-                            </p>
-                          )}
+                          {step.key === "manufacturing_started" && done && patient.journey_steps?.manufacturing_started_at && (() => {
+                            const startedBatches = (patient.manufacturing_data?.batches || []).filter((b) => b.mfg_started).map((b) => b.num);
+                            return (
+                              <p style={{ margin: "2px 0 0", fontSize: "11px", color: "#16a34a", lineHeight: "1.4" }}>
+                                {startedBatches.length > 0 ? `Batch ${startedBatches.join(", ")} — ` : ""}
+                                Started on {new Date(patient.journey_steps.manufacturing_started_at + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                              </p>
+                            );
+                          })()}
+                          {step.key === "manufacturing_completed" && done && patient.journey_steps?.manufacturing_completed_at && (() => {
+                            const doneBatches = (patient.manufacturing_data?.batches || []).filter((b) => b.mfg_done).map((b) => b.num);
+                            return (
+                              <p style={{ margin: "2px 0 0", fontSize: "11px", color: "#16a34a", lineHeight: "1.4" }}>
+                                {doneBatches.length > 0 ? `Batch ${doneBatches.join(", ")} — ` : ""}
+                                Completed on {new Date(patient.journey_steps.manufacturing_completed_at + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                              </p>
+                            );
+                          })()}
                           {step.subtext && (
                             <p style={{ margin: "2px 0 0", fontSize: "11px", color: done ? "#16a34a" : "#9ca3af", lineHeight: "1.4" }}>
                               {step.subtext}
