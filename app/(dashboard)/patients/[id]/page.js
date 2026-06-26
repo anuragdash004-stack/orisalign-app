@@ -212,6 +212,7 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
   const [plan, setPlan] = useState(initialData?.plan ?? "");
   const [fullAmount, setFullAmount] = useState(initialData?.full_amount ?? "");
   const [coupon, setCoupon] = useState(initialData?.discount ?? "");
+  const [b2bFees, setB2bFees] = useState(initialData?.b2b_fees ?? "");
   const [downPayment, setDownPayment] = useState(initialData?.down_payment ?? "");
   const [paidAmount, setPaidAmount] = useState("");
   const [mode, setMode] = useState(initialData?.payment_mode ?? "");
@@ -285,6 +286,10 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
   const fullAmt = parseFloat(fullAmount) || 0;
   const couponAmt = parseFloat(coupon) || 0;
   const finalAmt = Math.max(0, fullAmt - couponAmt);
+  const b2bFeesAmt = parseFloat(b2bFees) || 0;
+  // Internal-only — deducted from Final Amount for our own report, never
+  // pushed to or shown on the patient's journey page.
+  const totalAmt = Math.max(0, finalAmt - b2bFeesAmt);
   const paidAmt = parseFloat(paidAmount) || 0;
   const pendingAmt = Math.max(0, finalAmt - paidAmt);
 
@@ -306,6 +311,8 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
         full_amount: fullAmt,
         discount: couponAmt || "",
         final_amount: finalAmt,
+        b2b_fees: b2bFeesAmt || "",
+        total_amount: totalAmt,
         down_payment: parseFloat(downPayment) || "",
         payment_mode: mode || "",
       };
@@ -593,6 +600,12 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
               <PaymentSummaryRow label="Full Payment" value={inr(fullAmount)} />
               {couponAmt > 0 && <PaymentSummaryRow label="Coupon" value={`− ${inr(coupon)}`} />}
               <PaymentSummaryRow label="Final Amount" value={inr(finalAmt)} />
+              {b2bFeesAmt > 0 && (
+                <>
+                  <PaymentSummaryRow label="B2B Fees (internal)" value={`− ${inr(b2bFees)}`} />
+                  <PaymentSummaryRow label="Total Amount (internal)" value={inr(totalAmt)} />
+                </>
+              )}
               <PaymentSummaryRow label="Paid" value={inr(paidAmount)} />
               <PaymentSummaryRow label="Pending" value={inr(pendingAmt)} />
               <PaymentSummaryRow label="Mode" value={mode || "—"} />
@@ -632,6 +645,17 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
               <div>
                 <span style={label}>FINAL AMOUNT (₹) — auto-calculated</span>
                 <input style={readonlyInput} type="text" readOnly value={`₹ ${finalAmt.toLocaleString("en-IN")}`} />
+              </div>
+            </div>
+            <div style={row}>
+              <div>
+                <span style={label}>B2B FEES (₹) — internal, not shown to patient</span>
+                <input style={input} type="number" placeholder="0" value={b2bFees}
+                  onChange={(e) => setB2bFees(e.target.value)} />
+              </div>
+              <div>
+                <span style={label}>TOTAL AMOUNT (₹) — auto-calculated, internal</span>
+                <input style={readonlyInput} type="text" readOnly value={`₹ ${totalAmt.toLocaleString("en-IN")}`} />
               </div>
             </div>
             <div style={row}>
