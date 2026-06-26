@@ -46,7 +46,7 @@ const JOURNEY_STEPS = [
   { key: "manufacturing_started",   label: "Manufacturing Started" },
   { key: "manufacturing_completed", label: "Manufacturing Completed" },
   { key: "aligners_dispatched",     label: "Aligners Dispatched", expandable: true },
-  { key: "aligners_received",       label: "Aligners Received" },
+  { key: "aligners_received",       label: "Aligners Received", expandable: true },
   { key: "followup_appointment",    label: "Appointment Book" },
   { key: "aligners_delivered",      label: "Aligners Delivered" },
   { key: "smile_correction",        label: "Smile Correction Started",   smileLink: true },
@@ -628,15 +628,44 @@ export default function PatientJourney() {
                                       Track Shipment
                                     </button>
                                   )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+
+                  {/* Expanded Panel — Aligners Received (per batch) */}
+                  {step.key === "aligners_received" && isExpanded && (
+                    <div style={{ marginLeft: "58px", marginTop: "8px", background: "white", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+                      <p style={{ margin: "0 0 14px", fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Confirm Receipt — Batch by Batch</p>
+                      {(() => {
+                        const dispatchedBatches = (patient.manufacturing_data?.batches || [])
+                          .filter((b) => b.shipment_link)
+                          .sort((a, b) => a.num - b.num);
+                        if (dispatchedBatches.length === 0) {
+                          return <p style={{ margin: 0, fontSize: "13px", color: "#9ca3af", fontStyle: "italic" }}>This will appear once a batch has been dispatched to you.</p>;
+                        }
+                        return (
+                          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                            {dispatchedBatches.map((batch) => {
+                              const range = (batch.start !== undefined && batch.start !== "" && batch.end !== undefined && batch.end !== "") ? ` · Aligners ${batch.start}–${batch.end}` : "";
+                              return (
+                                <div key={batch.num} style={{ padding: "12px", background: "#f8f7f5", borderRadius: "10px" }}>
+                                  <p style={{ margin: "0 0 8px", fontSize: "13px", fontWeight: "700", color: "#111827" }}>
+                                    Batch {batch.num}{range}
+                                  </p>
                                   {batch.aligner_received ? (
-                                    <p style={{ margin: "10px 0 0", fontSize: "12px", fontWeight: "700", color: "#16a34a" }}>
+                                    <p style={{ margin: 0, fontSize: "12px", fontWeight: "700", color: "#16a34a" }}>
                                       ✓ Received on {new Date(batch.aligner_received + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                                     </p>
                                   ) : (
                                     <button
                                       onClick={(e) => { e.stopPropagation(); handleMarkReceived(batch.num); }}
                                       disabled={receivingBatch === batch.num}
-                                      style={{ marginTop: "10px", width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #16a34a", background: receivingBatch === batch.num ? "#f0fdf4" : "white", color: "#16a34a", fontWeight: "700", fontSize: "13px", cursor: receivingBatch === batch.num ? "not-allowed" : "pointer" }}
+                                      style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #16a34a", background: receivingBatch === batch.num ? "#f0fdf4" : "white", color: "#16a34a", fontWeight: "700", fontSize: "13px", cursor: receivingBatch === batch.num ? "not-allowed" : "pointer" }}
                                     >
                                       {receivingBatch === batch.num ? "Saving..." : "I've Received This Batch"}
                                     </button>
