@@ -81,6 +81,15 @@ function fmt(n) {
   return `₹ ${parseFloat(n).toLocaleString("en-IN")}`;
 }
 
+function ReportRow({ label, value, last }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", padding: "6px 0", borderBottom: last ? "none" : "1px dashed #e5e7eb" }}>
+      <span style={{ fontSize: "11px", fontWeight: "700", color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.4px" }}>{label}</span>
+      <span style={{ fontSize: "13px", fontWeight: "700", color: "#111827", textAlign: "right" }}>{value}</span>
+    </div>
+  );
+}
+
 function calculateFinalAmount(pd, appliedCoupons) {
   let fullAmt = parseFloat(pd.full_amount) || 0;
   fullAmt = fullAmt - (parseFloat(pd.discount) || 0);
@@ -617,27 +626,28 @@ export default function PatientJourney() {
                         <p style={{ margin: 0, fontSize: "13px", color: "#9ca3af", fontStyle: "italic" }}>Payment details will appear here once confirmed.</p>
                       ) : (
                         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                          {/* Payment status — what's been paid, what's left, sourced only from
-                              the clinic's saved figures so it always matches the gateway. */}
-                          {patient.payment_status === "paid" ? (
-                            <div style={{ padding: "12px", background: "#f0fdf4", borderRadius: "8px", border: "1px solid #bbf7d0" }}>
-                              <p style={{ margin: "0 0 4px", fontSize: "11px", fontWeight: "700", color: "#16a34a", textTransform: "uppercase" }}>✅ Fully Paid</p>
-                              <p style={{ margin: 0, fontSize: "22px", fontWeight: "900", color: "#15803d" }}>{fmt(patient.amount_paid || pd.full_amount)}</p>
-                            </div>
-                          ) : (
-                            <div style={{ padding: "12px", background: "#fff7ed", borderRadius: "8px", border: "1px solid #fed7aa", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                              <div>
-                                <p style={{ margin: "0 0 2px", fontSize: "10px", fontWeight: "700", color: "#b45309", textTransform: "uppercase" }}>Paid So Far</p>
-                                <p style={{ margin: 0, fontSize: "17px", fontWeight: "800", color: "#92400e" }}>{fmt(patient.amount_paid || 0)}</p>
-                              </div>
-                              <div>
-                                <p style={{ margin: "0 0 2px", fontSize: "10px", fontWeight: "700", color: "#b45309", textTransform: "uppercase" }}>Pending</p>
-                                <p style={{ margin: 0, fontSize: "17px", fontWeight: "800", color: "#92400e" }}>
-                                  {fmt(Math.max(0, (parseFloat(pd.full_amount) || 0) - (parseFloat(patient.amount_paid) || 0)))}
-                                </p>
-                              </div>
+                          {/* Full payment report — sourced only from the clinic's saved
+                              figures (pushed from the backend or recorded automatically by
+                              the gateway), so it always matches what's actually charged. */}
+                          {patient.payment_status === "paid" && (
+                            <div style={{ padding: "10px 12px", background: "#f0fdf4", borderRadius: "8px", border: "1px solid #bbf7d0" }}>
+                              <p style={{ margin: 0, fontSize: "13px", fontWeight: "800", color: "#16a34a" }}>✅ Fully Paid</p>
                             </div>
                           )}
+                          <div style={{ padding: "14px", background: "#f8f7f5", borderRadius: "10px", border: "1px solid #e5e7eb" }}>
+                            {pd.plan && <ReportRow label="Plan" value={pd.plan} />}
+                            <ReportRow label="Down Payment" value={fmt(pd.down_payment)} />
+                            <ReportRow label="Full Payment" value={fmt(pd.full_amount)} />
+                            {parseFloat(pd.discount) > 0 && <ReportRow label="Coupon" value={`− ${fmt(pd.discount)}`} />}
+                            <ReportRow label="Final Amount" value={fmt(pd.final_amount || pd.full_amount)} />
+                            <ReportRow label="Paid" value={fmt(patient.amount_paid || 0)} />
+                            <ReportRow
+                              label="Pending"
+                              value={fmt(Math.max(0, (parseFloat(pd.final_amount || pd.full_amount) || 0) - (parseFloat(patient.amount_paid) || 0)))}
+                              last
+                            />
+                            {pd.payment_mode && <ReportRow label="Mode" value={pd.payment_mode} />}
+                          </div>
 
                           {patient.payment_status !== "paid" && !patient.amount_paid && (
                             <div style={{ display: "flex", gap: "8px" }}>

@@ -35,6 +35,8 @@ const MODEL_OPTIONS = [
   { label: "16-18", value: "16-18", fullAmount: 108000 },
 ];
 const DOWN_PAYMENT_FIXED = 12500;
+const PLAN_OPTIONS = ["ORISPRO", "ORISPLUS"];
+const PAYMENT_METHOD_OPTIONS = ["UPI", "Credit Card", "Debit Card", "NACH", "Installments"];
 
 // ─── Shared styles ────────────────────────────────────────────────────────────
 const card = {
@@ -143,6 +145,15 @@ const EMPTY_PAYMENT = {
 
 const inr = (n) => `₹ ${(Number(n) || 0).toLocaleString("en-IN")}`;
 
+function PaymentSummaryRow({ label: lbl, value }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", gap: "16px", padding: "10px 0", borderBottom: "1px dashed #e5e7eb" }}>
+      <span style={{ fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>{lbl}</span>
+      <span style={{ fontSize: "14px", fontWeight: "700", color: "#111827", textAlign: "right" }}>{value}</span>
+    </div>
+  );
+}
+
 // Wraps a single-choice control with a Cancel (✕) button when it has a value.
 function Clearable({ show, onClear, children }) {
   return (
@@ -169,14 +180,14 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
   const [applyingModel, setApplyingModel] = useState(false);
 
   // Card 2 fields — kept flat and minimal, per the simplified report below.
+  const [plan, setPlan] = useState(initialData?.plan ?? "");
   const [fullAmount, setFullAmount] = useState(initialData?.full_amount ?? "");
   const [coupon, setCoupon] = useState(initialData?.discount ?? "");
   const [downPayment, setDownPayment] = useState(initialData?.down_payment ?? "");
   const [paidAmount, setPaidAmount] = useState("");
-  const [mode, setMode] = useState("down_payment");
-  const [customAmount, setCustomAmount] = useState("");
+  const [mode, setMode] = useState(initialData?.payment_mode ?? "");
   const [pushing, setPushing] = useState(false);
-  const [pushed, setPushed] = useState(false);
+  const [isLocked, setIsLocked] = useState(!!(initialData && initialData.full_amount));
   const initializedFromAppt = useRef(false);
 
   useEffect(() => {
@@ -184,14 +195,12 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
       .then(({ data }) => setAppt(data || null));
   }, [appointmentId]);
 
-  // amount_paid / payment_type_to_collect live outside payment_data, on the
-  // row itself — prime them once the row loads, without clobbering anything
-  // the admin has already started typing.
+  // amount_paid lives outside payment_data, on the row itself — prime it
+  // once the row loads, without clobbering anything the admin has already
+  // started typing.
   useEffect(() => {
     if (appt && !initializedFromAppt.current) {
       setPaidAmount(appt.amount_paid ? String(appt.amount_paid) : "");
-      setMode(appt.payment_type_to_collect || "down_payment");
-      setCustomAmount(appt.payment_custom_amount ? String(appt.payment_custom_amount) : "");
       initializedFromAppt.current = true;
     }
   }, [appt]);
@@ -240,22 +249,25 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
   const pendingAmt = Math.max(0, finalAmt - paidAmt);
 
   // The same numbers shown here are exactly what the patient's journey page
-  // reads (full_amount/down_payment from payment_data, amount_paid/
-  // payment_status from the row, payment_type_to_collect for the gateway) —
-  // so pushing this report is the manual fallback for when the patient's own
-  // self-serve payment never reflected automatically.
+  // reads (full_amount/down_payment/plan/payment_mode from payment_data,
+  // amount_paid/payment_status from the row) — so pushing this report is the
+  // manual fallback for when the patient's own self-serve payment never
+  // reflected automatically. The gateway itself always recomputes its own
+  // trusted amount fresh when the patient clicks Pay Now, so this push
+  // doesn't need to touch payment_type_to_collect.
   const pushReport = async () => {
     if (fullAmt <= 0) { alert("Enter a full payment amount first."); return; }
-    if (mode === "others" && !(parseFloat(customAmount) > 0)) { alert("Enter a valid custom amount."); return; }
     setPushing(true);
     try {
       const paymentStatus = finalAmt > 0 && paidAmt >= finalAmt ? "paid" : paidAmt > 0 ? "partial" : "pending";
       const paymentData = {
         ...(appt?.payment_data || {}),
+        plan: plan || "",
         full_amount: fullAmt,
         discount: couponAmt || "",
         final_amount: finalAmt,
         down_payment: parseFloat(downPayment) || "",
+        payment_mode: mode || "",
       };
       const newJourneySteps = { ...(appt?.journey_steps || {}), payment_done: true };
 
@@ -272,33 +284,16 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
 
       if (error) { alert("Error saving: " + error.message); return; }
 
-      const res = await fetch("/api/set-payment-type", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          appointmentId,
-          paymentType: mode,
-          customAmount: mode === "others" ? parseFloat(customAmount) : undefined,
-          actorEmail: actor?.email,
-          actorRole: actor?.role,
-        }),
-      });
-      const json = await res.json();
-      if (!res.ok || json.error) {
-        alert("Saved the payment report, but failed to set the gateway payment mode: " + (json.error || "Unknown error"));
-      }
-
       logAudit({
         appointmentId, actor, action: "Payment Report Pushed to Patient", entity: "payment_data",
-        newData: { ...paymentData, amount_paid: paidAmt, amount_to_pay: pendingAmt, payment_status: paymentStatus, payment_type_to_collect: mode },
+        newData: { ...paymentData, amount_paid: paidAmt, amount_to_pay: pendingAmt, payment_status: paymentStatus },
       });
 
       setAppt((prev) => prev && {
         ...prev, payment_data: paymentData, amount_paid: paidAmt, amount_to_pay: pendingAmt,
-        payment_status: paymentStatus, payment_type_to_collect: mode, journey_steps: newJourneySteps,
+        payment_status: paymentStatus, journey_steps: newJourneySteps,
       });
-      setPushed(true);
-      setTimeout(() => setPushed(false), 3000);
+      setIsLocked(true);
     } catch {
       alert("Network error. Please try again.");
     } finally {
@@ -446,69 +441,106 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
 
       {/* Card 2 — Payment Summary & Report */}
       <div style={card}>
-        <h3 style={{ margin: "0 0 4px", fontSize: "16px", color: "#111827" }}>Payment Summary</h3>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px", flexWrap: "wrap", gap: "10px" }}>
+          <h3 style={{ margin: 0, fontSize: "16px", color: "#111827" }}>Payment Summary</h3>
+          {isLocked && (
+            <span style={{ fontSize: "11px", fontWeight: "700", padding: "4px 10px", borderRadius: "99px", background: "#dcfce7", color: "#16a34a", letterSpacing: "0.5px" }}>PUSHED ✓</span>
+          )}
+        </div>
         <p style={{ margin: "0 0 20px", fontSize: "12px", color: "#9ca3af" }}>
           Pushing this updates the patient's journey page directly — use it to make or receive a payment for the
           customer and generate the same report they see, especially if their own self-serve payment didn't reflect.
         </p>
 
-        <div style={row}>
-          <div>
-            <span style={label}>DOWN PAYMENT (₹)</span>
-            <input style={input} type="number" placeholder="0" value={downPayment}
-              onChange={(e) => setDownPayment(e.target.value)} />
-          </div>
-          <div>
-            <span style={label}>FULL PAYMENT (₹)</span>
-            <input style={input} type="number" placeholder="0" value={fullAmount}
-              onChange={(e) => setFullAmount(e.target.value)} />
-          </div>
-        </div>
-        <div style={row}>
-          <div>
-            <span style={label}>COUPON (₹)</span>
-            <input style={input} type="number" placeholder="0" value={coupon}
-              onChange={(e) => setCoupon(e.target.value)} />
-          </div>
-          <div>
-            <span style={label}>FINAL AMOUNT (₹) — auto-calculated</span>
-            <input style={readonlyInput} type="text" readOnly value={`₹ ${finalAmt.toLocaleString("en-IN")}`} />
-          </div>
-        </div>
-        <div style={row}>
-          <div>
-            <span style={label}>PAID (₹)</span>
-            <input style={input} type="number" placeholder="0" value={paidAmount}
-              onChange={(e) => setPaidAmount(e.target.value)} />
-          </div>
-          <div>
-            <span style={label}>PENDING (₹) — auto-calculated</span>
-            <input style={readonlyInput} type="text" readOnly value={`₹ ${pendingAmt.toLocaleString("en-IN")}`} />
-          </div>
-        </div>
-        <div style={{ marginBottom: "20px" }}>
-          <span style={label}>MODE — what the gateway should now collect from the patient</span>
-          <select style={select} value={mode} onChange={(e) => setMode(e.target.value)}>
-            {PAYMENT_PUSH_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
-          {mode === "others" && (
-            <input
-              style={{ ...input, marginTop: "10px" }}
-              type="number"
-              placeholder="Enter amount (₹)"
-              value={customAmount}
-              onChange={(e) => setCustomAmount(e.target.value)}
-            />
-          )}
-        </div>
+        {isLocked ? (
+          <>
+            <div style={{ marginBottom: "20px" }}>
+              <PaymentSummaryRow label="Plan" value={plan || "—"} />
+              <PaymentSummaryRow label="Down Payment" value={inr(downPayment)} />
+              <PaymentSummaryRow label="Full Payment" value={inr(fullAmount)} />
+              {couponAmt > 0 && <PaymentSummaryRow label="Coupon" value={`− ${inr(coupon)}`} />}
+              <PaymentSummaryRow label="Final Amount" value={inr(finalAmt)} />
+              <PaymentSummaryRow label="Paid" value={inr(paidAmount)} />
+              <PaymentSummaryRow label="Pending" value={inr(pendingAmt)} />
+              <PaymentSummaryRow label="Mode" value={mode || "—"} />
+            </div>
+            <button style={btnGold} onClick={() => setIsLocked(false)}>Edit</button>
+          </>
+        ) : (
+          <>
+            <div style={{ marginBottom: "16px" }}>
+              <span style={label}>PLAN</span>
+              <Clearable show={!!plan} onClear={() => setPlan("")}>
+                <select style={select} value={plan} onChange={(e) => setPlan(e.target.value)}>
+                  <option value="">— Select —</option>
+                  {PLAN_OPTIONS.map((p) => <option key={p} value={p}>{p}</option>)}
+                </select>
+              </Clearable>
+            </div>
 
-        <button
-          style={pushing ? { ...btnGold, opacity: 0.6 } : btnGold}
-          onClick={pushReport}
-          disabled={pushing}
-        >
-          {pushing ? "Pushing..." : pushed ? "Pushed to Patient ✓" : "Push to Patient"}
-        </button>
+            <div style={row}>
+              <div>
+                <span style={label}>DOWN PAYMENT (₹)</span>
+                <input style={input} type="number" placeholder="0" value={downPayment}
+                  onChange={(e) => setDownPayment(e.target.value)} />
+              </div>
+              <div>
+                <span style={label}>FULL PAYMENT (₹)</span>
+                <input style={input} type="number" placeholder="0" value={fullAmount}
+                  onChange={(e) => setFullAmount(e.target.value)} />
+              </div>
+            </div>
+            <div style={row}>
+              <div>
+                <span style={label}>COUPON (₹)</span>
+                <input style={input} type="number" placeholder="0" value={coupon}
+                  onChange={(e) => setCoupon(e.target.value)} />
+              </div>
+              <div>
+                <span style={label}>FINAL AMOUNT (₹) — auto-calculated</span>
+                <input style={readonlyInput} type="text" readOnly value={`₹ ${finalAmt.toLocaleString("en-IN")}`} />
+              </div>
+            </div>
+            <div style={row}>
+              <div>
+                <span style={label}>PAID (₹)</span>
+                <input style={input} type="number" placeholder="0" value={paidAmount}
+                  onChange={(e) => setPaidAmount(e.target.value)} />
+              </div>
+              <div>
+                <span style={label}>PENDING (₹) — auto-calculated</span>
+                <input style={readonlyInput} type="text" readOnly value={`₹ ${pendingAmt.toLocaleString("en-IN")}`} />
+              </div>
+            </div>
+            <div style={{ marginBottom: "20px" }}>
+              <span style={label}>MODE</span>
+              <Clearable show={!!mode} onClear={() => setMode("")}>
+                <select style={select} value={mode} onChange={(e) => setMode(e.target.value)}>
+                  <option value="">— Select —</option>
+                  {PAYMENT_METHOD_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
+                </select>
+              </Clearable>
+            </div>
+
+            <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+              <button
+                style={pushing ? { ...btnGold, opacity: 0.6 } : btnGold}
+                onClick={pushReport}
+                disabled={pushing}
+              >
+                {pushing ? "Pushing..." : "Push to Patient"}
+              </button>
+              {!!(appt?.payment_data?.full_amount) && (
+                <button
+                  onClick={() => setIsLocked(true)}
+                  style={{ padding: "10px 22px", borderRadius: "10px", border: "1px solid #e5e7eb", background: "white", color: "#374151", fontWeight: "700", fontSize: "13px", cursor: "pointer" }}
+                >
+                  Cancel
+                </button>
+              )}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -879,13 +911,6 @@ const DEFAULT_STEP_MESSAGES = {
 };
 
 // ─── Journey Tab (admin only) ─────────────────────────────────────────────────
-const PAYMENT_PUSH_OPTIONS = [
-  { value: "down_payment", label: "Down Payment" },
-  { value: "full", label: "Full Payment" },
-  { value: "pending", label: "Pending Amount" },
-  { value: "others", label: "Others" },
-];
-
 function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
   const [steps, setSteps] = useState(() => deriveSteps(appt));
   const [saving, setSaving] = useState(null);
