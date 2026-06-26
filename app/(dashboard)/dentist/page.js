@@ -34,9 +34,10 @@ export default function DentistDashboard() {
       let query = supabase
         .from("appointments_booking")
         .select("*")
-        // Only fully confirmed appointments — never leads, and not merely
-        // booked/assigned ones still awaiting admin confirmation.
-        .eq("status", "confirmed")
+        // Confirmed and completed appointments — never leads, and not merely
+        // booked/assigned ones still awaiting admin confirmation. Completed
+        // cases stay visible here too, just flagged as completed.
+        .in("status", ["confirmed", "completed"])
         .order("created_at", { ascending: false });
 
       if (!isAdmin) {

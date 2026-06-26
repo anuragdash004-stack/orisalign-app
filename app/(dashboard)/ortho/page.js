@@ -32,19 +32,20 @@ export default function OrthoPage() {
         const { data } = await supabase
           .from("appointments_booking")
           .select("*")
-          // Only fully confirmed appointments — never leads, and not merely
-          // booked/assigned ones still awaiting admin confirmation.
-          .eq("status", "confirmed")
+          // Confirmed and completed appointments — never leads, and not
+          // merely booked/assigned ones still awaiting admin confirmation.
+          // Completed cases stay visible here too, just flagged as completed.
+          .in("status", ["confirmed", "completed"])
           .eq("assigned_ortho", authData.user.id)
           .order("created_at", { ascending: false });
         setMyAppointments(data || []);
       } else {
-        // admin — every confirmed appointment, assigned or not, so unassigned
-        // confirmed bookings stay visible for assignment.
+        // admin — every confirmed/completed appointment, assigned or not, so
+        // unassigned confirmed bookings stay visible for assignment.
         const { data } = await supabase
           .from("appointments_booking")
           .select("*")
-          .eq("status", "confirmed")
+          .in("status", ["confirmed", "completed"])
           .order("created_at", { ascending: false });
         setMyAppointments(data || []);
       }

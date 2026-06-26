@@ -2201,7 +2201,7 @@ export default function PatientDetailPage() {
 
       {/* Tab Pills — Manufacturing/Logistics only apply once the appointment is confirmed */}
       <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "20px" }}>
-        {TABS.filter((tab) => (tab !== "Manufacturing" && tab !== "Logistics") || appt.status === "confirmed").map((tab) => (
+        {TABS.filter((tab) => (tab !== "Manufacturing" && tab !== "Logistics") || appt.status === "confirmed" || appt.status === "completed").map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}

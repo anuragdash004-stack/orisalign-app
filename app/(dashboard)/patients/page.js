@@ -26,9 +26,10 @@ export default function PatientsPage() {
       const { data, error } = await supabase
         .from("appointments_booking")
         .select("*")
-        // Only fully confirmed appointments — booked-but-unconfirmed ones
-        // stay on the Appointment page until the admin confirms them.
-        .eq("status", "confirmed")
+        // Confirmed and completed appointments — booked-but-unconfirmed ones
+        // stay on the Appointment page until the admin confirms them, but
+        // once confirmed a case stays visible here through completion.
+        .in("status", ["confirmed", "completed"])
         .order("created_at", { ascending: false });
       if (error) console.error(error);
       setAppointments(data || []);
