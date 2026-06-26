@@ -36,7 +36,36 @@ const MODEL_OPTIONS = [
 ];
 const DOWN_PAYMENT_FIXED = 12500;
 const PLAN_OPTIONS = ["ORISPRO", "ORISPLUS"];
-const PAYMENT_METHOD_OPTIONS = ["UPI", "Credit Card", "Debit Card", "NACH", "Installments"];
+const PAYMENT_METHOD_OPTIONS = ["UPI", "Credit Card", "Debit Card", "NACH", "Installments", "E-Mandate"];
+const RECURRING_MODES = ["NACH", "E-Mandate"];
+
+// Adds `months` calendar months to a "YYYY-MM-DD" date string.
+function addMonths(dateStr, months) {
+  const d = new Date(dateStr);
+  d.setMonth(d.getMonth() + months);
+  return d.toISOString().slice(0, 10);
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return "";
+  return new Date(dateStr).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+}
+
+// Builds `tenure` recurring installments of `amount` each, starting on
+// `recurringDate` and repeating monthly. Preserves paid status for
+// installment numbers that already existed in `existing`.
+function buildRecurringInstallments(amount, tenure, recurringDate, existing = []) {
+  const n = parseInt(tenure) || 0;
+  const amt = parseFloat(amount) || 0;
+  if (n <= 0 || amt <= 0 || !recurringDate) return [];
+  const result = [];
+  for (let i = 1; i <= n; i++) {
+    const date = addMonths(recurringDate, i - 1);
+    const prev = (existing || []).find((x) => x.num === i);
+    result.push({ num: i, amount: amt, date, paid: prev?.paid || false, paid_date: prev?.paid_date || null });
+  }
+  return result;
+}
 
 // ─── Shared styles ────────────────────────────────────────────────────────────
 const card = {
@@ -190,6 +219,17 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
   const [isLocked, setIsLocked] = useState(!!(initialData && initialData.full_amount));
   const initializedFromAppt = useRef(false);
 
+  // Card 3 — Pending collection schedule (only shown while pendingAmt > 0).
+  const pendingPlanInit = initialData?.pending_plan || {};
+  const [pendingMode, setPendingMode] = useState(pendingPlanInit.mode ?? "");
+  const [pendingPlanAmount, setPendingPlanAmount] = useState(pendingPlanInit.amount ?? "");
+  const [pendingTenure, setPendingTenure] = useState(pendingPlanInit.tenure ?? "");
+  const [pendingRecurringDate, setPendingRecurringDate] = useState(pendingPlanInit.recurring_date ?? "");
+  const [pendingInstallments, setPendingInstallments] = useState(pendingPlanInit.installments || []);
+  const [isPendingLocked, setIsPendingLocked] = useState(!!pendingPlanInit.mode);
+  const [generatingPending, setGeneratingPending] = useState(false);
+  const [markingInstallmentPaid, setMarkingInstallmentPaid] = useState(null);
+
   useEffect(() => {
     supabase.from("appointments_booking").select("*").eq("id", appointmentId).single()
       .then(({ data }) => setAppt(data || null));
@@ -298,6 +338,99 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
       alert("Network error. Please try again.");
     } finally {
       setPushing(false);
+    }
+  };
+
+  const isRecurringMode = RECURRING_MODES.includes(pendingMode);
+
+  const savePendingSetup = async () => {
+    if (!pendingMode) { alert("Select how the pending amount will be collected."); return; }
+    if (isRecurringMode && !(parseFloat(pendingPlanAmount) > 0 && parseInt(pendingTenure) > 0 && pendingRecurringDate)) {
+      alert("Enter the amount, tenure, and recurring date.");
+      return;
+    }
+    setGeneratingPending(true);
+    try {
+      const installments = isRecurringMode
+        ? buildRecurringInstallments(pendingPlanAmount, pendingTenure, pendingRecurringDate, pendingInstallments)
+        : [];
+      const pendingPlan = {
+        mode: pendingMode,
+        amount: pendingPlanAmount || "",
+        tenure: pendingTenure || "",
+        recurring_date: pendingRecurringDate || "",
+        installments,
+      };
+      const newPaymentData = { ...(appt?.payment_data || {}), pending_plan: pendingPlan };
+
+      const { error } = await supabase
+        .from("appointments_booking")
+        .update({ payment_data: newPaymentData })
+        .eq("id", appointmentId);
+      if (error) { alert("Error saving: " + error.message); return; }
+
+      logAudit({ appointmentId, actor, action: "Pending Payment Schedule Saved", entity: "payment_data", newData: pendingPlan });
+
+      setAppt((prev) => prev && { ...prev, payment_data: newPaymentData });
+      setPendingInstallments(installments);
+      setIsPendingLocked(true);
+    } catch {
+      alert("Network error. Please try again.");
+    } finally {
+      setGeneratingPending(false);
+    }
+  };
+
+  // Marking an installment paid records it through the same trusted,
+  // additive endpoint the gateways use (it validates against
+  // payment_data.full_amount), so the patient's Paid/Pending figures stay
+  // consistent regardless of where a payment came from.
+  const markInstallmentPaid = async (num) => {
+    const inst = pendingInstallments.find((x) => x.num === num);
+    if (!inst || inst.paid) return;
+    setMarkingInstallmentPaid(num);
+    try {
+      const res = await fetch("/api/update-payment-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          appointmentId,
+          amountPaid: inst.amount,
+          paymentMethod: pendingMode,
+          notes: `Installment ${num} of ${pendingInstallments.length}`,
+          actorEmail: actor?.email,
+          actorRole: actor?.role,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || json.error) {
+        alert("Failed to record payment: " + (json.error || "Unknown error"));
+        return;
+      }
+
+      const updatedInstallments = pendingInstallments.map((x) =>
+        x.num === num ? { ...x, paid: true, paid_date: new Date().toISOString().slice(0, 10) } : x
+      );
+      const updatedPendingPlan = { mode: pendingMode, amount: pendingPlanAmount, tenure: pendingTenure, recurring_date: pendingRecurringDate, installments: updatedInstallments };
+      const newPaymentData = { ...(appt?.payment_data || {}), pending_plan: updatedPendingPlan };
+
+      const { error } = await supabase
+        .from("appointments_booking")
+        .update({ payment_data: newPaymentData })
+        .eq("id", appointmentId);
+      if (error) { alert("Error saving: " + error.message); return; }
+
+      logAudit({ appointmentId, actor, action: `Installment ${num} Marked Paid`, entity: "payment_data", newData: { installment: num, amount: inst.amount, totalPaid: json.totalPaid } });
+
+      setPendingInstallments(updatedInstallments);
+      setPaidAmount(String(json.totalPaid));
+      setAppt((prev) => prev && {
+        ...prev, payment_data: newPaymentData, amount_paid: json.totalPaid, amount_to_pay: json.stillToPay, payment_status: json.paymentStatus,
+      });
+    } catch {
+      alert("Network error. Please try again.");
+    } finally {
+      setMarkingInstallmentPaid(null);
     }
   };
 
@@ -542,6 +675,120 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
           </>
         )}
       </div>
+
+      {/* Card 3 — Pending Payment (only while a balance is left to collect) */}
+      {pendingAmt > 0 && (
+        <div style={card}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px", flexWrap: "wrap", gap: "10px" }}>
+            <h3 style={{ margin: 0, fontSize: "16px", color: "#111827" }}>Pending Payment</h3>
+            {isPendingLocked && (
+              <span style={{ fontSize: "11px", fontWeight: "700", padding: "4px 10px", borderRadius: "99px", background: "#dcfce7", color: "#16a34a", letterSpacing: "0.5px" }}>SET ✓</span>
+            )}
+          </div>
+          <p style={{ margin: "0 0 20px", fontSize: "12px", color: "#9ca3af" }}>
+            {inr(pendingAmt)} is still pending. Choose how it'll be collected — pick NACH or E-Mandate to set up a
+            recurring schedule with a Paid option for each installment.
+          </p>
+
+          {isPendingLocked ? (
+            <>
+              <div style={{ marginBottom: "16px" }}>
+                <PaymentSummaryRow label="Mode" value={pendingMode} />
+                {isRecurringMode && (
+                  <>
+                    <PaymentSummaryRow label="Amount per Installment" value={inr(pendingPlanAmount)} />
+                    <PaymentSummaryRow label="Tenure" value={`${pendingTenure} installments`} />
+                    <PaymentSummaryRow label="Recurring Date" value={formatDate(pendingRecurringDate)} last={!pendingInstallments.length} />
+                  </>
+                )}
+              </div>
+
+              {pendingInstallments.length > 0 && (
+                <div style={{ marginBottom: "20px", display: "flex", flexDirection: "column", gap: "8px" }}>
+                  {pendingInstallments.map((inst) => (
+                    <div key={inst.num} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", padding: "10px 12px", background: inst.paid ? "#f0fdf4" : "#f8f7f5", borderRadius: "8px", border: inst.paid ? "1px solid #bbf7d0" : "1px solid transparent" }}>
+                      <div>
+                        <span style={{ fontSize: "13px", fontWeight: "700", color: "#111827" }}>Installment {inst.num}</span>
+                        <span style={{ marginLeft: "8px", fontSize: "13px", color: "#6b7280" }}>{inr(inst.amount)} · {formatDate(inst.date)}</span>
+                      </div>
+                      {inst.paid ? (
+                        <span style={{ fontSize: "12px", fontWeight: "700", color: "#16a34a" }}>Paid ✓{inst.paid_date ? ` on ${formatDate(inst.paid_date)}` : ""}</span>
+                      ) : (
+                        <button
+                          onClick={() => markInstallmentPaid(inst.num)}
+                          disabled={markingInstallmentPaid === inst.num}
+                          style={{ padding: "6px 14px", borderRadius: "8px", border: "none", background: markingInstallmentPaid === inst.num ? "#d4a574" : "#b8905a", color: "white", fontWeight: "700", fontSize: "12px", cursor: markingInstallmentPaid === inst.num ? "not-allowed" : "pointer", whiteSpace: "nowrap" }}
+                        >
+                          {markingInstallmentPaid === inst.num ? "Saving..." : "Mark Paid"}
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <button style={btnGold} onClick={() => setIsPendingLocked(false)}>Edit</button>
+            </>
+          ) : (
+            <>
+              <div style={{ marginBottom: "16px" }}>
+                <span style={label}>MODE</span>
+                <Clearable show={!!pendingMode} onClear={() => setPendingMode("")}>
+                  <select style={select} value={pendingMode} onChange={(e) => setPendingMode(e.target.value)}>
+                    <option value="">— Select —</option>
+                    {PAYMENT_METHOD_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                </Clearable>
+              </div>
+
+              {isRecurringMode && (
+                <>
+                  <div style={row}>
+                    <div>
+                      <span style={label}>AMOUNT PER INSTALLMENT (₹)</span>
+                      <input style={input} type="number" placeholder="0" value={pendingPlanAmount}
+                        onChange={(e) => setPendingPlanAmount(e.target.value)} />
+                    </div>
+                    <div>
+                      <span style={label}>TENURE (NUMBER OF INSTALLMENTS)</span>
+                      <input style={input} type="number" min="1" placeholder="e.g. 5" value={pendingTenure}
+                        onChange={(e) => setPendingTenure(e.target.value)} />
+                    </div>
+                  </div>
+                  <div style={{ marginBottom: "20px" }}>
+                    <span style={label}>RECURRING DATE (FIRST INSTALLMENT)</span>
+                    <input style={input} type="date" value={pendingRecurringDate}
+                      onChange={(e) => setPendingRecurringDate(e.target.value)} />
+                  </div>
+                  {parseFloat(pendingPlanAmount) > 0 && parseInt(pendingTenure) > 0 && pendingRecurringDate && (
+                    <div style={{ padding: "10px 12px", marginBottom: "20px", background: "#f8f7f5", borderRadius: "8px", fontSize: "12px", color: "#6b7280" }}>
+                      This will create {parseInt(pendingTenure)} installments of {inr(pendingPlanAmount)}, starting {formatDate(pendingRecurringDate)} and recurring monthly.
+                    </div>
+                  )}
+                </>
+              )}
+
+              <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                <button
+                  style={generatingPending ? { ...btnGold, opacity: 0.6 } : btnGold}
+                  onClick={savePendingSetup}
+                  disabled={generatingPending}
+                >
+                  {generatingPending ? "Saving..." : isRecurringMode ? "Generate Schedule" : "Save"}
+                </button>
+                {!!(appt?.payment_data?.pending_plan?.mode) && (
+                  <button
+                    onClick={() => setIsPendingLocked(true)}
+                    style={{ padding: "10px 22px", borderRadius: "10px", border: "1px solid #e5e7eb", background: "white", color: "#374151", fontWeight: "700", fontSize: "13px", cursor: "pointer" }}
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }

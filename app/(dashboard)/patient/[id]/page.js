@@ -644,9 +644,27 @@ export default function PatientJourney() {
                             <ReportRow
                               label="Pending"
                               value={fmt(Math.max(0, (parseFloat(pd.final_amount || pd.full_amount) || 0) - (parseFloat(patient.amount_paid) || 0)))}
-                              last
+                              last={!pd.payment_mode && !pd.pending_plan?.installments?.length}
                             />
-                            {pd.payment_mode && <ReportRow label="Mode" value={pd.payment_mode} />}
+                            {pd.payment_mode && (
+                              <ReportRow label="Mode" value={pd.payment_mode} last={!pd.pending_plan?.installments?.length} />
+                            )}
+                            {pd.pending_plan?.installments?.length > 0 && (() => {
+                              const installments = pd.pending_plan.installments;
+                              const paidOnes = installments.filter((i) => i.paid).sort((a, b) => b.num - a.num);
+                              const nextOne = installments.filter((i) => !i.paid).sort((a, b) => a.num - b.num)[0];
+                              return (
+                                <>
+                                  <ReportRow label="Pending Mode" value={pd.pending_plan.mode} />
+                                  <ReportRow label="Paid Installment" value={paidOnes[0] ? `#${paidOnes[0].num} of ${installments.length}` : "—"} />
+                                  <ReportRow
+                                    label="Next Installment"
+                                    value={nextOne ? `#${nextOne.num} — ${fmt(nextOne.amount)} on ${new Date(nextOne.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}` : "All installments paid"}
+                                    last
+                                  />
+                                </>
+                              );
+                            })()}
                           </div>
 
                           {patient.payment_status !== "paid" && !patient.amount_paid && (
