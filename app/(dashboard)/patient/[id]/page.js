@@ -58,10 +58,7 @@ function deriveSteps(appt) {
   if (!appt) return {};
   const js = appt.journey_steps || {};
   return {
-    // Requires an explicit booking date + Mark Done from the admin.
-    // Existing rows were backfilled to true; new appointments default to
-    // false until confirmed.
-    booked:                  !!js.booked,
+    booked:                  true,
     confirmed:               appt.status === "confirmed" || appt.status === "completed",
     scanning_done:           js.scanning_done        !== undefined ? !!js.scanning_done        : !!appt.stl_submitted,
     payment_done:            js.payment_done         !== undefined ? !!js.payment_done         : !!(appt.payment_data?.final_amount),

@@ -1074,10 +1074,7 @@ function deriveSteps(appt) {
   if (!appt) return {};
   const js = appt.journey_steps || {};
   return {
-    // Requires an explicit booking date + Mark Done from the admin (see
-    // markBooked in JourneyTab). Existing rows were backfilled to true; new
-    // appointments default to false until confirmed.
-    booked:                  !!js.booked,
+    booked:                  true,
     confirmed:               appt.status === "confirmed" || appt.status === "completed",
     scanning_done:           js.scanning_done        !== undefined ? !!js.scanning_done        : !!appt.stl_submitted,
     payment_done:            js.payment_done         !== undefined ? !!js.payment_done         : !!(appt.payment_data?.final_amount),
@@ -1130,7 +1127,7 @@ const DEFAULT_STEP_MESSAGES = {
 function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
   const [steps, setSteps] = useState(() => deriveSteps(appt));
   const [saving, setSaving] = useState(null);
-  const [bookedDate, setBookedDate] = useState(appt.journey_steps?.booked_at || "");
+  const [followupDate, setFollowupDate] = useState(appt.journey_steps?.followup_appointment_at || "");
   const [stepMessages, setStepMessages] = useState(() => JSON.parse(JSON.stringify(DEFAULT_STEP_MESSAGES)));
   const [openEmail, setOpenEmail] = useState({}); // which steps have their email editor expanded
 
@@ -1316,24 +1313,38 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
     }
   };
 
-  // "Appointment Booked" needs a date entered before it can be marked done —
-  // unlike the other automatic/derived steps, this one is explicit.
-  const markBooked = async () => {
-    if (!bookedDate) { alert("Enter the booking date first."); return; }
-    const currentVal = !!steps.booked;
+  // "Appointment Book" (the follow-up visit booked after the patient
+  // receives their aligners) needs a date entered before it can be marked
+  // done — unlike the other automatic/derived steps, this one is explicit.
+  const markFollowupAppointment = async () => {
+    const currentVal = !!steps.followup_appointment;
     const newVal = !currentVal;
-    setSteps((prev) => ({ ...prev, booked: newVal }));
-    setSaving("booked");
+    if (newVal && !followupDate) { alert("Enter the appointment date first."); return; }
+    setSteps((prev) => ({ ...prev, followup_appointment: newVal }));
+    setSaving("followup_appointment");
     const js = appt.journey_steps || {};
-    const newJs = { ...js, booked: newVal, booked_at: newVal ? bookedDate : null };
+    const newJs = { ...js, followup_appointment: newVal, followup_appointment_at: newVal ? followupDate : null };
     const { error } = await supabase.from("appointments_booking").update({ journey_steps: newJs }).eq("id", appointmentId);
     setSaving(null);
     if (error) {
       alert("Save failed: " + error.message);
-      setSteps((prev) => ({ ...prev, booked: currentVal }));
+      setSteps((prev) => ({ ...prev, followup_appointment: currentVal }));
       return;
     }
-    logAudit({ appointmentId, actor, action: newVal ? "Appointment Booked Date Confirmed" : "Appointment Booked Marked Undone", entity: "booked", newData: { booked: newVal, booked_at: newJs.booked_at } });
+    logAudit({ appointmentId, actor, action: newVal ? "Follow-Up Appointment Date Confirmed" : "Follow-Up Appointment Marked Undone", entity: "followup_appointment", newData: { followup_appointment: newVal, followup_appointment_at: newJs.followup_appointment_at } });
+    if (newVal && stepMessages.followup_appointment) {
+      fetch("/api/notify-step", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          appointmentId,
+          stepKey: "followup_appointment",
+          email: appt.email || null,
+          customSubject: stepMessages.followup_appointment.subject,
+          customBody: stepMessages.followup_appointment.body,
+        }),
+      }).catch(() => {});
+    }
   };
 
   const doneCount = ALL_STEPS.filter((s) => !!steps[s.key]).length;
@@ -1376,7 +1387,7 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                 <p style={{ margin: 0, flex: 1, fontSize: "14px", fontWeight: done ? "700" : "500", color: done ? "#15803d" : "#374151" }}>
                   {step.label}
                 </p>
-                {isAdmin && step.key !== "plan_approved" && step.key !== "booked" && step.key !== "confirmed" && step.key !== "payment_done" && (
+                {isAdmin && step.key !== "plan_approved" && step.key !== "booked" && step.key !== "confirmed" && step.key !== "payment_done" && step.key !== "followup_appointment" && (
                   <button
                     onClick={() => toggle(step.key)}
                     disabled={isSaving}
@@ -1391,7 +1402,7 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                     {isSaving ? "..." : done ? "Undo" : "Mark Done"}
                   </button>
                 )}
-                {!isAdmin && step.key === "booked" && (
+                {!isAdmin && step.key === "followup_appointment" && (
                   <span style={{
                     padding: "6px 12px", borderRadius: "8px", fontSize: "11px", fontWeight: "700", flexShrink: 0,
                     background: done ? "#dcfce7" : "#f3f4f6",
@@ -1401,30 +1412,30 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                     {done ? "✓ CONFIRMED" : "PENDING"}
                   </span>
                 )}
-                {isAdmin && step.key === "booked" && (
+                {isAdmin && step.key === "followup_appointment" && (
                   <>
                     <input
                       type="date"
-                      value={bookedDate}
-                      onChange={(e) => setBookedDate(e.target.value)}
+                      value={followupDate}
+                      onChange={(e) => setFollowupDate(e.target.value)}
                       style={{ padding: "6px 10px", borderRadius: "8px", border: "1px solid #e5e7eb", fontSize: "12px", flexShrink: 0 }}
                     />
                     <button
-                      onClick={markBooked}
-                      disabled={saving === "booked"}
+                      onClick={markFollowupAppointment}
+                      disabled={saving === "followup_appointment"}
                       style={{
-                        padding: "6px 14px", borderRadius: "8px", border: "none", cursor: saving === "booked" ? "not-allowed" : "pointer",
+                        padding: "6px 14px", borderRadius: "8px", border: "none", cursor: saving === "followup_appointment" ? "not-allowed" : "pointer",
                         background: done ? "#fee2e2" : "#111827",
                         color: done ? "#dc2626" : "white",
                         fontWeight: "700", fontSize: "12px", flexShrink: 0,
-                        opacity: saving === "booked" ? 0.6 : 1,
+                        opacity: saving === "followup_appointment" ? 0.6 : 1,
                       }}
                     >
-                      {saving === "booked" ? "..." : done ? "Undo" : "Mark Done"}
+                      {saving === "followup_appointment" ? "..." : done ? "Undo" : "Mark Done"}
                     </button>
                   </>
                 )}
-                {(step.key === "confirmed" || step.key === "payment_done") && (
+                {(step.key === "booked" || step.key === "confirmed" || step.key === "payment_done") && (
                   <span style={{
                     padding: "6px 12px", borderRadius: "8px", fontSize: "11px", fontWeight: "700", flexShrink: 0,
                     background: done ? "#dcfce7" : "#f3f4f6",
