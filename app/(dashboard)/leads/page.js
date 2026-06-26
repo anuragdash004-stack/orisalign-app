@@ -308,7 +308,11 @@ export default function LeadTrackerPage() {
       {/* All stages, stacked one after another */}
       <div style={{ display: "grid", gap: "22px" }}>
         {STAGES.map((s) => {
-          let list = visibleLeads.filter((l) => stageOf(l) === s.key);
+          // Booked is a terminal pipeline state, not a daily queue like Fresh/
+          // Follow-ups/Call Back — once a lead is booked (e.g. the dentist
+          // starts the appointment days later), it should keep showing here
+          // regardless of which date is selected in the calendar strip.
+          let list = (s.key === "booked" ? pipelineLeads : visibleLeads).filter((l) => stageOf(l) === s.key);
           if (s.key === "callback") {
             // Earliest callback time first, so the counselor sees what's due next.
             list = [...list].sort((a, b) => `${a.callback_date || ""} ${a.callback_time || ""}`.localeCompare(`${b.callback_date || ""} ${b.callback_time || ""}`));
