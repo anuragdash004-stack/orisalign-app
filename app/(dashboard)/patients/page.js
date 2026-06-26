@@ -26,6 +26,9 @@ export default function PatientsPage() {
       const { data, error } = await supabase
         .from("appointments_booking")
         .select("*")
+        // Only fully confirmed appointments — booked-but-unconfirmed ones
+        // stay on the Appointment page until the admin confirms them.
+        .eq("status", "confirmed")
         .order("created_at", { ascending: false });
       if (error) console.error(error);
       setAppointments(data || []);

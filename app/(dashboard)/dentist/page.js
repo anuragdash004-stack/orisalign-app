@@ -34,15 +34,16 @@ export default function DentistDashboard() {
       let query = supabase
         .from("appointments_booking")
         .select("*")
-        // Never show leads/cold leads here.
-        .neq("status", "lead")
+        // Only fully confirmed appointments — never leads, and not merely
+        // booked/assigned ones still awaiting admin confirmation.
+        .eq("status", "confirmed")
         .order("created_at", { ascending: false });
 
       if (!isAdmin) {
         // Non-admins only see cases assigned to them.
         query = query.eq("assigned_dentist", userId);
       }
-      // Admins see every non-lead appointment, assigned or not, so
+      // Admins see every confirmed appointment, assigned or not, so
       // unassigned confirmed bookings stay visible for assignment.
 
       const { data, error } = await query;

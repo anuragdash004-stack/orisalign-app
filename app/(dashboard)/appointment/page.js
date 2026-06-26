@@ -30,10 +30,12 @@ export default function AppointmentPage() {
     let query = supabase
       .from("appointments_booking")
       .select("*")
-      // Show real appointments + CONFIRMED (booked) leads only. Leads that are
-      // still in the pipeline (fresh / follow-up / call-back / denied) stay in
-      // the Lead Tracker until they are confirmed.
-      .or("status.neq.lead,booking_confirmed.eq.true")
+      // Only booked appointments — every booking (website or manual) now
+      // enters as a lead first, so booking_confirmed=true (set by "Confirm
+      // Lead → Booked" in the Lead Tracker) is the sole gate here. Leads
+      // still in the pipeline (fresh / follow-up / call-back / denied) stay
+      // in the Lead Tracker until they are confirmed.
+      .eq("booking_confirmed", true)
       .order("created_at", { ascending: false });
 
     // 👑 ADMIN → see everything

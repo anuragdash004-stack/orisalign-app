@@ -45,6 +45,11 @@ export async function POST(req: Request) {
     }
 
     // ✅ INSERT NEW BOOKING with timestamp
+    // Every booking — website, manual, or cold — enters as a lead first, so
+    // it's visible and actionable in the Lead Tracker. It only reaches the
+    // Appointment page once a counsellor confirms it ("Confirm Lead →
+    // Booked"), and only reaches Dentist/Orthodontist/Patients once an admin
+    // confirms the appointment itself.
     const { data: insertedData, error: insertError } = await supabase
       .from("appointments_booking")
       .insert([
@@ -57,7 +62,9 @@ export async function POST(req: Request) {
           address,
           date,
           time,
-          status: "pending",
+          status: "lead",
+          lead_stage: "fresh",
+          lead_source: "website",
           created_at: bookingTimestamp,
         },
       ])
@@ -90,7 +97,9 @@ export async function POST(req: Request) {
           address,
           date,
           time,
-          status: "pending",
+          status: "lead",
+          lead_stage: "fresh",
+          lead_source: "website",
           booking_timestamp: bookingTimestamp,
         },
         ipAddress: ip,

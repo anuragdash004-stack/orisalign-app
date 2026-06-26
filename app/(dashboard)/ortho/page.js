@@ -32,17 +32,19 @@ export default function OrthoPage() {
         const { data } = await supabase
           .from("appointments_booking")
           .select("*")
-          .neq("status", "lead")
+          // Only fully confirmed appointments — never leads, and not merely
+          // booked/assigned ones still awaiting admin confirmation.
+          .eq("status", "confirmed")
           .eq("assigned_ortho", authData.user.id)
           .order("created_at", { ascending: false });
         setMyAppointments(data || []);
       } else {
-        // admin — every non-lead appointment, assigned or not, so unassigned
+        // admin — every confirmed appointment, assigned or not, so unassigned
         // confirmed bookings stay visible for assignment.
         const { data } = await supabase
           .from("appointments_booking")
           .select("*")
-          .neq("status", "lead")
+          .eq("status", "confirmed")
           .order("created_at", { ascending: false });
         setMyAppointments(data || []);
       }
