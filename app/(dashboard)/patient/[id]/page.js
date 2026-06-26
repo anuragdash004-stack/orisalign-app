@@ -110,6 +110,7 @@ export default function PatientJourney() {
   const [expandedStep, setExpandedStep] = useState(null);
   const [approving, setApproving] = useState(false);
   const [copiedNum, setCopiedNum] = useState(null);
+  const [receivingBatch, setReceivingBatch] = useState(null);
   const [paymentMode, setPaymentMode] = useState("down"); // "down" or "full"
   const [appliedCoupons, setAppliedCoupons] = useState([]); // Array of {code, discount}
   const [couponInput, setCouponInput] = useState("");
@@ -271,6 +272,36 @@ export default function PatientJourney() {
       setTimeout(() => setCopiedNum(null), 2000);
     } catch {
       // ignore clipboard errors
+    }
+  };
+
+  // Patient confirms they've collected a specific batch — records the
+  // receipt and triggers both the thank-you email and the team notification
+  // server-side (see /api/notify-batch-received).
+  const handleMarkReceived = async (num) => {
+    setReceivingBatch(num);
+    try {
+      const res = await fetch("/api/notify-batch-received", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ appointmentId: id, batchNum: num }),
+      });
+      const json = await res.json();
+      if (!res.ok || json.error) {
+        alert("Couldn't record this: " + (json.error || "Please try again."));
+        return;
+      }
+      setPatient((prev) => {
+        if (!prev) return prev;
+        const batches = (prev.manufacturing_data?.batches || []).map((b) =>
+          b.num === num ? { ...b, aligner_received: json.aligner_received } : b
+        );
+        return { ...prev, manufacturing_data: { ...prev.manufacturing_data, batches } };
+      });
+    } catch {
+      alert("Network error. Please try again.");
+    } finally {
+      setReceivingBatch(null);
     }
   };
 
@@ -555,11 +586,11 @@ export default function PatientJourney() {
                         // legacy logistics shipment IDs by batch number.
                         const byNum = {};
                         (patient.manufacturing_data?.batches || []).forEach((b) => {
-                          if (b.shipment_link) byNum[b.num] = { num: b.num, start: b.start, end: b.end, shipment_link: b.shipment_link };
+                          if (b.shipment_link) byNum[b.num] = { num: b.num, start: b.start, end: b.end, shipment_link: b.shipment_link, aligner_received: b.aligner_received };
                         });
                         (patient.logistics_data?.batches || []).forEach((l) => {
                           if (l.shipment_id || l.shipment_link) {
-                            byNum[l.num] = { ...(byNum[l.num] || { num: l.num }), shipment_id: l.shipment_id, shipment_link: byNum[l.num]?.shipment_link || l.shipment_link, delivery_partner: l.delivery_partner, delivery_partner_other: l.delivery_partner_other };
+                            byNum[l.num] = { ...(byNum[l.num] || { num: l.num }), shipment_id: l.shipment_id, shipment_link: byNum[l.num]?.shipment_link || l.shipment_link, delivery_partner: l.delivery_partner, delivery_partner_other: l.delivery_partner_other, aligner_received: byNum[l.num]?.aligner_received || l.aligner_received };
                           }
                         });
                         const shippedBatches = Object.values(byNum).sort((a, b) => a.num - b.num);
@@ -595,6 +626,19 @@ export default function PatientJourney() {
                                       style={{ marginTop: batch.shipment_id ? "10px" : 0, width: "100%", padding: "10px", borderRadius: "8px", border: "none", background: "linear-gradient(135deg, #b8905a, #f59e0b)", color: "white", fontWeight: "700", fontSize: "13px", cursor: "pointer" }}
                                     >
                                       Track Shipment
+                                    </button>
+                                  )}
+                                  {batch.aligner_received ? (
+                                    <p style={{ margin: "10px 0 0", fontSize: "12px", fontWeight: "700", color: "#16a34a" }}>
+                                      ✓ Received on {new Date(batch.aligner_received + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                                    </p>
+                                  ) : (
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); handleMarkReceived(batch.num); }}
+                                      disabled={receivingBatch === batch.num}
+                                      style={{ marginTop: "10px", width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #16a34a", background: receivingBatch === batch.num ? "#f0fdf4" : "white", color: "#16a34a", fontWeight: "700", fontSize: "13px", cursor: receivingBatch === batch.num ? "not-allowed" : "pointer" }}
+                                    >
+                                      {receivingBatch === batch.num ? "Saving..." : "I've Received This Batch"}
                                     </button>
                                   )}
                                 </div>
