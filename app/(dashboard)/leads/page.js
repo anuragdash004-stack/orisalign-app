@@ -166,7 +166,11 @@ export default function LeadTrackerPage() {
   const pipelineLeads = leads.filter((l) => stageOf(l) !== "cold");
   const isAdmin = actor?.role === "admin"; // Cold Leads are admin-only
   const dentistMap = Object.fromEntries(dentists.map((d) => [d.id, d.email]));
-  const cateredToday = catered.filter((a) => dateKey(a.appointment_started_at) === dateKey(new Date()));
+  // Follows the same date filter as the rest of the page — "all" shows
+  // every catered appointment ever, otherwise just the selected day's.
+  const cateredVisible = selectedDate === "all"
+    ? catered
+    : catered.filter((a) => dateKey(a.appointment_started_at) === selectedDate);
 
   // Calendar strip: 14 days back → 7 days forward, today centered/highlighted.
   const today = new Date();
@@ -274,20 +278,22 @@ export default function LeadTrackerPage() {
         {"  ·  "}{visibleLeads.length} {visibleLeads.length === 1 ? "lead" : "leads"}
       </p>
 
-      {/* Catered Today — the dentist has verified the patient's OTP and started the appointment */}
+      {/* Catered — the dentist has verified the patient's OTP and started the appointment, on the selected date */}
       <div style={{ marginBottom: "24px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" }}>
-          <h2 style={{ margin: 0, fontSize: "16px", fontWeight: "800", color: "#111827" }}>Catered Today</h2>
-          <span style={{ fontSize: "12px", fontWeight: "700", color: "#16a34a", background: "#dcfce7", borderRadius: "99px", padding: "2px 10px" }}>{cateredToday.length}</span>
+          <h2 style={{ margin: 0, fontSize: "16px", fontWeight: "800", color: "#111827" }}>
+            {selectedDate === "all" ? "Catered" : selectedDate === dateKey(new Date()) ? "Catered Today" : "Catered"}
+          </h2>
+          <span style={{ fontSize: "12px", fontWeight: "700", color: "#16a34a", background: "#dcfce7", borderRadius: "99px", padding: "2px 10px" }}>{cateredVisible.length}</span>
           <div style={{ flex: 1, height: "1px", background: "#eee" }} />
         </div>
-        {cateredToday.length === 0 ? (
+        {cateredVisible.length === 0 ? (
           <div style={{ padding: "14px", background: "white", border: "1px dashed #e5e7eb", borderRadius: "12px", textAlign: "center", color: "#9ca3af", fontSize: "13px" }}>
-            No appointments started yet today.
+            {selectedDate === "all" ? "No appointments started yet." : "No appointments started on this date."}
           </div>
         ) : (
           <div style={{ display: "grid", gap: "8px" }}>
-            {cateredToday.map((a) => (
+            {cateredVisible.map((a) => (
               <a
                 key={a.id}
                 href={`/patients/${a.id}`}
@@ -308,11 +314,10 @@ export default function LeadTrackerPage() {
       {/* All stages, stacked one after another */}
       <div style={{ display: "grid", gap: "22px" }}>
         {STAGES.map((s) => {
-          // Booked is a terminal pipeline state, not a daily queue like Fresh/
-          // Follow-ups/Call Back — once a lead is booked (e.g. the dentist
-          // starts the appointment days later), it should keep showing here
-          // regardless of which date is selected in the calendar strip.
-          let list = (s.key === "booked" ? pipelineLeads : visibleLeads).filter((l) => stageOf(l) === s.key);
+          // Every stage — including Booked — respects the selected date, so
+          // a booked lead only shows under the date it actually belongs to
+          // instead of cluttering every day's view.
+          let list = visibleLeads.filter((l) => stageOf(l) === s.key);
           if (s.key === "callback") {
             // Earliest callback time first, so the counselor sees what's due next.
             list = [...list].sort((a, b) => `${a.callback_date || ""} ${a.callback_time || ""}`.localeCompare(`${b.callback_date || ""} ${b.callback_time || ""}`));
