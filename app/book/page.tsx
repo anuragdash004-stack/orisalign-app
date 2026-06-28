@@ -257,7 +257,7 @@ export default function BookPage() {
 
     const { data: inserted, error } = await supabase!
       .from("appointments_booking")
-      .insert([{ name, phone, email, age, sex, address, problem: `[${consultationType.toUpperCase()}] ${problem}`, date, time, status: "pending" }])
+      .insert([{ name, phone, email, age, sex, address, problem: `[${consultationType.toUpperCase()}] ${problem}`, date, time, status: "lead", lead_stage: "fresh", lead_source: "website" }])
       .select("id")
       .single()
 

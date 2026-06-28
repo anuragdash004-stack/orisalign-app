@@ -1,9 +1,53 @@
 import { NextResponse } from "next/server"
+import { createClient } from "@supabase/supabase-js"
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 export async function POST(req: Request) {
   try {
     const body = await req.json()
-    const { name, phone, email, age, sex, address, problem, date, time, consultationType, patientId } = body
+    const { type, name, phone, email, age, sex, address, problem, date, time, consultationType, patientId } = body
+
+    // The homepage "Request a Callback" widget only sends name+phone — it
+    // never creates a database row, which is why those leads never showed
+    // up in the Lead Tracker. Create it here, then send a short
+    // notification — never the full booking template below.
+    if (type === "callback") {
+      const { error: insertError } = await supabase
+        .from("appointments_booking")
+        .insert([{ name, phone, status: "lead", lead_stage: "fresh", lead_source: "website", problem: "Requested a callback from the homepage" }])
+
+      if (insertError) {
+        console.error("[notify-booking] callback insert failed", insertError)
+      }
+
+      await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.RESEND_API_KEY}` },
+        body: JSON.stringify({
+          from: "OrisAlign Bookings <no-reply@orisalign.com>",
+          to: ["leads@orisalign.com"],
+          subject: `📞 New Callback Request: ${name}`,
+          html: `
+            <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;background:#faf7f2;padding:20px;border-radius:12px;">
+              <div style="background:#1B2A4A;padding:20px;border-radius:8px;text-align:center;margin-bottom:16px;">
+                <h1 style="color:#C9A84C;margin:0;font-size:20px;">📞 New Callback Request</h1>
+              </div>
+              <table style="width:100%;font-size:14px;border-collapse:collapse;background:white;border-radius:8px;padding:16px;">
+                <tr><td style="padding:6px 0;color:#6b7280;width:80px;">Name</td><td style="padding:6px 0;font-weight:bold;">${name}</td></tr>
+                <tr><td style="padding:6px 0;color:#6b7280;">Phone</td><td style="padding:6px 0;"><a href="tel:${phone}" style="color:#1B2A4A;font-weight:bold;text-decoration:none;">${phone}</a></td></tr>
+              </table>
+              <p style="text-align:center;color:#9ca3af;font-size:12px;margin-top:16px;">Added to the Lead Tracker as a Fresh lead.</p>
+            </div>
+          `,
+        }),
+      }).catch(() => {})
+
+      return NextResponse.json({ success: true })
+    }
 
     const shortId = patientId ? patientId.substring(0, 8).toUpperCase() : "N/A"
     // Use dynamic host to support both local and production domains
@@ -25,7 +69,7 @@ export async function POST(req: Request) {
       },
       body: JSON.stringify({
         from: "OrisAlign Bookings <no-reply@orisalign.com>",
-        to: ["anurag@orisalign.com"],
+        to: ["leads@orisalign.com"],
         subject: `🦷 New Booking: ${name} — ${date} at ${time}`,
         html: `
           <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#faf7f2;padding:20px;border-radius:12px;">
