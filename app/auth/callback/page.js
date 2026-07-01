@@ -10,6 +10,8 @@ export default function Callback() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const router = useRouter();
 
   const handleUpdate = async () => {
@@ -57,21 +59,31 @@ export default function Callback() {
         <h2 style={{ color: "#111827", fontSize: "20px", fontWeight: "700", margin: "0 0 8px" }}>Set New Password</h2>
         <p style={{ color: "#6b7280", fontSize: "14px", margin: "0 0 20px" }}>Choose a strong password for your account.</p>
 
-        <input
-          type="password"
-          placeholder="New password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          style={inputStyle}
-        />
-        <input
-          type="password"
-          placeholder="Confirm new password"
-          value={confirm}
-          onChange={(e) => setConfirm(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleUpdate()}
-          style={{ ...inputStyle, marginTop: "12px" }}
-        />
+        <div style={{ position: "relative" }}>
+          <input
+            type={showPassword ? "text" : "password"}
+            placeholder="New password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            style={{ ...inputStyle, paddingRight: "44px" }}
+          />
+          <button type="button" onClick={() => setShowPassword(!showPassword)} style={eyeBtn} aria-label={showPassword ? "Hide" : "Show"}>
+            {showPassword ? "🙈" : "👁"}
+          </button>
+        </div>
+        <div style={{ position: "relative", marginTop: "12px" }}>
+          <input
+            type={showConfirm ? "text" : "password"}
+            placeholder="Confirm new password"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleUpdate()}
+            style={{ ...inputStyle, paddingRight: "44px" }}
+          />
+          <button type="button" onClick={() => setShowConfirm(!showConfirm)} style={eyeBtn} aria-label={showConfirm ? "Hide" : "Show"}>
+            {showConfirm ? "🙈" : "👁"}
+          </button>
+        </div>
 
         <button
           onClick={handleUpdate}
@@ -91,6 +103,12 @@ export default function Callback() {
     </div>
   );
 }
+
+const eyeBtn = {
+  position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)",
+  background: "none", border: "none", cursor: "pointer", color: "#9ca3af",
+  fontSize: "16px", padding: 0, lineHeight: 1,
+};
 
 const inputStyle = {
   width: "100%",
