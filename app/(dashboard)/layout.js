@@ -10,7 +10,7 @@ const supabase = getSupabaseClient();
 // Which path prefixes each role may visit
 const ROLE_ALLOWED = {
   admin:        ["/admin", "/appointment", "/dentist", "/ortho", "/patients", "/leads", "/templates", "/calculator", "/coupons", "/campaigns", "/audit"],
-  counselor:    ["/appointment", "/patients", "/leads"],
+  counselor:    ["/admin", "/appointment", "/campaigns"],
   dentist:      ["/dentist"],
   orthodontist: ["/ortho"],
 };

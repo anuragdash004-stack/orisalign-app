@@ -52,16 +52,16 @@ export default function Sidebar({ collapsed, setCollapsed }) {
   };
 
   const show = {
-    dashboard:    userRole === "admin",
+    dashboard:    userRole === "admin" || userRole === "counselor",
     appointments: userRole === "admin" || userRole === "counselor",
     dentist:      userRole === "admin" || userRole === "dentist",
     ortho:        userRole === "admin" || userRole === "orthodontist",
-    patients:     userRole === "admin" || userRole === "counselor",
-    leads:        userRole === "admin" || userRole === "counselor",
+    patients:     userRole === "admin",
+    leads:        userRole === "admin",
     templates:    userRole === "admin",
     calculator:   userRole === "admin",
     coupons:      userRole === "admin",
-    campaigns:    userRole === "admin",
+    campaigns:    userRole === "admin" || userRole === "counselor",
     audit:        userRole === "admin",
   };
 
