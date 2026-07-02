@@ -66,38 +66,23 @@ export default function AdminDashboard() {
   if (loading) return <p>Loading dashboard...</p>;
   if (error) return <p style={{ color: "red" }}>{error}</p>;
 
+  const StatCard = ({ color, label, value }) => (
+    <div style={card(color)}>
+      <h4 style={{ margin: "0 0 8px", fontSize: "13px", fontWeight: "600", color: "#94a3b8", letterSpacing: "0.5px", textTransform: "uppercase" }}>{label}</h4>
+      <h2 style={{ margin: 0, fontSize: "36px", fontWeight: "800", color }}>{value}</h2>
+    </div>
+  );
+
   return (
     <div>
-      <h1 style={{ marginBottom: "20px" }}>Dashboard</h1>
+      <h1 style={{ marginBottom: "20px", color: "#111827" }}>Dashboard</h1>
 
       <div style={{ display: "flex", gap: "20px", flexWrap: "wrap" }}>
-
-        <div style={card("#38bdf8")}>
-          <h4>Total</h4>
-          <h2>{stats.total}</h2>
-        </div>
-
-        <div style={card("#facc15")}>
-          <h4>Pending</h4>
-          <h2>{stats.pending}</h2>
-        </div>
-
-        <div style={card("#60a5fa")}>
-          <h4>Assigned</h4>
-          <h2>{stats.assigned}</h2>
-        </div>
-
-        {/* ✅ FIX 2 — label updated to "Confirmed" to match actual status */}
-        <div style={card("#22c55e")}>
-          <h4>Confirmed</h4>
-          <h2>{stats.confirmed}</h2>
-        </div>
-
-        <div style={card("#ef4444")}>
-          <h4>Cancelled</h4>
-          <h2>{stats.cancelled}</h2>
-        </div>
-
+        <StatCard color="#38bdf8" label="Total" value={stats.total} />
+        <StatCard color="#facc15" label="Pending" value={stats.pending} />
+        <StatCard color="#60a5fa" label="Assigned" value={stats.assigned} />
+        <StatCard color="#22c55e" label="Confirmed" value={stats.confirmed} />
+        <StatCard color="#ef4444" label="Cancelled" value={stats.cancelled} />
       </div>
     </div>
   );
