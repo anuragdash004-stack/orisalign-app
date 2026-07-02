@@ -246,7 +246,14 @@ export default function LeadTrackerPage() {
       </div>
 
       {/* Calendar row — paginated, 11 dates at a time */}
-      <div style={{ display: "flex", alignItems: "center", gap: "6px", padding: "4px 2px 12px" }}>
+      <style>{`
+        .cal-scroll { overflow-x: auto; }
+        .cal-scroll::-webkit-scrollbar { height: 6px; }
+        .cal-scroll::-webkit-scrollbar-track { background: #f1ece3; border-radius: 4px; }
+        .cal-scroll::-webkit-scrollbar-thumb { background: #b8905a; border-radius: 4px; }
+        .cal-scroll::-webkit-scrollbar-thumb:hover { background: #a0754d; }
+      `}</style>
+      <div style={{ display: "flex", alignItems: "center", gap: "6px", padding: "4px 2px 0" }}>
         {/* All-dates chip */}
         <DateChip active={selectedDate === "all"} onClick={() => setSelectedDate("all")} top="" mid="All" bot="dates" />
 
@@ -257,22 +264,24 @@ export default function LeadTrackerPage() {
           aria-label="Previous dates"
         >‹</button>
 
-        {/* 11 date chips */}
-        {stripDates.map((d) => {
-          const k = dateKey(d);
-          const isToday = k === tKey;
-          return (
-            <DateChip
-              key={k}
-              active={selectedDate === k}
-              today={isToday}
-              onClick={() => setSelectedDate(k)}
-              top={d.toLocaleDateString("en-US", { weekday: "short" })}
-              mid={d.getDate()}
-              bot={d.toLocaleDateString("en-US", { month: "short" })}
-            />
-          );
-        })}
+        {/* 11 date chips — scrollable */}
+        <div className="cal-scroll" style={{ display: "flex", gap: "6px", paddingBottom: "10px" }}>
+          {stripDates.map((d) => {
+            const k = dateKey(d);
+            const isToday = k === tKey;
+            return (
+              <DateChip
+                key={k}
+                active={selectedDate === k}
+                today={isToday}
+                onClick={() => setSelectedDate(k)}
+                top={d.toLocaleDateString("en-US", { weekday: "short" })}
+                mid={d.getDate()}
+                bot={d.toLocaleDateString("en-US", { month: "short" })}
+              />
+            );
+          })}
+        </div>
 
         {/* Right arrow */}
         <button
