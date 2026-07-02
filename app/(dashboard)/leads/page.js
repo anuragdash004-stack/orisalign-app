@@ -914,7 +914,7 @@ function LeadForm({ lead, actor, onClose, onSaved, mode = "normal", campaigns = 
           >
             {saving ? "Saving..." : lead ? "Save Changes" : isCold ? "Add Cold Lead" : "Add Lead"}
           </button>
-          {!isCold && (
+          {!isCold && (form.lead_stage === "booked" || lead?.booking_confirmed) && (
             <button
               onClick={() => save({ confirm: true })}
               disabled={saving}
