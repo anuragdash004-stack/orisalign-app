@@ -383,10 +383,14 @@ function dateKey(d) {
   return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
 }
 
-// The date a lead belongs to in the calendar: callbacks sit on their callback
-// date, everyone else on the date they came in.
+// The date a lead belongs to in the calendar:
+// - callbacks → their scheduled callback_date
+// - booked → the date they were confirmed (booking_confirmed_at)
+// - everyone else → the date they came in (created_at)
 function leadCalendarKey(lead) {
-  if ((lead.lead_stage || "fresh") === "callback" && lead.callback_date) return dateKey(lead.callback_date);
+  const stage = lead.lead_stage || "fresh";
+  if (stage === "callback" && lead.callback_date) return dateKey(lead.callback_date);
+  if (stage === "booked" && lead.booking_confirmed_at) return dateKey(lead.booking_confirmed_at);
   return dateKey(lead.created_at);
 }
 
@@ -669,7 +673,7 @@ function LeadForm({ lead, actor, onClose, onSaved, mode = "normal", campaigns = 
       date: form.date || null, time: form.time || null,
       callback_date: form.lead_stage === "callback" ? (form.callback_date || null) : null,
       callback_time: form.lead_stage === "callback" ? (form.callback_time || null) : null,
-      ...(confirm ? { booking_confirmed: true } : {}),
+      ...(confirm ? { booking_confirmed: true, booking_confirmed_at: new Date().toISOString() } : {}),
     };
   };
 
