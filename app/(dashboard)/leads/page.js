@@ -81,6 +81,7 @@ export default function LeadTrackerPage() {
   const [campaigns, setCampaigns] = useState([]);
   const [catered, setCatered] = useState([]); // appointments the dentist has OTP-started
   const [dentists, setDentists] = useState([]);
+  const [calendarOffset, setCalendarOffset] = useState(0); // offset in days from today, snapped to multiples of 10
   const todayRef = useRef(null);
 
   const fetchCampaigns = async () => {
@@ -169,20 +170,16 @@ export default function LeadTrackerPage() {
     ? catered
     : catered.filter((a) => dateKey(a.appointment_started_at) === selectedDate);
 
-  // Calendar strip: 14 days back → 7 days forward, today centered/highlighted.
+  // Calendar strip: 11 dates centred on today ± calendarOffset.
+  // Left/right arrows shift by 10 days at a time.
   const today = new Date();
   const tKey = dateKey(today);
   const stripDates = [];
-  for (let i = -14; i <= 7; i++) {
+  for (let i = calendarOffset - 5; i <= calendarOffset + 5; i++) {
     const d = new Date(today);
     d.setDate(today.getDate() + i);
     stripDates.push(d);
   }
-
-  // Bring "today" into view in the horizontal strip once loaded.
-  useEffect(() => {
-    if (!loading) todayRef.current?.scrollIntoView({ inline: "center", block: "nearest" });
-  }, [loading]);
 
   const visibleLeads = selectedDate === "all"
     ? pipelineLeads
@@ -248,25 +245,41 @@ export default function LeadTrackerPage() {
         </div>
       </div>
 
-      {/* Calendar row */}
-      <div style={{ display: "flex", gap: "6px", overflowX: "auto", padding: "4px 2px 12px" }}>
+      {/* Calendar row — paginated, 11 dates at a time */}
+      <div style={{ display: "flex", alignItems: "center", gap: "6px", padding: "4px 2px 12px" }}>
+        {/* All-dates chip */}
         <DateChip active={selectedDate === "all"} onClick={() => setSelectedDate("all")} top="" mid="All" bot="dates" />
+
+        {/* Left arrow */}
+        <button
+          onClick={() => setCalendarOffset((o) => o - 10)}
+          style={{ flexShrink: 0, width: "32px", height: "52px", borderRadius: "10px", border: "1px solid #e5e7eb", background: "white", cursor: "pointer", fontSize: "16px", color: "#374151", display: "flex", alignItems: "center", justifyContent: "center" }}
+          aria-label="Previous dates"
+        >‹</button>
+
+        {/* 11 date chips */}
         {stripDates.map((d) => {
           const k = dateKey(d);
           const isToday = k === tKey;
           return (
-            <span key={k} ref={isToday ? todayRef : null}>
-              <DateChip
-                active={selectedDate === k}
-                today={isToday}
-                onClick={() => setSelectedDate(k)}
-                top={d.toLocaleDateString("en-US", { weekday: "short" })}
-                mid={d.getDate()}
-                bot={d.toLocaleDateString("en-US", { month: "short" })}
-              />
-            </span>
+            <DateChip
+              key={k}
+              active={selectedDate === k}
+              today={isToday}
+              onClick={() => setSelectedDate(k)}
+              top={d.toLocaleDateString("en-US", { weekday: "short" })}
+              mid={d.getDate()}
+              bot={d.toLocaleDateString("en-US", { month: "short" })}
+            />
           );
         })}
+
+        {/* Right arrow */}
+        <button
+          onClick={() => setCalendarOffset((o) => o + 10)}
+          style={{ flexShrink: 0, width: "32px", height: "52px", borderRadius: "10px", border: "1px solid #e5e7eb", background: "white", cursor: "pointer", fontSize: "16px", color: "#374151", display: "flex", alignItems: "center", justifyContent: "center" }}
+          aria-label="Next dates"
+        >›</button>
       </div>
       <p style={{ fontSize: "12px", color: "#9ca3af", margin: "2px 0 20px" }}>
         {selectedDate === "all"
