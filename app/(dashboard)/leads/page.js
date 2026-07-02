@@ -23,12 +23,9 @@ const SOURCE_OPTIONS = [
 ];
 const sourceLabel = (v) => SOURCE_OPTIONS.find((s) => s.value === v)?.label || "Website";
 
-const RESPONSE_OPTIONS = [
-  { value: "responded",   label: "Responded" },
-  { value: "no_response", label: "No Response" },
-  { value: "callback",    label: "Call Back" },
-];
-const responseLabel = (v) => RESPONSE_OPTIONS.find((r) => r.value === v)?.label || "—";
+// response is now free text — keep legacy lookup for old stored values
+const LEGACY_RESPONSES = { responded: "Responded", no_response: "No Response", callback: "Call Back" };
+const responseDisplay = (v) => LEGACY_RESPONSES[v] || v || "—";
 
 const PRIORITY_OPTIONS = [
   { value: "hot",      label: "Hot" },
@@ -314,12 +311,18 @@ export default function LeadTrackerPage() {
       {/* All stages, stacked one after another */}
       <div style={{ display: "grid", gap: "22px" }}>
         {STAGES.map((s) => {
-          // Every stage — including Booked — respects the selected date, so
-          // a booked lead only shows under the date it actually belongs to
-          // instead of cluttering every day's view.
-          let list = visibleLeads.filter((l) => stageOf(l) === s.key);
+          let list;
+          if (s.key === "fresh") {
+            // Fresh Leads = every lead created on the selected date, regardless
+            // of current stage. This lets you see all new entries for a day
+            // while the lead's actual stage is also reflected below.
+            list = selectedDate === "all"
+              ? pipelineLeads
+              : pipelineLeads.filter((l) => dateKey(l.created_at) === selectedDate);
+          } else {
+            list = visibleLeads.filter((l) => stageOf(l) === s.key);
+          }
           if (s.key === "callback") {
-            // Earliest callback time first, so the counselor sees what's due next.
             list = [...list].sort((a, b) => `${a.callback_date || ""} ${a.callback_time || ""}`.localeCompare(`${b.callback_date || ""} ${b.callback_time || ""}`));
           }
           return (
@@ -429,7 +432,7 @@ function LeadCard({ lead, onStage, onEdit, cold, onPromote, onDelete }) {
           </div>
           <div style={{ marginTop: "8px", display: "flex", gap: "6px", flexWrap: "wrap" }}>
             <span style={pill("#eef2ff", "#4338ca")}>{sourceLabel(lead.lead_source)}</span>
-            {lead.lead_response && <span style={pill("#fef3c7", "#92400e")}>{responseLabel(lead.lead_response)}</span>}
+            {lead.lead_response && <span style={pill("#fef3c7", "#92400e")}>{responseDisplay(lead.lead_response)}</span>}
             {lead.lead_source === "website" && (
               <span style={pill(lead.lead_verified ? "#dcfce7" : "#fef3c7", lead.lead_verified ? "#065f46" : "#92400e")}>
                 {lead.lead_verified ? "✓ Verified" : "🕗 Unverified"}
@@ -533,7 +536,7 @@ function LeadTable({ leads, onStage, onEdit, onDelete, cold, onPromote, campaign
                   <td style={td}>{lead.age || "—"}</td>
                   <td style={td}>{lead.sex || "—"}</td>
                   <td style={td}>{sourceLabel(lead.lead_source)}</td>
-                  <td style={td}>{lead.lead_response ? responseLabel(lead.lead_response) : "—"}</td>
+                  <td style={wrapTd}>{lead.lead_response ? responseDisplay(lead.lead_response) : "—"}</td>
                   <td style={td}>
                     {lead.lead_priority ? (
                       <span style={pill(...priorityPillColor(lead.lead_priority))}>{priorityLabel(lead.lead_priority)}</span>
@@ -618,7 +621,7 @@ function LeadForm({ lead, actor, onClose, onSaved, mode = "normal", campaigns = 
   });
   const [saving, setSaving] = useState(false);
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
-  const isCallback = form.lead_response === "callback";
+  const isCallback = form.lead_stage === "callback";
 
   const buildPayload = (stageOverride, confirm) => {
     const problem = form.consultationType
@@ -633,8 +636,8 @@ function LeadForm({ lead, actor, onClose, onSaved, mode = "normal", campaigns = 
       lead_stage: stageOverride || form.lead_stage,
       clinic_location: form.consultationType === "clinic" ? (form.clinic_location || null) : null,
       date: form.date || null, time: form.time || null,
-      callback_date: form.lead_response === "callback" ? (form.callback_date || null) : null,
-      callback_time: form.lead_response === "callback" ? (form.callback_time || null) : null,
+      callback_date: form.lead_stage === "callback" ? (form.callback_date || null) : null,
+      callback_time: form.lead_stage === "callback" ? (form.callback_time || null) : null,
       ...(confirm ? { booking_confirmed: true } : {}),
     };
   };
@@ -695,20 +698,11 @@ function LeadForm({ lead, actor, onClose, onSaved, mode = "normal", campaigns = 
             </select>
           </div>
           <div>
-            <span style={label}>Response</span>
-            <Clearable show={!!form.lead_response} onClear={() => set("lead_response", "")}>
-              <select
-                style={input}
-                value={form.lead_response}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setForm((p) => ({ ...p, lead_response: v, ...(v === "callback" ? { lead_stage: "callback" } : {}) }));
-                }}
-              >
-                <option value="">— Select —</option>
-                {RESPONSE_OPTIONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
-              </select>
-            </Clearable>
+            <span style={label}>Stage</span>
+            <select style={{ ...input, fontWeight: "700", background: "#f8f6f2" }} value={form.lead_stage} onChange={(e) => set("lead_stage", e.target.value)}>
+              {STAGES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+              {isCold && <option value="cold">Cold</option>}
+            </select>
           </div>
           <div>
             <span style={label}>Status</span>
@@ -783,6 +777,10 @@ function LeadForm({ lead, actor, onClose, onSaved, mode = "normal", campaigns = 
             </Clearable>
           </div>
           <div style={{ gridColumn: "1 / -1" }}>
+            <span style={label}>Response</span>
+            <textarea style={{ ...input, minHeight: "64px", resize: "vertical" }} value={form.lead_response} onChange={(e) => set("lead_response", e.target.value)} placeholder="Write what the lead said or how they responded..." />
+          </div>
+          <div style={{ gridColumn: "1 / -1" }}>
             <span style={label}>Notes</span>
             <textarea style={{ ...input, minHeight: "56px", resize: "vertical" }} value={form.lead_notes} onChange={(e) => set("lead_notes", e.target.value)} placeholder="Anything extra to remember about this lead..." />
           </div>
@@ -819,14 +817,6 @@ function LeadForm({ lead, actor, onClose, onSaved, mode = "normal", campaigns = 
               </select>
             </Clearable>
           </div>
-          {!isCold && (
-            <div>
-              <span style={label}>Stage</span>
-              <select style={input} value={form.lead_stage} onChange={(e) => set("lead_stage", e.target.value)}>
-                {STAGES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
-              </select>
-            </div>
-          )}
         </div>
 
         <div style={{ display: "flex", gap: "10px", marginTop: "22px", flexWrap: "wrap" }}>
