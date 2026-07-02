@@ -57,7 +57,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
     dentist:      userRole === "admin" || userRole === "dentist",
     ortho:        userRole === "admin" || userRole === "orthodontist",
     patients:     userRole === "admin",
-    leads:        userRole === "admin",
+    leads:        userRole === "admin" || userRole === "counselor",
     templates:    userRole === "admin",
     calculator:   userRole === "admin",
     coupons:      userRole === "admin",
