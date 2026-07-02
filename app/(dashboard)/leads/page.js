@@ -141,8 +141,15 @@ export default function LeadTrackerPage() {
   const stageOf = (lead) => lead.lead_stage || "fresh";
 
   const quickStage = async (lead, newStage) => {
-    setLeads((prev) => prev.map((l) => (l.id === lead.id ? { ...l, lead_stage: newStage } : l)));
-    await supabase.from("appointments_booking").update({ lead_stage: newStage }).eq("id", lead.id);
+    // When a lead first moves into "booked", stamp the day it was booked so it
+    // shows under that date (not its creation date) in the Booked section.
+    const stampBooking = newStage === "booked" && !lead.booking_confirmed_at;
+    const nowIso = new Date().toISOString();
+    setLeads((prev) => prev.map((l) => (l.id === lead.id ? { ...l, lead_stage: newStage, ...(stampBooking ? { booking_confirmed_at: nowIso } : {}) } : l)));
+    await supabase
+      .from("appointments_booking")
+      .update({ lead_stage: newStage, ...(stampBooking ? { booking_confirmed_at: nowIso } : {}) })
+      .eq("id", lead.id);
   };
 
   // Cold lead → promote into the live tracker as a Fresh lead.
