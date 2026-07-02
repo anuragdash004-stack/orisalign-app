@@ -454,7 +454,11 @@ function LeadCard({ lead, onStage, onEdit, cold, onPromote, onDelete }) {
           </div>
           <div style={{ marginTop: "8px", display: "flex", gap: "6px", flexWrap: "wrap" }}>
             <span style={pill("#eef2ff", "#4338ca")}>{sourceLabel(lead.lead_source)}</span>
-            {lead.lead_response && <span style={pill("#fef3c7", "#92400e")}>{responseDisplay(lead.lead_response)}</span>}
+            {lead.call_history?.length > 0 && (
+              <span style={pill("#f0fdf4", "#15803d")}>
+                Last called: {formatDate(lead.call_history[lead.call_history.length - 1].date)}
+              </span>
+            )}
             {lead.lead_source === "website" && (
               <span style={pill(lead.lead_verified ? "#dcfce7" : "#fef3c7", lead.lead_verified ? "#065f46" : "#92400e")}>
                 {lead.lead_verified ? "✓ Verified" : "🕗 Unverified"}
@@ -533,7 +537,7 @@ function LeadTable({ leads, onStage, onEdit, onDelete, cold, onPromote, campaign
             <tr>
               <th style={numTh}>#</th>
               <th style={nameTh}>Name</th>
-              {["Phone", "Alt #", "Email", "Age", "Sex", "Source", "Response", "Lead Status", "Campaign", "Complaint", "Consultation", "Clinic", "Consult Date", "Slot", "Callback", "Address", "Notes", "Verification", cold ? "Action" : "Stage", ""].map((h, i) => (
+              {["Phone", "Alt #", "Email", "Age", "Sex", "Source", "Response", "Last Called", "Lead Status", "Campaign", "Complaint", "Consultation", "Clinic", "Consult Date", "Slot", "Callback", "Address", "Notes", "Verification", cold ? "Action" : "Stage", ""].map((h, i) => (
                 <th key={i} style={thBase}>{h}</th>
               ))}
             </tr>
@@ -559,6 +563,11 @@ function LeadTable({ leads, onStage, onEdit, onDelete, cold, onPromote, campaign
                   <td style={td}>{lead.sex || "—"}</td>
                   <td style={td}>{sourceLabel(lead.lead_source)}</td>
                   <td style={wrapTd}>{lead.lead_response ? responseDisplay(lead.lead_response) : "—"}</td>
+                  <td style={td}>
+                    {lead.call_history?.length > 0
+                      ? formatDate(lead.call_history[lead.call_history.length - 1].date)
+                      : "—"}
+                  </td>
                   <td style={td}>
                     {lead.lead_priority ? (
                       <span style={pill(...priorityPillColor(lead.lead_priority))}>{priorityLabel(lead.lead_priority)}</span>
@@ -672,7 +681,27 @@ function LeadForm({ lead, actor, onClose, onSaved, mode = "normal", campaigns = 
     const confirm = !!opts.confirm;
     setSaving(true);
     try {
-      const payload = buildPayload(confirm ? "booked" : null, confirm);
+      // Build call history — append a new entry whenever stage is callback/followups
+      // and the response or next date has changed (avoid duplicate entries).
+      const existingHistory = lead?.call_history || [];
+      const isInteractionStage = form.lead_stage === "callback" || form.lead_stage === "followups";
+      let newHistory = existingHistory;
+      if (isInteractionStage && form.lead_response) {
+        const responseChanged = form.lead_response !== (lead?.lead_response || "");
+        const nextDateChanged = form.callback_date !== (lead?.callback_date || "");
+        if (responseChanged || nextDateChanged || existingHistory.length === 0) {
+          newHistory = [...existingHistory, {
+            date: new Date().toISOString().slice(0, 10),
+            response: form.lead_response,
+            stage: form.lead_stage,
+            ...(form.lead_stage === "callback"
+              ? { next_date: form.callback_date || null, next_time: form.callback_time || null }
+              : {}),
+          }];
+        }
+      }
+
+      const payload = { ...buildPayload(confirm ? "booked" : null, confirm), call_history: newHistory };
       let leadId = lead?.id;
       if (lead) {
         const { error } = await supabase.from("appointments_booking").update(payload).eq("id", lead.id);
@@ -817,6 +846,37 @@ function LeadForm({ lead, actor, onClose, onSaved, mode = "normal", campaigns = 
             </Clearable>
           </div>
         </div>
+
+        {/* Call / Follow-up History */}
+        {(lead?.call_history?.length > 0) && (
+          <div style={{ marginTop: "16px", borderRadius: "10px", border: "1px solid #e5e7eb", overflow: "hidden" }}>
+            <div style={{ background: "#f8f6f2", padding: "8px 14px", borderBottom: "1px solid #e5e7eb" }}>
+              <span style={{ fontSize: "11px", fontWeight: "800", color: "#6b7280", letterSpacing: "0.4px", textTransform: "uppercase" }}>
+                Interaction History ({lead.call_history.length})
+              </span>
+            </div>
+            <div style={{ maxHeight: "220px", overflowY: "auto" }}>
+              {[...lead.call_history].reverse().map((entry, i) => (
+                <div key={i} style={{ padding: "10px 14px", borderBottom: i < lead.call_history.length - 1 ? "1px solid #f3f4f6" : "none" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBottom: "4px" }}>
+                    <span style={{ fontSize: "12px", fontWeight: "700", color: "#111827" }}>📞 {formatDate(entry.date)}</span>
+                    <span style={pill(entry.stage === "callback" ? "#fff7ed" : "#eef2ff", entry.stage === "callback" ? "#b45309" : "#4338ca")}>
+                      {entry.stage === "callback" ? "Callback" : "Follow-up"}
+                    </span>
+                    {entry.next_date && (
+                      <span style={{ fontSize: "12px", color: "#6b7280" }}>
+                        → Next: <strong>{formatDate(entry.next_date)}</strong>{entry.next_time ? ` at ${formatTime(entry.next_time)}` : ""}
+                      </span>
+                    )}
+                  </div>
+                  {entry.response && (
+                    <p style={{ margin: 0, fontSize: "13px", color: "#374151", lineHeight: 1.5 }}>{entry.response}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Response + Stage — placed just above the action buttons */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginTop: "12px" }}>
