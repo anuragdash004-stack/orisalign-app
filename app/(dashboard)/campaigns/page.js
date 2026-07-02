@@ -14,6 +14,16 @@ export default function CampaignsPage() {
   const [saving, setSaving] = useState(null); // id currently saving
   const [drafts, setDrafts] = useState({}); // id -> { price, discount, benefits, notes }
   const [editing, setEditing] = useState({}); // id -> bool, whether the card is in edit mode
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const { data: authData } = await supabase.auth.getUser();
+      if (!authData?.user) return;
+      const { data } = await supabase.from("users").select("role").eq("id", authData.user.id).single();
+      setIsAdmin(data?.role === "admin");
+    })();
+  }, []);
 
   const fetchCampaigns = async () => {
     setLoading(true);
@@ -137,12 +147,14 @@ export default function CampaignsPage() {
                         Edit
                       </button>
                     )}
-                    <button
-                      onClick={() => deleteCampaign(campaign)}
-                      style={{ padding: "6px 14px", borderRadius: "8px", border: "1px solid #fecaca", background: "#fef2f2", color: "#dc2626", fontWeight: "700", fontSize: "12px", cursor: "pointer" }}
-                    >
-                      Delete
-                    </button>
+                    {isAdmin && (
+                      <button
+                        onClick={() => deleteCampaign(campaign)}
+                        style={{ padding: "6px 14px", borderRadius: "8px", border: "1px solid #fecaca", background: "#fef2f2", color: "#dc2626", fontWeight: "700", fontSize: "12px", cursor: "pointer" }}
+                      >
+                        Delete
+                      </button>
+                    )}
                   </div>
                 </div>
 

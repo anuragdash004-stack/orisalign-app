@@ -357,7 +357,7 @@ export default function LeadTrackerPage() {
               {list.length === 0 ? (
                 <div style={{ padding: "14px", background: "white", border: "1px dashed #e5e7eb", borderRadius: "12px", textAlign: "center", color: "#9ca3af", fontSize: "13px" }}>No leads</div>
               ) : (
-                <LeadTable leads={list} campaigns={campaigns} onStage={quickStage} onEdit={(lead) => setEditing({ mode: "normal", lead })} onDelete={deleteLead} />
+                <LeadTable leads={list} campaigns={campaigns} isAdmin={isAdmin} onStage={quickStage} onEdit={(lead) => setEditing({ mode: "normal", lead })} onDelete={deleteLead} />
               )}
             </div>
           );
@@ -511,7 +511,7 @@ function pill(bg, color) {
 
 // Full tabular view of leads — every field in rows & columns, with the
 // # and Name columns frozen on the left and a prominent horizontal scrollbar.
-function LeadTable({ leads, onStage, onEdit, onDelete, cold, onPromote, campaigns = [] }) {
+function LeadTable({ leads, onStage, onEdit, onDelete, cold, onPromote, campaigns = [], isAdmin = true }) {
   const campaignLabel = (id) => {
     const c = campaigns.find((x) => x.id === id);
     return c ? `Campaign ${c.campaign_number}` : "—";
@@ -603,7 +603,7 @@ function LeadTable({ leads, onStage, onEdit, onDelete, cold, onPromote, campaign
                   <td style={td}>
                     <div style={{ display: "flex", gap: "6px" }}>
                       <button onClick={() => onEdit(lead)} style={miniBtn("white", "#111827", "1px solid #e5e7eb")}>Edit</button>
-                      <button onClick={() => onDelete(lead)} style={miniBtn("#fef2f2", "#dc2626", "1px solid #fecaca")}>Delete</button>
+                      {isAdmin && <button onClick={() => onDelete(lead)} style={miniBtn("#fef2f2", "#dc2626", "1px solid #fecaca")}>Delete</button>}
                     </div>
                   </td>
                 </tr>
