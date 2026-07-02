@@ -62,14 +62,22 @@ export default function LoginPage() {
   const handleForgotPassword = async () => {
     if (!email) { alert("Please enter your email address first."); return; }
     setLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: "https://app.orisalign.com/auth/callback",
-    });
-    setLoading(false);
-    if (error) {
-      alert("Error: " + error.message);
-    } else {
-      setResetSent(true);
+    try {
+      const res = await fetch("/api/send-password-reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        alert("Error: " + (data.error || "Failed to send reset email"));
+      } else {
+        setResetSent(true);
+      }
+    } catch {
+      alert("Network error — please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
