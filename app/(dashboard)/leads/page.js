@@ -720,13 +720,6 @@ function LeadForm({ lead, actor, onClose, onSaved, mode = "normal", campaigns = 
             </select>
           </div>
           <div>
-            <span style={label}>Stage</span>
-            <select style={{ ...input, fontWeight: "700", background: "#f8f6f2" }} value={form.lead_stage} onChange={(e) => set("lead_stage", e.target.value)}>
-              {STAGES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
-              {isCold && <option value="cold">Cold</option>}
-            </select>
-          </div>
-          <div>
             <span style={label}>Status</span>
             <Clearable show={!!form.lead_priority} onClear={() => set("lead_priority", "")}>
               <select style={input} value={form.lead_priority} onChange={(e) => set("lead_priority", e.target.value)}>
@@ -744,18 +737,6 @@ function LeadForm({ lead, actor, onClose, onSaved, mode = "normal", campaigns = 
               </select>
             </Clearable>
           </div>
-          {isCallback && (
-            <>
-              <div>
-                <span style={{ ...label, color: "#b45309" }}>Callback Date</span>
-                <input style={input} type="date" value={form.callback_date} onChange={(e) => set("callback_date", e.target.value)} />
-              </div>
-              <div>
-                <span style={{ ...label, color: "#b45309" }}>Callback Time</span>
-                <input style={input} type="time" value={form.callback_time} onChange={(e) => set("callback_time", e.target.value)} />
-              </div>
-            </>
-          )}
           <div>
             <span style={label}>Name</span>
             <input style={input} value={form.name} onChange={(e) => set("name", e.target.value)} />
@@ -799,10 +780,6 @@ function LeadForm({ lead, actor, onClose, onSaved, mode = "normal", campaigns = 
             </Clearable>
           </div>
           <div style={{ gridColumn: "1 / -1" }}>
-            <span style={label}>Response</span>
-            <textarea style={{ ...input, minHeight: "64px", resize: "vertical" }} value={form.lead_response} onChange={(e) => set("lead_response", e.target.value)} placeholder="Write what the lead said or how they responded..." />
-          </div>
-          <div style={{ gridColumn: "1 / -1" }}>
             <span style={label}>Notes</span>
             <textarea style={{ ...input, minHeight: "56px", resize: "vertical" }} value={form.lead_notes} onChange={(e) => set("lead_notes", e.target.value)} placeholder="Anything extra to remember about this lead..." />
           </div>
@@ -841,7 +818,35 @@ function LeadForm({ lead, actor, onClose, onSaved, mode = "normal", campaigns = 
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: "10px", marginTop: "22px", flexWrap: "wrap" }}>
+        {/* Response + Stage — placed just above the action buttons */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginTop: "12px" }}>
+          <div style={{ gridColumn: "1 / -1" }}>
+            <span style={label}>Response</span>
+            <textarea style={{ ...input, minHeight: "64px", resize: "vertical" }} value={form.lead_response} onChange={(e) => set("lead_response", e.target.value)} placeholder="Write what the lead said or how they responded..." />
+          </div>
+          {!isCold && (
+            <div style={{ gridColumn: "1 / -1" }}>
+              <span style={label}>Stage</span>
+              <select style={{ ...input, fontWeight: "700", background: "#f8f6f2" }} value={form.lead_stage} onChange={(e) => set("lead_stage", e.target.value)}>
+                {STAGES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+              </select>
+            </div>
+          )}
+          {isCallback && (
+            <>
+              <div>
+                <span style={{ ...label, color: "#b45309" }}>Callback Date</span>
+                <input style={input} type="date" value={form.callback_date} onChange={(e) => set("callback_date", e.target.value)} />
+              </div>
+              <div>
+                <span style={{ ...label, color: "#b45309" }}>Callback Time</span>
+                <input style={input} type="time" value={form.callback_time} onChange={(e) => set("callback_time", e.target.value)} />
+              </div>
+            </>
+          )}
+        </div>
+
+        <div style={{ display: "flex", gap: "10px", marginTop: "14px", flexWrap: "wrap" }}>
           <button
             onClick={() => save()}
             disabled={saving}
