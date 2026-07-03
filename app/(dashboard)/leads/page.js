@@ -397,7 +397,12 @@ function dateKey(d) {
 function leadCalendarKey(lead) {
   const stage = lead.lead_stage || "fresh";
   if (stage === "callback" && lead.callback_date) return dateKey(lead.callback_date);
-  if (stage === "booked" && lead.booking_confirmed_at) return dateKey(lead.booking_confirmed_at);
+  // Booked leads belong on their consultation (appointment) date, falling back
+  // to the day they were booked, then to creation.
+  if (stage === "booked") {
+    if (lead.date) return dateKey(lead.date);
+    if (lead.booking_confirmed_at) return dateKey(lead.booking_confirmed_at);
+  }
   return dateKey(lead.created_at);
 }
 
