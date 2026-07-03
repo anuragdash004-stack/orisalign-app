@@ -145,10 +145,20 @@ export default function LeadTrackerPage() {
     // shows under that date (not its creation date) in the Booked section.
     const stampBooking = newStage === "booked" && !lead.booking_confirmed_at;
     const nowIso = new Date().toISOString();
-    setLeads((prev) => prev.map((l) => (l.id === lead.id ? { ...l, lead_stage: newStage, ...(stampBooking ? { booking_confirmed_at: nowIso } : {}) } : l)));
+    // Call Back is filed under callback_date. Quick-switching a lead to Call
+    // Back without going through the form leaves callback_date unset, so the
+    // lead falls back to its creation date and appears to vanish from the
+    // currently viewed day. Default it to the day being viewed (or today).
+    const stampCallback = newStage === "callback" && !lead.callback_date;
+    const callbackDate = selectedDate === "all" ? dateKey(new Date()) : selectedDate;
+    const extra = {
+      ...(stampBooking ? { booking_confirmed_at: nowIso } : {}),
+      ...(stampCallback ? { callback_date: callbackDate } : {}),
+    };
+    setLeads((prev) => prev.map((l) => (l.id === lead.id ? { ...l, lead_stage: newStage, ...extra } : l)));
     await supabase
       .from("appointments_booking")
-      .update({ lead_stage: newStage, ...(stampBooking ? { booking_confirmed_at: nowIso } : {}) })
+      .update({ lead_stage: newStage, ...extra })
       .eq("id", lead.id);
   };
 
