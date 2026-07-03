@@ -722,10 +722,12 @@ function LeadForm({ lead, actor, onClose, onSaved, mode = "normal", campaigns = 
       if (isInteractionStage && form.lead_response) {
         const responseChanged = form.lead_response !== (lead?.lead_response || "");
         const nextDateChanged = form.callback_date !== (lead?.callback_date || "");
-        if (responseChanged || nextDateChanged || existingHistory.length === 0) {
+        const notesChanged = form.lead_notes !== (lead?.lead_notes || "");
+        if (responseChanged || nextDateChanged || notesChanged || existingHistory.length === 0) {
           newHistory = [...existingHistory, {
             date: new Date().toISOString().slice(0, 10),
             response: form.lead_response,
+            notes: form.lead_notes || null,
             stage: form.lead_stage,
             ...(form.lead_stage === "callback"
               ? { next_date: form.callback_date || null, next_time: form.callback_time || null }
@@ -903,7 +905,10 @@ function LeadForm({ lead, actor, onClose, onSaved, mode = "normal", campaigns = 
                     )}
                   </div>
                   {entry.response && (
-                    <p style={{ margin: 0, fontSize: "13px", color: "#374151", lineHeight: 1.5 }}>{entry.response}</p>
+                    <p style={{ margin: 0, fontSize: "13px", color: "#374151", lineHeight: 1.5 }}>{responseDisplay(entry.response)}</p>
+                  )}
+                  {entry.notes && (
+                    <p style={{ margin: "4px 0 0", fontSize: "12px", color: "#6b7280", lineHeight: 1.5, fontStyle: "italic" }}>📝 {entry.notes}</p>
                   )}
                 </div>
               ))}
