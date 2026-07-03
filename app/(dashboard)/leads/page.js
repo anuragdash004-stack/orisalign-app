@@ -23,9 +23,16 @@ const SOURCE_OPTIONS = [
 ];
 const sourceLabel = (v) => SOURCE_OPTIONS.find((s) => s.value === v)?.label || "Website";
 
-// response is now free text — keep legacy lookup for old stored values
+const RESPONSE_OPTIONS = [
+  { value: "received",         label: "Received" },
+  { value: "asked_callback",   label: "Asked to Call Back" },
+  { value: "did_not_receive",  label: "Did Not Receive" },
+  { value: "cut_the_call",     label: "Cut the Call" },
+  { value: "denied",           label: "Denied" },
+];
+// keep legacy lookup for old free-text/stored values from before this was a dropdown
 const LEGACY_RESPONSES = { responded: "Responded", no_response: "No Response", callback: "Call Back" };
-const responseDisplay = (v) => LEGACY_RESPONSES[v] || v || "—";
+const responseDisplay = (v) => RESPONSE_OPTIONS.find((r) => r.value === v)?.label || LEGACY_RESPONSES[v] || v || "—";
 
 const PRIORITY_OPTIONS = [
   { value: "hot",      label: "Hot" },
@@ -908,7 +915,12 @@ function LeadForm({ lead, actor, onClose, onSaved, mode = "normal", campaigns = 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginTop: "12px" }}>
           <div style={{ gridColumn: "1 / -1" }}>
             <span style={label}>Response</span>
-            <textarea style={{ ...input, minHeight: "64px", resize: "vertical" }} value={form.lead_response} onChange={(e) => set("lead_response", e.target.value)} placeholder="Write what the lead said or how they responded..." />
+            <Clearable show={!!form.lead_response} onClear={() => set("lead_response", "")}>
+              <select style={input} value={form.lead_response} onChange={(e) => set("lead_response", e.target.value)}>
+                <option value="">— Select —</option>
+                {RESPONSE_OPTIONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+              </select>
+            </Clearable>
           </div>
           {!isCold && (
             <div style={{ gridColumn: "1 / -1" }}>
