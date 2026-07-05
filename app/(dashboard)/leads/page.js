@@ -69,7 +69,8 @@ function parseProblem(problem) {
 const EMPTY_FORM = {
   lead_source: "walk_in", lead_response: "", lead_priority: "", campaign_id: "", name: "", age: "", phone: "", alt_phone: "",
   address: "", sex: "", email: "", complaint: "", lead_notes: "", consultationType: "",
-  clinic_location: "", date: "", time: "", callback_date: "", callback_time: "", lead_stage: "fresh",
+  clinic_location: "", date: "", time: "", callback_date: "", callback_time: "",
+  followup_date: "", followup_time: "", lead_stage: "fresh",
 };
 
 const input = {
@@ -371,6 +372,9 @@ export default function LeadTrackerPage() {
           if (s.key === "callback") {
             list = [...list].sort((a, b) => `${a.callback_date || ""} ${a.callback_time || ""}`.localeCompare(`${b.callback_date || ""} ${b.callback_time || ""}`));
           }
+          if (s.key === "followups") {
+            list = [...list].sort((a, b) => `${a.followup_date || ""} ${a.followup_time || ""}`.localeCompare(`${b.followup_date || ""} ${b.followup_time || ""}`));
+          }
           return (
             <div key={s.key} style={{ minWidth: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" }}>
@@ -414,6 +418,7 @@ function dateKey(d) {
 function leadCalendarKey(lead) {
   const stage = lead.lead_stage || "fresh";
   if (stage === "callback" && lead.callback_date) return dateKey(lead.callback_date);
+  if (stage === "followups" && lead.followup_date) return dateKey(lead.followup_date);
   // Booked leads belong on their consultation (appointment) date, falling back
   // to the day they were booked, then to creation.
   if (stage === "booked") {
@@ -570,7 +575,7 @@ function LeadTable({ leads, onStage, onEdit, onDelete, cold, onPromote, campaign
             <tr>
               <th style={numTh}>#</th>
               <th style={nameTh}>Name</th>
-              {["Phone", "Alt #", "Email", "Age", "Sex", "Source", "Response", "Last Called", "Lead Status", "Campaign", "Complaint", "Consultation", "Clinic", "Consult Date", "Slot", "Callback", "Address", "Notes", "Verification", cold ? "Action" : "Stage", ""].map((h, i) => (
+              {["Phone", "Alt #", "Email", "Age", "Sex", "Source", "Response", "Last Called", "Lead Status", "Campaign", "Complaint", "Consultation", "Clinic", "Consult Date", "Slot", "Callback", "Follow-up", "Address", "Notes", "Verification", cold ? "Action" : "Stage", ""].map((h, i) => (
                 <th key={i} style={thBase}>{h}</th>
               ))}
             </tr>
@@ -580,6 +585,7 @@ function LeadTable({ leads, onStage, onEdit, onDelete, cold, onPromote, campaign
               const { consultationType, complaint } = parseProblem(lead.problem);
               const consultLabel = CONSULT_OPTIONS.find((c) => c.value === consultationType)?.label || "—";
               const callback = (lead.callback_date || lead.callback_time) ? `${formatTime(lead.callback_time)}${lead.callback_date ? " · " + formatDate(lead.callback_date) : ""}`.trim() : "—";
+              const followup = (lead.followup_date || lead.followup_time) ? `${formatTime(lead.followup_time)}${lead.followup_date ? " · " + formatDate(lead.followup_date) : ""}`.trim() : "—";
               const status = lead.booking_confirmed
                 ? "✓ Confirmed"
                 : lead.lead_source === "website"
@@ -614,6 +620,7 @@ function LeadTable({ leads, onStage, onEdit, onDelete, cold, onPromote, campaign
                   <td style={td}>{lead.date ? formatDate(lead.date) : "—"}</td>
                   <td style={td}>{lead.time || "—"}</td>
                   <td style={td}>{callback}</td>
+                  <td style={td}>{followup}</td>
                   <td style={wrapTd}>{lead.address || "—"}</td>
                   <td style={wrapTd}>{lead.lead_notes || "—"}</td>
                   <td style={td}>{status}</td>
@@ -681,12 +688,15 @@ function LeadForm({ lead, actor, onClose, onSaved, mode = "normal", campaigns = 
       consultationType, clinic_location: lead.clinic_location || "",
       date: lead.date || "", time: lead.time || "",
       callback_date: lead.callback_date || "", callback_time: lead.callback_time || "",
+      followup_date: lead.followup_date || "", followup_time: lead.followup_time || "",
       lead_stage: lead.lead_stage || "fresh",
     };
   });
   const [saving, setSaving] = useState(false);
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
   const isCallback = form.lead_stage === "callback";
+  const isFollowup = form.lead_stage === "followups";
+  const isBooked = form.lead_stage === "booked";
 
   const buildPayload = (stageOverride, confirm) => {
     const problem = form.consultationType
@@ -699,10 +709,13 @@ function LeadForm({ lead, actor, onClose, onSaved, mode = "normal", campaigns = 
       lead_source: form.lead_source, lead_response: form.lead_response || null,
       lead_priority: form.lead_priority || null, campaign_id: form.campaign_id || null,
       lead_stage: stageOverride || form.lead_stage,
-      clinic_location: form.consultationType === "clinic" ? (form.clinic_location || null) : null,
-      date: form.date || null, time: form.time || null,
+      clinic_location: (isBooked || confirm) && form.consultationType === "clinic" ? (form.clinic_location || null) : null,
+      date: (isBooked || confirm) ? (form.date || null) : null,
+      time: (isBooked || confirm) ? (form.time || null) : null,
       callback_date: form.lead_stage === "callback" ? (form.callback_date || null) : null,
       callback_time: form.lead_stage === "callback" ? (form.callback_time || null) : null,
+      followup_date: form.lead_stage === "followups" ? (form.followup_date || null) : null,
+      followup_time: form.lead_stage === "followups" ? (form.followup_time || null) : null,
       ...(confirm ? { booking_confirmed: true, booking_confirmed_at: new Date().toISOString() } : {}),
     };
   };
@@ -722,7 +735,9 @@ function LeadForm({ lead, actor, onClose, onSaved, mode = "normal", campaigns = 
       let newHistory = existingHistory;
       if (isInteractionStage && form.lead_response) {
         const responseChanged = form.lead_response !== (lead?.lead_response || "");
-        const nextDateChanged = form.callback_date !== (lead?.callback_date || "");
+        const nextDateChanged = form.lead_stage === "callback"
+          ? form.callback_date !== (lead?.callback_date || "")
+          : form.followup_date !== (lead?.followup_date || "");
         const notesChanged = form.lead_notes !== (lead?.lead_notes || "");
         if (responseChanged || nextDateChanged || notesChanged || existingHistory.length === 0) {
           newHistory = [...existingHistory, {
@@ -732,7 +747,9 @@ function LeadForm({ lead, actor, onClose, onSaved, mode = "normal", campaigns = 
             stage: form.lead_stage,
             ...(form.lead_stage === "callback"
               ? { next_date: form.callback_date || null, next_time: form.callback_time || null }
-              : {}),
+              : form.lead_stage === "followups"
+                ? { next_date: form.followup_date || null, next_time: form.followup_time || null }
+                : {}),
           }];
         }
       }
@@ -785,15 +802,6 @@ function LeadForm({ lead, actor, onClose, onSaved, mode = "normal", campaigns = 
             </select>
           </div>
           <div>
-            <span style={label}>Status</span>
-            <Clearable show={!!form.lead_priority} onClear={() => set("lead_priority", "")}>
-              <select style={input} value={form.lead_priority} onChange={(e) => set("lead_priority", e.target.value)}>
-                <option value="">— Select —</option>
-                {PRIORITY_OPTIONS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
-              </select>
-            </Clearable>
-          </div>
-          <div>
             <span style={label}>Campaign</span>
             <Clearable show={!!form.campaign_id} onClear={() => set("campaign_id", "")}>
               <select style={input} value={form.campaign_id} onChange={(e) => set("campaign_id", e.target.value)}>
@@ -805,15 +813,6 @@ function LeadForm({ lead, actor, onClose, onSaved, mode = "normal", campaigns = 
           <div>
             <span style={label}>Name</span>
             <input style={input} value={form.name} onChange={(e) => set("name", e.target.value)} />
-          </div>
-          <div>
-            <span style={label}>Response</span>
-            <Clearable show={!!form.lead_response} onClear={() => set("lead_response", "")}>
-              <select style={input} value={form.lead_response} onChange={(e) => set("lead_response", e.target.value)}>
-                <option value="">— Select —</option>
-                {RESPONSE_OPTIONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
-              </select>
-            </Clearable>
           </div>
           <div>
             <span style={label}>Age</span>
@@ -858,38 +857,90 @@ function LeadForm({ lead, actor, onClose, onSaved, mode = "normal", campaigns = 
             <textarea style={{ ...input, minHeight: "56px", resize: "vertical" }} value={form.lead_notes} onChange={(e) => set("lead_notes", e.target.value)} placeholder="Anything extra to remember about this lead..." />
           </div>
           <div>
-            <span style={label}>Consultation Type</span>
-            <Clearable show={!!form.consultationType} onClear={() => set("consultationType", "")}>
-              <select style={input} value={form.consultationType} onChange={(e) => set("consultationType", e.target.value)}>
+            <span style={label}>Status</span>
+            <Clearable show={!!form.lead_priority} onClear={() => set("lead_priority", "")}>
+              <select style={input} value={form.lead_priority} onChange={(e) => set("lead_priority", e.target.value)}>
                 <option value="">— Select —</option>
-                {CONSULT_OPTIONS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+                {PRIORITY_OPTIONS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
               </select>
             </Clearable>
           </div>
-          {form.consultationType === "clinic" && (
-            <div>
-              <span style={label}>Clinic</span>
-              <Clearable show={!!form.clinic_location} onClear={() => set("clinic_location", "")}>
-                <select style={input} value={form.clinic_location} onChange={(e) => set("clinic_location", e.target.value)}>
-                  <option value="">— Select —</option>
-                  {CLINIC_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </Clearable>
-            </div>
+          <div>
+            <span style={label}>Response</span>
+            <Clearable show={!!form.lead_response} onClear={() => set("lead_response", "")}>
+              <select style={input} value={form.lead_response} onChange={(e) => set("lead_response", e.target.value)}>
+                <option value="">— Select —</option>
+                {RESPONSE_OPTIONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+              </select>
+            </Clearable>
+          </div>
+
+          {/* Consultation details — only relevant once the lead is Booked */}
+          {isBooked && (
+            <>
+              <div>
+                <span style={{ ...label, color: "#16a34a" }}>Consultation Type</span>
+                <Clearable show={!!form.consultationType} onClear={() => set("consultationType", "")}>
+                  <select style={input} value={form.consultationType} onChange={(e) => set("consultationType", e.target.value)}>
+                    <option value="">— Select —</option>
+                    {CONSULT_OPTIONS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+                  </select>
+                </Clearable>
+              </div>
+              {form.consultationType === "clinic" && (
+                <div>
+                  <span style={{ ...label, color: "#16a34a" }}>Clinic</span>
+                  <Clearable show={!!form.clinic_location} onClear={() => set("clinic_location", "")}>
+                    <select style={input} value={form.clinic_location} onChange={(e) => set("clinic_location", e.target.value)}>
+                      <option value="">— Select —</option>
+                      {CLINIC_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </Clearable>
+                </div>
+              )}
+              <div>
+                <span style={{ ...label, color: "#16a34a" }}>Consultation Date</span>
+                <input style={input} type="date" value={form.date} onChange={(e) => set("date", e.target.value)} />
+              </div>
+              <div>
+                <span style={{ ...label, color: "#16a34a" }}>Consultation Slot</span>
+                <Clearable show={!!form.time} onClear={() => set("time", "")}>
+                  <select style={input} value={form.time} onChange={(e) => set("time", e.target.value)}>
+                    <option value="">— Select —</option>
+                    {TIME_SLOTS.map((t) => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </Clearable>
+              </div>
+            </>
           )}
-          <div>
-            <span style={label}>Consultation Date</span>
-            <input style={input} type="date" value={form.date} onChange={(e) => set("date", e.target.value)} />
-          </div>
-          <div>
-            <span style={label}>Consultation Slot</span>
-            <Clearable show={!!form.time} onClear={() => set("time", "")}>
-              <select style={input} value={form.time} onChange={(e) => set("time", e.target.value)}>
-                <option value="">— Select —</option>
-                {TIME_SLOTS.map((t) => <option key={t} value={t}>{t}</option>)}
-              </select>
-            </Clearable>
-          </div>
+
+          {/* Follow-up date/time — only relevant when stage is Follow-ups */}
+          {isFollowup && (
+            <>
+              <div>
+                <span style={{ ...label, color: "#4338ca" }}>Follow-up Date</span>
+                <input style={input} type="date" value={form.followup_date} onChange={(e) => set("followup_date", e.target.value)} />
+              </div>
+              <div>
+                <span style={{ ...label, color: "#4338ca" }}>Follow-up Time</span>
+                <input style={input} type="time" value={form.followup_time} onChange={(e) => set("followup_time", e.target.value)} />
+              </div>
+            </>
+          )}
+
+          {/* Callback date/time — only relevant when stage is Call Back */}
+          {isCallback && (
+            <>
+              <div>
+                <span style={{ ...label, color: "#b45309" }}>Callback Date</span>
+                <input style={input} type="date" value={form.callback_date} onChange={(e) => set("callback_date", e.target.value)} />
+              </div>
+              <div>
+                <span style={{ ...label, color: "#b45309" }}>Callback Time</span>
+                <input style={input} type="time" value={form.callback_time} onChange={(e) => set("callback_time", e.target.value)} />
+              </div>
+            </>
+          )}
         </div>
 
         {/* Call / Follow-up History */}
@@ -927,28 +978,14 @@ function LeadForm({ lead, actor, onClose, onSaved, mode = "normal", campaigns = 
         )}
 
         {/* Stage — placed just above the action buttons */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginTop: "12px" }}>
-          {!isCold && (
-            <div style={{ gridColumn: "1 / -1" }}>
-              <span style={label}>Stage</span>
-              <select style={{ ...input, fontWeight: "700", background: "#f8f6f2" }} value={form.lead_stage} onChange={(e) => set("lead_stage", e.target.value)}>
-                {STAGES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
-              </select>
-            </div>
-          )}
-          {isCallback && (
-            <>
-              <div>
-                <span style={{ ...label, color: "#b45309" }}>Callback Date</span>
-                <input style={input} type="date" value={form.callback_date} onChange={(e) => set("callback_date", e.target.value)} />
-              </div>
-              <div>
-                <span style={{ ...label, color: "#b45309" }}>Callback Time</span>
-                <input style={input} type="time" value={form.callback_time} onChange={(e) => set("callback_time", e.target.value)} />
-              </div>
-            </>
-          )}
-        </div>
+        {!isCold && (
+          <div style={{ marginTop: "12px" }}>
+            <span style={label}>Stage</span>
+            <select style={{ ...input, fontWeight: "700", background: "#f8f6f2" }} value={form.lead_stage} onChange={(e) => set("lead_stage", e.target.value)}>
+              {STAGES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+            </select>
+          </div>
+        )}
 
         <div style={{ display: "flex", gap: "10px", marginTop: "14px", flexWrap: "wrap" }}>
           <button
