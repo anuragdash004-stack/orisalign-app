@@ -478,7 +478,7 @@ function LeadCard({ lead, onStage, onEdit, cold, onPromote, onDelete }) {
         <div style={{ minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBottom: "4px" }}>
             <span style={{ fontFamily: "monospace", fontWeight: "800", color: "#b8905a", fontSize: "13px" }}>#{lead.lead_number || "—"}</span>
-            <span style={{ fontSize: "15px", fontWeight: "700", color: "#111827" }}>{lead.name || "Unnamed"}</span>
+            <span style={{ fontSize: "15px", fontWeight: "700", color: stage !== "fresh" ? "#16a34a" : "#111827" }}>{lead.name || "Unnamed"}</span>
             {lead.booking_confirmed && <span style={pill("#dcfce7", "#16a34a")}>✓ Patient ID issued</span>}
           </div>
           <div style={{ fontSize: "13px", color: "#6b7280", display: "flex", gap: "14px", flexWrap: "wrap" }}>
@@ -585,10 +585,11 @@ function LeadTable({ leads, onStage, onEdit, onDelete, cold, onPromote, campaign
                 : lead.lead_source === "website"
                   ? (lead.lead_verified ? "Verified" : "Unverified")
                   : "—";
+              const stageChanged = (lead.lead_stage || "fresh") !== "fresh";
               return (
                 <tr key={lead.id}>
                   <td style={numTd}>#{lead.lead_number || "—"}</td>
-                  <td style={nameTd}>{lead.name || "—"}</td>
+                  <td style={{ ...nameTd, color: stageChanged ? "#16a34a" : nameTd.color }}>{lead.name || "—"}</td>
                   <td style={td}>{lead.phone || "—"}</td>
                   <td style={td}>{lead.alt_phone || "—"}</td>
                   <td style={td}>{lead.email || "—"}</td>
