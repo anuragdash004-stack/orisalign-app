@@ -806,6 +806,15 @@ function LeadForm({ lead, actor, onClose, onSaved, mode = "normal", campaigns = 
             <input style={input} value={form.name} onChange={(e) => set("name", e.target.value)} />
           </div>
           <div>
+            <span style={label}>Response</span>
+            <Clearable show={!!form.lead_response} onClear={() => set("lead_response", "")}>
+              <select style={input} value={form.lead_response} onChange={(e) => set("lead_response", e.target.value)}>
+                <option value="">— Select —</option>
+                {RESPONSE_OPTIONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+              </select>
+            </Clearable>
+          </div>
+          <div>
             <span style={label}>Age</span>
             <input style={input} type="number" value={form.age} onChange={(e) => set("age", e.target.value)} />
           </div>
@@ -916,17 +925,8 @@ function LeadForm({ lead, actor, onClose, onSaved, mode = "normal", campaigns = 
           </div>
         )}
 
-        {/* Response + Stage — placed just above the action buttons */}
+        {/* Stage — placed just above the action buttons */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginTop: "12px" }}>
-          <div style={{ gridColumn: "1 / -1" }}>
-            <span style={label}>Response</span>
-            <Clearable show={!!form.lead_response} onClear={() => set("lead_response", "")}>
-              <select style={input} value={form.lead_response} onChange={(e) => set("lead_response", e.target.value)}>
-                <option value="">— Select —</option>
-                {RESPONSE_OPTIONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
-              </select>
-            </Clearable>
-          </div>
           {!isCold && (
             <div style={{ gridColumn: "1 / -1" }}>
               <span style={label}>Stage</span>
