@@ -709,9 +709,12 @@ function LeadForm({ lead, actor, onClose, onSaved, mode = "normal", campaigns = 
       lead_source: form.lead_source, lead_response: form.lead_response || null,
       lead_priority: form.lead_priority || null, campaign_id: form.campaign_id || null,
       lead_stage: stageOverride || form.lead_stage,
-      clinic_location: (isBooked || confirm) && form.consultationType === "clinic" ? (form.clinic_location || null) : null,
-      date: (isBooked || confirm) ? (form.date || null) : null,
-      time: (isBooked || confirm) ? (form.time || null) : null,
+      // Consultation fields are only shown in the UI while Stage = Booked, but
+      // hiding them must not destroy data already saved — always persist
+      // whatever's currently in the form instead of nulling by stage.
+      clinic_location: form.consultationType === "clinic" ? (form.clinic_location || null) : null,
+      date: form.date || null,
+      time: form.time || null,
       callback_date: form.lead_stage === "callback" ? (form.callback_date || null) : null,
       callback_time: form.lead_stage === "callback" ? (form.callback_time || null) : null,
       followup_date: form.lead_stage === "followups" ? (form.followup_date || null) : null,
