@@ -508,47 +508,45 @@ export default function LandingPage() {
                         <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background: MINT, color: MINTD }}>Free</span>
                       </div>
                     ))}
+
+                    {/* Lifetime membership card — nested inside OrisPro-Plus Benefits */}
+                    <div style={{ borderTop: `1px solid ${LINE}` }}>
+                      <div className="flex items-center justify-between px-4 py-2.5 gap-2" style={{ background: '#FCFDFD' }}>
+                        <span className="flex items-center gap-2.5 text-sm font-medium" style={{ color: INK }}>
+                          <IdCard className="w-4 h-4" style={{ color: GOLD }} />
+                          Lifetime membership card <span className="text-xs font-semibold" style={{ color: GOLD }}>worth ₹9,999</span>
+                          <button
+                            onClick={() => setMembershipOpen(!membershipOpen)}
+                            className="w-5 h-5 rounded-full inline-flex items-center justify-center font-bold transition-colors flex-shrink-0"
+                            style={{ border: `1.5px solid ${INK}`, background: membershipOpen ? INK : '#fff', fontSize: '11px', fontStyle: 'italic', lineHeight: 1 }}
+                            aria-label="Membership card details"
+                          >
+                            <span style={{ color: membershipOpen ? '#fff' : INK }}>i</span>
+                          </button>
+                        </span>
+                        <span className="text-xs font-bold px-3 py-1 rounded-full flex-shrink-0" style={{ background: MINT, color: MINTD }}>Free</span>
+                      </div>
+                      {membershipOpen && (
+                        <div className="px-4 pb-4 pt-3 text-xs leading-relaxed space-y-2" style={{ borderTop: `1px solid ${LINE}`, background: '#FCFDFD' }}>
+                          <p className="font-bold text-sm mb-2" style={{ color: INK }}>What's included in your Lifetime Membership:</p>
+                          <div className="flex items-start gap-2">
+                            <Check className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: GOLD }} />
+                            <span style={{ color: INK2 }}><strong style={{ color: INK }}>30% off</strong> on any dental treatment or surgery — for the lifetime of the card holder</span>
+                          </div>
+                          <div className="flex items-start gap-2">
+                            <Check className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: GOLD }} />
+                            <span style={{ color: INK2 }}>Benefit also applies to <strong style={{ color: INK }}>+1 person</strong> of the card holder's choice <span style={{ color: INK2 }}>(add-on facility available)</span></span>
+                          </div>
+                          <div className="flex items-start gap-2">
+                            <Check className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: GOLD }} />
+                            <span style={{ color: INK2 }}><strong style={{ color: INK }}>15% off</strong> for friends &amp; family</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
-
-              {/* Lifetime membership card */}
-              <ul className="space-y-3">
-                <li className="rounded-xl bg-white overflow-hidden" style={{ border: `1px solid ${LINE}` }}>
-                  <div className="flex items-center justify-between px-4 py-3 gap-2">
-                    <span className="flex items-center gap-2 text-sm font-medium" style={{ color: INK }}>
-                      <IdCard className="w-5 h-5" style={{ color: GOLD }} />
-                      Lifetime membership card <span className="text-xs font-semibold" style={{ color: GOLD }}>worth ₹9,999</span>
-                      <button
-                        onClick={() => setMembershipOpen(!membershipOpen)}
-                        className="w-5 h-5 rounded-full inline-flex items-center justify-center font-bold transition-colors flex-shrink-0"
-                        style={{ border: `1.5px solid ${INK}`, background: membershipOpen ? INK : '#fff', fontSize: '11px', fontStyle: 'italic', lineHeight: 1 }}
-                        aria-label="Membership card details"
-                      >
-                        <span style={{ color: membershipOpen ? '#fff' : INK }}>i</span>
-                      </button>
-                    </span>
-                    <span className="text-xs font-bold px-3 py-1 rounded-full flex-shrink-0" style={{ background: MINT, color: MINTD }}>Free</span>
-                  </div>
-                  {membershipOpen && (
-                    <div className="px-4 pb-4 pt-3 text-xs leading-relaxed space-y-2" style={{ borderTop: `1px solid ${LINE}`, background: '#FCFDFD' }}>
-                      <p className="font-bold text-sm mb-2" style={{ color: INK }}>What's included in your Lifetime Membership:</p>
-                      <div className="flex items-start gap-2">
-                        <Check className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: GOLD }} />
-                        <span style={{ color: INK2 }}><strong style={{ color: INK }}>30% off</strong> on any dental treatment or surgery — for the lifetime of the card holder</span>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <Check className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: GOLD }} />
-                        <span style={{ color: INK2 }}>Benefit also applies to <strong style={{ color: INK }}>+1 person</strong> of the card holder's choice <span style={{ color: INK2 }}>(add-on facility available)</span></span>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <Check className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: GOLD }} />
-                        <span style={{ color: INK2 }}><strong style={{ color: INK }}>15% off</strong> for friends &amp; family</span>
-                      </div>
-                    </div>
-                  )}
-                </li>
-              </ul>
             </div>
 
             {/* CTA */}
