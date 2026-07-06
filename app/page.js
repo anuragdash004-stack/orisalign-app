@@ -465,7 +465,7 @@ export default function LandingPage() {
             <div className="px-8 py-8 text-center" style={{ background: INK }}>
               <div className="flex items-end justify-center gap-2 mb-1 flex-wrap">
                 <span className="text-base font-semibold" style={{ color: '#9aa6ac' }}>Starts at</span>
-                <span className="text-xl font-bold line-through mb-1" style={{ color: '#6b7479' }}>₹54,999</span>
+                <span className="text-xl font-bold line-through mb-1" style={{ color: '#6b7479' }}>₹66,999</span>
                 <span className="text-5xl font-extrabold font-display" style={{ color: GOLD }}>₹49,999</span>
                 <span className="text-base font-semibold mb-1" style={{ color: '#9aa6ac' }}>*</span>
               </div>
