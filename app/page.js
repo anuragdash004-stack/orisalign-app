@@ -479,7 +479,7 @@ export default function LandingPage() {
                   <span className="flex items-center gap-2.5 text-sm font-medium" style={{ color: INK }}>
                     <Gift className="w-5 h-5" style={{ color: GOLD }} />
                     <span>
-                      Benefits <span className="text-xs font-semibold" style={{ color: GOLD }}>worth ₹4,599</span>
+                      OrisPro-Plus Benefits <span className="text-xs font-semibold" style={{ color: GOLD }}>worth ₹19,999</span>
                       <button
                         onClick={() => setFreebiesOpen(!freebiesOpen)}
                         className="inline-flex items-center justify-center w-5 h-5 rounded-full font-bold transition-colors align-middle ml-1 flex-shrink-0"
@@ -496,8 +496,9 @@ export default function LandingPage() {
                 {freebiesOpen && (
                   <div style={{ borderTop: `1px solid ${LINE}` }}>
                     {[
-                      { Icon: Sparkle, label: 'Scaling & polishing ×2' },
-                      { Icon: Shield, label: '1 set transparent retainer' },
+                      { Icon: Sparkle, label: '2 × Scaling & polishing' },
+                      { Icon: Shield, label: '1 × Premium transparent retainer' },
+                      { Icon: Shield, label: '1 × Lingual retainer' },
                     ].map((item, i) => (
                       <div key={i} className="flex items-center justify-between px-4 py-2.5" style={{ borderTop: i ? `1px solid ${LINE}` : 'none', background: '#FCFDFD' }}>
                         <span className="flex items-center gap-2.5 text-sm font-medium" style={{ color: INK }}>
@@ -517,7 +518,7 @@ export default function LandingPage() {
                   <div className="flex items-center justify-between px-4 py-3 gap-2">
                     <span className="flex items-center gap-2 text-sm font-medium" style={{ color: INK }}>
                       <IdCard className="w-5 h-5" style={{ color: GOLD }} />
-                      Lifetime membership card <span className="text-xs font-semibold" style={{ color: GOLD }}>worth ₹5,999</span>
+                      Lifetime membership card <span className="text-xs font-semibold" style={{ color: GOLD }}>worth ₹9,999</span>
                       <button
                         onClick={() => setMembershipOpen(!membershipOpen)}
                         className="w-5 h-5 rounded-full inline-flex items-center justify-center font-bold transition-colors flex-shrink-0"
