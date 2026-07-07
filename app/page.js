@@ -274,10 +274,10 @@ export default function LandingPage() {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3">
-              <a href="/book" className="inline-flex items-center justify-center gap-2 text-base font-semibold px-7 py-3.5 rounded-xl transition-colors text-center" style={{ background: INK, color: '#fff' }}
+              <a href="/consultation" className="inline-flex items-center justify-center gap-2 text-base font-semibold px-7 py-3.5 rounded-xl transition-colors text-center" style={{ background: INK, color: '#fff' }}
                 onMouseEnter={e => e.currentTarget.style.background = '#000'}
                 onMouseLeave={e => e.currentTarget.style.background = INK}>
-                Book your scan
+                Choose Your 3D Scan Type
                 <svg viewBox="0 0 24 24" className="w-4 h-4" {...ic}><path d="M5 12h14M13 6l6 6-6 6" /></svg>
               </a>
               <a href={WA_LINK} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 text-base font-semibold px-7 py-3.5 rounded-xl transition-colors" style={{ background: '#fff', color: INK, border: `1px solid ${LINE}` }}
@@ -438,10 +438,10 @@ export default function LandingPage() {
             ))}
           </div>
           <div className="text-center mt-10">
-            <a href="/book" className="inline-flex items-center gap-2 font-semibold px-7 py-3.5 rounded-xl transition-colors" style={{ background: INK, color: '#fff' }}
+            <a href="/consultation" className="inline-flex items-center gap-2 font-semibold px-7 py-3.5 rounded-xl transition-colors" style={{ background: INK, color: '#fff' }}
               onMouseEnter={e => e.currentTarget.style.background = '#000'}
               onMouseLeave={e => e.currentTarget.style.background = INK}>
-              Start Step 1 — Book Free Consult
+              Choose Your 3D Scan Type
               <svg viewBox="0 0 24 24" className="w-4 h-4" {...ic}><path d="M5 12h14M13 6l6 6-6 6" /></svg>
             </a>
           </div>
@@ -551,10 +551,10 @@ export default function LandingPage() {
 
             {/* CTA */}
             <div className="px-8 py-6 text-center bg-white">
-              <a href="/book" className="inline-flex items-center gap-2 font-semibold px-8 py-3.5 rounded-xl text-base transition-colors" style={{ background: INK, color: '#fff' }}
+              <a href="/consultation" className="inline-flex items-center gap-2 font-semibold px-8 py-3.5 rounded-xl text-base transition-colors" style={{ background: INK, color: '#fff' }}
                 onMouseEnter={e => e.currentTarget.style.background = '#000'}
                 onMouseLeave={e => e.currentTarget.style.background = INK}>
-                Book Your ₹199 Scan
+                Choose Your 3D Scan Type
                 <svg viewBox="0 0 24 24" className="w-4 h-4" {...ic}><path d="M5 12h14M13 6l6 6-6 6" /></svg>
               </a>
               <p className="text-xs mt-3" style={{ color: INK2 }}>Exact pricing shared after consultation — your case may cost less.</p>
@@ -931,9 +931,10 @@ export default function LandingPage() {
             <div>
               <h4 className="font-bold text-white mb-4 text-sm uppercase tracking-wide">Quick Links</h4>
               <div className="space-y-2 text-sm">
-                {['How It Works', 'Pricing', 'Before & After', 'FAQs', 'Book Consultation'].map(l => (
+                {['How It Works', 'Pricing', 'Before & After', 'FAQs'].map(l => (
                   <div key={l}><a href="#" className="transition-colors" style={{ color: '#8a949a' }} onMouseEnter={e => e.currentTarget.style.color = '#fff'} onMouseLeave={e => e.currentTarget.style.color = '#8a949a'}>{l}</a></div>
                 ))}
+                <div><a href="/consultation" className="transition-colors" style={{ color: '#8a949a' }} onMouseEnter={e => e.currentTarget.style.color = '#fff'} onMouseLeave={e => e.currentTarget.style.color = '#8a949a'}>Choose Your 3D Scan Type</a></div>
               </div>
             </div>
             <div>

@@ -2,16 +2,16 @@ import type { Metadata } from "next";
 import ConsultationClient from "./ConsultationClient";
 
 export const metadata: Metadata = {
-  title: "Book Your Consultation | OrisAlign Clear Aligners",
+  title: "Choose Your 3D Scan Type | OrisAlign Clear Aligners",
   description:
-    "Choose your OrisAlign consultation — Basic (₹199) or Full (₹999) — then pick your treatment path. Transparent pricing, expert dentists, aligners made in India.",
+    "Choose your OrisAlign 3D scan type — 3D Consultation (₹199) or 3D Consultation + 3D Plan (₹999). Transparent pricing, expert dentists, aligners made in India.",
   alternates: {
     canonical: "https://orisalign.com/consultation",
   },
   openGraph: {
-    title: "Book Your Consultation | OrisAlign",
+    title: "Choose Your 3D Scan Type | OrisAlign",
     description:
-      "Choose your OrisAlign consultation and treatment path with transparent, upfront pricing.",
+      "Choose your OrisAlign 3D scan type with transparent, upfront pricing.",
     url: "https://orisalign.com/consultation",
     siteName: "OrisAlign",
     locale: "en_IN",
