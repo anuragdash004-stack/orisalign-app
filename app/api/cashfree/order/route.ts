@@ -62,7 +62,7 @@ export async function POST(req: Request) {
     // Pull the appointment to derive the trusted amount + customer details.
     const { data: appt, error } = await supabase
       .from("appointments_booking")
-      .select("id, name, phone, payment_data, payment_type_to_collect")
+      .select("id, name, phone, payment_data, payment_type_to_collect, payment_custom_amount")
       .eq("id", appointmentId)
       .single();
 
@@ -73,7 +73,13 @@ export async function POST(req: Request) {
       );
     }
 
-    const pd = (appt.payment_data as Record<string, unknown>) || {};
+    // payment_custom_amount lives as its own column on the row (set by
+    // /api/set-payment-type), not inside payment_data — merge it in so
+    // getAmountToCollect can see it for the "others" payment type.
+    const pd = {
+      ...((appt.payment_data as Record<string, unknown>) || {}),
+      payment_custom_amount: appt.payment_custom_amount,
+    };
     const paymentType = (appt.payment_type_to_collect || "down_payment") as PaymentType;
 
     // Use the paymentHelper to get the correct amount based on payment type
