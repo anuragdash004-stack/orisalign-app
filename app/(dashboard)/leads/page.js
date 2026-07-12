@@ -89,6 +89,8 @@ export default function LeadTrackerPage() {
   const [campaigns, setCampaigns] = useState([]);
   const [catered, setCatered] = useState([]); // appointments the dentist has OTP-started
   const [dentists, setDentists] = useState([]);
+  const [patients, setPatients] = useState([]); // confirmed/completed patients, for the Patients follow-up view
+  const [followupView, setFollowupView] = useState("leads"); // "leads" | "patients" — toggle inside the Follow-ups section
   const [calendarOffset, setCalendarOffset] = useState(0); // offset in days from today, snapped to multiples of 10
   const todayRef = useRef(null);
 
@@ -115,6 +117,17 @@ export default function LeadTrackerPage() {
     setDentists(data || []);
   };
 
+  // Patients in active treatment — used to work out whose next aligner set
+  // change falls on the selected date, for the Patients follow-up view.
+  const fetchPatients = async () => {
+    const { data, error } = await supabase
+      .from("appointments_booking")
+      .select("id, name, phone, email, journey_steps, aligner_days_per_set, status")
+      .in("status", ["confirmed", "completed"]);
+    if (error) console.error("Error fetching patients:", error);
+    setPatients(data || []);
+  };
+
   useEffect(() => {
     const init = async () => {
       const { data: authData } = await supabase.auth.getUser();
@@ -126,6 +139,7 @@ export default function LeadTrackerPage() {
       await fetchCampaigns();
       await fetchCatered();
       await fetchDentists();
+      await fetchPatients();
     };
     init();
   }, []);
@@ -209,6 +223,8 @@ export default function LeadTrackerPage() {
   const visibleLeads = selectedDate === "all"
     ? pipelineLeads
     : pipelineLeads.filter((l) => leadCalendarKey(l) === selectedDate);
+
+  const patientFollowups = getPatientFollowups(patients, selectedDate);
 
   if (loading) return <div style={{ padding: "40px", textAlign: "center", color: "#6b7280" }}>Loading lead tracker...</div>;
 
@@ -375,6 +391,77 @@ export default function LeadTrackerPage() {
           if (s.key === "followups") {
             list = [...list].sort((a, b) => `${a.followup_date || ""} ${a.followup_time || ""}`.localeCompare(`${b.followup_date || ""} ${b.followup_time || ""}`));
           }
+          // Follow-ups splits into two views: Leads (this stage's normal
+          // lead list) and Patients (patients whose next aligner set change
+          // falls on the selected date, so staff can confirm they've switched).
+          if (s.key === "followups") {
+            const showingPatients = followupView === "patients";
+            const count = showingPatients ? patientFollowups.length : list.length;
+            return (
+              <div key={s.key} style={{ minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px", flexWrap: "wrap" }}>
+                  <h2 style={{ margin: 0, fontSize: "16px", fontWeight: "800", color: "#111827" }}>{s.label}</h2>
+                  <span style={{ fontSize: "12px", fontWeight: "700", color: "#6b7280", background: "#f3f4f6", borderRadius: "99px", padding: "2px 10px" }}>{count}</span>
+                  <div style={{ display: "flex", gap: "6px", marginLeft: "8px" }}>
+                    <button
+                      onClick={() => setFollowupView("leads")}
+                      style={{
+                        padding: "5px 14px", borderRadius: "8px", border: "1px solid " + (!showingPatients ? "#111827" : "#e5e7eb"),
+                        background: !showingPatients ? "#111827" : "white", color: !showingPatients ? "white" : "#374151",
+                        fontWeight: "700", fontSize: "12px", cursor: "pointer",
+                      }}
+                    >
+                      Leads ({list.length})
+                    </button>
+                    <button
+                      onClick={() => setFollowupView("patients")}
+                      style={{
+                        padding: "5px 14px", borderRadius: "8px", border: "1px solid " + (showingPatients ? "#111827" : "#e5e7eb"),
+                        background: showingPatients ? "#111827" : "white", color: showingPatients ? "white" : "#374151",
+                        fontWeight: "700", fontSize: "12px", cursor: "pointer",
+                      }}
+                    >
+                      Patients ({patientFollowups.length})
+                    </button>
+                  </div>
+                  <div style={{ flex: 1, height: "1px", background: "#eee" }} />
+                </div>
+
+                {showingPatients ? (
+                  patientFollowups.length === 0 ? (
+                    <div style={{ padding: "14px", background: "white", border: "1px dashed #e5e7eb", borderRadius: "12px", textAlign: "center", color: "#9ca3af", fontSize: "13px" }}>
+                      No patients due for a set change {selectedDate === "all" ? "today" : "on this date"}.
+                    </div>
+                  ) : (
+                    <div style={{ display: "grid", gap: "8px" }}>
+                      {patientFollowups.map((p) => (
+                        <div key={p.id} style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", background: "white", border: "1px solid #fde68a", borderRadius: "10px", padding: "10px 14px" }}>
+                          <span style={{ fontSize: "14px", fontWeight: "700", color: "#111827" }}>{p.name || "Unnamed"}</span>
+                          <span style={{ fontSize: "13px", color: "#6b7280" }}>{p.phone || "—"}</span>
+                          <span style={pill("#fef3c7", "#92400e")}>Set {p.previousSetNum} → Set {p.dueSetNum} of {p.totalSets}</span>
+                          <div style={{ marginLeft: "auto", display: "flex", gap: "8px" }}>
+                            {p.phone && (
+                              <a href={`tel:${p.phone}`} style={{ padding: "6px 14px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "white", color: "#111827", fontWeight: "700", fontSize: "12px", textDecoration: "none" }}>
+                                Call
+                              </a>
+                            )}
+                            <a href={`/patients/${p.id}`} style={{ padding: "6px 14px", borderRadius: "8px", border: "none", background: "#111827", color: "white", fontWeight: "700", fontSize: "12px", textDecoration: "none" }}>
+                              Open Patient
+                            </a>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                ) : list.length === 0 ? (
+                  <div style={{ padding: "14px", background: "white", border: "1px dashed #e5e7eb", borderRadius: "12px", textAlign: "center", color: "#9ca3af", fontSize: "13px" }}>No leads</div>
+                ) : (
+                  <LeadTable leads={list} campaigns={campaigns} isAdmin={isAdmin} onStage={quickStage} onEdit={(lead) => setEditing({ mode: "normal", lead })} onDelete={deleteLead} />
+                )}
+              </div>
+            );
+          }
+
           return (
             <div key={s.key} style={{ minWidth: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" }}>
@@ -426,6 +513,31 @@ function leadCalendarKey(lead) {
     if (lead.booking_confirmed_at) return dateKey(lead.booking_confirmed_at);
   }
   return dateKey(lead.created_at);
+}
+
+// Patients due to switch aligner sets on a given date — mirrors the exact
+// set-date math used by /api/cron/set-change-reminders and the patient's own
+// smile-correction page (smile_start_date + (setNum-1) * daysPerSet). Set 1
+// starts on day zero, so the first "change" is into Set 2.
+function getPatientFollowups(patients, dateKeyStr) {
+  const targetKey = dateKeyStr === "all" ? dateKey(new Date()) : dateKeyStr;
+  const results = [];
+  for (const p of patients) {
+    const js = p.journey_steps || {};
+    const setsCount = Number(js.smile_sets_count) || 0;
+    const startDate = js.smile_start_date;
+    if (!setsCount || !startDate || js.journey_ended) continue;
+    const daysPerSet = Number(js.smile_days_per_set) || Number(p.aligner_days_per_set) || 15;
+    for (let setNum = 2; setNum <= setsCount; setNum++) {
+      const d = new Date(startDate + "T00:00:00");
+      d.setDate(d.getDate() + (setNum - 1) * daysPerSet);
+      if (dateKey(d) === targetKey) {
+        results.push({ ...p, dueSetNum: setNum, previousSetNum: setNum - 1, totalSets: setsCount });
+        break; // only one set can possibly be due per patient per day
+      }
+    }
+  }
+  return results;
 }
 
 function formatTime(t) {

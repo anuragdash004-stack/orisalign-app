@@ -1,5 +1,6 @@
 {
   "crons": [
-    { "path": "/api/cron/lead-reminders", "schedule": "30 4 * * *" }
+    { "path": "/api/cron/lead-reminders", "schedule": "30 4 * * *" },
+    { "path": "/api/cron/set-change-reminders", "schedule": "30 2 * * *" }
   ]
 }
