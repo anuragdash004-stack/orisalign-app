@@ -218,6 +218,7 @@ export default function PatientJourney() {
       });
       const json = await res.json();
       if (json.success) {
+        alert("Thank you for approving your treatment planning.");
         window.location.reload();
       } else {
         alert("Failed to approve plan: " + (json.error || "Unknown error"));

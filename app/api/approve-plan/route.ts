@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { logAuditEntry, getClientInfo } from "@/lib/auditLog"
+import { sendStepNotification } from "@/lib/notifyStep"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -27,11 +28,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Patient not found" }, { status: 404 })
     }
 
+    // manufacturing_started is intentionally NOT set here — it activates
+    // automatically 12 hours after approval via the
+    // /api/cron/manufacturing-activation cron job, which also sends its own
+    // notification at that time. Setting it immediately would skip that
+    // 12-hour gap entirely.
     const updatedJourneySteps = {
       ...(existing.journey_steps || {}),
       plan_approved: true,
       plan_approved_at: approvalTimestamp,
-      manufacturing_started: true,
     }
 
     const { error } = await supabase
@@ -95,15 +100,15 @@ export async function POST(req: Request) {
       userAgent,
     })
 
-    // Notify patient — plan approved, manufacturing starting
+    // Notify patient — plan approved. Manufacturing Started fires on its own
+    // 12 hours from now via the cron job, not here.
     const baseUrl = `https://${req.headers.get("host") || "orisalign.com"}`
-    for (const stepKey of ["plan_approved", "manufacturing_started"]) {
-      fetch(`${baseUrl}/api/notify-step`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ appointmentId: patientId, stepKey, email: existing.email || null }),
-      }).catch(() => {})
-    }
+    sendStepNotification({
+      appointmentId: patientId,
+      stepKey: "plan_approved",
+      emailOverride: existing.email || null,
+      origin: baseUrl,
+    }).catch(() => {})
 
     return NextResponse.json({ success: true })
   } catch (err) {
