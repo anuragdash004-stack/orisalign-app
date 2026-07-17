@@ -122,7 +122,7 @@ export default function LeadTrackerPage() {
   const fetchPatients = async () => {
     const { data, error } = await supabase
       .from("appointments_booking")
-      .select("id, name, phone, email, journey_steps, aligner_days_per_set, status")
+      .select("id, name, phone, email, journey_steps, aligner_days_per_set, status, set_followups")
       .in("status", ["confirmed", "completed"]);
     if (error) console.error("Error fetching patients:", error);
     setPatients(data || []);
@@ -191,6 +191,38 @@ export default function LeadTrackerPage() {
     const nowIso = new Date().toISOString();
     setLeads((prev) => prev.map((l) => (l.id === lead.id ? { ...l, lead_stage: "fresh", promoted_at: nowIso } : l)));
     await supabase.from("appointments_booking").update({ lead_stage: "fresh", promoted_at: nowIso }).eq("id", lead.id);
+  };
+
+  // Save a patient's set-change follow-up (note + call status) for the set
+  // currently due. When marked "not_received", also fires an automated
+  // nudge email (and hands back a pre-filled WhatsApp link) to the patient.
+  const saveSetFollowup = async (patient, setNum, { note, callStatus }) => {
+    const existing = patient.set_followups || {};
+    const entry = { ...(existing[setNum] || {}), note, call_status: callStatus, updated_at: new Date().toISOString() };
+    const updated = { ...existing, [setNum]: entry };
+
+    setPatients((prev) => prev.map((p) => (p.id === patient.id ? { ...p, set_followups: updated } : p)));
+    await supabase.from("appointments_booking").update({ set_followups: updated }).eq("id", patient.id);
+
+    if (callStatus === "not_received") {
+      try {
+        const res = await fetch("/api/notify-set-followup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            appointmentId: patient.id,
+            previousSetNum: patient.previousSetNum,
+            dueSetNum: setNum,
+            totalSets: patient.totalSets,
+          }),
+        });
+        const json = await res.json();
+        return json; // { emailSent, waLink, message }
+      } catch {
+        return null;
+      }
+    }
+    return null;
   };
 
   // Permanently remove a lead from the system.
@@ -439,23 +471,9 @@ export default function LeadTrackerPage() {
                       No patients due for a set change {selectedDate === "all" ? "today" : "on this date"}.
                     </div>
                   ) : (
-                    <div style={{ display: "grid", gap: "8px" }}>
+                    <div style={{ display: "grid", gap: "10px" }}>
                       {patientFollowups.map((p) => (
-                        <div key={p.id} style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", background: "white", border: "1px solid #fde68a", borderRadius: "10px", padding: "10px 14px" }}>
-                          <span style={{ fontSize: "14px", fontWeight: "700", color: "#111827" }}>{p.name || "Unnamed"}</span>
-                          <span style={{ fontSize: "13px", color: "#6b7280" }}>{p.phone || "—"}</span>
-                          <span style={pill("#fef3c7", "#92400e")}>Set {p.previousSetNum} → Set {p.dueSetNum} of {p.totalSets}</span>
-                          <div style={{ marginLeft: "auto", display: "flex", gap: "8px" }}>
-                            {p.phone && (
-                              <a href={`tel:${p.phone}`} style={{ padding: "6px 14px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "white", color: "#111827", fontWeight: "700", fontSize: "12px", textDecoration: "none" }}>
-                                Call
-                              </a>
-                            )}
-                            <a href={`/patients/${p.id}`} style={{ padding: "6px 14px", borderRadius: "8px", border: "none", background: "#111827", color: "white", fontWeight: "700", fontSize: "12px", textDecoration: "none" }}>
-                              Open Patient
-                            </a>
-                          </div>
-                        </div>
+                        <PatientFollowupCard key={p.id} patient={p} onSave={saveSetFollowup} />
                       ))}
                     </div>
                   )
@@ -580,6 +598,87 @@ function DateChip({ active, today, onClick, top, mid, bot }) {
       <span style={{ fontSize: "16px", fontWeight: 800 }}>{mid}</span>
       <span style={{ fontSize: "10px", fontWeight: 600, opacity: 0.8 }}>{bot}</span>
     </button>
+  );
+}
+
+// One patient's row in the Patients follow-up view — lets staff log whether
+// the "please change your set" call was received, jot a note of what the
+// patient said, and (when the call wasn't received) auto-send a nudge.
+function PatientFollowupCard({ patient, onSave }) {
+  const existing = patient.set_followups?.[patient.dueSetNum] || {};
+  const [note, setNote] = useState(existing.note || "");
+  const [callStatus, setCallStatus] = useState(existing.call_status || "");
+  const [saving, setSaving] = useState(false);
+  const [sendResult, setSendResult] = useState(null);
+
+  const save = async (status) => {
+    setCallStatus(status);
+    setSaving(true);
+    setSendResult(null);
+    const result = await onSave(patient, patient.dueSetNum, { note, callStatus: status });
+    if (status === "not_received") setSendResult(result);
+    setSaving(false);
+  };
+
+  return (
+    <div style={{ background: "white", border: "1px solid #fde68a", borderRadius: "10px", padding: "12px 14px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", marginBottom: "10px" }}>
+        <span style={{ fontSize: "14px", fontWeight: "700", color: "#111827" }}>{patient.name || "Unnamed"}</span>
+        <span style={{ fontSize: "13px", color: "#6b7280" }}>{patient.phone || "—"}</span>
+        <span style={pill("#fef3c7", "#92400e")}>Set {patient.previousSetNum} → Set {patient.dueSetNum} of {patient.totalSets}</span>
+        <a href={`/patients/${patient.id}`} style={{ marginLeft: "auto", padding: "6px 14px", borderRadius: "8px", border: "none", background: "#111827", color: "white", fontWeight: "700", fontSize: "12px", textDecoration: "none" }}>
+          Open Patient
+        </a>
+      </div>
+
+      <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
+        <button
+          onClick={() => save("received")}
+          disabled={saving}
+          style={{
+            flex: 1, padding: "7px 10px", borderRadius: "8px", fontWeight: "700", fontSize: "12px", cursor: saving ? "not-allowed" : "pointer",
+            border: callStatus === "received" ? "none" : "1px solid #e5e7eb",
+            background: callStatus === "received" ? "#16a34a" : "white",
+            color: callStatus === "received" ? "white" : "#374151",
+          }}
+        >
+          ✓ Call Received
+        </button>
+        <button
+          onClick={() => save("not_received")}
+          disabled={saving}
+          style={{
+            flex: 1, padding: "7px 10px", borderRadius: "8px", fontWeight: "700", fontSize: "12px", cursor: saving ? "not-allowed" : "pointer",
+            border: callStatus === "not_received" ? "none" : "1px solid #e5e7eb",
+            background: callStatus === "not_received" ? "#dc2626" : "white",
+            color: callStatus === "not_received" ? "white" : "#374151",
+          }}
+        >
+          ✕ Did Not Receive
+        </button>
+      </div>
+
+      <textarea
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        onBlur={() => onSave(patient, patient.dueSetNum, { note, callStatus })}
+        placeholder="Note — what the patient said, e.g. already changed set / needs a reminder call tomorrow..."
+        style={{ width: "100%", minHeight: "44px", padding: "8px 10px", borderRadius: "8px", border: "1px solid #e5e7eb", fontSize: "12px", outline: "none", resize: "vertical", boxSizing: "border-box", color: "#111827" }}
+      />
+
+      {sendResult && (
+        <div style={{ marginTop: "8px", display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+          <span style={{ fontSize: "12px", color: sendResult.emailSent ? "#16a34a" : "#9ca3af" }}>
+            {sendResult.emailSent ? "✓ Nudge email sent" : "No email on file — email not sent"}
+          </span>
+          {sendResult.waLink && (
+            <a href={sendResult.waLink} target="_blank" rel="noopener noreferrer" style={{ fontSize: "12px", fontWeight: "700", color: "#16a34a", textDecoration: "underline" }}>
+              Send via WhatsApp too →
+            </a>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
