@@ -184,10 +184,13 @@ export default function LeadTrackerPage() {
       .eq("id", lead.id);
   };
 
-  // Cold lead → promote into the live tracker as a Fresh lead.
+  // Cold lead → promote into the live tracker as a Fresh lead. Stamp
+  // promoted_at so it shows in Fresh Leads on the day it was actually
+  // promoted, not the day it was originally added as a cold lead.
   const promoteToLead = async (lead) => {
-    setLeads((prev) => prev.map((l) => (l.id === lead.id ? { ...l, lead_stage: "fresh" } : l)));
-    await supabase.from("appointments_booking").update({ lead_stage: "fresh" }).eq("id", lead.id);
+    const nowIso = new Date().toISOString();
+    setLeads((prev) => prev.map((l) => (l.id === lead.id ? { ...l, lead_stage: "fresh", promoted_at: nowIso } : l)));
+    await supabase.from("appointments_booking").update({ lead_stage: "fresh", promoted_at: nowIso }).eq("id", lead.id);
   };
 
   // Permanently remove a lead from the system.
@@ -378,10 +381,13 @@ export default function LeadTrackerPage() {
           if (s.key === "fresh") {
             // Fresh Leads = every lead created on the selected date, regardless
             // of current stage. This lets you see all new entries for a day
-            // while the lead's actual stage is also reflected below.
+            // while the lead's actual stage is also reflected below. A lead
+            // promoted from Cold uses its promotion date instead of its
+            // original (cold) creation date — it should show up as fresh on
+            // the day it was actually promoted.
             list = selectedDate === "all"
               ? pipelineLeads
-              : pipelineLeads.filter((l) => dateKey(l.created_at) === selectedDate);
+              : pipelineLeads.filter((l) => dateKey(l.promoted_at || l.created_at) === selectedDate);
           } else {
             list = visibleLeads.filter((l) => stageOf(l) === s.key);
           }
@@ -501,7 +507,8 @@ function dateKey(d) {
 // The date a lead belongs to in the calendar:
 // - callbacks → their scheduled callback_date
 // - booked → the date they were confirmed (booking_confirmed_at)
-// - everyone else → the date they came in (created_at)
+// - everyone else → the date they came in — promoted_at if they were
+//   promoted from Cold, otherwise created_at
 function leadCalendarKey(lead) {
   const stage = lead.lead_stage || "fresh";
   if (stage === "callback" && lead.callback_date) return dateKey(lead.callback_date);
@@ -512,7 +519,7 @@ function leadCalendarKey(lead) {
     if (lead.date) return dateKey(lead.date);
     if (lead.booking_confirmed_at) return dateKey(lead.booking_confirmed_at);
   }
-  return dateKey(lead.created_at);
+  return dateKey(lead.promoted_at || lead.created_at);
 }
 
 // Patients due to switch aligner sets on a given date — mirrors the exact
