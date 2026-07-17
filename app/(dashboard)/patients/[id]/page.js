@@ -6,7 +6,9 @@ import { logAudit } from "@/lib/logAudit";
 
 const supabase = getSupabaseClient();
 
-const TABS = ["Payment", "Manufacturing", "Journey", "Message", "Patient Page", "Report"];
+const TABS = ["Payment", "Manufacturing", "Journey", "LMC", "Message", "Patient Page", "Report"];
+
+const LMC_TREATMENT_TYPES = ["Aligners", "RCT", "Implant", "Extraction", "Restoration", "Scaling", "Polishing", "Checkup"];
 
 const ALL_STEPS = [
   { key: "booked",                  label: "Appointment Booked" },
@@ -2159,6 +2161,230 @@ function MessageTab({ appointmentId, patientEmail, patientName, actor }) {
   );
 }
 
+// ─── Lifetime Membership Card Tab ──────────────────────────────────────────────
+function emptyLmcPerson() {
+  return { name: "", dob: "", address: "" };
+}
+
+function LMCTab({ appointmentId, initialData, actor }) {
+  const data = initialData || {};
+  const [active, setActive] = useState(!!data.active);
+  const [cardholder, setCardholder] = useState(data.cardholder || emptyLmcPerson());
+  const [plusOne, setPlusOne] = useState(data.plus_one || emptyLmcPerson());
+  const [images, setImages] = useState(data.images || []);
+  const [treatments, setTreatments] = useState(data.treatments || []);
+  const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [activating, setActivating] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const persist = async (patch, { silent } = {}) => {
+    const payload = {
+      active,
+      cardholder,
+      plus_one: plusOne,
+      images,
+      treatments,
+      ...patch,
+    };
+    const { error } = await supabase
+      .from("appointments_booking")
+      .update({ lmc_active: payload.active, lmc_data: payload })
+      .eq("id", appointmentId);
+    if (error) { alert("Failed to save: " + error.message); return false; }
+    if (!silent) logAudit({ appointmentId, actor, action: "Lifetime Membership Card Updated", entity: "lmc_data", newData: payload });
+    return true;
+  };
+
+  const activate = async () => {
+    if (!window.confirm("Activate the Lifetime Membership Card for this patient?")) return;
+    setActivating(true);
+    const ok = await persist({ active: true });
+    setActivating(false);
+    if (ok) {
+      setActive(true);
+      logAudit({ appointmentId, actor, action: "Lifetime Membership Card Activated", entity: "lmc_active", newData: { active: true } });
+    }
+  };
+
+  const deactivate = async () => {
+    if (!window.confirm("Deactivate this patient's Lifetime Membership Card? Their saved details will be kept.")) return;
+    setActivating(true);
+    const ok = await persist({ active: false });
+    setActivating(false);
+    if (ok) {
+      setActive(false);
+      logAudit({ appointmentId, actor, action: "Lifetime Membership Card Deactivated", entity: "lmc_active", newData: { active: false } });
+    }
+  };
+
+  const saveDetails = async () => {
+    setSaving(true);
+    const ok = await persist({});
+    setSaving(false);
+    if (ok) { setSaved(true); setTimeout(() => setSaved(false), 2500); }
+  };
+
+  const uploadImage = async (file) => {
+    if (!file) return;
+    setUploading(true);
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const path = `lmc/${appointmentId}/${Date.now()}_${safeName}`;
+    const { error: uploadError } = await supabase.storage.from("patient-docs").upload(path, file, { upsert: true });
+    if (uploadError) { setUploading(false); alert("Failed to upload image: " + uploadError.message); return; }
+    const { data: { publicUrl } } = supabase.storage.from("patient-docs").getPublicUrl(path);
+    const newImages = [...images, publicUrl];
+    setImages(newImages);
+    await persist({ images: newImages }, { silent: true });
+    setUploading(false);
+  };
+
+  const removeImage = async (url) => {
+    const newImages = images.filter((i) => i !== url);
+    setImages(newImages);
+    await persist({ images: newImages }, { silent: true });
+  };
+
+  const addTreatment = () => {
+    setTreatments((prev) => [...prev, { type: LMC_TREATMENT_TYPES[0], start: "", end: "", amount: "" }]);
+  };
+
+  const updateTreatment = (idx, field, value) => {
+    setTreatments((prev) => prev.map((t, i) => (i === idx ? { ...t, [field]: value } : t)));
+  };
+
+  const removeTreatment = (idx) => {
+    setTreatments((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const personFields = (person, setPerson) => (
+    <div style={row}>
+      <div>
+        <span style={label}>NAME</span>
+        <input style={input} value={person.name} onChange={(e) => setPerson({ ...person, name: e.target.value })} />
+      </div>
+      <div>
+        <span style={label}>DATE OF BIRTH</span>
+        <input style={input} type="date" value={person.dob} onChange={(e) => setPerson({ ...person, dob: e.target.value })} />
+      </div>
+      <div style={{ gridColumn: "1 / -1" }}>
+        <span style={label}>ADDRESS</span>
+        <textarea style={{ ...input, minHeight: "56px", resize: "vertical" }} value={person.address} onChange={(e) => setPerson({ ...person, address: e.target.value })} />
+      </div>
+    </div>
+  );
+
+  if (!active) {
+    return (
+      <div style={card}>
+        <h3 style={{ margin: "0 0 8px", fontSize: "16px", color: "#111827" }}>Lifetime Membership Card</h3>
+        <p style={{ margin: "0 0 18px", fontSize: "13px", color: "#9ca3af" }}>
+          This patient does not currently have a Lifetime Membership Card. Turn it on once the card has actually been
+          issued to them.
+        </p>
+        <button style={btnGold} onClick={activate} disabled={activating}>
+          {activating ? "Activating..." : "Turn ON — Lifetime Membership Card Issued"}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div style={card}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
+          <div>
+            <h3 style={{ margin: "0 0 4px", fontSize: "16px", color: "#111827" }}>Lifetime Membership Card</h3>
+            <span style={{ fontSize: "11px", fontWeight: "700", padding: "4px 10px", borderRadius: "99px", background: "#dcfce7", color: "#16a34a", letterSpacing: "0.5px" }}>ACTIVE ✓</span>
+          </div>
+          <button
+            onClick={deactivate}
+            disabled={activating}
+            style={{ padding: "8px 16px", borderRadius: "10px", border: "1px solid #fecaca", background: "#fef2f2", color: "#dc2626", fontWeight: "700", fontSize: "12px", cursor: "pointer" }}
+          >
+            Turn Off
+          </button>
+        </div>
+      </div>
+
+      <div style={card}>
+        <h4 style={{ margin: "0 0 14px", fontSize: "14px", color: "#111827" }}>Cardholder Details</h4>
+        {personFields(cardholder, setCardholder)}
+
+        <h4 style={{ margin: "20px 0 14px", fontSize: "14px", color: "#111827" }}>Plus One Details</h4>
+        {personFields(plusOne, setPlusOne)}
+      </div>
+
+      <div style={card}>
+        <h4 style={{ margin: "0 0 14px", fontSize: "14px", color: "#111827" }}>Card Images</h4>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "12px", marginBottom: "14px" }}>
+          {images.map((url) => (
+            <div key={url} style={{ position: "relative", width: "120px", height: "80px", borderRadius: "10px", overflow: "hidden", border: "1px solid #e5e7eb" }}>
+              <img src={url} alt="LMC" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              <button
+                onClick={() => removeImage(url)}
+                style={{ position: "absolute", top: "4px", right: "4px", width: "22px", height: "22px", borderRadius: "50%", border: "none", background: "rgba(220,38,38,0.9)", color: "white", fontWeight: "800", fontSize: "12px", cursor: "pointer", lineHeight: 1 }}
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+        </div>
+        <label style={{ display: "inline-block", padding: "10px 18px", borderRadius: "10px", border: "1px dashed #b8905a", color: "#b8905a", fontWeight: "700", fontSize: "13px", cursor: uploading ? "not-allowed" : "pointer" }}>
+          {uploading ? "Uploading..." : "+ Upload Image"}
+          <input type="file" accept="image/*" style={{ display: "none" }} disabled={uploading} onChange={(e) => uploadImage(e.target.files?.[0])} />
+        </label>
+      </div>
+
+      <div style={card}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
+          <h4 style={{ margin: 0, fontSize: "14px", color: "#111827" }}>Treatments Undergone</h4>
+          <button onClick={addTreatment} style={{ padding: "8px 16px", borderRadius: "10px", border: "none", background: "#111827", color: "white", fontWeight: "700", fontSize: "12px", cursor: "pointer" }}>
+            + Add Treatment
+          </button>
+        </div>
+
+        {treatments.length === 0 ? (
+          <p style={{ margin: 0, fontSize: "13px", color: "#9ca3af" }}>No treatments recorded yet.</p>
+        ) : (
+          <div style={{ display: "grid", gap: "12px" }}>
+            {treatments.map((t, idx) => (
+              <div key={idx} style={{ padding: "14px", borderRadius: "12px", border: "1px solid #e5e7eb", background: "#fafafa" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                  <select style={{ ...select, width: "auto" }} value={t.type} onChange={(e) => updateTreatment(idx, "type", e.target.value)}>
+                    {LMC_TREATMENT_TYPES.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+                  </select>
+                  <button onClick={() => removeTreatment(idx)} style={{ background: "none", border: "none", color: "#dc2626", fontWeight: "700", fontSize: "12px", cursor: "pointer" }}>
+                    Remove
+                  </button>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px" }}>
+                  <div>
+                    <span style={label}>START DATE</span>
+                    <input style={input} type="date" value={t.start} onChange={(e) => updateTreatment(idx, "start", e.target.value)} />
+                  </div>
+                  <div>
+                    <span style={label}>END DATE</span>
+                    <input style={input} type="date" value={t.end} onChange={(e) => updateTreatment(idx, "end", e.target.value)} />
+                  </div>
+                  <div>
+                    <span style={label}>AMOUNT PAID (₹)</span>
+                    <input style={input} type="number" placeholder="0" value={t.amount} onChange={(e) => updateTreatment(idx, "amount", e.target.value)} />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <button style={saved ? { ...btnPrimary, background: "#16a34a" } : btnGold} onClick={saveDetails} disabled={saving}>
+        {saving ? "Saving..." : saved ? "Saved ✓" : "Save LMC Details"}
+      </button>
+    </div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function PatientDetailPage() {
   const { id } = useParams();
@@ -2263,6 +2489,9 @@ export default function PatientDetailPage() {
       </div>
       <div style={{ display: activeTab === "Manufacturing" ? "block" : "none" }}>
         <ManufacturingTab appointmentId={id} initialData={appt.manufacturing_data || null} logisticsData={appt.logistics_data || null} actor={actor} />
+      </div>
+      <div style={{ display: activeTab === "LMC" ? "block" : "none" }}>
+        <LMCTab appointmentId={id} initialData={appt.lmc_data || null} actor={actor} />
       </div>
       <div style={{ display: activeTab === "Message" ? "block" : "none" }}>
         <MessageTab appointmentId={id} patientEmail={appt.email} patientName={appt.name} actor={actor} />

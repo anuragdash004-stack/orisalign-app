@@ -63,6 +63,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
     coupons:      userRole === "admin",
     campaigns:    userRole === "admin" || userRole === "counselor",
     audit:        userRole === "admin",
+    lmc:          userRole === "admin",
   };
 
   const expanded = !collapsed || isMobile && !collapsed;
@@ -272,6 +273,14 @@ export default function Sidebar({ collapsed, setCollapsed }) {
               ...(path.startsWith("/audit") ? { background: "#ffffff90" } : {}),
             }}>
               {showContent ? "AUDIT LOG" : ""}
+            </Link>
+          )}
+          {show.lmc && (
+            <Link href="/lmc" style={{
+              ...linkStyle("/lmc"),
+              ...(path.startsWith("/lmc") ? { background: "#ffffff90" } : {}),
+            }}>
+              {showContent ? "LIFETIME MEMBERSHIP" : ""}
             </Link>
           )}
         </div>
