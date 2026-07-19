@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 
 const supabase = getSupabaseClient();
@@ -80,8 +81,10 @@ const input = {
 const label = { display: "block", fontSize: "11px", fontWeight: "700", color: "#6b7280", marginBottom: "5px", letterSpacing: "0.4px", textTransform: "uppercase" };
 
 export default function LeadTrackerPage() {
+  const router = useRouter();
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState(""); // global search — name or phone, across leads + patients
   const [selectedDate, setSelectedDate] = useState(() => dateKey(new Date())); // defaults to today; "all" or YYYY-MM-DD
   const [editing, setEditing] = useState(null); // null or { mode: "normal"|"cold", lead: leadObj|null }
   const [view, setView] = useState("tracker"); // "tracker" | "cold"
@@ -236,6 +239,24 @@ export default function LeadTrackerPage() {
 
   const coldLeads = leads.filter((l) => stageOf(l) === "cold");
   const pipelineLeads = leads.filter((l) => stageOf(l) !== "cold");
+
+  // Global search — matches name or phone across everything: pure leads,
+  // cold leads, and converted patients (leads + patients combined & deduped).
+  const searchResults = (() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return [];
+    const seen = new Set();
+    const combined = [];
+    for (const r of [...leads, ...patients]) {
+      if (seen.has(r.id)) continue;
+      seen.add(r.id);
+      combined.push(r);
+    }
+    return combined
+      .filter((r) => (r.name || "").toLowerCase().includes(q) || (r.phone || "").includes(q))
+      .slice(0, 20);
+  })();
+  const isConverted = (r) => !!r.booking_confirmed || r.status === "confirmed" || r.status === "completed";
   const isAdmin = actor?.role === "admin"; // Cold Leads are admin-only
   const dentistMap = Object.fromEntries(dentists.map((d) => [d.id, d.email]));
   // Follows the same date filter as the rest of the page — "all" shows
@@ -290,7 +311,7 @@ export default function LeadTrackerPage() {
           <LeadTable leads={coldLeads} cold campaigns={campaigns} onPromote={promoteToLead} onEdit={(lead) => setEditing({ mode: "cold", lead })} onDelete={deleteLead} />
         )}
         {editing && (
-          <LeadForm lead={editing.lead} mode={editing.mode} actor={actor} campaigns={campaigns} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); fetchLeads(); }} />
+          <LeadForm lead={editing.lead} mode={editing.mode} actor={actor} campaigns={campaigns} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); fetchLeads(); }} onDuplicateFound={(existing) => setEditing({ mode: "normal", lead: existing })} />
         )}
       </div>
     );
@@ -319,6 +340,52 @@ export default function LeadTrackerPage() {
             + Add Lead
           </button>
         </div>
+      </div>
+
+      {/* Global search — name or phone, across leads and converted patients */}
+      <div style={{ position: "relative", marginBottom: "18px" }}>
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="🔍 Search any patient or lead by name or phone number..."
+          style={{ width: "100%", padding: "13px 16px", borderRadius: "12px", border: "1px solid #e5e7eb", fontSize: "14px", outline: "none", background: "white", color: "#111827", boxSizing: "border-box", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}
+        />
+        {searchQuery.trim() && (
+          <div style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, right: 0, zIndex: 40, background: "white", border: "1px solid #e5e7eb", borderRadius: "12px", boxShadow: "0 10px 30px rgba(0,0,0,0.12)", maxHeight: "420px", overflowY: "auto" }}>
+            {searchResults.length === 0 ? (
+              <div style={{ padding: "18px", textAlign: "center", color: "#9ca3af", fontSize: "13px" }}>No matches found.</div>
+            ) : (
+              searchResults.map((r) => {
+                const converted = isConverted(r);
+                return (
+                  <button
+                    key={r.id}
+                    onClick={() => {
+                      setSearchQuery("");
+                      if (converted) router.push(`/patients/${r.id}`);
+                      else setEditing({ mode: "normal", lead: r });
+                    }}
+                    style={{ display: "flex", alignItems: "center", gap: "12px", width: "100%", textAlign: "left", padding: "12px 16px", border: "none", borderBottom: "1px solid #f3f4f6", background: "white", cursor: "pointer" }}
+                  >
+                    <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: converted ? "linear-gradient(135deg, #16a34a, #22c55e)" : "linear-gradient(135deg, #b8905a, #f59e0b)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: "800", fontSize: "14px", flexShrink: 0 }}>
+                      {(r.name || "?")[0].toUpperCase()}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ margin: 0, fontSize: "14px", fontWeight: "700", color: "#111827" }}>{r.name || "Unnamed"}</p>
+                      <p style={{ margin: "2px 0 0", fontSize: "12px", color: "#6b7280" }}>
+                        {r.phone || "—"}{r.email ? ` · ${r.email}` : ""}
+                      </p>
+                    </div>
+                    <span style={{ fontSize: "11px", fontWeight: "700", padding: "4px 10px", borderRadius: "99px", background: converted ? "#dcfce7" : "#fef3c7", color: converted ? "#16a34a" : "#92400e", flexShrink: 0 }}>
+                      {converted ? "Patient →" : `${stageOf(r).charAt(0).toUpperCase()}${stageOf(r).slice(1)} Lead →`}
+                    </span>
+                  </button>
+                );
+              })
+            )}
+          </div>
+        )}
       </div>
 
       {/* Calendar row — paginated, 11 dates at a time */}
@@ -511,6 +578,7 @@ export default function LeadTrackerPage() {
           campaigns={campaigns}
           onClose={() => setEditing(null)}
           onSaved={() => { setEditing(null); fetchLeads(); }}
+          onDuplicateFound={(existing) => setEditing({ mode: "normal", lead: existing })}
         />
       )}
     </div>
@@ -890,7 +958,7 @@ function Clearable({ show, onClear, children }) {
   );
 }
 
-function LeadForm({ lead, actor, onClose, onSaved, mode = "normal", campaigns = [] }) {
+function LeadForm({ lead, actor, onClose, onSaved, onDuplicateFound, mode = "normal", campaigns = [] }) {
   const isCold = mode === "cold";
   const [form, setForm] = useState(() => {
     if (!lead) return { ...EMPTY_FORM, lead_stage: isCold ? "cold" : "fresh" };
@@ -949,6 +1017,23 @@ function LeadForm({ lead, actor, onClose, onSaved, mode = "normal", campaigns = 
     const confirm = !!opts.confirm;
     setSaving(true);
     try {
+      // Block duplicate phone numbers when creating a brand-new lead — surface
+      // the existing record instead of silently creating a second one.
+      if (!lead && form.phone && form.phone.trim()) {
+        const { data: dup } = await supabase
+          .from("appointments_booking")
+          .select("*")
+          .eq("phone", form.phone.trim())
+          .limit(1)
+          .maybeSingle();
+        if (dup) {
+          alert(`This phone number is already registered — for ${dup.name || "an existing lead"}. Opening their existing record instead.`);
+          setSaving(false);
+          onDuplicateFound?.(dup);
+          return;
+        }
+      }
+
       // Build call history — append a new entry whenever stage is callback/followups
       // and the response or next date has changed (avoid duplicate entries).
       const existingHistory = lead?.call_history || [];
