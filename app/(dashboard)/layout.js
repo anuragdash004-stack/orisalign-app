@@ -37,12 +37,23 @@ export default function DashboardLayout({ children }) {
   const isPublicPatientPage = path === "/patient" || path?.startsWith("/patient/");
 
   // Role-based route guard (skipped entirely for public pages)
+  //
+  // Uses getSession() rather than getUser(): getSession() reads the session
+  // straight out of the configured storage (localStorage when "Keep me
+  // logged in" was checked) and only hits the network if the access token
+  // has actually expired. getUser() unconditionally makes a live request to
+  // re-verify the user — on a cold full browser restart that request can
+  // race the client's own session-restore-from-storage step, or simply blip
+  // on a not-yet-warm network connection, and either way looked identical to
+  // "not logged in" and bounced straight back to /login even though a
+  // perfectly valid remembered session was sitting in localStorage.
   useEffect(() => {
     if (isPublicPage) return;
     const check = async () => {
-      const { data: authData } = await supabase.auth.getUser();
-      if (!authData?.user) { router.replace("/login"); return; }
-      const { data } = await supabase.from("users").select("role").eq("id", authData.user.id).single();
+      const { data: sessionData } = await supabase.auth.getSession();
+      const user = sessionData?.session?.user;
+      if (!user) { router.replace("/login"); return; }
+      const { data } = await supabase.from("users").select("role").eq("id", user.id).single();
       const role = data?.role || "";
       const allowed = ROLE_ALLOWED[role] || [];
       const permitted = allowed.some((prefix) => path.startsWith(prefix));

@@ -29,16 +29,19 @@ export default function Sidebar({ collapsed, setCollapsed }) {
     if (isMobile) setCollapsed(true);
   }, [path, isMobile]);
 
-  // Fetch user info
+  // Fetch user info — getSession() reads the remembered session straight
+  // from storage instead of forcing a live network re-verification (see
+  // app/(dashboard)/layout.js for why that matters on a cold browser start).
   useEffect(() => {
     const fetchUser = async () => {
-      const { data: authData } = await supabase.auth.getUser();
-      if (!authData?.user) return;
-      setUserEmail(authData.user.email);
+      const { data: sessionData } = await supabase.auth.getSession();
+      const user = sessionData?.session?.user;
+      if (!user) return;
+      setUserEmail(user.email);
       const { data } = await supabase
         .from("users")
         .select("role")
-        .eq("id", authData.user.id)
+        .eq("id", user.id)
         .single();
       setUserRole(data?.role || "");
     };
