@@ -42,6 +42,7 @@ export default function BookPage() {
   // Step 4 — Complaint + Slot
   const [chiefComplaint, setChiefComplaint] = useState("")
   const [consultationType, setConsultationType] = useState("")
+  const [clinicLocation, setClinicLocation] = useState("")
   const [explainConcern, setExplainConcern] = useState("")
   const [date, setDate] = useState("")
   const [time, setTime] = useState("")
@@ -243,6 +244,10 @@ export default function BookPage() {
       alert("Please select your concern, date, time slot and consultation type.")
       return
     }
+    if (consultationType === "clinic" && !clinicLocation) {
+      alert("Please choose which clinic you'd like to visit.")
+      return
+    }
 
     // Check for duplicate booking
     const canProceed = await checkDuplicateBooking()
@@ -257,7 +262,7 @@ export default function BookPage() {
 
     const { data: inserted, error } = await supabase!
       .from("appointments_booking")
-      .insert([{ name, phone, email, age, sex, address, problem: `[${consultationType.toUpperCase()}] ${problem}`, date, time, status: "lead", lead_stage: "fresh", lead_source: "website" }])
+      .insert([{ name, phone, email, age, sex, address, problem: `[${consultationType.toUpperCase()}] ${problem}`, date, time, status: "lead", lead_stage: "fresh", lead_source: "website", clinic_location: consultationType === "clinic" ? clinicLocation : null }])
       .select("id")
       .single()
 
@@ -271,6 +276,7 @@ export default function BookPage() {
       body: JSON.stringify({
         name, phone, email, age, sex, address, problem, date, time,
         consultationType,
+        clinicLocation: consultationType === "clinic" ? clinicLocation : "",
         patientId: inserted?.id || "",
       }),
     }).catch(() => {})
@@ -606,9 +612,25 @@ export default function BookPage() {
             >
               <option value="" disabled>Choose consultation type</option>
               <option value="home">🏠 Home Consultation — Dentist visits your home</option>
-              <option value="clinic">🏥 Clinic Consultation — Visit our clinic in Bhubaneswar (address will be shared in mail)</option>
+              <option value="clinic">🏥 Clinic Consultation — Visit one of our clinics in Bhubaneswar</option>
               <option value="online">💻 Online Consultation — Video call with our expert</option>
             </select>
+
+            {consultationType === "clinic" && (
+              <>
+                <div className="section-label">Choose Clinic</div>
+                <select
+                  className="input"
+                  value={clinicLocation}
+                  onChange={(e) => setClinicLocation(e.target.value)}
+                  style={{ color: clinicLocation ? "#111" : "#9ca3af" }}
+                >
+                  <option value="" disabled>Select a clinic</option>
+                  <option value="Nayapalli">Nayapalli Clinic</option>
+                  <option value="Patia">Patia Clinic</option>
+                </select>
+              </>
+            )}
 
             <div style={{ marginTop: "20px", display: "flex", flexDirection: "column", gap: "10px" }}>
               <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer", fontSize: "13px", color: "#374151" }}>

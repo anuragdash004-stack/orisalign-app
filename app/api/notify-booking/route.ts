@@ -6,10 +6,24 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+const CLINIC_INFO: Record<string, { name: string; address: string; mapsLink: string }> = {
+  Nayapalli: {
+    name: "Nayapalli Clinic",
+    address: "April Dental, 242, Indradhanu Market Rd, N4, Block N4, IRC Village, Nayapalli, Bhubaneswar, Odisha 751015",
+    mapsLink: "https://maps.app.goo.gl/gtLWbuPZ7BLUMmReA",
+  },
+  Patia: {
+    name: "Patia Clinic",
+    address: "Kalp Dental Clinic, Kiss Road, Chandaka Industrial Estate, Patia, Bhubaneswar, Odisha",
+    mapsLink: "https://share.google/DPy1ODGR0lb1UZFAT",
+  },
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json()
-    const { type, name, phone, email, age, sex, address, problem, date, time, consultationType, patientId } = body
+    const { type, name, phone, email, age, sex, address, problem, date, time, consultationType, clinicLocation, patientId } = body
+    const clinicInfo = consultationType === "clinic" ? CLINIC_INFO[clinicLocation] : null
 
     // The homepage "Request a Callback" widget only sends name+phone — it
     // never creates a database row, which is why those leads never showed
@@ -84,6 +98,7 @@ export async function POST(req: Request) {
                 <tr><td style="padding:6px 0;color:#6b7280;width:140px;">Date</td><td style="padding:6px 0;font-weight:bold;color:#111;">${date}</td></tr>
                 <tr><td style="padding:6px 0;color:#6b7280;">Time</td><td style="padding:6px 0;font-weight:bold;color:#111;">${time}</td></tr>
                 <tr><td style="padding:6px 0;color:#6b7280;">Type</td><td style="padding:6px 0;font-weight:bold;color:#C9A84C;">${typeLabel[consultationType] || consultationType || "Not specified"}</td></tr>
+                ${clinicInfo ? `<tr><td style="padding:6px 0;color:#6b7280;">Clinic</td><td style="padding:6px 0;font-weight:bold;color:#111;">${clinicInfo.name}</td></tr>` : ""}
               </table>
             </div>
 
@@ -153,6 +168,16 @@ export async function POST(req: Request) {
                   <tr><td style="padding:6px 0;color:#6b7280;">Booked on</td><td style="padding:6px 0;color:#111;">${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</td></tr>
                 </table>
               </div>
+              ${clinicInfo ? `
+              <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:16px;margin-bottom:16px;">
+                <p style="margin:0 0 4px;font-size:11px;color:#92400e;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;">Your Appointment Is At</p>
+                <p style="margin:0 0 6px;font-size:16px;font-weight:900;color:#1B2A4A;">${clinicInfo.name}</p>
+                <p style="margin:0 0 12px;font-size:13px;color:#374151;line-height:1.6;">${clinicInfo.address}</p>
+                <a href="${clinicInfo.mapsLink}" style="display:inline-block;background:#1B2A4A;color:#C9A84C;font-weight:700;font-size:13px;padding:9px 18px;border-radius:6px;text-decoration:none;">
+                  📍 Get Directions →
+                </a>
+              </div>
+              ` : ""}
               <p style="color:#6b7280;font-size:13px;line-height:1.7;">Our team will contact you shortly to confirm. For queries, reach us at <a href="mailto:hello@orisalign.com" style="color:#C9A84C;">hello@orisalign.com</a>.</p>
               <p style="text-align:center;color:#9ca3af;font-size:12px;margin-top:20px;">OrisAlign · Bhubaneswar – 751016, Odisha</p>
             </div>
