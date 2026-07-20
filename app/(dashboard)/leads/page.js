@@ -71,7 +71,7 @@ const EMPTY_FORM = {
   lead_source: "walk_in", lead_response: "", lead_priority: "", campaign_id: "", name: "", age: "", phone: "", alt_phone: "",
   address: "", sex: "", email: "", complaint: "", lead_notes: "", consultationType: "",
   clinic_location: "", date: "", time: "", callback_date: "", callback_time: "",
-  followup_date: "", followup_time: "", lead_stage: "fresh",
+  followup_date: "", followup_time: "", lead_stage: "fresh", add_date: "",
 };
 
 const input = {
@@ -961,7 +961,7 @@ function Clearable({ show, onClear, children }) {
 function LeadForm({ lead, actor, onClose, onSaved, onDuplicateFound, mode = "normal", campaigns = [] }) {
   const isCold = mode === "cold";
   const [form, setForm] = useState(() => {
-    if (!lead) return { ...EMPTY_FORM, lead_stage: isCold ? "cold" : "fresh" };
+    if (!lead) return { ...EMPTY_FORM, lead_stage: isCold ? "cold" : "fresh", add_date: dateKey(new Date()) };
     const { consultationType, complaint } = parseProblem(lead.problem);
     return {
       lead_source: lead.lead_source || "website",
@@ -1066,9 +1066,17 @@ function LeadForm({ lead, actor, onClose, onSaved, onDuplicateFound, mode = "nor
         const { error } = await supabase.from("appointments_booking").update(payload).eq("id", lead.id);
         if (error) throw error;
       } else {
+        // Lead is filed under whatever date was picked (defaults to today) —
+        // keep the current time-of-day so same-day ordering still makes sense.
+        let createdAt;
+        if (form.add_date) {
+          const now = new Date();
+          const [y, m, d] = form.add_date.split("-").map(Number);
+          createdAt = new Date(y, m - 1, d, now.getHours(), now.getMinutes(), now.getSeconds()).toISOString();
+        }
         const { data, error } = await supabase
           .from("appointments_booking")
-          .insert([{ ...payload, status: "lead", lead_verified: false }])
+          .insert([{ ...payload, status: "lead", lead_verified: false, ...(createdAt ? { created_at: createdAt } : {}) }])
           .select("id")
           .single();
         if (error) throw error;
@@ -1107,6 +1115,12 @@ function LeadForm({ lead, actor, onClose, onSaved, onDuplicateFound, mode = "nor
               {SOURCE_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
             </select>
           </div>
+          {!lead && (
+            <div>
+              <span style={label}>Date Added</span>
+              <input style={input} type="date" value={form.add_date} onChange={(e) => set("add_date", e.target.value)} />
+            </div>
+          )}
           <div>
             <span style={label}>Campaign</span>
             <Clearable show={!!form.campaign_id} onClear={() => set("campaign_id", "")}>
