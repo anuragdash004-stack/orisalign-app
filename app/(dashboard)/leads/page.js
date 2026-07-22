@@ -175,10 +175,25 @@ export default function LeadTrackerPage() {
     // lead falls back to its creation date and appears to vanish from the
     // currently viewed day. Default it to the day being viewed (or today).
     const stampCallback = newStage === "callback" && !lead.callback_date;
-    const callbackDate = selectedDate === "all" ? dateKey(new Date()) : selectedDate;
+    // Same idea for Follow-ups.
+    const stampFollowup = newStage === "followups" && !lead.followup_date;
+    const viewedDate = selectedDate === "all" ? dateKey(new Date()) : selectedDate;
+    const callbackDate = viewedDate;
+    const followupDate = viewedDate;
+    // Callback/Follow-ups rows land on a day just because their date matches —
+    // that's not the same as staff having actually worked them. Landing there
+    // (a real stage change into one of these two) resets the row to
+    // unconfirmed (shown black); explicitly re-picking the stage from the
+    // dropdown while already sitting in that stage (the blank-dropdown
+    // "confirm" action) is what turns it green.
+    const enteringTracked = (newStage === "callback" || newStage === "followups");
+    const isConfirming = newStage === (lead.lead_stage || "fresh");
+    const stageConfirmed = enteringTracked ? isConfirming : true;
     const extra = {
       ...(stampBooking ? { booking_confirmed_at: nowIso } : {}),
       ...(stampCallback ? { callback_date: callbackDate } : {}),
+      ...(stampFollowup ? { followup_date: followupDate } : {}),
+      stage_confirmed: stageConfirmed,
     };
     setLeads((prev) => prev.map((l) => (l.id === lead.id ? { ...l, lead_stage: newStage, ...extra } : l)));
     await supabase
@@ -547,7 +562,7 @@ export default function LeadTrackerPage() {
                 ) : list.length === 0 ? (
                   <div style={{ padding: "14px", background: "white", border: "1px dashed #e5e7eb", borderRadius: "12px", textAlign: "center", color: "#9ca3af", fontSize: "13px" }}>No leads</div>
                 ) : (
-                  <LeadTable leads={list} campaigns={campaigns} isAdmin={isAdmin} onStage={quickStage} onEdit={(lead) => setEditing({ mode: "normal", lead })} onDelete={deleteLead} />
+                  <LeadTable leads={list} sectionKey={s.key} campaigns={campaigns} isAdmin={isAdmin} onStage={quickStage} onEdit={(lead) => setEditing({ mode: "normal", lead })} onDelete={deleteLead} />
                 )}
               </div>
             );
@@ -563,7 +578,7 @@ export default function LeadTrackerPage() {
               {list.length === 0 ? (
                 <div style={{ padding: "14px", background: "white", border: "1px dashed #e5e7eb", borderRadius: "12px", textAlign: "center", color: "#9ca3af", fontSize: "13px" }}>No leads</div>
               ) : (
-                <LeadTable leads={list} campaigns={campaigns} isAdmin={isAdmin} onStage={quickStage} onEdit={(lead) => setEditing({ mode: "normal", lead })} onDelete={deleteLead} />
+                <LeadTable leads={list} sectionKey={s.key} campaigns={campaigns} isAdmin={isAdmin} onStage={quickStage} onEdit={(lead) => setEditing({ mode: "normal", lead })} onDelete={deleteLead} />
               )}
             </div>
           );
@@ -831,7 +846,7 @@ function pill(bg, color) {
 
 // Full tabular view of leads — every field in rows & columns, with the
 // # and Name columns frozen on the left and a prominent horizontal scrollbar.
-function LeadTable({ leads, onStage, onEdit, onDelete, cold, onPromote, campaigns = [], isAdmin = true }) {
+function LeadTable({ leads, onStage, onEdit, onDelete, cold, onPromote, campaigns = [], isAdmin = true, sectionKey }) {
   const campaignLabel = (id) => {
     const c = campaigns.find((x) => x.id === id);
     return c ? `Campaign ${c.campaign_number}` : "—";
@@ -878,10 +893,18 @@ function LeadTable({ leads, onStage, onEdit, onDelete, cold, onPromote, campaign
                   ? (lead.lead_verified ? "Verified" : "Unverified")
                   : "—";
               const stageChanged = (lead.lead_stage || "fresh") !== "fresh";
+              // In Callback/Follow-ups, a lead can land on a day just because
+              // its date matches — that's not the same as staff having worked
+              // it. Only show green there once it's been explicitly
+              // re-confirmed via the Stage dropdown. Every other section keeps
+              // the old "stage isn't fresh" rule.
+              const isTrackedSection = sectionKey === "callback" || sectionKey === "followups";
+              const isGreen = isTrackedSection ? !!lead.stage_confirmed : stageChanged;
+              const isUnconfirmedTracked = isTrackedSection && !lead.stage_confirmed;
               return (
                 <tr key={lead.id}>
                   <td style={numTd}>#{lead.lead_number || "—"}</td>
-                  <td style={{ ...nameTd, color: stageChanged ? "#16a34a" : nameTd.color }}>{lead.name || "—"}</td>
+                  <td style={{ ...nameTd, color: isGreen ? "#16a34a" : nameTd.color }}>{lead.name || "—"}</td>
                   <td style={td}>{lead.phone || "—"}</td>
                   <td style={td}>{lead.alt_phone || "—"}</td>
                   <td style={td}>{lead.email || "—"}</td>
@@ -915,10 +938,15 @@ function LeadTable({ leads, onStage, onEdit, onDelete, cold, onPromote, campaign
                       <button onClick={() => onPromote(lead)} style={miniBtn("#16a34a", "white")}>+ Add to Lead</button>
                     ) : (
                       <select
-                        value={lead.lead_stage || "fresh"}
+                        value={isUnconfirmedTracked ? "" : (lead.lead_stage || "fresh")}
                         onChange={(e) => onStage(lead, e.target.value)}
-                        style={{ padding: "5px 8px", borderRadius: "7px", border: "1px solid #e5e7eb", fontSize: "11px", cursor: "pointer", background: "white", color: "#111827" }}
+                        style={{
+                          padding: "5px 8px", borderRadius: "7px", fontSize: "11px", cursor: "pointer", color: "#111827",
+                          border: isUnconfirmedTracked ? "1px solid #f59e0b" : "1px solid #e5e7eb",
+                          background: isUnconfirmedTracked ? "#fffbeb" : "white",
+                        }}
                       >
+                        {isUnconfirmedTracked && <option value="" disabled hidden>Select stage…</option>}
                         {STAGES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
                       </select>
                     )}
@@ -988,6 +1016,20 @@ function LeadForm({ lead, actor, onClose, onSaved, onDuplicateFound, mode = "nor
     const problem = form.consultationType
       ? `[${form.consultationType.toUpperCase()}] ${form.complaint}`
       : form.complaint;
+    const nextStage = stageOverride || form.lead_stage;
+    // Same "landed vs. actually worked" rule as the quick dropdown: entering
+    // Callback/Follow-ups fresh, or rescheduling its date, resets the row to
+    // unconfirmed (black) until staff re-confirms it on the day it's due.
+    const enteringTracked = nextStage === "callback" || nextStage === "followups";
+    const dateChanged = nextStage === "callback"
+      ? form.callback_date !== (lead?.callback_date || "")
+      : nextStage === "followups"
+        ? form.followup_date !== (lead?.followup_date || "")
+        : false;
+    const stageChangedFromBefore = nextStage !== (lead?.lead_stage || "fresh");
+    const stageConfirmed = enteringTracked
+      ? (stageChangedFromBefore || dateChanged ? false : (lead?.stage_confirmed ?? true))
+      : true;
     return {
       name: form.name || null, age: form.age || null, sex: form.sex || null,
       phone: form.phone || null, alt_phone: form.alt_phone || null, email: form.email || null,
@@ -1005,6 +1047,7 @@ function LeadForm({ lead, actor, onClose, onSaved, onDuplicateFound, mode = "nor
       callback_time: form.lead_stage === "callback" ? (form.callback_time || null) : null,
       followup_date: form.lead_stage === "followups" ? (form.followup_date || null) : null,
       followup_time: form.lead_stage === "followups" ? (form.followup_time || null) : null,
+      stage_confirmed: stageConfirmed,
       ...(confirm ? { booking_confirmed: true, booking_confirmed_at: new Date().toISOString() } : {}),
     };
   };
