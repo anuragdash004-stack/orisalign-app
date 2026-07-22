@@ -44,7 +44,7 @@ const STEPS = [
 ]
 
 const FAQS = [
-  { q: 'How much do OrisAlign aligners cost?', a: 'Treatment starts at ₹49,999 (EMI available from ₹4,999/month*). Final cost depends on complexity. We give a full quote after the consultation — no surprises.' },
+  { q: 'How much do OrisAlign aligners cost?', a: 'Treatment starts at ₹34,999/set* (EMI available). Final cost depends on the total number of sets, as recommended by our expert dentist. We give a full quote after the consultation — no surprises.' },
   { q: 'Are OrisAlign aligners as effective as other imported brands?', a: 'OrisAlign uses the most advanced clear aligner technology, manufactured in India to international standards, supervised by expert dentists. OrisAlign uses the most premium materials to manufacture its aligners and is completely transparent about its cost.' },
   { q: 'How long does treatment take?', a: 'Most cases: 6–12 months. Mild cases can finish in as little as 5 months. Complex cases may take up to 18 months or more. Our expert dentist will give you an honest timeline at consultation.' },
   { q: 'Why is the consultation not free?', a: 'Our experienced dentist will visit your home or assess you at our clinic. The consultation and 3D scanning normally costs upwards of ₹3,999, but is offered to you at a minimal cost of ₹199. The fee is simply to keep things fair and maintain quality of service.' },
@@ -220,7 +220,7 @@ export default function LandingPage() {
             </h1>
             <p className="text-xs mb-5" style={{ color: INK2 }}>*Terms &amp; conditions apply</p>
             <p className="text-lg sm:text-xl mb-5 leading-relaxed" style={{ color: INK2 }}>
-              International quality and precision, designed and fabricated by expert dentists of India. Now payable in easy EMI's of <span className="font-bold" style={{ color: INK }}>₹4,999/- per month*</span>.
+              International quality and precision, designed and fabricated by expert dentists of India. Now payable in easy <span className="font-bold" style={{ color: INK }}>EMI</span>.
             </p>
             <div className="flex flex-col gap-2.5 mb-8">
               {['🇮🇳 Made in India', 'Invisible', 'No food restrictions'].map((t, i) => (
@@ -319,9 +319,8 @@ export default function LandingPage() {
                 ))}
               </div>
               {/* price chip */}
-              <div className="mt-4 flex items-center justify-between rounded-xl px-4 py-3" style={{ background: INK }}>
-                <span className="text-xs font-medium" style={{ color: '#9aa6ac' }}>EMI from</span>
-                <span className="text-lg font-extrabold font-display" style={{ color: GOLD }}>₹4,999<span className="text-xs font-medium" style={{ color: '#9aa6ac' }}>/month*</span></span>
+              <div className="mt-4 flex items-center justify-center rounded-xl px-4 py-3" style={{ background: INK }}>
+                <span className="text-sm font-extrabold font-display" style={{ color: GOLD }}>EMI available*</span>
               </div>
             </div>
             {/* floating badges */}
@@ -331,10 +330,6 @@ export default function LandingPage() {
                 <span className="font-extrabold" style={{ color: GOLD }}>International Quality</span>
                 <span className="font-bold"> · Made in India · 10-day delivery</span>
               </span>
-            </div>
-            <div className="absolute -bottom-3 -right-3 bg-white rounded-xl px-3 py-2 flex items-center gap-2" style={{ border: `1px solid ${LINE}`, boxShadow: '0 12px 24px -16px rgba(19,24,27,.5)' }}>
-              <StarSolid className="w-4 h-4" style={{ color: GOLD }} />
-              <span className="text-xs font-bold" style={{ color: INK }}>4.2 · 500+ reviews</span>
             </div>
           </div>
         </div>
@@ -466,10 +461,10 @@ export default function LandingPage() {
               <div className="flex items-end justify-center gap-2 mb-1 flex-wrap">
                 <span className="text-base font-semibold" style={{ color: '#9aa6ac' }}>Starts at</span>
                 <span className="text-xl font-bold line-through mb-1" style={{ color: '#6b7479' }}>₹66,999</span>
-                <span className="text-5xl font-extrabold font-display" style={{ color: GOLD }}>₹49,999</span>
+                <span className="text-5xl font-extrabold font-display" style={{ color: GOLD }}>₹34,999<span className="text-2xl">/set</span></span>
                 <span className="text-base font-semibold mb-1" style={{ color: '#9aa6ac' }}>*</span>
               </div>
-              <p className="text-sm mt-2" style={{ color: '#9aa6ac' }}>or ₹4,999/month* — No cost EMI available*</p>
+              <p className="text-sm mt-2" style={{ color: '#9aa6ac' }}>*Total sets as recommended by our expert dentist</p>
             </div>
 
             {/* Freebies */}
