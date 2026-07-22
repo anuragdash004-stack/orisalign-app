@@ -44,7 +44,7 @@ const STEPS = [
 ]
 
 const FAQS = [
-  { q: 'How much do OrisAlign aligners cost?', a: 'Treatment starts at ₹34,999 per set* (EMI available). Total sets required are recommended by our expert dentist after your 3D scan. We give a full quote after the consultation — no surprises.' },
+  { q: 'How much do OrisAlign aligners cost?', a: 'Treatment starts at ₹3,499 per set* (EMI available). Total sets required are reported by our expert dentist after your 3D scan. We give a full quote after the consultation — no surprises.' },
   { q: 'Are OrisAlign aligners as effective as other imported brands?', a: 'OrisAlign uses the most advanced clear aligner technology, manufactured in India to international standards, supervised by expert dentists. OrisAlign uses the most premium materials to manufacture its aligners and is completely transparent about its cost.' },
   { q: 'How long does treatment take?', a: 'Most cases: 6–12 months. Mild cases can finish in as little as 5 months. Complex cases may take up to 18 months or more. Our expert dentist will give you an honest timeline at consultation.' },
   { q: 'Why is the consultation not free?', a: 'Our experienced dentist will visit your home or assess you at our clinic. The consultation and 3D scanning normally costs upwards of ₹3,999, but is offered to you at a minimal cost of ₹199. The fee is simply to keep things fair and maintain quality of service.' },
@@ -460,10 +460,10 @@ export default function LandingPage() {
               <div className="flex items-end justify-center gap-2 mb-1 flex-wrap">
                 <span className="text-base font-semibold" style={{ color: '#9aa6ac' }}>Starts at</span>
                 <span className="text-xl font-bold line-through mb-1" style={{ color: '#6b7479' }}>₹66,999</span>
-                <span className="text-5xl font-extrabold font-display" style={{ color: GOLD }}>₹34,999<span className="text-2xl"> per set</span></span>
+                <span className="text-5xl font-extrabold font-display" style={{ color: GOLD }}>₹3,499<span className="text-2xl"> per set</span></span>
                 <span className="text-base font-semibold mb-1" style={{ color: '#9aa6ac' }}>*</span>
               </div>
-              <p className="text-sm mt-2" style={{ color: '#9aa6ac' }}>*Total sets required, as recommended by our expert dentist after your 3D scan</p>
+              <p className="text-sm mt-2" style={{ color: '#9aa6ac' }}>*Total sets required are reported by our expert dentist after your 3D scan</p>
             </div>
 
             {/* Freebies */}
