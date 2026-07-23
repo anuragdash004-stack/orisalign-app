@@ -191,22 +191,29 @@ export default function LeadTrackerPage() {
   // Change a lead's stage from a row's Stage dropdown. `entryLoggedAt`
   // identifies which stage_log entry that row was showing (undefined for the
   // Cold table, which doesn't use the log) — picking a value freezes that
-  // entry green, and always appends a brand-new unconfirmed entry for
-  // wherever it was just pointed. Quick actions like this have no date
-  // picker, so they always target today — that's what keeps them in the
-  // live section instead of Old Leads. Scheduling a different day only
-  // happens through the full Edit form (see LeadForm.buildPayload), which is
-  // what actually files something into Old Leads.
-  const quickStage = async (lead, newStage, entryLoggedAt) => {
+  // entry green in place. `entryBucket` is that same row's bucket (e.g.
+  // "callback", "old") — a brand-new unconfirmed entry is filed for
+  // wherever it was just pointed UNLESS the target is the same bucket the
+  // row is already sitting in today, in which case re-appending would file
+  // a second, still-unconfirmed entry in that same bucket+date that
+  // immediately outranks (as "latest") the one we just turned green,
+  // making the row look like it silently reverted to black. Quick actions
+  // like this have no date picker, so they always target today — that's
+  // what keeps them in the live section instead of Old Leads. Scheduling a
+  // different day only happens through the full Edit form (see
+  // LeadForm.buildPayload), which is what actually files something into
+  // Old Leads.
+  const quickStage = async (lead, newStage, entryLoggedAt, entryBucket) => {
     const nowIso = new Date().toISOString();
     const todayKeyStr = dateKey(new Date());
     const stampBooking = newStage === "booked" && !lead.booking_confirmed_at;
+    const isNoOpReselect = entryBucket === newStage;
 
     let stageLog = lead.stage_log || [];
     if (entryLoggedAt) {
       stageLog = stageLog.map((e) => (e.loggedAt === entryLoggedAt ? { ...e, confirmed: true } : e));
     }
-    if (TRACKED_STAGES.includes(newStage)) {
+    if (TRACKED_STAGES.includes(newStage) && !isNoOpReselect) {
       stageLog = [...stageLog, {
         bucket: newStage, stage: newStage, date: todayKeyStr, time: null, confirmed: false, loggedAt: nowIso,
       }];
@@ -218,11 +225,16 @@ export default function LeadTrackerPage() {
       ...(newStage === "followups" ? { followup_date: todayKeyStr } : {}),
       stage_log: stageLog,
     };
+    const prevLeads = leads;
     setLeads((prev) => prev.map((l) => (l.id === lead.id ? { ...l, lead_stage: newStage, ...extra } : l)));
-    await supabase
+    const { error } = await supabase
       .from("appointments_booking")
       .update({ lead_stage: newStage, ...extra })
       .eq("id", lead.id);
+    if (error) {
+      setLeads(prevLeads); // roll back the optimistic update — the write didn't actually persist
+      alert("Failed to update stage: " + error.message);
+    }
   };
 
   // Cold lead → promote into the live tracker as a Fresh lead. Stamp
@@ -1014,7 +1026,7 @@ function LeadTable({ leads, rows: externalRows, onStage, onEdit, onDelete, cold,
                     ) : (
                       <select
                         value={dropdownValue}
-                        onChange={(e) => onStage(lead, e.target.value, entry?.loggedAt)}
+                        onChange={(e) => onStage(lead, e.target.value, entry?.loggedAt, entry?.bucket)}
                         style={{
                           padding: "5px 8px", borderRadius: "7px", fontSize: "11px", cursor: "pointer", color: "#111827",
                           border: isUnconfirmed ? "1px solid #f59e0b" : "1px solid #e5e7eb",
