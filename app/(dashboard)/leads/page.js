@@ -26,7 +26,10 @@ const SECTIONS = [
   { key: "booked",    label: "Booked" },
   { key: "denied",    label: "Denied" },
 ];
-const TRACKED_STAGES = ["callback", "followups", "booked", "denied"];
+// "fresh" is tracked too so a lead's original Fresh Leads row is logged and
+// stays visible (frozen green) once the lead moves on — see quickStage and
+// LeadForm.buildPayload, and the "old" bucket only applies to non-today dates.
+const TRACKED_STAGES = ["fresh", "callback", "followups", "booked", "denied"];
 const TYPE_PILL_COLORS = {
   callback: ["#fff7ed", "#b45309"],
   followups: ["#eef2ff", "#4338ca"],
@@ -187,10 +190,10 @@ export default function LeadTrackerPage() {
 
   // Change a lead's stage from a row's Stage dropdown. `entryLoggedAt`
   // identifies which stage_log entry that row was showing (undefined for the
-  // simple Fresh/Cold tables, which don't use the log) — picking a value
-  // freezes that entry green, and always appends a brand-new unconfirmed
-  // entry for wherever it was just pointed. Quick actions like this have no
-  // date picker, so they always target today — that's what keeps them in the
+  // Cold table, which doesn't use the log) — picking a value freezes that
+  // entry green, and always appends a brand-new unconfirmed entry for
+  // wherever it was just pointed. Quick actions like this have no date
+  // picker, so they always target today — that's what keeps them in the
   // live section instead of Old Leads. Scheduling a different day only
   // happens through the full Edit form (see LeadForm.buildPayload), which is
   // what actually files something into Old Leads.
@@ -227,8 +230,11 @@ export default function LeadTrackerPage() {
   // promoted, not the day it was originally added as a cold lead.
   const promoteToLead = async (lead) => {
     const nowIso = new Date().toISOString();
-    setLeads((prev) => prev.map((l) => (l.id === lead.id ? { ...l, lead_stage: "fresh", promoted_at: nowIso } : l)));
-    await supabase.from("appointments_booking").update({ lead_stage: "fresh", promoted_at: nowIso }).eq("id", lead.id);
+    const stageLog = [...(lead.stage_log || []), {
+      bucket: "fresh", stage: "fresh", date: dateKey(new Date()), time: null, confirmed: false, loggedAt: nowIso,
+    }];
+    setLeads((prev) => prev.map((l) => (l.id === lead.id ? { ...l, lead_stage: "fresh", promoted_at: nowIso, stage_log: stageLog } : l)));
+    await supabase.from("appointments_booking").update({ lead_stage: "fresh", promoted_at: nowIso, stage_log: stageLog }).eq("id", lead.id);
   };
 
   // Save a patient's set-change follow-up (note + call status) for the set
@@ -311,12 +317,6 @@ export default function LeadTrackerPage() {
     stripDates.push(d);
   }
 
-  // Fresh Leads = only leads still actually fresh, created/promoted on the
-  // selected date. Once a lead moves on, it drops out of this list — its
-  // occurrence lives in Old Leads or its live section instead (see below).
-  const freshList = pipelineLeads.filter((l) => stageOf(l) === "fresh" &&
-    (selectedDate === "all" || dateKey(l.promoted_at || l.created_at) === selectedDate));
-
   const bucketRows = (bucket) => {
     let rows = entriesForBucket(pipelineLeads, bucket, selectedDate);
     if (bucket === "callback" || bucket === "followups") {
@@ -327,12 +327,16 @@ export default function LeadTrackerPage() {
     }
     return rows;
   };
+  // Fresh Leads is log-based like every other section now — a lead's
+  // original Fresh occurrence stays visible here (frozen green once it's
+  // moved on) instead of disappearing when its stage changes.
+  const freshRows = bucketRows("fresh");
   const followupRows = bucketRows("followups");
   const callbackRows = bucketRows("callback");
   const bookedRows = bucketRows("booked");
   const deniedRows = bucketRows("denied");
   const oldRows = bucketRows("old");
-  const totalVisible = freshList.length + followupRows.length + callbackRows.length + bookedRows.length + deniedRows.length + oldRows.length;
+  const totalVisible = freshRows.length + followupRows.length + callbackRows.length + bookedRows.length + deniedRows.length + oldRows.length;
 
   const patientFollowups = getPatientFollowups(patients, selectedDate);
 
@@ -530,20 +534,18 @@ export default function LeadTrackerPage() {
       {/* All sections, stacked one after another */}
       <div style={{ display: "grid", gap: "22px" }}>
         {SECTIONS.map((s) => {
-          // Fresh Leads is the one plain (non-log) section — just today's
-          // still-unmoved leads, no confirm mechanic.
           if (s.key === "fresh") {
             return (
               <div key={s.key} style={{ minWidth: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" }}>
                   <h2 style={{ margin: 0, fontSize: "16px", fontWeight: "800", color: "#111827" }}>{s.label}</h2>
-                  <span style={{ fontSize: "12px", fontWeight: "700", color: "#6b7280", background: "#f3f4f6", borderRadius: "99px", padding: "2px 10px" }}>{freshList.length}</span>
+                  <span style={{ fontSize: "12px", fontWeight: "700", color: "#6b7280", background: "#f3f4f6", borderRadius: "99px", padding: "2px 10px" }}>{freshRows.length}</span>
                   <div style={{ flex: 1, height: "1px", background: "#eee" }} />
                 </div>
-                {freshList.length === 0 ? (
+                {freshRows.length === 0 ? (
                   <div style={{ padding: "14px", background: "white", border: "1px dashed #e5e7eb", borderRadius: "12px", textAlign: "center", color: "#9ca3af", fontSize: "13px" }}>No leads</div>
                 ) : (
-                  <LeadTable leads={freshList} sectionKey={s.key} campaigns={campaigns} isAdmin={isAdmin} onStage={quickStage} onEdit={(lead) => setEditing({ mode: "normal", lead })} onDelete={deleteLead} />
+                  <LeadTable rows={freshRows} sectionKey={s.key} campaigns={campaigns} isAdmin={isAdmin} onStage={quickStage} onEdit={(lead) => setEditing({ mode: "normal", lead })} onDelete={deleteLead} />
                 )}
               </div>
             );
@@ -899,10 +901,10 @@ function pill(bg, color) {
 
 // Full tabular view of leads — every field in rows & columns, with the
 // # and Name columns frozen on the left and a prominent horizontal scrollbar.
-// `leads` (plain array) is used for the simple Fresh/Cold tables — no
-// stage_log entries, no confirm mechanic, dropdown always fully selectable.
+// `leads` (plain array) is used only for the Cold table — no stage_log
+// entries, no confirm mechanic, dropdown always fully selectable.
 // `rows` (array of { lead, entry }) is used for every log-based section
-// (Old Leads, Follow-ups, Call Back, Booked, Denied): color and the
+// (Fresh Leads, Old Leads, Follow-ups, Call Back, Booked, Denied): color and the
 // blank/select-stage dropdown are driven by that specific entry's
 // `confirmed` flag, not by the lead's live current stage.
 function LeadTable({ leads, rows: externalRows, onStage, onEdit, onDelete, cold, onPromote, campaigns = [], isAdmin = true, sectionKey }) {
@@ -1096,6 +1098,7 @@ function LeadForm({ lead, actor, onClose, onSaved, onDuplicateFound, mode = "nor
     // the live section (see quickStage for the no-date-picker quick path).
     const targetDate = nextStage === "callback" ? (form.callback_date || todayKeyStr)
       : nextStage === "followups" ? (form.followup_date || todayKeyStr)
+      : nextStage === "fresh" && !lead ? (form.add_date || todayKeyStr) // new lead can be backdated via "Date Added"
       : todayKeyStr; // booked/denied have no date picker — always today
     const targetTime = nextStage === "callback" ? (form.callback_time || null)
       : nextStage === "followups" ? (form.followup_time || null)

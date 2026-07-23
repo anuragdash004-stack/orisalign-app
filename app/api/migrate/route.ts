@@ -64,6 +64,17 @@ export async function GET() {
       'confirmed', true,
       'loggedAt', to_char(now(),'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
     )) WHERE lead_stage = 'denied' AND (stage_log IS NULL OR stage_log = '[]'::jsonb)`,
+    // ── Lead tracker: Fresh Leads is log-based too, so it stops vanishing on stage change ──
+    `UPDATE appointments_booking SET stage_log = COALESCE(stage_log, '[]'::jsonb) || jsonb_build_array(jsonb_build_object(
+      'bucket', 'fresh',
+      'stage', 'fresh',
+      'date', to_char(COALESCE(promoted_at, created_at), 'YYYY-MM-DD'),
+      'time', NULL,
+      'confirmed', true,
+      'loggedAt', to_char(now(), 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
+    )) WHERE lead_stage = 'fresh' AND NOT EXISTS (
+      SELECT 1 FROM jsonb_array_elements(COALESCE(stage_log, '[]'::jsonb)) e WHERE e->>'bucket' = 'fresh'
+    )`,
   ];
 
   const results = [];
