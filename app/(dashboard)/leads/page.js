@@ -6,6 +6,7 @@ import { getSupabaseClient } from "@/lib/supabaseClient";
 
 const supabase = getSupabaseClient();
 
+// Real lead stages — drives the per-row "Stage" dropdown options.
 const STAGES = [
   { key: "fresh",     label: "Fresh Leads" },
   { key: "followups", label: "Follow-ups" },
@@ -13,6 +14,25 @@ const STAGES = [
   { key: "booked",    label: "Booked" },
   { key: "denied",    label: "Denied" },
 ];
+
+// Sections rendered on the page. "Old Leads" isn't a real stage — it's the
+// bucket that a Callback/Follow-ups/Booked/Denied entry lands in when its
+// date isn't today (see entriesForBucket).
+const SECTIONS = [
+  { key: "fresh",     label: "Fresh Leads" },
+  { key: "old",       label: "Old Leads" },
+  { key: "followups", label: "Follow-ups" },
+  { key: "callback",  label: "Call Back" },
+  { key: "booked",    label: "Booked" },
+  { key: "denied",    label: "Denied" },
+];
+const TRACKED_STAGES = ["callback", "followups", "booked", "denied"];
+const TYPE_PILL_COLORS = {
+  callback: ["#fff7ed", "#b45309"],
+  followups: ["#eef2ff", "#4338ca"],
+  booked: ["#dcfce7", "#16a34a"],
+  denied: ["#fef2f2", "#dc2626"],
+};
 
 const SOURCE_OPTIONS = [
   { value: "website",    label: "Website" },
@@ -165,35 +185,35 @@ export default function LeadTrackerPage() {
 
   const stageOf = (lead) => lead.lead_stage || "fresh";
 
-  const quickStage = async (lead, newStage) => {
-    // When a lead first moves into "booked", stamp the day it was booked so it
-    // shows under that date (not its creation date) in the Booked section.
-    const stampBooking = newStage === "booked" && !lead.booking_confirmed_at;
+  // Change a lead's stage from a row's Stage dropdown. `entryLoggedAt`
+  // identifies which stage_log entry that row was showing (undefined for the
+  // simple Fresh/Cold tables, which don't use the log) — picking a value
+  // freezes that entry green, and always appends a brand-new unconfirmed
+  // entry for wherever it was just pointed. Quick actions like this have no
+  // date picker, so they always target today — that's what keeps them in the
+  // live section instead of Old Leads. Scheduling a different day only
+  // happens through the full Edit form (see LeadForm.buildPayload), which is
+  // what actually files something into Old Leads.
+  const quickStage = async (lead, newStage, entryLoggedAt) => {
     const nowIso = new Date().toISOString();
-    // Call Back is filed under callback_date. Quick-switching a lead to Call
-    // Back without going through the form leaves callback_date unset, so the
-    // lead falls back to its creation date and appears to vanish from the
-    // currently viewed day. Default it to the day being viewed (or today).
-    const stampCallback = newStage === "callback" && !lead.callback_date;
-    // Same idea for Follow-ups.
-    const stampFollowup = newStage === "followups" && !lead.followup_date;
-    const viewedDate = selectedDate === "all" ? dateKey(new Date()) : selectedDate;
-    const callbackDate = viewedDate;
-    const followupDate = viewedDate;
-    // Callback/Follow-ups rows land on a day just because their date matches —
-    // that's not the same as staff having actually worked them. Landing there
-    // (a real stage change into one of these two) resets the row to
-    // unconfirmed (shown black); explicitly re-picking the stage from the
-    // dropdown while already sitting in that stage (the blank-dropdown
-    // "confirm" action) is what turns it green.
-    const enteringTracked = (newStage === "callback" || newStage === "followups");
-    const isConfirming = newStage === (lead.lead_stage || "fresh");
-    const stageConfirmed = enteringTracked ? isConfirming : true;
+    const todayKeyStr = dateKey(new Date());
+    const stampBooking = newStage === "booked" && !lead.booking_confirmed_at;
+
+    let stageLog = lead.stage_log || [];
+    if (entryLoggedAt) {
+      stageLog = stageLog.map((e) => (e.loggedAt === entryLoggedAt ? { ...e, confirmed: true } : e));
+    }
+    if (TRACKED_STAGES.includes(newStage)) {
+      stageLog = [...stageLog, {
+        bucket: newStage, stage: newStage, date: todayKeyStr, time: null, confirmed: false, loggedAt: nowIso,
+      }];
+    }
+
     const extra = {
       ...(stampBooking ? { booking_confirmed_at: nowIso } : {}),
-      ...(stampCallback ? { callback_date: callbackDate } : {}),
-      ...(stampFollowup ? { followup_date: followupDate } : {}),
-      stage_confirmed: stageConfirmed,
+      ...(newStage === "callback" ? { callback_date: todayKeyStr } : {}),
+      ...(newStage === "followups" ? { followup_date: todayKeyStr } : {}),
+      stage_log: stageLog,
     };
     setLeads((prev) => prev.map((l) => (l.id === lead.id ? { ...l, lead_stage: newStage, ...extra } : l)));
     await supabase
@@ -291,9 +311,28 @@ export default function LeadTrackerPage() {
     stripDates.push(d);
   }
 
-  const visibleLeads = selectedDate === "all"
-    ? pipelineLeads
-    : pipelineLeads.filter((l) => leadCalendarKey(l) === selectedDate);
+  // Fresh Leads = only leads still actually fresh, created/promoted on the
+  // selected date. Once a lead moves on, it drops out of this list — its
+  // occurrence lives in Old Leads or its live section instead (see below).
+  const freshList = pipelineLeads.filter((l) => stageOf(l) === "fresh" &&
+    (selectedDate === "all" || dateKey(l.promoted_at || l.created_at) === selectedDate));
+
+  const bucketRows = (bucket) => {
+    let rows = entriesForBucket(pipelineLeads, bucket, selectedDate);
+    if (bucket === "callback" || bucket === "followups") {
+      rows = [...rows].sort((a, b) => `${a.entry.date || ""} ${a.entry.time || ""}`.localeCompare(`${b.entry.date || ""} ${b.entry.time || ""}`));
+    }
+    if (bucket === "old") {
+      rows = [...rows].sort((a, b) => `${a.entry.date || ""} ${a.entry.stage || ""}`.localeCompare(`${b.entry.date || ""} ${b.entry.stage || ""}`));
+    }
+    return rows;
+  };
+  const followupRows = bucketRows("followups");
+  const callbackRows = bucketRows("callback");
+  const bookedRows = bucketRows("booked");
+  const deniedRows = bucketRows("denied");
+  const oldRows = bucketRows("old");
+  const totalVisible = freshList.length + followupRows.length + callbackRows.length + bookedRows.length + deniedRows.length + oldRows.length;
 
   const patientFollowups = getPatientFollowups(patients, selectedDate);
 
@@ -452,7 +491,7 @@ export default function LeadTrackerPage() {
         {selectedDate === "all"
           ? "Showing all leads"
           : `Showing leads from ${new Date(selectedDate).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}`}
-        {"  ·  "}{visibleLeads.length} {visibleLeads.length === 1 ? "lead" : "leads"}
+        {"  ·  "}{totalVisible} {totalVisible === 1 ? "lead" : "leads"}
       </p>
 
       {/* Catered — the dentist has verified the patient's OTP and started the appointment, on the selected date */}
@@ -488,35 +527,40 @@ export default function LeadTrackerPage() {
         )}
       </div>
 
-      {/* All stages, stacked one after another */}
+      {/* All sections, stacked one after another */}
       <div style={{ display: "grid", gap: "22px" }}>
-        {STAGES.map((s) => {
-          let list;
+        {SECTIONS.map((s) => {
+          // Fresh Leads is the one plain (non-log) section — just today's
+          // still-unmoved leads, no confirm mechanic.
           if (s.key === "fresh") {
-            // Fresh Leads = every lead created on the selected date, regardless
-            // of current stage. This lets you see all new entries for a day
-            // while the lead's actual stage is also reflected below. A lead
-            // promoted from Cold uses its promotion date instead of its
-            // original (cold) creation date — it should show up as fresh on
-            // the day it was actually promoted.
-            list = selectedDate === "all"
-              ? pipelineLeads
-              : pipelineLeads.filter((l) => dateKey(l.promoted_at || l.created_at) === selectedDate);
-          } else {
-            list = visibleLeads.filter((l) => stageOf(l) === s.key);
+            return (
+              <div key={s.key} style={{ minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" }}>
+                  <h2 style={{ margin: 0, fontSize: "16px", fontWeight: "800", color: "#111827" }}>{s.label}</h2>
+                  <span style={{ fontSize: "12px", fontWeight: "700", color: "#6b7280", background: "#f3f4f6", borderRadius: "99px", padding: "2px 10px" }}>{freshList.length}</span>
+                  <div style={{ flex: 1, height: "1px", background: "#eee" }} />
+                </div>
+                {freshList.length === 0 ? (
+                  <div style={{ padding: "14px", background: "white", border: "1px dashed #e5e7eb", borderRadius: "12px", textAlign: "center", color: "#9ca3af", fontSize: "13px" }}>No leads</div>
+                ) : (
+                  <LeadTable leads={freshList} sectionKey={s.key} campaigns={campaigns} isAdmin={isAdmin} onStage={quickStage} onEdit={(lead) => setEditing({ mode: "normal", lead })} onDelete={deleteLead} />
+                )}
+              </div>
+            );
           }
-          if (s.key === "callback") {
-            list = [...list].sort((a, b) => `${a.callback_date || ""} ${a.callback_time || ""}`.localeCompare(`${b.callback_date || ""} ${b.callback_time || ""}`));
-          }
-          if (s.key === "followups") {
-            list = [...list].sort((a, b) => `${a.followup_date || ""} ${a.followup_time || ""}`.localeCompare(`${b.followup_date || ""} ${b.followup_time || ""}`));
-          }
+
+          const rows = s.key === "followups" ? followupRows
+            : s.key === "callback" ? callbackRows
+            : s.key === "booked" ? bookedRows
+            : s.key === "denied" ? deniedRows
+            : oldRows; // "old"
+
           // Follow-ups splits into two views: Leads (this stage's normal
           // lead list) and Patients (patients whose next aligner set change
           // falls on the selected date, so staff can confirm they've switched).
           if (s.key === "followups") {
             const showingPatients = followupView === "patients";
-            const count = showingPatients ? patientFollowups.length : list.length;
+            const count = showingPatients ? patientFollowups.length : rows.length;
             return (
               <div key={s.key} style={{ minWidth: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px", flexWrap: "wrap" }}>
@@ -531,7 +575,7 @@ export default function LeadTrackerPage() {
                         fontWeight: "700", fontSize: "12px", cursor: "pointer",
                       }}
                     >
-                      Leads ({list.length})
+                      Leads ({rows.length})
                     </button>
                     <button
                       onClick={() => setFollowupView("patients")}
@@ -559,10 +603,10 @@ export default function LeadTrackerPage() {
                       ))}
                     </div>
                   )
-                ) : list.length === 0 ? (
+                ) : rows.length === 0 ? (
                   <div style={{ padding: "14px", background: "white", border: "1px dashed #e5e7eb", borderRadius: "12px", textAlign: "center", color: "#9ca3af", fontSize: "13px" }}>No leads</div>
                 ) : (
-                  <LeadTable leads={list} sectionKey={s.key} campaigns={campaigns} isAdmin={isAdmin} onStage={quickStage} onEdit={(lead) => setEditing({ mode: "normal", lead })} onDelete={deleteLead} />
+                  <LeadTable rows={rows} sectionKey={s.key} campaigns={campaigns} isAdmin={isAdmin} onStage={quickStage} onEdit={(lead) => setEditing({ mode: "normal", lead })} onDelete={deleteLead} />
                 )}
               </div>
             );
@@ -572,13 +616,18 @@ export default function LeadTrackerPage() {
             <div key={s.key} style={{ minWidth: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" }}>
                 <h2 style={{ margin: 0, fontSize: "16px", fontWeight: "800", color: "#111827" }}>{s.label}</h2>
-                <span style={{ fontSize: "12px", fontWeight: "700", color: "#6b7280", background: "#f3f4f6", borderRadius: "99px", padding: "2px 10px" }}>{list.length}</span>
+                <span style={{ fontSize: "12px", fontWeight: "700", color: "#6b7280", background: "#f3f4f6", borderRadius: "99px", padding: "2px 10px" }}>{rows.length}</span>
                 <div style={{ flex: 1, height: "1px", background: "#eee" }} />
               </div>
-              {list.length === 0 ? (
+              {s.key === "old" && (
+                <p style={{ fontSize: "12px", color: "#9ca3af", margin: "-4px 0 10px" }}>
+                  Carried over from another day — pick a stage on each row to confirm it's been worked.
+                </p>
+              )}
+              {rows.length === 0 ? (
                 <div style={{ padding: "14px", background: "white", border: "1px dashed #e5e7eb", borderRadius: "12px", textAlign: "center", color: "#9ca3af", fontSize: "13px" }}>No leads</div>
               ) : (
-                <LeadTable leads={list} sectionKey={s.key} campaigns={campaigns} isAdmin={isAdmin} onStage={quickStage} onEdit={(lead) => setEditing({ mode: "normal", lead })} onDelete={deleteLead} />
+                <LeadTable rows={rows} sectionKey={s.key} campaigns={campaigns} isAdmin={isAdmin} onStage={quickStage} onEdit={(lead) => setEditing({ mode: "normal", lead })} onDelete={deleteLead} />
               )}
             </div>
           );
@@ -605,22 +654,26 @@ function dateKey(d) {
   return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
 }
 
-// The date a lead belongs to in the calendar:
-// - callbacks → their scheduled callback_date
-// - booked → the date they were confirmed (booking_confirmed_at)
-// - everyone else → the date they came in — promoted_at if they were
-//   promoted from Cold, otherwise created_at
-function leadCalendarKey(lead) {
-  const stage = lead.lead_stage || "fresh";
-  if (stage === "callback" && lead.callback_date) return dateKey(lead.callback_date);
-  if (stage === "followups" && lead.followup_date) return dateKey(lead.followup_date);
-  // Booked leads belong on their consultation (appointment) date, falling back
-  // to the day they were booked, then to creation.
-  if (stage === "booked") {
-    if (lead.date) return dateKey(lead.date);
-    if (lead.booking_confirmed_at) return dateKey(lead.booking_confirmed_at);
+// Flattens every lead's stage_log into { lead, entry } rows for one bucket
+// (a section key like "callback", or "old" for carried-over entries) on one
+// date. A lead can have several log entries in the same bucket+date if it
+// was processed more than once that day — only the latest is shown so it
+// doesn't duplicate into two rows; every other past entry (different
+// date/bucket) is untouched and still shows up wherever it was filed.
+function entriesForBucket(leads, bucket, dateKeyStr) {
+  const out = [];
+  for (const lead of leads) {
+    const log = lead.stage_log || [];
+    const matches = log.filter((e) => e.bucket === bucket && (dateKeyStr === "all" || e.date === dateKeyStr));
+    if (matches.length === 0) continue;
+    if (dateKeyStr === "all") {
+      matches.forEach((e) => out.push({ lead, entry: e }));
+    } else {
+      const latest = matches.reduce((a, b) => (a.loggedAt > b.loggedAt ? a : b));
+      out.push({ lead, entry: latest });
+    }
   }
-  return dateKey(lead.promoted_at || lead.created_at);
+  return out;
 }
 
 // Patients due to switch aligner sets on a given date — mirrors the exact
@@ -846,7 +899,14 @@ function pill(bg, color) {
 
 // Full tabular view of leads — every field in rows & columns, with the
 // # and Name columns frozen on the left and a prominent horizontal scrollbar.
-function LeadTable({ leads, onStage, onEdit, onDelete, cold, onPromote, campaigns = [], isAdmin = true, sectionKey }) {
+// `leads` (plain array) is used for the simple Fresh/Cold tables — no
+// stage_log entries, no confirm mechanic, dropdown always fully selectable.
+// `rows` (array of { lead, entry }) is used for every log-based section
+// (Old Leads, Follow-ups, Call Back, Booked, Denied): color and the
+// blank/select-stage dropdown are driven by that specific entry's
+// `confirmed` flag, not by the lead's live current stage.
+function LeadTable({ leads, rows: externalRows, onStage, onEdit, onDelete, cold, onPromote, campaigns = [], isAdmin = true, sectionKey }) {
+  const rows = externalRows || (leads || []).map((lead) => ({ lead, entry: null }));
   const campaignLabel = (id) => {
     const c = campaigns.find((x) => x.id === id);
     return c ? `Campaign ${c.campaign_number}` : "—";
@@ -860,6 +920,7 @@ function LeadTable({ leads, onStage, onEdit, onDelete, cold, onPromote, campaign
   const numTd = { ...td, position: "sticky", left: 0, zIndex: 1, background: "white", width: "52px", minWidth: "52px", fontFamily: "monospace", fontWeight: 800, color: "#b8905a", boxShadow: "1px 0 0 #e5e7eb" };
   const nameTd = { ...td, position: "sticky", left: "52px", zIndex: 1, background: "white", width: "150px", minWidth: "150px", fontWeight: 700, boxShadow: "1px 0 0 #e5e7eb" };
   const miniBtn = (bg, color, border) => ({ padding: "5px 10px", borderRadius: "7px", border: border || "none", background: bg, color, fontWeight: "700", fontSize: "11px", cursor: "pointer", whiteSpace: "nowrap" });
+  const showType = sectionKey === "old";
 
   return (
     <>
@@ -876,35 +937,47 @@ function LeadTable({ leads, onStage, onEdit, onDelete, cold, onPromote, campaign
             <tr>
               <th style={numTh}>#</th>
               <th style={nameTh}>Name</th>
+              {showType && <th style={thBase}>Type</th>}
               {["Phone", "Alt #", "Email", "Age", "Sex", "Source", "Response", "Last Called", "Lead Status", "Campaign", "Complaint", "Consultation", "Clinic", "Consult Date", "Slot", "Callback", "Follow-up", "Address", "Notes", "Verification", cold ? "Action" : "Stage", ""].map((h, i) => (
                 <th key={i} style={thBase}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {leads.map((lead) => {
+            {rows.map(({ lead, entry }) => {
               const { consultationType, complaint } = parseProblem(lead.problem);
               const consultLabel = CONSULT_OPTIONS.find((c) => c.value === consultationType)?.label || "—";
-              const callback = (lead.callback_date || lead.callback_time) ? `${formatTime(lead.callback_time)}${lead.callback_date ? " · " + formatDate(lead.callback_date) : ""}`.trim() : "—";
-              const followup = (lead.followup_date || lead.followup_time) ? `${formatTime(lead.followup_time)}${lead.followup_date ? " · " + formatDate(lead.followup_date) : ""}`.trim() : "—";
+              // Prefer the entry's own recorded date/time so a historical row
+              // (e.g. in Old Leads) shows what was true when it was filed,
+              // not whatever the lead's live fields have since moved on to.
+              const callbackDate = entry?.stage === "callback" ? entry.date : lead.callback_date;
+              const callbackTime = entry?.stage === "callback" ? entry.time : lead.callback_time;
+              const followupDate = entry?.stage === "followups" ? entry.date : lead.followup_date;
+              const followupTime = entry?.stage === "followups" ? entry.time : lead.followup_time;
+              const callback = (callbackDate || callbackTime) ? `${formatTime(callbackTime)}${callbackDate ? " · " + formatDate(callbackDate) : ""}`.trim() : "—";
+              const followup = (followupDate || followupTime) ? `${formatTime(followupTime)}${followupDate ? " · " + formatDate(followupDate) : ""}`.trim() : "—";
               const status = lead.booking_confirmed
                 ? "✓ Confirmed"
                 : lead.lead_source === "website"
                   ? (lead.lead_verified ? "Verified" : "Unverified")
                   : "—";
-              const stageChanged = (lead.lead_stage || "fresh") !== "fresh";
-              // In Callback/Follow-ups, a lead can land on a day just because
-              // its date matches — that's not the same as staff having worked
-              // it. Only show green there once it's been explicitly
-              // re-confirmed via the Stage dropdown. Every other section keeps
-              // the old "stage isn't fresh" rule.
-              const isTrackedSection = sectionKey === "callback" || sectionKey === "followups";
-              const isGreen = isTrackedSection ? !!lead.stage_confirmed : stageChanged;
-              const isUnconfirmedTracked = isTrackedSection && !lead.stage_confirmed;
+              // Color/dropdown are driven by this specific log entry, not the
+              // lead's live stage — that's what lets the same lead show green
+              // (worked) in one date's row and black (not yet) in another's.
+              const isGreen = !!entry?.confirmed;
+              const isUnconfirmed = !!entry && !entry.confirmed;
+              const dropdownValue = isUnconfirmed ? "" : (entry ? entry.stage : (lead.lead_stage || "fresh"));
               return (
-                <tr key={lead.id}>
+                <tr key={`${lead.id}-${entry?.loggedAt || "live"}`}>
                   <td style={numTd}>#{lead.lead_number || "—"}</td>
                   <td style={{ ...nameTd, color: isGreen ? "#16a34a" : nameTd.color }}>{lead.name || "—"}</td>
+                  {showType && (
+                    <td style={td}>
+                      <span style={pill(...(TYPE_PILL_COLORS[entry?.stage] || ["#f3f4f6", "#6b7280"]))}>
+                        {STAGES.find((s) => s.key === entry?.stage)?.label || "—"}
+                      </span>
+                    </td>
+                  )}
                   <td style={td}>{lead.phone || "—"}</td>
                   <td style={td}>{lead.alt_phone || "—"}</td>
                   <td style={td}>{lead.email || "—"}</td>
@@ -938,15 +1011,15 @@ function LeadTable({ leads, onStage, onEdit, onDelete, cold, onPromote, campaign
                       <button onClick={() => onPromote(lead)} style={miniBtn("#16a34a", "white")}>+ Add to Lead</button>
                     ) : (
                       <select
-                        value={isUnconfirmedTracked ? "" : (lead.lead_stage || "fresh")}
-                        onChange={(e) => onStage(lead, e.target.value)}
+                        value={dropdownValue}
+                        onChange={(e) => onStage(lead, e.target.value, entry?.loggedAt)}
                         style={{
                           padding: "5px 8px", borderRadius: "7px", fontSize: "11px", cursor: "pointer", color: "#111827",
-                          border: isUnconfirmedTracked ? "1px solid #f59e0b" : "1px solid #e5e7eb",
-                          background: isUnconfirmedTracked ? "#fffbeb" : "white",
+                          border: isUnconfirmed ? "1px solid #f59e0b" : "1px solid #e5e7eb",
+                          background: isUnconfirmed ? "#fffbeb" : "white",
                         }}
                       >
-                        {isUnconfirmedTracked && <option value="" disabled hidden>Select stage…</option>}
+                        {isUnconfirmed && <option value="" disabled hidden>Select stage…</option>}
                         {STAGES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
                       </select>
                     )}
@@ -1017,19 +1090,32 @@ function LeadForm({ lead, actor, onClose, onSaved, onDuplicateFound, mode = "nor
       ? `[${form.consultationType.toUpperCase()}] ${form.complaint}`
       : form.complaint;
     const nextStage = stageOverride || form.lead_stage;
-    // Same "landed vs. actually worked" rule as the quick dropdown: entering
-    // Callback/Follow-ups fresh, or rescheduling its date, resets the row to
-    // unconfirmed (black) until staff re-confirms it on the day it's due.
-    const enteringTracked = nextStage === "callback" || nextStage === "followups";
+    const todayKeyStr = dateKey(new Date());
+    // The form is the only place a date can be set to something other than
+    // today — that's what actually files an entry into Old Leads instead of
+    // the live section (see quickStage for the no-date-picker quick path).
+    const targetDate = nextStage === "callback" ? (form.callback_date || todayKeyStr)
+      : nextStage === "followups" ? (form.followup_date || todayKeyStr)
+      : todayKeyStr; // booked/denied have no date picker — always today
+    const targetTime = nextStage === "callback" ? (form.callback_time || null)
+      : nextStage === "followups" ? (form.followup_time || null)
+      : null;
     const dateChanged = nextStage === "callback"
       ? form.callback_date !== (lead?.callback_date || "")
       : nextStage === "followups"
         ? form.followup_date !== (lead?.followup_date || "")
         : false;
     const stageChangedFromBefore = nextStage !== (lead?.lead_stage || "fresh");
-    const stageConfirmed = enteringTracked
-      ? (stageChangedFromBefore || dateChanged ? false : (lead?.stage_confirmed ?? true))
-      : true;
+    // Log a new occurrence whenever this save is a real stage/date change (or
+    // a brand-new lead) — editing other fields on an unchanged stage doesn't
+    // spawn a duplicate entry.
+    let stageLog = lead?.stage_log || [];
+    if (TRACKED_STAGES.includes(nextStage) && (stageChangedFromBefore || dateChanged || !lead)) {
+      const bucket = targetDate === todayKeyStr ? nextStage : "old";
+      // "Confirm Lead → Booked" is itself the confirming action — no extra
+      // re-pick-the-stage step needed on top of it.
+      stageLog = [...stageLog, { bucket, stage: nextStage, date: targetDate, time: targetTime, confirmed: !!confirm, loggedAt: new Date().toISOString() }];
+    }
     return {
       name: form.name || null, age: form.age || null, sex: form.sex || null,
       phone: form.phone || null, alt_phone: form.alt_phone || null, email: form.email || null,
@@ -1047,7 +1133,7 @@ function LeadForm({ lead, actor, onClose, onSaved, onDuplicateFound, mode = "nor
       callback_time: form.lead_stage === "callback" ? (form.callback_time || null) : null,
       followup_date: form.lead_stage === "followups" ? (form.followup_date || null) : null,
       followup_time: form.lead_stage === "followups" ? (form.followup_time || null) : null,
-      stage_confirmed: stageConfirmed,
+      stage_log: stageLog,
       ...(confirm ? { booking_confirmed: true, booking_confirmed_at: new Date().toISOString() } : {}),
     };
   };

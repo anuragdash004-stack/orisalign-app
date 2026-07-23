@@ -25,6 +25,45 @@ export async function GET() {
     "ALTER TABLE appointments_booking ALTER COLUMN lead_number SET DEFAULT nextval('lead_number_seq')",
     "UPDATE appointments_booking SET lead_stage = CASE WHEN booking_confirmed OR status <> 'lead' THEN 'booked' ELSE 'fresh' END WHERE lead_stage IS NULL",
     "UPDATE appointments_booking SET lead_source = 'website' WHERE lead_source IS NULL",
+    // ── Lead tracker: per-occurrence stage history (Old Leads section) ──
+    // Each time a lead's stage/date is set, a log entry is appended instead of
+    // overwritten, so past occurrences stay visible (and keep their own
+    // confirmed/unconfirmed color) even after the lead moves on. Existing
+    // leads already sitting in a tracked stage get a synthesized entry so
+    // they don't disappear from the tracker after this ships.
+    "ALTER TABLE appointments_booking ADD COLUMN IF NOT EXISTS stage_log JSONB DEFAULT '[]'::jsonb",
+    `UPDATE appointments_booking SET stage_log = jsonb_build_array(jsonb_build_object(
+      'bucket', CASE WHEN callback_date::text = to_char(CURRENT_DATE,'YYYY-MM-DD') THEN 'callback' ELSE 'old' END,
+      'stage', 'callback',
+      'date', COALESCE(callback_date::text, to_char(created_at,'YYYY-MM-DD')),
+      'time', callback_time,
+      'confirmed', COALESCE(stage_confirmed, true),
+      'loggedAt', to_char(now(),'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
+    )) WHERE lead_stage = 'callback' AND (stage_log IS NULL OR stage_log = '[]'::jsonb)`,
+    `UPDATE appointments_booking SET stage_log = jsonb_build_array(jsonb_build_object(
+      'bucket', CASE WHEN followup_date::text = to_char(CURRENT_DATE,'YYYY-MM-DD') THEN 'followups' ELSE 'old' END,
+      'stage', 'followups',
+      'date', COALESCE(followup_date::text, to_char(created_at,'YYYY-MM-DD')),
+      'time', followup_time,
+      'confirmed', COALESCE(stage_confirmed, true),
+      'loggedAt', to_char(now(),'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
+    )) WHERE lead_stage = 'followups' AND (stage_log IS NULL OR stage_log = '[]'::jsonb)`,
+    `UPDATE appointments_booking SET stage_log = jsonb_build_array(jsonb_build_object(
+      'bucket', 'booked',
+      'stage', 'booked',
+      'date', to_char(COALESCE(booking_confirmed_at, created_at),'YYYY-MM-DD'),
+      'time', NULL,
+      'confirmed', true,
+      'loggedAt', to_char(now(),'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
+    )) WHERE lead_stage = 'booked' AND (stage_log IS NULL OR stage_log = '[]'::jsonb)`,
+    `UPDATE appointments_booking SET stage_log = jsonb_build_array(jsonb_build_object(
+      'bucket', 'denied',
+      'stage', 'denied',
+      'date', to_char(created_at,'YYYY-MM-DD'),
+      'time', NULL,
+      'confirmed', true,
+      'loggedAt', to_char(now(),'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
+    )) WHERE lead_stage = 'denied' AND (stage_log IS NULL OR stage_log = '[]'::jsonb)`,
   ];
 
   const results = [];
