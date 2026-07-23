@@ -6,18 +6,19 @@ import { getSupabaseClient } from "@/lib/supabaseClient";
 
 const supabase = getSupabaseClient();
 
-// Real lead stages — drives the per-row "Stage" dropdown options.
+// Real lead stages — drives the per-row "Stage" dropdown options. Follow-ups
+// is not a lead stage — that section is patient-only (see patientFollowups).
 const STAGES = [
   { key: "fresh",     label: "Fresh Leads" },
-  { key: "followups", label: "Follow-ups" },
   { key: "callback",  label: "Call Back" },
   { key: "booked",    label: "Booked" },
   { key: "denied",    label: "Denied" },
 ];
 
 // Sections rendered on the page. "Old Leads" isn't a real stage — it's the
-// bucket that a Callback/Follow-ups/Booked/Denied entry lands in when its
-// date isn't today (see entriesForBucket).
+// bucket that a Callback/Booked/Denied entry lands in when its date isn't
+// today (see entriesForBucket). "Follow-ups" isn't lead-based at all — it
+// only ever shows patients due for an aligner set-change call.
 const SECTIONS = [
   { key: "fresh",     label: "Fresh Leads" },
   { key: "old",       label: "Old Leads" },
@@ -29,10 +30,9 @@ const SECTIONS = [
 // "fresh" is tracked too so a lead's original Fresh Leads row is logged and
 // stays visible (frozen green) once the lead moves on — see quickStage and
 // LeadForm.buildPayload, and the "old" bucket only applies to non-today dates.
-const TRACKED_STAGES = ["fresh", "callback", "followups", "booked", "denied"];
+const TRACKED_STAGES = ["fresh", "callback", "booked", "denied"];
 const TYPE_PILL_COLORS = {
   callback: ["#fff7ed", "#b45309"],
-  followups: ["#eef2ff", "#4338ca"],
   booked: ["#dcfce7", "#16a34a"],
   denied: ["#fef2f2", "#dc2626"],
 };
@@ -94,7 +94,7 @@ const EMPTY_FORM = {
   lead_source: "walk_in", lead_response: "", lead_priority: "", campaign_id: "", name: "", age: "", phone: "", alt_phone: "",
   address: "", sex: "", email: "", complaint: "", lead_notes: "", consultationType: "",
   clinic_location: "", date: "", time: "", callback_date: "", callback_time: "",
-  followup_date: "", followup_time: "", lead_stage: "fresh", add_date: "",
+  lead_stage: "fresh", add_date: "",
 };
 
 const input = {
@@ -115,8 +115,7 @@ export default function LeadTrackerPage() {
   const [campaigns, setCampaigns] = useState([]);
   const [catered, setCatered] = useState([]); // appointments the dentist has OTP-started
   const [dentists, setDentists] = useState([]);
-  const [patients, setPatients] = useState([]); // confirmed/completed patients, for the Patients follow-up view
-  const [followupView, setFollowupView] = useState("leads"); // "leads" | "patients" — toggle inside the Follow-ups section
+  const [patients, setPatients] = useState([]); // confirmed/completed patients, for the Follow-ups section
   const [calendarOffset, setCalendarOffset] = useState(0); // offset in days from today, snapped to multiples of 10
   const todayRef = useRef(null);
 
@@ -222,7 +221,6 @@ export default function LeadTrackerPage() {
     const extra = {
       ...(stampBooking ? { booking_confirmed_at: nowIso } : {}),
       ...(newStage === "callback" ? { callback_date: todayKeyStr } : {}),
-      ...(newStage === "followups" ? { followup_date: todayKeyStr } : {}),
       stage_log: stageLog,
     };
     const prevLeads = leads;
@@ -331,7 +329,7 @@ export default function LeadTrackerPage() {
 
   const bucketRows = (bucket) => {
     let rows = entriesForBucket(pipelineLeads, bucket, selectedDate);
-    if (bucket === "callback" || bucket === "followups") {
+    if (bucket === "callback") {
       rows = [...rows].sort((a, b) => `${a.entry.date || ""} ${a.entry.time || ""}`.localeCompare(`${b.entry.date || ""} ${b.entry.time || ""}`));
     }
     if (bucket === "old") {
@@ -343,12 +341,11 @@ export default function LeadTrackerPage() {
   // original Fresh occurrence stays visible here (frozen green once it's
   // moved on) instead of disappearing when its stage changes.
   const freshRows = bucketRows("fresh");
-  const followupRows = bucketRows("followups");
   const callbackRows = bucketRows("callback");
   const bookedRows = bucketRows("booked");
   const deniedRows = bucketRows("denied");
   const oldRows = bucketRows("old");
-  const totalVisible = freshRows.length + followupRows.length + callbackRows.length + bookedRows.length + deniedRows.length + oldRows.length;
+  const totalVisible = freshRows.length + callbackRows.length + bookedRows.length + deniedRows.length + oldRows.length;
 
   const patientFollowups = getPatientFollowups(patients, selectedDate);
 
@@ -563,68 +560,37 @@ export default function LeadTrackerPage() {
             );
           }
 
-          const rows = s.key === "followups" ? followupRows
-            : s.key === "callback" ? callbackRows
-            : s.key === "booked" ? bookedRows
-            : s.key === "denied" ? deniedRows
-            : oldRows; // "old"
-
-          // Follow-ups splits into two views: Leads (this stage's normal
-          // lead list) and Patients (patients whose next aligner set change
-          // falls on the selected date, so staff can confirm they've switched).
+          // Follow-ups is patient-only: everyone due for an aligner set-change
+          // call on the selected date, so staff can confirm they've switched.
+          // No lead data lives here — that's what Fresh/Old/Call Back/Booked/
+          // Denied are for.
           if (s.key === "followups") {
-            const showingPatients = followupView === "patients";
-            const count = showingPatients ? patientFollowups.length : rows.length;
             return (
               <div key={s.key} style={{ minWidth: 0 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px", flexWrap: "wrap" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" }}>
                   <h2 style={{ margin: 0, fontSize: "16px", fontWeight: "800", color: "#111827" }}>{s.label}</h2>
-                  <span style={{ fontSize: "12px", fontWeight: "700", color: "#6b7280", background: "#f3f4f6", borderRadius: "99px", padding: "2px 10px" }}>{count}</span>
-                  <div style={{ display: "flex", gap: "6px", marginLeft: "8px" }}>
-                    <button
-                      onClick={() => setFollowupView("leads")}
-                      style={{
-                        padding: "5px 14px", borderRadius: "8px", border: "1px solid " + (!showingPatients ? "#111827" : "#e5e7eb"),
-                        background: !showingPatients ? "#111827" : "white", color: !showingPatients ? "white" : "#374151",
-                        fontWeight: "700", fontSize: "12px", cursor: "pointer",
-                      }}
-                    >
-                      Leads ({rows.length})
-                    </button>
-                    <button
-                      onClick={() => setFollowupView("patients")}
-                      style={{
-                        padding: "5px 14px", borderRadius: "8px", border: "1px solid " + (showingPatients ? "#111827" : "#e5e7eb"),
-                        background: showingPatients ? "#111827" : "white", color: showingPatients ? "white" : "#374151",
-                        fontWeight: "700", fontSize: "12px", cursor: "pointer",
-                      }}
-                    >
-                      Patients ({patientFollowups.length})
-                    </button>
-                  </div>
+                  <span style={{ fontSize: "12px", fontWeight: "700", color: "#6b7280", background: "#f3f4f6", borderRadius: "99px", padding: "2px 10px" }}>{patientFollowups.length}</span>
                   <div style={{ flex: 1, height: "1px", background: "#eee" }} />
                 </div>
-
-                {showingPatients ? (
-                  patientFollowups.length === 0 ? (
-                    <div style={{ padding: "14px", background: "white", border: "1px dashed #e5e7eb", borderRadius: "12px", textAlign: "center", color: "#9ca3af", fontSize: "13px" }}>
-                      No patients due for a set change {selectedDate === "all" ? "today" : "on this date"}.
-                    </div>
-                  ) : (
-                    <div style={{ display: "grid", gap: "10px" }}>
-                      {patientFollowups.map((p) => (
-                        <PatientFollowupCard key={p.id} patient={p} onSave={saveSetFollowup} />
-                      ))}
-                    </div>
-                  )
-                ) : rows.length === 0 ? (
-                  <div style={{ padding: "14px", background: "white", border: "1px dashed #e5e7eb", borderRadius: "12px", textAlign: "center", color: "#9ca3af", fontSize: "13px" }}>No leads</div>
+                {patientFollowups.length === 0 ? (
+                  <div style={{ padding: "14px", background: "white", border: "1px dashed #e5e7eb", borderRadius: "12px", textAlign: "center", color: "#9ca3af", fontSize: "13px" }}>
+                    No patients due for a set change {selectedDate === "all" ? "today" : "on this date"}.
+                  </div>
                 ) : (
-                  <LeadTable rows={rows} sectionKey={s.key} campaigns={campaigns} isAdmin={isAdmin} onStage={quickStage} onEdit={(lead) => setEditing({ mode: "normal", lead })} onDelete={deleteLead} />
+                  <div style={{ display: "grid", gap: "10px" }}>
+                    {patientFollowups.map((p) => (
+                      <PatientFollowupCard key={p.id} patient={p} onSave={saveSetFollowup} />
+                    ))}
+                  </div>
                 )}
               </div>
             );
           }
+
+          const rows = s.key === "callback" ? callbackRows
+            : s.key === "booked" ? bookedRows
+            : s.key === "denied" ? deniedRows
+            : oldRows; // "old"
 
           return (
             <div key={s.key} style={{ minWidth: 0 }}>
@@ -952,7 +918,7 @@ function LeadTable({ leads, rows: externalRows, onStage, onEdit, onDelete, cold,
               <th style={numTh}>#</th>
               <th style={nameTh}>Name</th>
               {showType && <th style={thBase}>Type</th>}
-              {["Phone", "Alt #", "Email", "Age", "Sex", "Source", "Response", "Last Called", "Lead Status", "Campaign", "Complaint", "Consultation", "Clinic", "Consult Date", "Slot", "Callback", "Follow-up", "Address", "Notes", "Verification", cold ? "Action" : "Stage", ""].map((h, i) => (
+              {["Phone", "Alt #", "Email", "Age", "Sex", "Source", "Response", "Last Called", "Lead Status", "Campaign", "Complaint", "Consultation", "Clinic", "Consult Date", "Slot", "Callback", "Address", "Notes", "Verification", cold ? "Action" : "Stage", ""].map((h, i) => (
                 <th key={i} style={thBase}>{h}</th>
               ))}
             </tr>
@@ -966,10 +932,7 @@ function LeadTable({ leads, rows: externalRows, onStage, onEdit, onDelete, cold,
               // not whatever the lead's live fields have since moved on to.
               const callbackDate = entry?.stage === "callback" ? entry.date : lead.callback_date;
               const callbackTime = entry?.stage === "callback" ? entry.time : lead.callback_time;
-              const followupDate = entry?.stage === "followups" ? entry.date : lead.followup_date;
-              const followupTime = entry?.stage === "followups" ? entry.time : lead.followup_time;
               const callback = (callbackDate || callbackTime) ? `${formatTime(callbackTime)}${callbackDate ? " · " + formatDate(callbackDate) : ""}`.trim() : "—";
-              const followup = (followupDate || followupTime) ? `${formatTime(followupTime)}${followupDate ? " · " + formatDate(followupDate) : ""}`.trim() : "—";
               const status = lead.booking_confirmed
                 ? "✓ Confirmed"
                 : lead.lead_source === "website"
@@ -1016,7 +979,6 @@ function LeadTable({ leads, rows: externalRows, onStage, onEdit, onDelete, cold,
                   <td style={td}>{lead.date ? formatDate(lead.date) : "—"}</td>
                   <td style={td}>{lead.time || "—"}</td>
                   <td style={td}>{callback}</td>
-                  <td style={td}>{followup}</td>
                   <td style={wrapTd}>{lead.address || "—"}</td>
                   <td style={wrapTd}>{lead.lead_notes || "—"}</td>
                   <td style={td}>{status}</td>
@@ -1089,14 +1051,12 @@ function LeadForm({ lead, actor, onClose, onSaved, onDuplicateFound, mode = "nor
       consultationType, clinic_location: lead.clinic_location || "",
       date: lead.date || "", time: lead.time || "",
       callback_date: lead.callback_date || "", callback_time: lead.callback_time || "",
-      followup_date: lead.followup_date || "", followup_time: lead.followup_time || "",
       lead_stage: lead.lead_stage || "fresh",
     };
   });
   const [saving, setSaving] = useState(false);
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
   const isCallback = form.lead_stage === "callback";
-  const isFollowup = form.lead_stage === "followups";
   const isBooked = form.lead_stage === "booked";
 
   const buildPayload = (stageOverride, confirm) => {
@@ -1109,17 +1069,12 @@ function LeadForm({ lead, actor, onClose, onSaved, onDuplicateFound, mode = "nor
     // today — that's what actually files an entry into Old Leads instead of
     // the live section (see quickStage for the no-date-picker quick path).
     const targetDate = nextStage === "callback" ? (form.callback_date || todayKeyStr)
-      : nextStage === "followups" ? (form.followup_date || todayKeyStr)
       : nextStage === "fresh" && !lead ? (form.add_date || todayKeyStr) // new lead can be backdated via "Date Added"
       : todayKeyStr; // booked/denied have no date picker — always today
-    const targetTime = nextStage === "callback" ? (form.callback_time || null)
-      : nextStage === "followups" ? (form.followup_time || null)
-      : null;
+    const targetTime = nextStage === "callback" ? (form.callback_time || null) : null;
     const dateChanged = nextStage === "callback"
       ? form.callback_date !== (lead?.callback_date || "")
-      : nextStage === "followups"
-        ? form.followup_date !== (lead?.followup_date || "")
-        : false;
+      : false;
     const stageChangedFromBefore = nextStage !== (lead?.lead_stage || "fresh");
     // Log a new occurrence whenever this save is a real stage/date change (or
     // a brand-new lead) — editing other fields on an unchanged stage doesn't
@@ -1146,8 +1101,6 @@ function LeadForm({ lead, actor, onClose, onSaved, onDuplicateFound, mode = "nor
       time: form.time || null,
       callback_date: form.lead_stage === "callback" ? (form.callback_date || null) : null,
       callback_time: form.lead_stage === "callback" ? (form.callback_time || null) : null,
-      followup_date: form.lead_stage === "followups" ? (form.followup_date || null) : null,
-      followup_time: form.lead_stage === "followups" ? (form.followup_time || null) : null,
       stage_log: stageLog,
       ...(confirm ? { booking_confirmed: true, booking_confirmed_at: new Date().toISOString() } : {}),
     };
@@ -1178,16 +1131,14 @@ function LeadForm({ lead, actor, onClose, onSaved, onDuplicateFound, mode = "nor
         }
       }
 
-      // Build call history — append a new entry whenever stage is callback/followups
+      // Build call history — append a new entry whenever stage is callback
       // and the response or next date has changed (avoid duplicate entries).
       const existingHistory = lead?.call_history || [];
-      const isInteractionStage = form.lead_stage === "callback" || form.lead_stage === "followups";
+      const isInteractionStage = form.lead_stage === "callback";
       let newHistory = existingHistory;
       if (isInteractionStage && form.lead_response) {
         const responseChanged = form.lead_response !== (lead?.lead_response || "");
-        const nextDateChanged = form.lead_stage === "callback"
-          ? form.callback_date !== (lead?.callback_date || "")
-          : form.followup_date !== (lead?.followup_date || "");
+        const nextDateChanged = form.callback_date !== (lead?.callback_date || "");
         const notesChanged = form.lead_notes !== (lead?.lead_notes || "");
         if (responseChanged || nextDateChanged || notesChanged || existingHistory.length === 0) {
           newHistory = [...existingHistory, {
@@ -1195,11 +1146,7 @@ function LeadForm({ lead, actor, onClose, onSaved, onDuplicateFound, mode = "nor
             response: form.lead_response,
             notes: form.lead_notes || null,
             stage: form.lead_stage,
-            ...(form.lead_stage === "callback"
-              ? { next_date: form.callback_date || null, next_time: form.callback_time || null }
-              : form.lead_stage === "followups"
-                ? { next_date: form.followup_date || null, next_time: form.followup_time || null }
-                : {}),
+            next_date: form.callback_date || null, next_time: form.callback_time || null,
           }];
         }
       }
@@ -1374,20 +1321,6 @@ function LeadForm({ lead, actor, onClose, onSaved, onDuplicateFound, mode = "nor
                     {TIME_SLOTS.map((t) => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </Clearable>
-              </div>
-            </>
-          )}
-
-          {/* Follow-up date/time — only relevant when stage is Follow-ups */}
-          {isFollowup && (
-            <>
-              <div>
-                <span style={{ ...label, color: "#4338ca" }}>Follow-up Date</span>
-                <input style={input} type="date" value={form.followup_date} onChange={(e) => set("followup_date", e.target.value)} />
-              </div>
-              <div>
-                <span style={{ ...label, color: "#4338ca" }}>Follow-up Time</span>
-                <input style={input} type="time" value={form.followup_time} onChange={(e) => set("followup_time", e.target.value)} />
               </div>
             </>
           )}
