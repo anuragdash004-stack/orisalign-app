@@ -95,13 +95,13 @@ export default function AppointmentPage() {
   const handleEdit = (appt) => { setEditingId(appt.id); setFormData(appt); };
 
   const handleSave = async () => {
-    const { name, phone, email, age, sex, address, problem, date, time } = formData;
+    const { name, phone, email, age, sex, address, problem, date, time, clinic_location } = formData;
     const { error } = await supabase
       .from("appointments_booking")
-      .update({ name, phone, email, age, sex, address, problem, date, time })
+      .update({ name, phone, email, age, sex, address, problem, date, time, clinic_location: clinic_location || null })
       .eq("id", editingId);
     if (error) { alert("Update failed"); return; }
-    logAudit({ appointmentId: editingId, actor: { email: user?.email, role: userRole }, action: "Patient Details Updated", entity: "patient_details", newData: { name, phone, email, age, sex, address, problem, date, time } });
+    logAudit({ appointmentId: editingId, actor: { email: user?.email, role: userRole }, action: "Patient Details Updated", entity: "patient_details", newData: { name, phone, email, age, sex, address, problem, date, time, clinic_location } });
     setEditingId(null);
     fetchAppointments();
   };
@@ -231,6 +231,15 @@ export default function AppointmentPage() {
                     </div>
                   ))}
                   <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+                    <label style={{ fontSize: "11px", fontWeight: "700", color: "#6b7280", textTransform: "uppercase" }}>Clinic</label>
+                    <select value={formData.clinic_location || ""} onChange={(e) => setFormData({ ...formData, clinic_location: e.target.value })}
+                      style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #d1d5db", fontSize: "14px", color: "#111", background: "white", width: "100%", boxSizing: "border-box" }}>
+                      <option value="">— Select clinic —</option>
+                      <option value="Nayapalli">Nayapalli Clinic</option>
+                      <option value="Patia">Patia Clinic</option>
+                    </select>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
                     <label style={{ fontSize: "11px", fontWeight: "700", color: "#6b7280", textTransform: "uppercase" }}>Chief Complaint / Problem</label>
                     <textarea value={formData.problem || ""} onChange={(e) => setFormData({ ...formData, problem: e.target.value })}
                       style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #d1d5db", fontSize: "14px", color: "#111", background: "white", width: "100%", boxSizing: "border-box", minHeight: "70px", resize: "vertical" }} />
@@ -269,6 +278,10 @@ export default function AppointmentPage() {
                     <div style={{ background: "#f8f7f5", borderRadius: "8px", padding: "8px 12px" }}>
                       <p style={{ margin: 0, fontSize: "10px", color: "#9ca3af", fontWeight: "700", textTransform: "uppercase" }}>Date & Time</p>
                       <p style={{ margin: 0, fontSize: "14px", fontWeight: "600", color: "#111" }}>{[appointment.date, appointment.time].filter(Boolean).join(" at ") || "N/A"}</p>
+                    </div>
+                    <div style={{ background: "#f8f7f5", borderRadius: "8px", padding: "8px 12px" }}>
+                      <p style={{ margin: 0, fontSize: "10px", color: "#9ca3af", fontWeight: "700", textTransform: "uppercase" }}>Clinic</p>
+                      <p style={{ margin: 0, fontSize: "14px", fontWeight: "600", color: "#111" }}>{appointment.clinic_location ? `${appointment.clinic_location} Clinic` : "N/A"}</p>
                     </div>
                   </div>
                   {appointment.problem && (
