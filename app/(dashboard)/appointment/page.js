@@ -15,14 +15,12 @@ export default function AppointmentPage() {
   const [formData, setFormData] = useState({});
   const [showAssign, setShowAssign] = useState(null);
   const [dentists, setDentists] = useState([]);
-  const [orthodontists, setOrthodontists] = useState([]);
   const [selectedDentist, setSelectedDentist] = useState("");
-  const [selectedOrtho, setSelectedOrtho] = useState("");
   const [user, setUser] = useState(null);
   const [userRole, setUserRole] = useState("");
 
-  const dentistMap = Object.fromEntries(dentists.map((d) => [d.id, d.email]));
-  const orthoMap = Object.fromEntries(orthodontists.map((o) => [o.id, o.email]));
+  // Show the dentist's name instead of their raw login email, wherever one's configured.
+  const dentistMap = Object.fromEntries(dentists.map((d) => [d.id, d.full_name || d.email]));
 
   const fetchAppointments = useCallback(async () => {
     if (!user || !userRole) return;
@@ -88,7 +86,6 @@ export default function AppointmentPage() {
       const { data, error } = await supabase.from("users").select("*");
       if (error) { console.error("Users fetch error:", error); return; }
       setDentists(data?.filter((u) => u.role === "dentist") || []);
-      setOrthodontists(data?.filter((u) => u.role === "orthodontist") || []);
     };
     loadUsers();
   }, []);
@@ -127,36 +124,24 @@ export default function AppointmentPage() {
     fetchAppointments();
   };
 
-  const handlePostpone = async (id) => {
-    const newDate = prompt("Enter new date (YYYY-MM-DD)");
-    if (!newDate) return;
-    const { error } = await supabase
-      .from("appointments_booking").update({ date: newDate, status: "pending" }).eq("id", id);
-    if (error) { alert("Postpone failed"); return; }
-    logAudit({ appointmentId: id, actor: { email: user?.email, role: userRole }, action: "Appointment Postponed", entity: "appointment_date", newData: { date: newDate, status: "pending" } });
-    fetchAppointments();
-  };
-
   const handleAssignConfirm = async (id) => {
-    if (!selectedDentist || !selectedOrtho) { alert("Select both dentist and orthodontist"); return; }
+    if (!selectedDentist) { alert("Select a dentist"); return; }
     const { error } = await supabase
       .from("appointments_booking")
       .update({
         assigned_dentist: String(selectedDentist),
-        assigned_ortho: String(selectedOrtho),
         assigned_at: new Date().toISOString(),
         status: "assigned",
       })
       .eq("id", id).select();
     if (error) { alert("Assignment failed"); return; }
-    logAudit({ appointmentId: id, actor: { email: user?.email, role: userRole }, action: "Assigned to Dentist and Orthodontist", entity: "assignment", newData: { assigned_dentist: dentistMap[selectedDentist], assigned_ortho: orthoMap[selectedOrtho], status: "assigned" } });
+    logAudit({ appointmentId: id, actor: { email: user?.email, role: userRole }, action: "Assigned to Dentist", entity: "assignment", newData: { assigned_dentist: dentistMap[selectedDentist], status: "assigned" } });
     setShowAssign(null);
     setSelectedDentist("");
-    setSelectedOrtho("");
     fetchAppointments();
   };
 
-  // ✅ CANCEL — admin only
+  // ✅ CANCEL — admin and counsellor
   const handleCancel = async (id) => {
     const confirmed = window.confirm("Cancel this appointment? This cannot be undone.");
     if (!confirmed) return;
@@ -313,7 +298,6 @@ export default function AppointmentPage() {
               <div style={{ marginTop: "10px", background: "#f8f7f5", borderRadius: "8px", padding: "10px 12px", fontSize: "12px", color: "#6b7280" }}>
                 <div>Assigned at: {appointment.assigned_at ? new Date(appointment.assigned_at).toLocaleString() : "N/A"}</div>
                 <div>Dentist: {dentistMap[appointment.assigned_dentist] || "N/A"}</div>
-                <div>Ortho: {orthoMap[appointment.assigned_ortho] || "N/A"}</div>
               </div>
 
               {/* ACTION BUTTONS */}
@@ -339,22 +323,21 @@ export default function AppointmentPage() {
                 <>
                   <div style={{ display: "flex", gap: "10px", marginTop: "12px", flexWrap: "wrap", alignItems: "center" }}>
                     <button onClick={() => handleEdit(appointment)}>Edit</button>
-                    <button onClick={() => handlePostpone(appointment.id)}>Postpone</button>
                     <button onClick={() => setShowAssign(appointment.id)}>Assign</button>
                     <button onClick={() => handleConfirm(appointment.id)}>Confirm</button>
 
-                    {userRole === "admin" && (
-                      <div style={{ marginLeft: "auto", display: "flex", flexDirection: "column", gap: "6px", alignItems: "flex-end" }}>
-                        <button
-                          onClick={() => handleCancel(appointment.id)}
-                          style={{
-                            padding: "6px 14px", borderRadius: "8px",
-                            border: "1px solid #fecaca", background: "#fef2f2",
-                            color: "#dc2626", cursor: "pointer", fontSize: "13px", fontWeight: "600",
-                          }}
-                        >
-                          Cancel Appointment
-                        </button>
+                    <div style={{ marginLeft: "auto", display: "flex", flexDirection: "column", gap: "6px", alignItems: "flex-end" }}>
+                      <button
+                        onClick={() => handleCancel(appointment.id)}
+                        style={{
+                          padding: "6px 14px", borderRadius: "8px",
+                          border: "1px solid #fecaca", background: "#fef2f2",
+                          color: "#dc2626", cursor: "pointer", fontSize: "13px", fontWeight: "600",
+                        }}
+                      >
+                        Cancel Appointment
+                      </button>
+                      {userRole === "admin" && (
                         <button
                           onClick={() => handleDelete(appointment.id)}
                           style={{
@@ -365,25 +348,18 @@ export default function AppointmentPage() {
                         >
                           Delete Permanently
                         </button>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
 
                   {showAssign === appointment.id && (
                     <div style={{ marginTop: "12px" }}>
                       <select value={selectedDentist} onChange={(e) => setSelectedDentist(e.target.value)}>
                         <option value="">Select Dentist</option>
-                        {dentists.map((d) => <option key={d.id} value={d.id}>{d.email}</option>)}
+                        {dentists.map((d) => <option key={d.id} value={d.id}>{d.full_name || d.email}</option>)}
                       </select>
                       {selectedDentist && (
                         <button onClick={() => setSelectedDentist("")} title="Clear" style={{ marginLeft: "6px", padding: "4px 10px", borderRadius: "6px", border: "1px solid #fecaca", background: "#fef2f2", color: "#dc2626", fontWeight: "700", fontSize: "12px", cursor: "pointer" }}>✕</button>
-                      )}
-                      <select value={selectedOrtho} onChange={(e) => setSelectedOrtho(e.target.value)} style={{ marginLeft: "8px" }}>
-                        <option value="">Select Orthodontist</option>
-                        {orthodontists.map((o) => <option key={o.id} value={o.id}>{o.email}</option>)}
-                      </select>
-                      {selectedOrtho && (
-                        <button onClick={() => setSelectedOrtho("")} title="Clear" style={{ marginLeft: "6px", padding: "4px 10px", borderRadius: "6px", border: "1px solid #fecaca", background: "#fef2f2", color: "#dc2626", fontWeight: "700", fontSize: "12px", cursor: "pointer" }}>✕</button>
                       )}
                       <button onClick={() => handleAssignConfirm(appointment.id)} style={{ marginLeft: "8px" }}>Confirm Assignment</button>
                     </div>

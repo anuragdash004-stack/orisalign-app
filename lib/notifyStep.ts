@@ -5,6 +5,18 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+// Kept in sync with app/api/notify-booking/route.ts's CLINIC_INFO.
+const CLINIC_INFO: Record<string, { name: string; address: string }> = {
+  Nayapalli: {
+    name: "Nayapalli Clinic",
+    address: "April Dental, 242, Indradhanu Market Rd, N4, Block N4, IRC Village, Nayapalli, Bhubaneswar, Odisha 751015",
+  },
+  Patia: {
+    name: "Patia Clinic",
+    address: "Kalp Dental Clinic, Kiss Road, Chandaka Industrial Estate, Patia, Bhubaneswar, Odisha",
+  },
+}
+
 // ── Per-step content ──────────────────────────────────────────────────────────
 
 type StepContent = {
@@ -126,8 +138,9 @@ function buildEmailHtml(params: {
   shortId: string
   journeyUrl: string
   content: StepContent
+  detailsBlock?: string
 }): string {
-  const { name, shortId, journeyUrl, content } = params
+  const { name, shortId, journeyUrl, content, detailsBlock } = params
 
   const nextStepBlock = content.nextStep
     ? `
@@ -153,6 +166,8 @@ function buildEmailHtml(params: {
       <p style="color:#6b7280;font-size:11px;margin:0 0 16px;">Patient ID: <strong style="color:#374151;font-family:monospace;letter-spacing:2px;">${shortId}</strong></p>
 
       <p style="color:#374151;font-size:14px;line-height:1.8;margin:0 0 4px;">${content.body}</p>
+
+      ${detailsBlock || ""}
 
       ${nextStepBlock}
 
@@ -219,7 +234,7 @@ export async function sendStepNotification(params: SendStepNotificationParams): 
 
   const { data: appt, error: fetchErr } = await supabase
     .from("appointments_booking")
-    .select("id, name, email")
+    .select("id, name, email, date, time, clinic_location, assigned_dentist")
     .eq("id", appointmentId)
     .single()
 
@@ -247,7 +262,42 @@ export async function sendStepNotification(params: SendStepNotificationParams): 
     subject: customSubject || tmpl?.subject_line || content.subject,
     body: customBody || tmpl?.email_body || content.body,
   }
-  const html = buildEmailHtml({ name: appt.name || "Patient", shortId, journeyUrl, content: mergedContent })
+
+  // The confirmation email additionally spells out the date, which clinic
+  // (with address) and which dentist will see the patient — whatever is
+  // already on file at confirmation time.
+  let detailsBlock: string | undefined
+  if (stepKey === "confirmed") {
+    const clinic = appt.clinic_location ? CLINIC_INFO[appt.clinic_location] : null
+    let dentistName: string | null = null
+    if (appt.assigned_dentist) {
+      const { data: dentist } = await supabase
+        .from("users")
+        .select("full_name, email")
+        .eq("id", appt.assigned_dentist)
+        .single()
+      dentistName = dentist?.full_name || dentist?.email || null
+    }
+    const rows = [
+      appt.date ? { label: "Date & Time", value: [appt.date, appt.time].filter(Boolean).join(" at ") } : null,
+      clinic ? { label: "Clinic", value: `${clinic.name} — ${clinic.address}` } : null,
+      dentistName ? { label: "Dentist", value: dentistName } : null,
+    ].filter(Boolean) as { label: string; value: string }[]
+
+    if (rows.length > 0) {
+      detailsBlock = `
+        <div style="background:#f8f6f2;border:1px solid #e5e7eb;border-radius:10px;padding:16px 20px;margin:16px 0;">
+          ${rows.map((r) => `
+            <p style="margin:0 0 8px;font-size:12px;">
+              <span style="color:#9ca3af;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">${r.label}:</span>
+              <span style="color:#374151;font-weight:600;"> ${r.value}</span>
+            </p>
+          `).join("")}
+        </div>`
+    }
+  }
+
+  const html = buildEmailHtml({ name: appt.name || "Patient", shortId, journeyUrl, content: mergedContent, detailsBlock })
 
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
