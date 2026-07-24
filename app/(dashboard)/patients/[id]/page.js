@@ -28,18 +28,14 @@ const ALL_STEPS = [
   { key: "feedback_submitted",      label: "Feedback Submitted" },
 ];
 const DELIVERY_PARTNERS = ["BlueDart", "Delhivery", "Other"];
-const MODEL_OPTIONS = [
-  { label: "6-8", value: "6-8", fullAmount: 65000 },
-  { label: "8-10", value: "8-10", fullAmount: 70000 },
-  { label: "10-12", value: "10-12", fullAmount: 80000 },
-  { label: "12-14", value: "12-14", fullAmount: 89000 },
-  { label: "14-16", value: "14-16", fullAmount: 99000 },
-  { label: "16-18", value: "16-18", fullAmount: 108000 },
-];
 const DOWN_PAYMENT_FIXED = 12500;
-const PLAN_OPTIONS = ["ORISPRO", "ORISPLUS"];
-const PAYMENT_METHOD_OPTIONS = ["UPI", "Credit Card", "Debit Card", "NACH", "Installments", "E-Mandate"];
-const RECURRING_MODES = ["NACH", "E-Mandate"];
+// Plan determines the per-set price — total amount is just sets × price,
+// no separate treatment-model selector anymore.
+const PLAN_OPTIONS = [
+  { value: "ORISPRO", label: "OrisPro", pricePerSet: 3499 },
+  { value: "ORISPLUS", label: "OrisPro Plus", pricePerSet: 4499 },
+];
+const PENDING_SPLIT_OPTIONS = ["Lump Sum", "Installments"];
 
 // Adds `months` calendar months to a "YYYY-MM-DD" date string.
 function addMonths(dateStr, months) {
@@ -206,25 +202,24 @@ function Clearable({ show, onClear, children }) {
 
 function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
   const [appt, setAppt] = useState(null);
-  const [showModelSelector, setShowModelSelector] = useState(false);
-  const [selectedModelForApply, setSelectedModelForApply] = useState(null);
-  const [applyingModel, setApplyingModel] = useState(false);
 
-  // Card 2 fields — kept flat and minimal, per the simplified report below.
+  // Card 1 — Plan & Amount
   const [plan, setPlan] = useState(initialData?.plan ?? "");
-  const [fullAmount, setFullAmount] = useState(initialData?.full_amount ?? "");
-  const [coupon, setCoupon] = useState(initialData?.discount ?? "");
-  const [b2bFees, setB2bFees] = useState(initialData?.b2b_fees ?? "");
-  const [downPayment, setDownPayment] = useState(initialData?.down_payment ?? "");
-  const [paidAmount, setPaidAmount] = useState("");
-  const [mode, setMode] = useState(initialData?.payment_mode ?? "");
-  const [pushing, setPushing] = useState(false);
-  const [isLocked, setIsLocked] = useState(!!(initialData && initialData.full_amount));
-  const initializedFromAppt = useRef(false);
+  const [totalSets, setTotalSets] = useState("");
+  const [discount, setDiscount] = useState(initialData?.discount ?? "");
+  const [savingPlan, setSavingPlan] = useState(false);
+  const [planSaved, setPlanSaved] = useState(false);
+  const initializedSets = useRef(false);
 
-  // Card 3 — Pending collection schedule (only shown while pendingAmt > 0).
+  // Card 2 — To Pay: Full Amount vs Down Payment, and marking things paid.
+  const [payChoice, setPayChoice] = useState(initialData?.pay_choice ?? "");
+  const [downPayment, setDownPayment] = useState(initialData?.down_payment ? String(initialData.down_payment) : String(DOWN_PAYMENT_FIXED));
+  const [savingDownPayment, setSavingDownPayment] = useState(false);
+  const [markingPaid, setMarkingPaid] = useState(null); // "full" | "down" | "pending"
+
+  // Pending balance — Lump Sum (one Paid button) or Installments (EMI schedule).
   const pendingPlanInit = initialData?.pending_plan || {};
-  const [pendingMode, setPendingMode] = useState(pendingPlanInit.mode ?? "");
+  const [pendingSplit, setPendingSplit] = useState(pendingPlanInit.mode ?? "");
   const [pendingPlanAmount, setPendingPlanAmount] = useState(pendingPlanInit.amount ?? "");
   const [pendingTenure, setPendingTenure] = useState(pendingPlanInit.tenure ?? "");
   const [pendingRecurringDate, setPendingRecurringDate] = useState(pendingPlanInit.recurring_date ?? "");
@@ -238,31 +233,58 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
       .then(({ data }) => setAppt(data || null));
   }, [appointmentId]);
 
-  // amount_paid lives outside payment_data, on the row itself — prime it
-  // once the row loads, without clobbering anything the admin has already
-  // started typing.
+  // Number of sets lives on the row itself (aligner_total_sets) — shared
+  // with the Journey tab's Aligner Plan, so whichever side sets it first
+  // shows up here without clobbering anything already typed.
   useEffect(() => {
-    if (appt && !initializedFromAppt.current) {
-      setPaidAmount(appt.amount_paid ? String(appt.amount_paid) : "");
-      initializedFromAppt.current = true;
+    if (appt && !initializedSets.current) {
+      setTotalSets(appt.aligner_total_sets ? String(appt.aligner_total_sets) : "");
+      initializedSets.current = true;
     }
   }, [appt]);
 
-  const applyModel = async () => {
-    if (!selectedModelForApply) return;
-    setApplyingModel(true);
-    setFullAmount(String(selectedModelForApply.fullAmount));
-    setDownPayment(String(DOWN_PAYMENT_FIXED));
+  const planInfo = PLAN_OPTIONS.find((p) => p.value === plan);
+  const pricePerSet = planInfo?.pricePerSet || 0;
+  const sets = parseInt(totalSets, 10) || 0;
+  const grossAmt = pricePerSet * sets;
+  const discountAmt = parseFloat(discount) || 0;
+  const finalAmt = Math.max(0, grossAmt - discountAmt);
+  const downAmt = parseFloat(downPayment) || 0;
+  // amount_paid lives outside payment_data, on the row itself, and is the
+  // one trusted running total — kept in sync by recordPaymentReceived
+  // regardless of whether a payment came from the gateway or a manual
+  // "Mark as Paid" click here.
+  const paidAmt = Number(appt?.amount_paid) || 0;
+  const remainingAmt = Math.max(0, finalAmt - paidAmt);
+  const fullyPaid = finalAmt > 0 && paidAmt >= finalAmt;
+  const downPaymentPaid = downAmt > 0 && paidAmt >= downAmt;
 
-    const newJourneySteps = { ...(appt?.journey_steps || {}), payment_done: true };
-    const { error } = await supabase
-      .from("appointments_booking")
-      .update({ treatment_model: selectedModelForApply.value, journey_steps: newJourneySteps })
-      .eq("id", appointmentId);
+  const savePlan = async () => {
+    if (!plan) { alert("Select a plan."); return; }
+    if (sets <= 0) { alert("Enter the number of sets."); return; }
+    setSavingPlan(true);
+    try {
+      const newPaymentData = {
+        ...(appt?.payment_data || {}),
+        plan,
+        price_per_set: pricePerSet,
+        full_amount: grossAmt,
+        discount: discountAmt,
+        final_amount: finalAmt,
+        // Mirrors what the gateway itself reads when the patient self-serve
+        // pays the "pending" amount (see /api/cashfree/order) — keep it in
+        // step with the final amount whenever the plan changes.
+        pending_amount: Math.max(0, finalAmt - paidAmt),
+      };
+      const newJourneySteps = { ...(appt?.journey_steps || {}), payment_done: true };
+      const { error } = await supabase
+        .from("appointments_booking")
+        .update({ payment_data: newPaymentData, aligner_total_sets: sets, journey_steps: newJourneySteps })
+        .eq("id", appointmentId);
+      if (error) { alert("Error saving: " + error.message); return; }
 
-    if (!error) {
-      setAppt((prev) => prev && { ...prev, treatment_model: selectedModelForApply.value, journey_steps: newJourneySteps });
-      logAudit({ appointmentId, actor, action: "Treatment Model Selected", entity: "treatment_model", newData: { treatment_model: selectedModelForApply.value } });
+      logAudit({ appointmentId, actor, action: "Plan & Amount Saved", entity: "payment_data", newData: newPaymentData });
+
       if (!appt?.journey_steps?.payment_done) {
         fetch("/api/notify-step", {
           method: "POST",
@@ -270,101 +292,112 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
           body: JSON.stringify({ appointmentId, stepKey: "payment_done", email: patientEmail || null }),
         }).catch(() => {});
       }
-    }
 
-    setShowModelSelector(false);
-    setSelectedModelForApply(null);
-    setApplyingModel(false);
-  };
-
-  const clearModel = async () => {
-    setFullAmount("");
-    setDownPayment("");
-    await supabase.from("appointments_booking").update({ treatment_model: null }).eq("id", appointmentId).catch(() => {});
-    setAppt((prev) => prev && { ...prev, treatment_model: null });
-    logAudit({ appointmentId, actor, action: "Treatment Model Cleared", entity: "treatment_model", newData: { treatment_model: null } });
-  };
-
-  const fullAmt = parseFloat(fullAmount) || 0;
-  const couponAmt = parseFloat(coupon) || 0;
-  const finalAmt = Math.max(0, fullAmt - couponAmt);
-  const b2bFeesAmt = parseFloat(b2bFees) || 0;
-  // Internal-only — deducted from Final Amount for our own report, never
-  // pushed to or shown on the patient's journey page.
-  const totalAmt = Math.max(0, finalAmt - b2bFeesAmt);
-  const paidAmt = parseFloat(paidAmount) || 0;
-  const pendingAmt = Math.max(0, finalAmt - paidAmt);
-
-  // The same numbers shown here are exactly what the patient's journey page
-  // reads (full_amount/down_payment/plan/payment_mode from payment_data,
-  // amount_paid/payment_status from the row) — so pushing this report is the
-  // manual fallback for when the patient's own self-serve payment never
-  // reflected automatically. The gateway itself always recomputes its own
-  // trusted amount fresh when the patient clicks Pay Now, so this push
-  // doesn't need to touch payment_type_to_collect.
-  const pushReport = async () => {
-    if (fullAmt <= 0) { alert("Enter a full payment amount first."); return; }
-    setPushing(true);
-    try {
-      const paymentStatus = finalAmt > 0 && paidAmt >= finalAmt ? "paid" : paidAmt > 0 ? "partial" : "pending";
-      const paymentData = {
-        ...(appt?.payment_data || {}),
-        plan: plan || "",
-        full_amount: fullAmt,
-        discount: couponAmt || "",
-        final_amount: finalAmt,
-        b2b_fees: b2bFeesAmt || "",
-        total_amount: totalAmt,
-        down_payment: parseFloat(downPayment) || "",
-        payment_mode: mode || "",
-      };
-      const newJourneySteps = { ...(appt?.journey_steps || {}), payment_done: true };
-
-      const { error } = await supabase
-        .from("appointments_booking")
-        .update({
-          payment_data: paymentData,
-          amount_paid: paidAmt,
-          amount_to_pay: pendingAmt,
-          payment_status: paymentStatus,
-          journey_steps: newJourneySteps,
-        })
-        .eq("id", appointmentId);
-
-      if (error) { alert("Error saving: " + error.message); return; }
-
-      logAudit({
-        appointmentId, actor, action: "Payment Report Pushed to Patient", entity: "payment_data",
-        newData: { ...paymentData, amount_paid: paidAmt, amount_to_pay: pendingAmt, payment_status: paymentStatus },
-      });
-
-      setAppt((prev) => prev && {
-        ...prev, payment_data: paymentData, amount_paid: paidAmt, amount_to_pay: pendingAmt,
-        payment_status: paymentStatus, journey_steps: newJourneySteps,
-      });
-      setIsLocked(true);
+      setAppt((prev) => prev && { ...prev, payment_data: newPaymentData, aligner_total_sets: sets, journey_steps: newJourneySteps });
+      setPlanSaved(true);
+      setTimeout(() => setPlanSaved(false), 3000);
     } catch {
       alert("Network error. Please try again.");
     } finally {
-      setPushing(false);
+      setSavingPlan(false);
     }
   };
 
-  const isRecurringMode = RECURRING_MODES.includes(pendingMode);
+  const savePayChoice = async (choice) => {
+    setPayChoice(choice);
+    const newPaymentData = { ...(appt?.payment_data || {}), pay_choice: choice };
+    const { error } = await supabase.from("appointments_booking").update({ payment_data: newPaymentData }).eq("id", appointmentId);
+    if (!error) setAppt((prev) => prev && { ...prev, payment_data: newPaymentData });
+  };
+
+  const saveDownPayment = async () => {
+    setSavingDownPayment(true);
+    try {
+      const newPaymentData = { ...(appt?.payment_data || {}), down_payment: downAmt };
+      const { error } = await supabase.from("appointments_booking").update({ payment_data: newPaymentData }).eq("id", appointmentId);
+      if (error) { alert("Error saving: " + error.message); return; }
+      logAudit({ appointmentId, actor, action: "Down Payment Amount Updated", entity: "payment_data", newData: { down_payment: downAmt } });
+      setAppt((prev) => prev && { ...prev, payment_data: newPaymentData });
+    } catch {
+      alert("Network error. Please try again.");
+    } finally {
+      setSavingDownPayment(false);
+    }
+  };
+
+  // Records a manual payment (Full / Down Payment / Pending) through the
+  // same trusted, additive endpoint the payment gateways use, so the
+  // figures here, on the patient page, and on any future gateway payment
+  // all agree regardless of where a payment actually came from.
+  const recordManualPayment = async (amount, label, markKey) => {
+    if (amount <= 0) return;
+    setMarkingPaid(markKey);
+    try {
+      const res = await fetch("/api/update-payment-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          appointmentId,
+          amountPaid: amount,
+          paymentMethod: "Manual",
+          notes: label,
+          actorEmail: actor?.email,
+          actorRole: actor?.role,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || json.error) {
+        alert("Failed to record payment: " + (json.error || "Unknown error"));
+        return;
+      }
+
+      // Keep payment_data.pending_amount in sync with the running total —
+      // the gateway reads it directly for the patient's own "pay pending"
+      // self-serve flow, so it must reflect whatever recordPaymentReceived
+      // just computed, not just gateway-originated payments.
+      const newPaymentData = { ...(appt?.payment_data || {}), pending_amount: Math.max(0, finalAmt - json.totalPaid) };
+      await supabase.from("appointments_booking").update({ payment_data: newPaymentData }).eq("id", appointmentId);
+
+      logAudit({ appointmentId, actor, action: `${label} Marked Paid`, entity: "payment_status", newData: { amount, totalPaid: json.totalPaid } });
+
+      setAppt((prev) => prev && {
+        ...prev, payment_data: newPaymentData, amount_paid: json.totalPaid, amount_to_pay: json.stillToPay, payment_status: json.paymentStatus,
+      });
+    } catch {
+      alert("Network error. Please try again.");
+    } finally {
+      setMarkingPaid(null);
+    }
+  };
+
+  const isRecurringSplit = pendingSplit === "Installments";
+
+  // Choosing "Lump Sum" saves and locks immediately — there's nothing else
+  // to configure. "Installments" just reveals the tenure/amount/date form;
+  // it locks in once "Generate Schedule" is clicked.
+  const choosePendingSplit = async (opt) => {
+    setPendingSplit(opt);
+    if (opt === "Lump Sum") {
+      const pendingPlan = { mode: "Lump Sum", amount: "", tenure: "", recurring_date: "", installments: [] };
+      const newPaymentData = { ...(appt?.payment_data || {}), pending_plan: pendingPlan };
+      const { error } = await supabase.from("appointments_booking").update({ payment_data: newPaymentData }).eq("id", appointmentId);
+      if (!error) {
+        setAppt((prev) => prev && { ...prev, payment_data: newPaymentData });
+        setIsPendingLocked(true);
+      }
+    }
+  };
 
   const savePendingSetup = async () => {
-    if (!pendingMode) { alert("Select how the pending amount will be collected."); return; }
-    if (isRecurringMode && !(parseFloat(pendingPlanAmount) > 0 && parseInt(pendingTenure) > 0 && pendingRecurringDate)) {
-      alert("Enter the amount, tenure, and recurring date.");
+    if (!(parseFloat(pendingPlanAmount) > 0 && parseInt(pendingTenure) > 0 && pendingRecurringDate)) {
+      alert("Enter the EMI amount, tenure, and first installment date.");
       return;
     }
     setGeneratingPending(true);
     try {
-      const installments = isRecurringMode
-        ? buildRecurringInstallments(pendingPlanAmount, pendingTenure, pendingRecurringDate, pendingInstallments)
-        : [];
+      const installments = buildRecurringInstallments(pendingPlanAmount, pendingTenure, pendingRecurringDate, pendingInstallments);
       const pendingPlan = {
-        mode: pendingMode,
+        mode: "Installments",
         amount: pendingPlanAmount || "",
         tenure: pendingTenure || "",
         recurring_date: pendingRecurringDate || "",
@@ -391,9 +424,8 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
   };
 
   // Marking an installment paid records it through the same trusted,
-  // additive endpoint the gateways use (it validates against
-  // payment_data.full_amount), so the patient's Paid/Pending figures stay
-  // consistent regardless of where a payment came from.
+  // additive endpoint the gateways use, so the patient's Paid/Pending
+  // figures stay consistent regardless of where a payment came from.
   const markInstallmentPaid = async (num) => {
     const inst = pendingInstallments.find((x) => x.num === num);
     if (!inst || inst.paid) return;
@@ -405,7 +437,7 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
         body: JSON.stringify({
           appointmentId,
           amountPaid: inst.amount,
-          paymentMethod: pendingMode,
+          paymentMethod: "Manual",
           notes: `Installment ${num} of ${pendingInstallments.length}`,
           actorEmail: actor?.email,
           actorRole: actor?.role,
@@ -420,8 +452,12 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
       const updatedInstallments = pendingInstallments.map((x) =>
         x.num === num ? { ...x, paid: true, paid_date: new Date().toISOString().slice(0, 10) } : x
       );
-      const updatedPendingPlan = { mode: pendingMode, amount: pendingPlanAmount, tenure: pendingTenure, recurring_date: pendingRecurringDate, installments: updatedInstallments };
-      const newPaymentData = { ...(appt?.payment_data || {}), pending_plan: updatedPendingPlan };
+      const updatedPendingPlan = { mode: "Installments", amount: pendingPlanAmount, tenure: pendingTenure, recurring_date: pendingRecurringDate, installments: updatedInstallments };
+      const newPaymentData = {
+        ...(appt?.payment_data || {}),
+        pending_plan: updatedPendingPlan,
+        pending_amount: Math.max(0, finalAmt - json.totalPaid),
+      };
 
       const { error } = await supabase
         .from("appointments_booking")
@@ -432,7 +468,6 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
       logAudit({ appointmentId, actor, action: `Installment ${num} Marked Paid`, entity: "payment_data", newData: { installment: num, amount: inst.amount, totalPaid: json.totalPaid } });
 
       setPendingInstallments(updatedInstallments);
-      setPaidAmount(String(json.totalPaid));
       setAppt((prev) => prev && {
         ...prev, payment_data: newPaymentData, amount_paid: json.totalPaid, amount_to_pay: json.stillToPay, payment_status: json.paymentStatus,
       });
@@ -443,375 +478,200 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
     }
   };
 
+  const choiceBtnStyle = (active) => ({
+    flex: 1, padding: "12px", borderRadius: "10px",
+    border: active ? "2px solid #111827" : "1px solid #d1d5db",
+    background: active ? "#f0f0f0" : "white",
+    color: "#111827", fontWeight: active ? "700" : "600", fontSize: "14px", cursor: "pointer",
+  });
+  const okBanner = { marginTop: "12px", padding: "10px 12px", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "8px", color: "#16a34a", fontWeight: "700", fontSize: "13px" };
+  const changeLinkStyle = { marginTop: "10px", padding: "8px 16px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "white", color: "#374151", fontWeight: "600", fontSize: "12px", cursor: "pointer" };
+
   return (
     <div>
-      {/* Card 1 — Select Treatment Model */}
+      {/* Card 1 — Plan & Amount */}
       <div style={card}>
-        <h3 style={{ margin: "0 0 16px", fontSize: "16px", color: "#111827" }}>Select Treatment Model</h3>
-        <button
-          onClick={() => setShowModelSelector(true)}
-          style={{
-            width: "100%",
-            padding: "12px 16px",
-            borderRadius: "10px",
-            border: "2px solid #b8905a",
-            background: "white",
-            color: "#111827",
-            fontWeight: "700",
-            fontSize: "14px",
-            cursor: "pointer",
-          }}
-        >
-          Select Model
+        <h3 style={{ margin: "0 0 16px", fontSize: "16px", color: "#111827" }}>Plan & Amount</h3>
+        <div style={row}>
+          <div>
+            <span style={label}>PLAN</span>
+            <select style={select} value={plan} onChange={(e) => setPlan(e.target.value)}>
+              <option value="">— Select —</option>
+              {PLAN_OPTIONS.map((p) => <option key={p.value} value={p.value}>{p.label} (₹{p.pricePerSet.toLocaleString("en-IN")}/set)</option>)}
+            </select>
+          </div>
+          <div>
+            <span style={label}>NUMBER OF SETS</span>
+            <input style={input} type="number" min="1" placeholder="e.g. 10" value={totalSets}
+              onChange={(e) => setTotalSets(e.target.value)} />
+          </div>
+        </div>
+        <div style={row}>
+          <div>
+            <span style={label}>TOTAL AMOUNT (₹) — auto-calculated</span>
+            <input style={readonlyInput} type="text" readOnly value={`₹ ${grossAmt.toLocaleString("en-IN")}`} />
+          </div>
+          <div>
+            <span style={label}>DISCOUNT (₹)</span>
+            <input style={input} type="number" placeholder="0" value={discount}
+              onChange={(e) => setDiscount(e.target.value)} />
+          </div>
+        </div>
+        <div style={{ marginBottom: "20px" }}>
+          <span style={label}>FINAL AMOUNT (₹) — auto-calculated, after discount</span>
+          <input style={readonlyInput} type="text" readOnly value={`₹ ${finalAmt.toLocaleString("en-IN")}`} />
+        </div>
+        <button style={savingPlan ? { ...btnGold, opacity: 0.6 } : btnGold} onClick={savePlan} disabled={savingPlan}>
+          {savingPlan ? "Saving..." : "Save"}
         </button>
-        {appt?.treatment_model && (
-          <div style={{ marginTop: "12px", padding: "12px", background: "#f0fdf4", borderRadius: "8px", border: "1px solid #bbf7d0", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px" }}>
-            <div>
-              <p style={{ margin: "0 0 6px", fontSize: "11px", fontWeight: "700", color: "#16a34a", textTransform: "uppercase" }}>Selected Model</p>
-              <p style={{ margin: 0, fontSize: "14px", fontWeight: "700", color: "#111827" }}>
-                {MODEL_OPTIONS.find(m => m.value === appt.treatment_model)?.label}
-              </p>
-            </div>
-            <button
-              onClick={clearModel}
-              style={{ padding: "6px 14px", borderRadius: "8px", border: "1px solid #fecaca", background: "#fef2f2", color: "#dc2626", fontWeight: "700", fontSize: "12px", cursor: "pointer", flexShrink: 0 }}
-            >
-              Cancel
-            </button>
-          </div>
-        )}
+        {planSaved && <span style={{ marginLeft: "10px", fontSize: "13px", fontWeight: "700", color: "#16a34a" }}>✓ Saved</span>}
       </div>
 
-      {/* Model Selection Modal */}
-      {showModelSelector && (
-        <div style={{
-          position: "fixed",
-          inset: 0,
-          background: "rgba(0,0,0,0.5)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          zIndex: 1000,
-        }}>
-          <div style={{
-            background: "white",
-            borderRadius: "12px",
-            padding: "24px",
-            maxWidth: "500px",
-            width: "90%",
-            boxShadow: "0 10px 40px rgba(0,0,0,0.2)",
-          }}>
-            <h2 style={{ margin: "0 0 16px", fontSize: "18px", fontWeight: "700", color: "#111827" }}>Select Treatment Model</h2>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "16px" }}>
-              {MODEL_OPTIONS.map((model) => (
-                <button
-                  key={model.value}
-                  onClick={() => setSelectedModelForApply(model)}
-                  style={{
-                    padding: "12px 14px",
-                    borderRadius: "8px",
-                    border: selectedModelForApply?.value === model.value ? "2px solid #111827" : "1px solid #d1d5db",
-                    background: selectedModelForApply?.value === model.value ? "#f0f0f0" : "white",
-                    color: "#111827",
-                    fontWeight: selectedModelForApply?.value === model.value ? "700" : "600",
-                    fontSize: "14px",
-                    cursor: "pointer",
-                    transition: "all 0.2s",
-                  }}
-                >
-                  {model.label}
-                  <span style={{ display: "block", fontSize: "11px", fontWeight: "600", marginTop: "2px", color: selectedModelForApply?.value === model.value ? "#111827" : "#6b7280" }}>
-                    {inr(model.fullAmount)}
-                  </span>
-                </button>
-              ))}
-            </div>
-
-            {selectedModelForApply && (
-              <div style={{ padding: "12px", background: "#ede9fe", borderRadius: "8px", marginBottom: "16px" }}>
-                <p style={{ margin: "0 0 4px", fontSize: "10px", fontWeight: "700", color: "#6d28d9", textTransform: "uppercase" }}>Selected</p>
-                <p style={{ margin: 0, fontSize: "14px", fontWeight: "700", color: "#4c1d95" }}>{selectedModelForApply.label}</p>
-                <p style={{ margin: "6px 0 0", fontSize: "13px", color: "#4c1d95" }}>
-                  Full Amount: <strong>{inr(selectedModelForApply.fullAmount)}</strong> · Down Payment: <strong>{inr(DOWN_PAYMENT_FIXED)}</strong>
-                </p>
-              </div>
-            )}
-
-            <div style={{ display: "flex", gap: "10px" }}>
-              <button
-                onClick={() => {
-                  setShowModelSelector(false);
-                  setSelectedModelForApply(null);
-                }}
-                style={{
-                  flex: 1,
-                  padding: "10px",
-                  borderRadius: "8px",
-                  border: "1px solid #e5e7eb",
-                  background: "white",
-                  color: "#111827",
-                  fontWeight: "600",
-                  fontSize: "13px",
-                  cursor: "pointer",
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={applyModel}
-                disabled={!selectedModelForApply || applyingModel}
-                style={{
-                  flex: 1,
-                  padding: "10px",
-                  borderRadius: "8px",
-                  border: "none",
-                  background: selectedModelForApply && !applyingModel ? "#111827" : "#d1d5db",
-                  color: "white",
-                  fontWeight: "600",
-                  fontSize: "13px",
-                  cursor: selectedModelForApply && !applyingModel ? "pointer" : "not-allowed",
-                  opacity: applyingModel ? 0.6 : 1,
-                }}
-              >
-                {applyingModel ? "Applying..." : "Apply"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Card 2 — Payment Summary & Report */}
-      <div style={card}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px", flexWrap: "wrap", gap: "10px" }}>
-          <h3 style={{ margin: 0, fontSize: "16px", color: "#111827" }}>Payment Summary</h3>
-          {isLocked && (
-            <span style={{ fontSize: "11px", fontWeight: "700", padding: "4px 10px", borderRadius: "99px", background: "#dcfce7", color: "#16a34a", letterSpacing: "0.5px" }}>PUSHED ✓</span>
-          )}
-        </div>
-        <p style={{ margin: "0 0 20px", fontSize: "12px", color: "#9ca3af" }}>
-          Pushing this updates the patient's journey page directly — use it to make or receive a payment for the
-          customer and generate the same report they see, especially if their own self-serve payment didn't reflect.
-        </p>
-
-        {isLocked ? (
-          <>
-            <div style={{ marginBottom: "20px" }}>
-              <PaymentSummaryRow label="Plan" value={plan || "—"} />
-              <PaymentSummaryRow label="Down Payment" value={inr(downPayment)} />
-              <PaymentSummaryRow label="Full Payment" value={inr(fullAmount)} />
-              {couponAmt > 0 && <PaymentSummaryRow label="Coupon" value={`− ${inr(coupon)}`} />}
-              <PaymentSummaryRow label="Final Amount" value={inr(finalAmt)} />
-              {b2bFeesAmt > 0 && (
-                <>
-                  <PaymentSummaryRow label="B2B Fees (internal)" value={`− ${inr(b2bFees)}`} />
-                  <PaymentSummaryRow label="Total Amount (internal)" value={inr(totalAmt)} />
-                </>
-              )}
-              <PaymentSummaryRow label="Paid" value={inr(paidAmount)} />
-              <PaymentSummaryRow label="Pending" value={inr(pendingAmt)} />
-              <PaymentSummaryRow label="Mode" value={mode || "—"} />
-            </div>
-            <button style={btnGold} onClick={() => setIsLocked(false)}>Edit</button>
-          </>
-        ) : (
-          <>
-            <div style={{ marginBottom: "16px" }}>
-              <span style={label}>PLAN</span>
-              <Clearable show={!!plan} onClear={() => setPlan("")}>
-                <select style={select} value={plan} onChange={(e) => setPlan(e.target.value)}>
-                  <option value="">— Select —</option>
-                  {PLAN_OPTIONS.map((p) => <option key={p} value={p}>{p}</option>)}
-                </select>
-              </Clearable>
-            </div>
-
-            <div style={row}>
-              <div>
-                <span style={label}>DOWN PAYMENT (₹)</span>
-                <input style={input} type="number" placeholder="0" value={downPayment}
-                  onChange={(e) => setDownPayment(e.target.value)} />
-              </div>
-              <div>
-                <span style={label}>FULL PAYMENT (₹)</span>
-                <input style={input} type="number" placeholder="0" value={fullAmount}
-                  onChange={(e) => setFullAmount(e.target.value)} />
-              </div>
-            </div>
-            <div style={row}>
-              <div>
-                <span style={label}>COUPON (₹)</span>
-                <input style={input} type="number" placeholder="0" value={coupon}
-                  onChange={(e) => setCoupon(e.target.value)} />
-              </div>
-              <div>
-                <span style={label}>FINAL AMOUNT (₹) — auto-calculated</span>
-                <input style={readonlyInput} type="text" readOnly value={`₹ ${finalAmt.toLocaleString("en-IN")}`} />
-              </div>
-            </div>
-            <div style={row}>
-              <div>
-                <span style={label}>B2B FEES (₹) — internal, not shown to patient</span>
-                <input style={input} type="number" placeholder="0" value={b2bFees}
-                  onChange={(e) => setB2bFees(e.target.value)} />
-              </div>
-              <div>
-                <span style={label}>TOTAL AMOUNT (₹) — auto-calculated, internal</span>
-                <input style={readonlyInput} type="text" readOnly value={`₹ ${totalAmt.toLocaleString("en-IN")}`} />
-              </div>
-            </div>
-            <div style={row}>
-              <div>
-                <span style={label}>PAID (₹)</span>
-                <input style={input} type="number" placeholder="0" value={paidAmount}
-                  onChange={(e) => setPaidAmount(e.target.value)} />
-              </div>
-              <div>
-                <span style={label}>PENDING (₹) — auto-calculated</span>
-                <input style={readonlyInput} type="text" readOnly value={`₹ ${pendingAmt.toLocaleString("en-IN")}`} />
-              </div>
-            </div>
-            <div style={{ marginBottom: "20px" }}>
-              <span style={label}>MODE</span>
-              <Clearable show={!!mode} onClear={() => setMode("")}>
-                <select style={select} value={mode} onChange={(e) => setMode(e.target.value)}>
-                  <option value="">— Select —</option>
-                  {PAYMENT_METHOD_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
-                </select>
-              </Clearable>
-            </div>
-
-            <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-              <button
-                style={pushing ? { ...btnGold, opacity: 0.6 } : btnGold}
-                onClick={pushReport}
-                disabled={pushing}
-              >
-                {pushing ? "Pushing..." : "Push to Patient"}
-              </button>
-              {!!(appt?.payment_data?.full_amount) && (
-                <button
-                  onClick={() => setIsLocked(true)}
-                  style={{ padding: "10px 22px", borderRadius: "10px", border: "1px solid #e5e7eb", background: "white", color: "#374151", fontWeight: "700", fontSize: "13px", cursor: "pointer" }}
-                >
-                  Cancel
-                </button>
-              )}
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* Card 3 — Pending Payment (only while a balance is left to collect) */}
-      {pendingAmt > 0 && (
+      {/* Card 2 — To Pay */}
+      {finalAmt > 0 && (
         <div style={card}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px", flexWrap: "wrap", gap: "10px" }}>
-            <h3 style={{ margin: 0, fontSize: "16px", color: "#111827" }}>Pending Payment</h3>
-            {isPendingLocked && (
-              <span style={{ fontSize: "11px", fontWeight: "700", padding: "4px 10px", borderRadius: "99px", background: "#dcfce7", color: "#16a34a", letterSpacing: "0.5px" }}>SET ✓</span>
-            )}
+          <h3 style={{ margin: "0 0 16px", fontSize: "16px", color: "#111827" }}>To Pay</h3>
+
+          <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
+            <button onClick={() => savePayChoice("full")} style={choiceBtnStyle(payChoice === "full")}>Full Amount</button>
+            <button onClick={() => savePayChoice("down_payment")} style={choiceBtnStyle(payChoice === "down_payment")}>Down Payment</button>
           </div>
-          <p style={{ margin: "0 0 20px", fontSize: "12px", color: "#9ca3af" }}>
-            {inr(pendingAmt)} is still pending. Choose how it'll be collected — pick NACH or E-Mandate to set up a
-            recurring schedule with a Paid option for each installment.
-          </p>
 
-          {isPendingLocked ? (
-            <>
-              <div style={{ marginBottom: "16px" }}>
-                <PaymentSummaryRow label="Mode" value={pendingMode} />
-                {isRecurringMode && (
-                  <>
-                    <PaymentSummaryRow label="Amount per Installment" value={inr(pendingPlanAmount)} />
-                    <PaymentSummaryRow label="Tenure" value={`${pendingTenure} installments`} />
-                    <PaymentSummaryRow label="Recurring Date" value={formatDate(pendingRecurringDate)} last={!pendingInstallments.length} />
-                  </>
-                )}
-              </div>
-
-              {pendingInstallments.length > 0 && (
-                <div style={{ marginBottom: "20px", display: "flex", flexDirection: "column", gap: "8px" }}>
-                  {pendingInstallments.map((inst) => (
-                    <div key={inst.num} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", padding: "10px 12px", background: inst.paid ? "#f0fdf4" : "#f8f7f5", borderRadius: "8px", border: inst.paid ? "1px solid #bbf7d0" : "1px solid transparent" }}>
-                      <div>
-                        <span style={{ fontSize: "13px", fontWeight: "700", color: "#111827" }}>Installment {inst.num}</span>
-                        <span style={{ marginLeft: "8px", fontSize: "13px", color: "#6b7280" }}>{inr(inst.amount)} · {formatDate(inst.date)}</span>
-                      </div>
-                      {inst.paid ? (
-                        <span style={{ fontSize: "12px", fontWeight: "700", color: "#16a34a" }}>Paid ✓{inst.paid_date ? ` on ${formatDate(inst.paid_date)}` : ""}</span>
-                      ) : (
-                        <button
-                          onClick={() => markInstallmentPaid(inst.num)}
-                          disabled={markingInstallmentPaid === inst.num}
-                          style={{ padding: "6px 14px", borderRadius: "8px", border: "none", background: markingInstallmentPaid === inst.num ? "#d4a574" : "#b8905a", color: "white", fontWeight: "700", fontSize: "12px", cursor: markingInstallmentPaid === inst.num ? "not-allowed" : "pointer", whiteSpace: "nowrap" }}
-                        >
-                          {markingInstallmentPaid === inst.num ? "Saving..." : "Mark Paid"}
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <button style={btnGold} onClick={() => setIsPendingLocked(false)}>Edit</button>
-            </>
-          ) : (
-            <>
-              <div style={{ marginBottom: "16px" }}>
-                <span style={label}>MODE</span>
-                <Clearable show={!!pendingMode} onClear={() => setPendingMode("")}>
-                  <select style={select} value={pendingMode} onChange={(e) => setPendingMode(e.target.value)}>
-                    <option value="">— Select —</option>
-                    {PAYMENT_METHOD_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
-                  </select>
-                </Clearable>
-              </div>
-
-              {isRecurringMode && (
-                <>
-                  <div style={row}>
-                    <div>
-                      <span style={label}>AMOUNT PER INSTALLMENT (₹)</span>
-                      <input style={input} type="number" placeholder="0" value={pendingPlanAmount}
-                        onChange={(e) => setPendingPlanAmount(e.target.value)} />
-                    </div>
-                    <div>
-                      <span style={label}>TENURE (NUMBER OF INSTALLMENTS)</span>
-                      <input style={input} type="number" min="1" placeholder="e.g. 5" value={pendingTenure}
-                        onChange={(e) => setPendingTenure(e.target.value)} />
-                    </div>
-                  </div>
-                  <div style={{ marginBottom: "20px" }}>
-                    <span style={label}>RECURRING DATE (FIRST INSTALLMENT)</span>
-                    <input style={input} type="date" value={pendingRecurringDate}
-                      onChange={(e) => setPendingRecurringDate(e.target.value)} />
-                  </div>
-                  {parseFloat(pendingPlanAmount) > 0 && parseInt(pendingTenure) > 0 && pendingRecurringDate && (
-                    <div style={{ padding: "10px 12px", marginBottom: "20px", background: "#f8f7f5", borderRadius: "8px", fontSize: "12px", color: "#6b7280" }}>
-                      This will create {parseInt(pendingTenure)} installments of {inr(pendingPlanAmount)}, starting {formatDate(pendingRecurringDate)} and recurring monthly.
-                    </div>
-                  )}
-                </>
-              )}
-
-              <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+          {payChoice === "full" && (
+            <div style={{ padding: "16px", background: "#f8f7f5", borderRadius: "10px" }}>
+              <PaymentSummaryRow label="Final Amount" value={inr(finalAmt)} />
+              {fullyPaid ? (
+                <div style={okBanner}>✅ Paid in full — Remaining ₹0</div>
+              ) : (
                 <button
-                  style={generatingPending ? { ...btnGold, opacity: 0.6 } : btnGold}
-                  onClick={savePendingSetup}
-                  disabled={generatingPending}
+                  style={{ marginTop: "12px", ...btnGold, opacity: markingPaid === "full" ? 0.6 : 1 }}
+                  onClick={() => recordManualPayment(remainingAmt, "Full Payment", "full")}
+                  disabled={markingPaid === "full"}
                 >
-                  {generatingPending ? "Saving..." : isRecurringMode ? "Generate Schedule" : "Save"}
+                  {markingPaid === "full" ? "Saving..." : "Mark as Paid"}
                 </button>
-                {!!(appt?.payment_data?.pending_plan?.mode) && (
+              )}
+            </div>
+          )}
+
+          {payChoice === "down_payment" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+              <div style={{ padding: "16px", background: "#f8f7f5", borderRadius: "10px" }}>
+                <span style={label}>DOWN PAYMENT (₹)</span>
+                <div style={{ display: "flex", gap: "8px" }}>
+                  <input style={{ ...input, flex: 1 }} type="number" value={downPayment} disabled={downPaymentPaid}
+                    onChange={(e) => setDownPayment(e.target.value)} />
+                  {!downPaymentPaid && (
+                    <button style={{ ...btnPrimary, opacity: savingDownPayment ? 0.6 : 1 }} onClick={saveDownPayment} disabled={savingDownPayment}>
+                      {savingDownPayment ? "Saving..." : "Save"}
+                    </button>
+                  )}
+                </div>
+                {downPaymentPaid ? (
+                  <div style={okBanner}>✅ Down payment paid</div>
+                ) : (
                   <button
-                    onClick={() => setIsPendingLocked(true)}
-                    style={{ padding: "10px 22px", borderRadius: "10px", border: "1px solid #e5e7eb", background: "white", color: "#374151", fontWeight: "700", fontSize: "13px", cursor: "pointer" }}
+                    style={{ marginTop: "12px", ...btnGold, opacity: markingPaid === "down" ? 0.6 : 1 }}
+                    onClick={() => recordManualPayment(downAmt, "Down Payment", "down")}
+                    disabled={markingPaid === "down" || downAmt <= 0}
                   >
-                    Cancel
+                    {markingPaid === "down" ? "Saving..." : "Mark Down Payment Paid"}
                   </button>
                 )}
               </div>
-            </>
+
+              {downPaymentPaid && (
+                <div style={{ padding: "16px", background: "#f8f7f5", borderRadius: "10px" }}>
+                  <PaymentSummaryRow label="Pending Amount" value={inr(remainingAmt)} />
+                  {remainingAmt === 0 ? (
+                    <div style={okBanner}>✅ All paid — Remaining ₹0</div>
+                  ) : !isPendingLocked ? (
+                    <div style={{ marginTop: "12px" }}>
+                      <span style={label}>HOW WILL THE PENDING AMOUNT BE PAID?</span>
+                      <div style={{ display: "flex", gap: "8px", marginBottom: "14px" }}>
+                        {PENDING_SPLIT_OPTIONS.map((opt) => (
+                          <button key={opt} onClick={() => choosePendingSplit(opt)} style={choiceBtnStyle(pendingSplit === opt)}>{opt}</button>
+                        ))}
+                      </div>
+
+                      {isRecurringSplit && (
+                        <>
+                          <div style={row}>
+                            <div>
+                              <span style={label}>AMOUNT PER INSTALLMENT (₹)</span>
+                              <input style={input} type="number" placeholder="0" value={pendingPlanAmount}
+                                onChange={(e) => setPendingPlanAmount(e.target.value)} />
+                            </div>
+                            <div>
+                              <span style={label}>TENURE (NUMBER OF INSTALLMENTS)</span>
+                              <input style={input} type="number" min="1" placeholder="e.g. 5" value={pendingTenure}
+                                onChange={(e) => setPendingTenure(e.target.value)} />
+                            </div>
+                          </div>
+                          <div style={{ marginBottom: "16px" }}>
+                            <span style={label}>FIRST INSTALLMENT DATE</span>
+                            <input style={input} type="date" value={pendingRecurringDate}
+                              onChange={(e) => setPendingRecurringDate(e.target.value)} />
+                          </div>
+                          {parseFloat(pendingPlanAmount) > 0 && parseInt(pendingTenure) > 0 && pendingRecurringDate && (
+                            <div style={{ padding: "10px 12px", marginBottom: "16px", background: "white", borderRadius: "8px", fontSize: "12px", color: "#6b7280" }}>
+                              This will create {parseInt(pendingTenure)} installments of {inr(pendingPlanAmount)}, starting {formatDate(pendingRecurringDate)} and recurring monthly.
+                            </div>
+                          )}
+                          <button
+                            style={{ ...btnGold, opacity: generatingPending ? 0.6 : 1 }}
+                            onClick={savePendingSetup}
+                            disabled={generatingPending}
+                          >
+                            {generatingPending ? "Saving..." : "Generate Schedule"}
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  ) : pendingSplit === "Lump Sum" ? (
+                    <div style={{ marginTop: "12px" }}>
+                      <button
+                        style={{ ...btnGold, opacity: markingPaid === "pending" ? 0.6 : 1 }}
+                        onClick={() => recordManualPayment(remainingAmt, "Pending Amount", "pending")}
+                        disabled={markingPaid === "pending"}
+                      >
+                        {markingPaid === "pending" ? "Saving..." : "Mark as Paid"}
+                      </button>
+                      <div>
+                        <button onClick={() => setIsPendingLocked(false)} style={changeLinkStyle}>Change</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ marginTop: "12px" }}>
+                      {pendingInstallments.length > 0 && (
+                        <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "12px" }}>
+                          {pendingInstallments.map((inst) => (
+                            <div key={inst.num} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", padding: "10px 12px", background: inst.paid ? "#f0fdf4" : "white", borderRadius: "8px", border: inst.paid ? "1px solid #bbf7d0" : "1px solid #e5e7eb" }}>
+                              <div>
+                                <span style={{ fontSize: "13px", fontWeight: "700", color: "#111827" }}>Installment {inst.num}</span>
+                                <span style={{ marginLeft: "8px", fontSize: "13px", color: "#6b7280" }}>{inr(inst.amount)} · {formatDate(inst.date)}</span>
+                              </div>
+                              {inst.paid ? (
+                                <span style={{ fontSize: "12px", fontWeight: "700", color: "#16a34a" }}>Paid ✓{inst.paid_date ? ` on ${formatDate(inst.paid_date)}` : ""}</span>
+                              ) : (
+                                <button
+                                  onClick={() => markInstallmentPaid(inst.num)}
+                                  disabled={markingInstallmentPaid === inst.num}
+                                  style={{ padding: "6px 14px", borderRadius: "8px", border: "none", background: markingInstallmentPaid === inst.num ? "#d4a574" : "#b8905a", color: "white", fontWeight: "700", fontSize: "12px", cursor: markingInstallmentPaid === inst.num ? "not-allowed" : "pointer", whiteSpace: "nowrap" }}
+                                >
+                                  {markingInstallmentPaid === inst.num ? "Saving..." : "Mark Paid"}
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <button onClick={() => setIsPendingLocked(false)} style={changeLinkStyle}>Change</button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           )}
         </div>
       )}

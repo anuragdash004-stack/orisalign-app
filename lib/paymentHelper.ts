@@ -28,7 +28,10 @@ export function getAmountToCollect(
   paymentData: PaymentData,
   paymentType: PaymentType = "down_payment"
 ): number {
-  const full = Number(paymentData.full_amount) || 0;
+  // Prefer final_amount (post-discount) — full_amount alone is the
+  // pre-discount gross figure, which would charge a discounted patient
+  // the wrong (higher) amount for "Full Payment".
+  const full = Number(paymentData.final_amount ?? paymentData.full_amount) || 0;
   const down = Number(paymentData.down_payment) || 0;
   const pending = Number(paymentData.pending_amount) || 0;
   const custom = Number(paymentData.payment_custom_amount) || 0;
@@ -81,7 +84,10 @@ export function getPaymentSummary(paymentData: PaymentData): {
   paymentStatus: "pending" | "partial" | "paid";
 } {
   const paymentType: PaymentType = (paymentData.payment_type_to_collect || "down_payment") as PaymentType;
-  const fullAmount = Number(paymentData.full_amount) || 0;
+  // Prefer final_amount (post-discount, what's actually owed) when present —
+  // full_amount alone is the pre-discount gross figure, which would never
+  // let a discounted patient's balance reach zero.
+  const fullAmount = Number(paymentData.final_amount ?? paymentData.full_amount) || 0;
   const discountAmount = Number(paymentData.discount_amount) || 0;
   const downPayment = Number(paymentData.down_payment) || 0;
   const pendingAmount = Number(paymentData.pending_amount) || 0;
@@ -181,7 +187,10 @@ export async function recordPaymentReceived(params: RecordPaymentParams): Promis
   }
 
   const pd = (appt.payment_data as Record<string, unknown>) || {};
-  const fullAmount = Number(pd.full_amount) || 0;
+  // Prefer final_amount (post-discount) over full_amount (pre-discount
+  // gross) as the cap — otherwise a discounted patient's balance can never
+  // reach "paid" and payments up to the discount gap wouldn't be rejected.
+  const fullAmount = Number(pd.final_amount ?? pd.full_amount) || 0;
   const previouslyPaid = Number(appt.amount_paid) || 0;
   const newTotalPaid = previouslyPaid + amountPaid;
 

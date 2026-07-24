@@ -119,7 +119,7 @@ export async function GET(req: Request) {
     }
 
     const pd = (appt.payment_data as Record<string, unknown>) || {};
-    const fullAmount = Number(pd.full_amount) || 0;
+    const fullAmount = Number(pd.final_amount ?? pd.full_amount) || 0;
 
     return NextResponse.json({
       appointmentId,
