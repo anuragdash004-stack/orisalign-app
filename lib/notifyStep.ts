@@ -6,14 +6,16 @@ const supabase = createClient(
 )
 
 // Kept in sync with app/api/notify-booking/route.ts's CLINIC_INFO.
-const CLINIC_INFO: Record<string, { name: string; address: string }> = {
+const CLINIC_INFO: Record<string, { name: string; address: string; mapsLink: string }> = {
   Nayapalli: {
     name: "Nayapalli Clinic",
     address: "April Dental, 242, Indradhanu Market Rd, N4, Block N4, IRC Village, Nayapalli, Bhubaneswar, Odisha 751015",
+    mapsLink: "https://maps.app.goo.gl/gtLWbuPZ7BLUMmReA",
   },
   Patia: {
     name: "Patia Clinic",
     address: "Kalp Dental Clinic, Kiss Road, Chandaka Industrial Estate, Patia, Bhubaneswar, Odisha",
+    mapsLink: "https://share.google/DPy1ODGR0lb1UZFAT",
   },
 }
 
@@ -280,7 +282,10 @@ export async function sendStepNotification(params: SendStepNotificationParams): 
     }
     const rows = [
       appt.date ? { label: "Date & Time", value: [appt.date, appt.time].filter(Boolean).join(" at ") } : null,
-      clinic ? { label: "Clinic", value: `${clinic.name} — ${clinic.address}` } : null,
+      clinic ? {
+        label: "Clinic",
+        value: `${clinic.name} — ${clinic.address} · <a href="${clinic.mapsLink}" style="color:#1B2A4A;font-weight:700;text-decoration:underline;">View on Google Maps</a>`,
+      } : null,
       dentistName ? { label: "Dentist", value: dentistName } : null,
     ].filter(Boolean) as { label: string; value: string }[]
 
