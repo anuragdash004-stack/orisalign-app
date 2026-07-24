@@ -903,7 +903,7 @@ function LeadRow({ lead, entry, cold, showType, isAdmin, campaigns, onEdit, onDe
         <span style={{ fontSize: "11px", color: "#9ca3af", transition: "transform 0.15s", transform: open ? "rotate(90deg)" : "none", flexShrink: 0 }}>▶</span>
         <span style={{ fontFamily: "monospace", fontWeight: 800, color: "#b8905a", fontSize: "12px", flexShrink: 0 }}>#{lead.lead_number || "—"}</span>
         <span style={{ fontWeight: 700, fontSize: "14px", color: isGreen ? "#16a34a" : "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {lead.name || `#${lead.lead_number || "—"}`}
+          {lead.name || lead.phone || "Unnamed"}
         </span>
         {showType && (
           <span style={pill(...(TYPE_PILL_COLORS[entry?.stage] || ["#f3f4f6", "#6b7280"]))}>
