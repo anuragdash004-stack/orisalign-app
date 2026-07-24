@@ -878,142 +878,136 @@ function pill(bg, color) {
   return { display: "inline-block", padding: "3px 9px", borderRadius: "99px", background: bg, color, fontSize: "11px", fontWeight: "700", whiteSpace: "nowrap" };
 }
 
-// Full tabular view of leads — every field in rows & columns, with the
-// # and Name columns frozen on the left and a prominent horizontal scrollbar.
+// Collapsed-by-default accordion list of leads — each row shows just the
+// lead's # and name (colored per its confirm state, same rule as before:
+// green once that occurrence's stage has been confirmed/moved on, black
+// otherwise), and opens to reveal every other field plus the Stage
+// dropdown and Edit/Delete actions.
 // `leads` (plain array) is used only for the Cold table — no stage_log
 // entries, no confirm mechanic, dropdown always fully selectable.
 // `rows` (array of { lead, entry }) is used for every log-based section
-// (Fresh Leads, Old Leads, Follow-ups, Call Back, Booked, Denied): color and the
-// blank/select-stage dropdown are driven by that specific entry's
+// (Fresh Leads, Old Leads, Follow-ups, Call Back, Booked, Denied): color and
+// the blank/select-stage dropdown are driven by that specific entry's
 // `confirmed` flag, not by the lead's live current stage.
 function LeadTable({ leads, rows: externalRows, onStage, onEdit, onDelete, cold, onPromote, campaigns = [], isAdmin = true, sectionKey }) {
   const rows = externalRows || (leads || []).map((lead) => ({ lead, entry: null }));
+  const showType = sectionKey === "old";
+  return (
+    <div style={{ border: "1px solid #e5e7eb", borderRadius: "12px", background: "white", overflow: "hidden" }}>
+      {rows.map(({ lead, entry }, i) => (
+        <LeadRow
+          key={`${lead.id}-${entry?.loggedAt || "live"}`}
+          lead={lead} entry={entry} cold={cold} showType={showType} isAdmin={isAdmin} campaigns={campaigns}
+          onStage={onStage} onEdit={onEdit} onDelete={onDelete} onPromote={onPromote}
+          isLast={i === rows.length - 1}
+        />
+      ))}
+    </div>
+  );
+}
+
+function LeadRow({ lead, entry, cold, showType, isAdmin, campaigns, onStage, onEdit, onDelete, onPromote, isLast }) {
+  const [open, setOpen] = useState(false);
   const campaignLabel = (id) => {
     const c = campaigns.find((x) => x.id === id);
     return c ? `Campaign ${c.campaign_number}` : "—";
   };
-  const thBase = { padding: "9px 10px", textAlign: "left", fontSize: "10px", fontWeight: "800", color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.4px", whiteSpace: "nowrap", borderBottom: "1px solid #e5e7eb", background: "#f1ece3" };
-  const td = { padding: "9px 10px", fontSize: "12px", color: "#111827", whiteSpace: "nowrap", borderBottom: "1px solid #f3f4f6", verticalAlign: "top" };
-  const wrapTd = { ...td, whiteSpace: "normal", minWidth: "150px", maxWidth: "220px" };
-  // Frozen left columns
-  const numTh = { ...thBase, position: "sticky", left: 0, zIndex: 3, width: "52px", minWidth: "52px", boxShadow: "1px 0 0 #e5e7eb" };
-  const nameTh = { ...thBase, position: "sticky", left: "52px", zIndex: 3, width: "150px", minWidth: "150px", boxShadow: "1px 0 0 #e5e7eb" };
-  const numTd = { ...td, position: "sticky", left: 0, zIndex: 1, background: "white", width: "52px", minWidth: "52px", fontFamily: "monospace", fontWeight: 800, color: "#b8905a", boxShadow: "1px 0 0 #e5e7eb" };
-  const nameTd = { ...td, position: "sticky", left: "52px", zIndex: 1, background: "white", width: "150px", minWidth: "150px", fontWeight: 700, boxShadow: "1px 0 0 #e5e7eb" };
+  const { consultationType, complaint } = parseProblem(lead.problem);
+  const consultLabel = CONSULT_OPTIONS.find((c) => c.value === consultationType)?.label || "—";
+  // Prefer the entry's own recorded date/time so a historical row (e.g. in
+  // Old Leads) shows what was true when it was filed, not whatever the
+  // lead's live fields have since moved on to.
+  const callbackDate = entry?.stage === "callback" ? entry.date : lead.callback_date;
+  const callbackTime = entry?.stage === "callback" ? entry.time : lead.callback_time;
+  const callback = (callbackDate || callbackTime) ? `${formatTime(callbackTime)}${callbackDate ? " · " + formatDate(callbackDate) : ""}`.trim() : "—";
+  const status = lead.booking_confirmed
+    ? "✓ Confirmed"
+    : lead.lead_source === "website"
+      ? (lead.lead_verified ? "Verified" : "Unverified")
+      : "—";
+  // Color/dropdown are driven by this specific log entry, not the lead's
+  // live stage — that's what lets the same lead show green (worked) in one
+  // date's row and black (not yet) in another's.
+  const isGreen = !!entry?.confirmed;
+  const isUnconfirmed = !!entry && !entry.confirmed;
+  const dropdownValue = isUnconfirmed ? "" : (entry ? entry.stage : (lead.lead_stage || "fresh"));
   const miniBtn = (bg, color, border) => ({ padding: "5px 10px", borderRadius: "7px", border: border || "none", background: bg, color, fontWeight: "700", fontSize: "11px", cursor: "pointer", whiteSpace: "nowrap" });
-  const showType = sectionKey === "old";
+
+  const field = (label, value) => (
+    <div>
+      <div style={{ fontSize: "10px", fontWeight: "800", color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: "2px" }}>{label}</div>
+      <div style={{ fontSize: "13px", color: "#111827" }}>{value ?? "—"}</div>
+    </div>
+  );
 
   return (
-    <>
-      <style>{`
-        .lead-scroll { overflow-x: auto; overflow-y: hidden; }
-        .lead-scroll::-webkit-scrollbar { height: 14px; }
-        .lead-scroll::-webkit-scrollbar-track { background: #f1ece3; border-radius: 8px; }
-        .lead-scroll::-webkit-scrollbar-thumb { background: #b8905a; border-radius: 8px; border: 3px solid #f1ece3; }
-        .lead-scroll::-webkit-scrollbar-thumb:hover { background: #a0754d; }
-      `}</style>
-      <div className="lead-scroll" style={{ border: "1px solid #e5e7eb", borderRadius: "12px", background: "white" }}>
-        <table style={{ borderCollapse: "collapse", width: "100%", minWidth: "1500px" }}>
-          <thead>
-            <tr>
-              <th style={numTh}>#</th>
-              <th style={nameTh}>Name</th>
-              {showType && <th style={thBase}>Type</th>}
-              {["Phone", "Alt #", "Email", "Age", "Sex", "Source", "Response", "Last Called", "Lead Status", "Campaign", "Complaint", "Consultation", "Clinic", "Consult Date", "Slot", "Callback", "Address", "Notes", "Verification", cold ? "Action" : "Stage", ""].map((h, i) => (
-                <th key={i} style={thBase}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map(({ lead, entry }) => {
-              const { consultationType, complaint } = parseProblem(lead.problem);
-              const consultLabel = CONSULT_OPTIONS.find((c) => c.value === consultationType)?.label || "—";
-              // Prefer the entry's own recorded date/time so a historical row
-              // (e.g. in Old Leads) shows what was true when it was filed,
-              // not whatever the lead's live fields have since moved on to.
-              const callbackDate = entry?.stage === "callback" ? entry.date : lead.callback_date;
-              const callbackTime = entry?.stage === "callback" ? entry.time : lead.callback_time;
-              const callback = (callbackDate || callbackTime) ? `${formatTime(callbackTime)}${callbackDate ? " · " + formatDate(callbackDate) : ""}`.trim() : "—";
-              const status = lead.booking_confirmed
-                ? "✓ Confirmed"
-                : lead.lead_source === "website"
-                  ? (lead.lead_verified ? "Verified" : "Unverified")
-                  : "—";
-              // Color/dropdown are driven by this specific log entry, not the
-              // lead's live stage — that's what lets the same lead show green
-              // (worked) in one date's row and black (not yet) in another's.
-              const isGreen = !!entry?.confirmed;
-              const isUnconfirmed = !!entry && !entry.confirmed;
-              const dropdownValue = isUnconfirmed ? "" : (entry ? entry.stage : (lead.lead_stage || "fresh"));
-              return (
-                <tr key={`${lead.id}-${entry?.loggedAt || "live"}`}>
-                  <td style={numTd}>#{lead.lead_number || "—"}</td>
-                  <td style={{ ...nameTd, color: isGreen ? "#16a34a" : nameTd.color }}>{lead.name || "—"}</td>
-                  {showType && (
-                    <td style={td}>
-                      <span style={pill(...(TYPE_PILL_COLORS[entry?.stage] || ["#f3f4f6", "#6b7280"]))}>
-                        {STAGES.find((s) => s.key === entry?.stage)?.label || "—"}
-                      </span>
-                    </td>
-                  )}
-                  <td style={td}>{lead.phone || "—"}</td>
-                  <td style={td}>{lead.alt_phone || "—"}</td>
-                  <td style={td}>{lead.email || "—"}</td>
-                  <td style={td}>{lead.age || "—"}</td>
-                  <td style={td}>{lead.sex || "—"}</td>
-                  <td style={td}>{sourceLabel(lead.lead_source)}</td>
-                  <td style={wrapTd}>{lead.lead_response ? responseDisplay(lead.lead_response) : "—"}</td>
-                  <td style={td}>
-                    {lead.call_history?.length > 0
-                      ? formatDate(lead.call_history[lead.call_history.length - 1].date)
-                      : "—"}
-                  </td>
-                  <td style={td}>
-                    {lead.lead_priority ? (
-                      <span style={pill(...priorityPillColor(lead.lead_priority))}>{priorityLabel(lead.lead_priority)}</span>
-                    ) : "—"}
-                  </td>
-                  <td style={td}>{campaignLabel(lead.campaign_id)}</td>
-                  <td style={wrapTd}>{complaint || "—"}</td>
-                  <td style={td}>{consultLabel}</td>
-                  <td style={td}>{lead.clinic_location || "—"}</td>
-                  <td style={td}>{lead.date ? formatDate(lead.date) : "—"}</td>
-                  <td style={td}>{lead.time || "—"}</td>
-                  <td style={td}>{callback}</td>
-                  <td style={wrapTd}>{lead.address || "—"}</td>
-                  <td style={wrapTd}>{lead.lead_notes || "—"}</td>
-                  <td style={td}>{status}</td>
-                  <td style={td}>
-                    {cold ? (
-                      <button onClick={() => onPromote(lead)} style={miniBtn("#16a34a", "white")}>+ Add to Lead</button>
-                    ) : (
-                      <select
-                        value={dropdownValue}
-                        onChange={(e) => onStage(lead, e.target.value, entry?.loggedAt, entry?.bucket)}
-                        style={{
-                          padding: "5px 8px", borderRadius: "7px", fontSize: "11px", cursor: "pointer", color: "#111827",
-                          border: isUnconfirmed ? "1px solid #f59e0b" : "1px solid #e5e7eb",
-                          background: isUnconfirmed ? "#fffbeb" : "white",
-                        }}
-                      >
-                        {isUnconfirmed && <option value="" disabled hidden>Select stage…</option>}
-                        {STAGES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
-                      </select>
-                    )}
-                  </td>
-                  <td style={td}>
-                    <div style={{ display: "flex", gap: "6px" }}>
-                      <button onClick={() => onEdit(lead, entry)} style={miniBtn("white", "#111827", "1px solid #e5e7eb")}>Edit</button>
-                      {isAdmin && <button onClick={() => onDelete(lead)} style={miniBtn("#fef2f2", "#dc2626", "1px solid #fecaca")}>Delete</button>}
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </>
+    <div style={{ borderBottom: isLast ? "none" : "1px solid #f3f4f6" }}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        style={{
+          width: "100%", display: "flex", alignItems: "center", gap: "10px", padding: "12px 14px",
+          border: "none", background: open ? "#f8f6f2" : "white", cursor: "pointer", textAlign: "left",
+        }}
+      >
+        <span style={{ fontSize: "11px", color: "#9ca3af", transition: "transform 0.15s", transform: open ? "rotate(90deg)" : "none", flexShrink: 0 }}>▶</span>
+        <span style={{ fontFamily: "monospace", fontWeight: 800, color: "#b8905a", fontSize: "12px", flexShrink: 0 }}>#{lead.lead_number || "—"}</span>
+        <span style={{ fontWeight: 700, fontSize: "14px", color: isGreen ? "#16a34a" : "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {lead.name || "Unnamed"}
+        </span>
+        {showType && (
+          <span style={pill(...(TYPE_PILL_COLORS[entry?.stage] || ["#f3f4f6", "#6b7280"]))}>
+            {STAGES.find((s) => s.key === entry?.stage)?.label || "—"}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div style={{ padding: "4px 14px 16px 34px", background: "#f8f6f2" }}>
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "14px" }}>
+            {cold ? (
+              <button onClick={() => onPromote(lead)} style={miniBtn("#16a34a", "white")}>+ Add to Lead</button>
+            ) : (
+              <select
+                value={dropdownValue}
+                onChange={(e) => onStage(lead, e.target.value, entry?.loggedAt, entry?.bucket)}
+                style={{
+                  padding: "6px 10px", borderRadius: "7px", fontSize: "12px", cursor: "pointer", color: "#111827",
+                  border: isUnconfirmed ? "1px solid #f59e0b" : "1px solid #e5e7eb",
+                  background: isUnconfirmed ? "#fffbeb" : "white",
+                }}
+              >
+                {isUnconfirmed && <option value="" disabled hidden>Select stage…</option>}
+                {STAGES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+              </select>
+            )}
+            <button onClick={() => onEdit(lead, entry)} style={miniBtn("white", "#111827", "1px solid #e5e7eb")}>Edit</button>
+            {isAdmin && <button onClick={() => onDelete(lead)} style={miniBtn("#fef2f2", "#dc2626", "1px solid #fecaca")}>Delete</button>}
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: "12px 16px" }}>
+            {field("Phone", lead.phone)}
+            {field("Alt #", lead.alt_phone)}
+            {field("Email", lead.email)}
+            {field("Age", lead.age)}
+            {field("Sex", lead.sex)}
+            {field("Source", sourceLabel(lead.lead_source))}
+            {field("Response", lead.lead_response ? responseDisplay(lead.lead_response) : "—")}
+            {field("Last Called", lead.call_history?.length > 0 ? formatDate(lead.call_history[lead.call_history.length - 1].date) : "—")}
+            {field("Lead Status", lead.lead_priority ? <span style={pill(...priorityPillColor(lead.lead_priority))}>{priorityLabel(lead.lead_priority)}</span> : "—")}
+            {field("Campaign", campaignLabel(lead.campaign_id))}
+            {field("Complaint", complaint || "—")}
+            {field("Consultation", consultLabel)}
+            {field("Clinic", lead.clinic_location)}
+            {field("Consult Date", lead.date ? formatDate(lead.date) : "—")}
+            {field("Slot", lead.time)}
+            {field("Callback", callback)}
+            {field("Verification", status)}
+          </div>
+          {lead.address && <div style={{ marginTop: "12px" }}>{field("Address", lead.address)}</div>}
+          {lead.lead_notes && <div style={{ marginTop: "12px" }}>{field("Notes", lead.lead_notes)}</div>}
+        </div>
+      )}
+    </div>
   );
 }
 
