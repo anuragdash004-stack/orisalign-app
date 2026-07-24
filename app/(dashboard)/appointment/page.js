@@ -36,6 +36,11 @@ export default function AppointmentPage() {
       // still in the pipeline (fresh / follow-up / call-back / denied) stay
       // in the Lead Tracker until they are confirmed.
       .eq("booking_confirmed", true)
+      // Sort by when the lead was actually confirmed into a booking, not
+      // when it first entered the pipeline as a lead — otherwise a lead
+      // sitting around for weeks jumps in based on its old creation date
+      // instead of showing up newest-first for whoever just booked it.
+      .order("booking_confirmed_at", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: false });
 
     // 👑 ADMIN → see everything

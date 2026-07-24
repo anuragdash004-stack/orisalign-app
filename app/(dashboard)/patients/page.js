@@ -30,6 +30,9 @@ export default function PatientsPage() {
         // stay on the Appointment page until the admin confirms them, but
         // once confirmed a case stays visible here through completion.
         .in("status", ["confirmed", "completed"])
+        // Sort by when the lead was actually confirmed into a booking, not
+        // when it first entered the pipeline as a lead.
+        .order("booking_confirmed_at", { ascending: false, nullsFirst: false })
         .order("created_at", { ascending: false });
       if (error) console.error(error);
       setAppointments(data || []);
