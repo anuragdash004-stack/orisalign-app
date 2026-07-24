@@ -236,7 +236,7 @@ export async function sendStepNotification(params: SendStepNotificationParams): 
 
   const { data: appt, error: fetchErr } = await supabase
     .from("appointments_booking")
-    .select("id, name, email, date, time, clinic_location, assigned_dentist")
+    .select("id, name, email, date, time, clinic_location, assigned_dentist, problem")
     .eq("id", appointmentId)
     .single()
 
@@ -271,6 +271,9 @@ export async function sendStepNotification(params: SendStepNotificationParams): 
   let detailsBlock: string | undefined
   if (stepKey === "confirmed") {
     const clinic = appt.clinic_location ? CLINIC_INFO[appt.clinic_location] : null
+    // Consultation type is stored as a "[TYPE] complaint" prefix on `problem`
+    // (see parseProblem in the Lead Tracker / booking form).
+    const consultationType = appt.problem?.match(/^\[(\w+)\]/)?.[1]?.toLowerCase()
     let dentistName: string | null = null
     if (appt.assigned_dentist) {
       const { data: dentist } = await supabase
@@ -286,6 +289,9 @@ export async function sendStepNotification(params: SendStepNotificationParams): 
         label: "Clinic",
         value: `${clinic.name} — ${clinic.address} · <a href="${clinic.mapsLink}" style="color:#1B2A4A;font-weight:700;text-decoration:underline;">View on Google Maps</a>`,
       } : null,
+      consultationType === "online"
+        ? { label: "Consultation", value: "Video Consultation — a Google Meet link will be shared 1 hour before your appointment." }
+        : null,
       dentistName ? { label: "Dentist", value: dentistName } : null,
     ].filter(Boolean) as { label: string; value: string }[]
 
