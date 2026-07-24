@@ -1011,9 +1011,10 @@ function LeadForm({ lead, entry, actor, onClose, onSaved, onDuplicateFound, mode
     // spawn a duplicate entry.
     let stageLog = lead?.stage_log || [];
     // `entry` is the specific stage_log row the Edit button was clicked from
-    // (e.g. an Old Leads occurrence) — saving this form is what "deals with"
-    // it, so freeze it green here.
-    if (entry?.loggedAt) {
+    // (e.g. an Old Leads occurrence) — only freeze it green when this save
+    // is an actual stage/date change (or a confirm-to-booked), not just any
+    // edit of unrelated fields on an unchanged stage.
+    if (entry?.loggedAt && (stageChangedFromBefore || dateChanged || confirm)) {
       stageLog = stageLog.map((e) => (e.loggedAt === entry.loggedAt ? { ...e, confirmed: true } : e));
     }
     if (TRACKED_STAGES.includes(nextStage) && (stageChangedFromBefore || dateChanged || !lead)) {
