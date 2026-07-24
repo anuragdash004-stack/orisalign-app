@@ -378,7 +378,7 @@ export default function LeadTrackerPage() {
           <LeadTable leads={coldLeads} cold campaigns={campaigns} onPromote={promoteToLead} onEdit={(lead) => setEditing({ mode: "cold", lead })} onDelete={deleteLead} />
         )}
         {editing && (
-          <LeadForm lead={editing.lead} mode={editing.mode} actor={actor} campaigns={campaigns} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); fetchLeads(); }} onDuplicateFound={(existing) => setEditing({ mode: "normal", lead: existing })} />
+          <LeadForm lead={editing.lead} entry={editing.entry} mode={editing.mode} actor={actor} campaigns={campaigns} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); fetchLeads(); }} onDuplicateFound={(existing) => setEditing({ mode: "normal", lead: existing })} />
         )}
       </div>
     );
@@ -554,7 +554,7 @@ export default function LeadTrackerPage() {
                 {freshRows.length === 0 ? (
                   <div style={{ padding: "14px", background: "white", border: "1px dashed #e5e7eb", borderRadius: "12px", textAlign: "center", color: "#9ca3af", fontSize: "13px" }}>No leads</div>
                 ) : (
-                  <LeadTable rows={freshRows} sectionKey={s.key} campaigns={campaigns} isAdmin={isAdmin} onStage={quickStage} onEdit={(lead) => setEditing({ mode: "normal", lead })} onDelete={deleteLead} />
+                  <LeadTable rows={freshRows} sectionKey={s.key} campaigns={campaigns} isAdmin={isAdmin} onStage={quickStage} onEdit={(lead, entry) => setEditing({ mode: "normal", lead, entry })} onDelete={deleteLead} />
                 )}
               </div>
             );
@@ -607,7 +607,7 @@ export default function LeadTrackerPage() {
               {rows.length === 0 ? (
                 <div style={{ padding: "14px", background: "white", border: "1px dashed #e5e7eb", borderRadius: "12px", textAlign: "center", color: "#9ca3af", fontSize: "13px" }}>No leads</div>
               ) : (
-                <LeadTable rows={rows} sectionKey={s.key} campaigns={campaigns} isAdmin={isAdmin} onStage={quickStage} onEdit={(lead) => setEditing({ mode: "normal", lead })} onDelete={deleteLead} />
+                <LeadTable rows={rows} sectionKey={s.key} campaigns={campaigns} isAdmin={isAdmin} onStage={quickStage} onEdit={(lead, entry) => setEditing({ mode: "normal", lead, entry })} onDelete={deleteLead} />
               )}
             </div>
           );
@@ -617,6 +617,7 @@ export default function LeadTrackerPage() {
       {editing && (
         <LeadForm
           lead={editing.lead}
+          entry={editing.entry}
           mode={editing.mode}
           actor={actor}
           campaigns={campaigns}
@@ -1002,7 +1003,7 @@ function LeadTable({ leads, rows: externalRows, onStage, onEdit, onDelete, cold,
                   </td>
                   <td style={td}>
                     <div style={{ display: "flex", gap: "6px" }}>
-                      <button onClick={() => onEdit(lead)} style={miniBtn("white", "#111827", "1px solid #e5e7eb")}>Edit</button>
+                      <button onClick={() => onEdit(lead, entry)} style={miniBtn("white", "#111827", "1px solid #e5e7eb")}>Edit</button>
                       {isAdmin && <button onClick={() => onDelete(lead)} style={miniBtn("#fef2f2", "#dc2626", "1px solid #fecaca")}>Delete</button>}
                     </div>
                   </td>
@@ -1035,7 +1036,7 @@ function Clearable({ show, onClear, children }) {
   );
 }
 
-function LeadForm({ lead, actor, onClose, onSaved, onDuplicateFound, mode = "normal", campaigns = [] }) {
+function LeadForm({ lead, entry, actor, onClose, onSaved, onDuplicateFound, mode = "normal", campaigns = [] }) {
   const isCold = mode === "cold";
   const [form, setForm] = useState(() => {
     if (!lead) return { ...EMPTY_FORM, lead_stage: isCold ? "cold" : "fresh", add_date: dateKey(new Date()) };
@@ -1080,6 +1081,14 @@ function LeadForm({ lead, actor, onClose, onSaved, onDuplicateFound, mode = "nor
     // a brand-new lead) — editing other fields on an unchanged stage doesn't
     // spawn a duplicate entry.
     let stageLog = lead?.stage_log || [];
+    // `entry` is the specific stage_log row the Edit button was clicked from
+    // (e.g. an Old Leads occurrence) — saving this form is what "deals with"
+    // it, so freeze it green here too, same as the quick dropdown does.
+    // Without this it stayed black forever once scheduled via the date
+    // picker, since only the quick dropdown (quickStage) used to confirm it.
+    if (entry?.loggedAt) {
+      stageLog = stageLog.map((e) => (e.loggedAt === entry.loggedAt ? { ...e, confirmed: true } : e));
+    }
     if (TRACKED_STAGES.includes(nextStage) && (stageChangedFromBefore || dateChanged || !lead)) {
       const bucket = targetDate === todayKeyStr ? nextStage : "old";
       // "Confirm Lead → Booked" is itself the confirming action — no extra
