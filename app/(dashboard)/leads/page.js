@@ -871,8 +871,7 @@ function LeadRow({ lead, entry, cold, showType, isAdmin, campaigns, onEdit, onDe
   // Old Leads) shows what was true when it was filed, not whatever the
   // lead's live fields have since moved on to.
   const callbackDate = entry?.stage === "callback" ? entry.date : lead.callback_date;
-  const callbackTime = entry?.stage === "callback" ? entry.time : lead.callback_time;
-  const callback = (callbackDate || callbackTime) ? `${formatTime(callbackTime)}${callbackDate ? " · " + formatDate(callbackDate) : ""}`.trim() : "—";
+  const callback = callbackDate ? formatDate(callbackDate) : "—";
   const status = lead.booking_confirmed
     ? "✓ Confirmed"
     : lead.lead_source === "website"
