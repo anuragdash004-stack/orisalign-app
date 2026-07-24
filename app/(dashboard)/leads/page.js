@@ -28,7 +28,7 @@ const SECTIONS = [
   { key: "denied",    label: "Denied" },
 ];
 // "fresh" is tracked too so a lead's original Fresh Leads row is logged and
-// stays visible (frozen green) once the lead moves on — see quickStage and
+// stays visible (frozen green) once the lead moves on — see
 // LeadForm.buildPayload, and the "old" bucket only applies to non-today dates.
 const TRACKED_STAGES = ["fresh", "callback", "booked", "denied"];
 const TYPE_PILL_COLORS = {
@@ -186,54 +186,6 @@ export default function LeadTrackerPage() {
   };
 
   const stageOf = (lead) => lead.lead_stage || "fresh";
-
-  // Change a lead's stage from a row's Stage dropdown. `entryLoggedAt`
-  // identifies which stage_log entry that row was showing (undefined for the
-  // Cold table, which doesn't use the log) — picking a value freezes that
-  // entry green in place. `entryBucket` is that same row's bucket (e.g.
-  // "callback", "old") — a brand-new unconfirmed entry is filed for
-  // wherever it was just pointed UNLESS the target is the same bucket the
-  // row is already sitting in today, in which case re-appending would file
-  // a second, still-unconfirmed entry in that same bucket+date that
-  // immediately outranks (as "latest") the one we just turned green,
-  // making the row look like it silently reverted to black. Quick actions
-  // like this have no date picker, so they always target today — that's
-  // what keeps them in the live section instead of Old Leads. Scheduling a
-  // different day only happens through the full Edit form (see
-  // LeadForm.buildPayload), which is what actually files something into
-  // Old Leads.
-  const quickStage = async (lead, newStage, entryLoggedAt, entryBucket) => {
-    const nowIso = new Date().toISOString();
-    const todayKeyStr = dateKey(new Date());
-    const stampBooking = newStage === "booked" && !lead.booking_confirmed_at;
-    const isNoOpReselect = entryBucket === newStage;
-
-    let stageLog = lead.stage_log || [];
-    if (entryLoggedAt) {
-      stageLog = stageLog.map((e) => (e.loggedAt === entryLoggedAt ? { ...e, confirmed: true } : e));
-    }
-    if (TRACKED_STAGES.includes(newStage) && !isNoOpReselect) {
-      stageLog = [...stageLog, {
-        bucket: newStage, stage: newStage, date: todayKeyStr, time: null, confirmed: false, loggedAt: nowIso,
-      }];
-    }
-
-    const extra = {
-      ...(stampBooking ? { booking_confirmed_at: nowIso } : {}),
-      ...(newStage === "callback" ? { callback_date: todayKeyStr } : {}),
-      stage_log: stageLog,
-    };
-    const prevLeads = leads;
-    setLeads((prev) => prev.map((l) => (l.id === lead.id ? { ...l, lead_stage: newStage, ...extra } : l)));
-    const { error } = await supabase
-      .from("appointments_booking")
-      .update({ lead_stage: newStage, ...extra })
-      .eq("id", lead.id);
-    if (error) {
-      setLeads(prevLeads); // roll back the optimistic update — the write didn't actually persist
-      alert("Failed to update stage: " + error.message);
-    }
-  };
 
   // Cold lead → promote into the live tracker as a Fresh lead. Stamp
   // promoted_at so it shows in Fresh Leads on the day it was actually
@@ -554,7 +506,7 @@ export default function LeadTrackerPage() {
                 {freshRows.length === 0 ? (
                   <div style={{ padding: "14px", background: "white", border: "1px dashed #e5e7eb", borderRadius: "12px", textAlign: "center", color: "#9ca3af", fontSize: "13px" }}>No leads</div>
                 ) : (
-                  <LeadTable rows={freshRows} sectionKey={s.key} campaigns={campaigns} isAdmin={isAdmin} onStage={quickStage} onEdit={(lead, entry) => setEditing({ mode: "normal", lead, entry })} onDelete={deleteLead} />
+                  <LeadTable rows={freshRows} sectionKey={s.key} campaigns={campaigns} isAdmin={isAdmin} onEdit={(lead, entry) => setEditing({ mode: "normal", lead, entry })} onDelete={deleteLead} />
                 )}
               </div>
             );
@@ -607,7 +559,7 @@ export default function LeadTrackerPage() {
               {rows.length === 0 ? (
                 <div style={{ padding: "14px", background: "white", border: "1px dashed #e5e7eb", borderRadius: "12px", textAlign: "center", color: "#9ca3af", fontSize: "13px" }}>No leads</div>
               ) : (
-                <LeadTable rows={rows} sectionKey={s.key} campaigns={campaigns} isAdmin={isAdmin} onStage={quickStage} onEdit={(lead, entry) => setEditing({ mode: "normal", lead, entry })} onDelete={deleteLead} />
+                <LeadTable rows={rows} sectionKey={s.key} campaigns={campaigns} isAdmin={isAdmin} onEdit={(lead, entry) => setEditing({ mode: "normal", lead, entry })} onDelete={deleteLead} />
               )}
             </div>
           );
@@ -886,10 +838,11 @@ function pill(bg, color) {
 // `leads` (plain array) is used only for the Cold table — no stage_log
 // entries, no confirm mechanic, dropdown always fully selectable.
 // `rows` (array of { lead, entry }) is used for every log-based section
-// (Fresh Leads, Old Leads, Follow-ups, Call Back, Booked, Denied): color and
-// the blank/select-stage dropdown are driven by that specific entry's
-// `confirmed` flag, not by the lead's live current stage.
-function LeadTable({ leads, rows: externalRows, onStage, onEdit, onDelete, cold, onPromote, campaigns = [], isAdmin = true, sectionKey }) {
+// (Fresh Leads, Old Leads, Follow-ups, Call Back, Booked, Denied): color is
+// driven by that specific entry's `confirmed` flag, not by the lead's live
+// current stage. Stage can only be changed from the Edit form — there's no
+// quick stage-select outside of it.
+function LeadTable({ leads, rows: externalRows, onEdit, onDelete, cold, onPromote, campaigns = [], isAdmin = true, sectionKey }) {
   const rows = externalRows || (leads || []).map((lead) => ({ lead, entry: null }));
   const showType = sectionKey === "old";
   return (
@@ -898,7 +851,7 @@ function LeadTable({ leads, rows: externalRows, onStage, onEdit, onDelete, cold,
         <LeadRow
           key={`${lead.id}-${entry?.loggedAt || "live"}`}
           lead={lead} entry={entry} cold={cold} showType={showType} isAdmin={isAdmin} campaigns={campaigns}
-          onStage={onStage} onEdit={onEdit} onDelete={onDelete} onPromote={onPromote}
+          onEdit={onEdit} onDelete={onDelete} onPromote={onPromote}
           isLast={i === rows.length - 1}
         />
       ))}
@@ -906,7 +859,7 @@ function LeadTable({ leads, rows: externalRows, onStage, onEdit, onDelete, cold,
   );
 }
 
-function LeadRow({ lead, entry, cold, showType, isAdmin, campaigns, onStage, onEdit, onDelete, onPromote, isLast }) {
+function LeadRow({ lead, entry, cold, showType, isAdmin, campaigns, onEdit, onDelete, onPromote, isLast }) {
   const [open, setOpen] = useState(false);
   const campaignLabel = (id) => {
     const c = campaigns.find((x) => x.id === id);
@@ -925,12 +878,10 @@ function LeadRow({ lead, entry, cold, showType, isAdmin, campaigns, onStage, onE
     : lead.lead_source === "website"
       ? (lead.lead_verified ? "Verified" : "Unverified")
       : "—";
-  // Color/dropdown are driven by this specific log entry, not the lead's
-  // live stage — that's what lets the same lead show green (worked) in one
-  // date's row and black (not yet) in another's.
+  // Color is driven by this specific log entry, not the lead's live stage —
+  // that's what lets the same lead show green (worked) in one date's row
+  // and black (not yet) in another's.
   const isGreen = !!entry?.confirmed;
-  const isUnconfirmed = !!entry && !entry.confirmed;
-  const dropdownValue = isUnconfirmed ? "" : (entry ? entry.stage : (lead.lead_stage || "fresh"));
   const miniBtn = (bg, color, border) => ({ padding: "5px 10px", borderRadius: "7px", border: border || "none", background: bg, color, fontWeight: "700", fontSize: "11px", cursor: "pointer", whiteSpace: "nowrap" });
 
   const field = (label, value) => (
@@ -964,22 +915,7 @@ function LeadRow({ lead, entry, cold, showType, isAdmin, campaigns, onStage, onE
       {open && (
         <div style={{ padding: "4px 14px 16px 34px", background: "#f8f6f2" }}>
           <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "14px" }}>
-            {cold ? (
-              <button onClick={() => onPromote(lead)} style={miniBtn("#16a34a", "white")}>+ Add to Lead</button>
-            ) : (
-              <select
-                value={dropdownValue}
-                onChange={(e) => onStage(lead, e.target.value, entry?.loggedAt, entry?.bucket)}
-                style={{
-                  padding: "6px 10px", borderRadius: "7px", fontSize: "12px", cursor: "pointer", color: "#111827",
-                  border: isUnconfirmed ? "1px solid #f59e0b" : "1px solid #e5e7eb",
-                  background: isUnconfirmed ? "#fffbeb" : "white",
-                }}
-              >
-                {isUnconfirmed && <option value="" disabled hidden>Select stage…</option>}
-                {STAGES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
-              </select>
-            )}
+            {cold && <button onClick={() => onPromote(lead)} style={miniBtn("#16a34a", "white")}>+ Add to Lead</button>}
             <button onClick={() => onEdit(lead, entry)} style={miniBtn("white", "#111827", "1px solid #e5e7eb")}>Edit</button>
             {isAdmin && <button onClick={() => onDelete(lead)} style={miniBtn("#fef2f2", "#dc2626", "1px solid #fecaca")}>Delete</button>}
           </div>
@@ -1060,9 +996,9 @@ function LeadForm({ lead, entry, actor, onClose, onSaved, onDuplicateFound, mode
       : form.complaint;
     const nextStage = stageOverride || form.lead_stage;
     const todayKeyStr = dateKey(new Date());
-    // The form is the only place a date can be set to something other than
-    // today — that's what actually files an entry into Old Leads instead of
-    // the live section (see quickStage for the no-date-picker quick path).
+    // The Edit form is the only place a stage/date can be changed — files an
+    // entry into Old Leads instead of the live section when the target date
+    // isn't today.
     const targetDate = nextStage === "callback" ? (form.callback_date || todayKeyStr)
       : nextStage === "fresh" && !lead ? (form.add_date || todayKeyStr) // new lead can be backdated via "Date Added"
       : todayKeyStr; // booked/denied have no date picker — always today
@@ -1077,9 +1013,7 @@ function LeadForm({ lead, entry, actor, onClose, onSaved, onDuplicateFound, mode
     let stageLog = lead?.stage_log || [];
     // `entry` is the specific stage_log row the Edit button was clicked from
     // (e.g. an Old Leads occurrence) — saving this form is what "deals with"
-    // it, so freeze it green here too, same as the quick dropdown does.
-    // Without this it stayed black forever once scheduled via the date
-    // picker, since only the quick dropdown (quickStage) used to confirm it.
+    // it, so freeze it green here.
     if (entry?.loggedAt) {
       stageLog = stageLog.map((e) => (e.loggedAt === entry.loggedAt ? { ...e, confirmed: true } : e));
     }
