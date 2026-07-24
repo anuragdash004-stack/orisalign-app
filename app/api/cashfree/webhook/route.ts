@@ -156,7 +156,12 @@ async function handleEvent(payload: CashfreeWebhookPayload) {
   const pd = (appt.payment_data as Record<string, unknown>) || {};
 
   // Idempotency: if we already recorded this exact Cashfree order, skip.
-  if (pd.cashfree_order_id === orderId && pd.cashfree_status === "PAID") {
+  // Checked on order id alone (not also requiring status === "PAID") so this
+  // and /api/cashfree/verify — which can both fire for the same order, one
+  // via the gateway's server-to-server webhook and one via the customer's
+  // browser redirect — can't both slip past the check and double-record the
+  // same payment against amount_paid.
+  if (pd.cashfree_order_id === orderId) {
     return;
   }
 
