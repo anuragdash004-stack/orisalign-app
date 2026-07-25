@@ -109,11 +109,20 @@ export default function PatientJourney() {
         .eq("id", id)
         .single();
       setPatient(data || null);
+      // Coupons the patient already applied live on the row itself, not just
+      // in memory — otherwise closing/reopening the page (or the discount
+      // just not surviving a re-render) silently dropped the discount and
+      // made them re-enter the same code.
+      setAppliedCoupons(data?.payment_data?.applied_coupons || []);
       setLoading(false);
     };
     load();
   }, [id]);
 
+  // Once applied, a coupon is saved onto the appointment immediately —
+  // permanent for this patient ID, and checked against that saved list (not
+  // just what's in memory) so the same code can't be applied a second time
+  // even across a reload.
   const applyCoupon = async () => {
     if (!couponInput.trim()) {
       setCouponMessage("Please enter a coupon code.");
@@ -144,15 +153,26 @@ export default function PatientJourney() {
         return;
       }
 
-      // Check if coupon already applied
       if (appliedCoupons.find((c) => c.code === data.code)) {
-        setCouponMessage("This coupon is already applied.");
+        setCouponMessage("This coupon has already been used on this patient ID.");
         setApplyingCoupon(false);
         return;
       }
 
-      // Add coupon to applied list
-      setAppliedCoupons([...appliedCoupons, { code: data.code, discount: discountAmount }]);
+      const updatedCoupons = [...appliedCoupons, { code: data.code, discount: discountAmount }];
+      const newPaymentData = { ...(patient?.payment_data || {}), applied_coupons: updatedCoupons };
+      const { error: saveError } = await supabase
+        .from("appointments_booking")
+        .update({ payment_data: newPaymentData })
+        .eq("id", id);
+      if (saveError) {
+        setCouponMessage("Couldn't save the coupon. Please try again.");
+        setApplyingCoupon(false);
+        return;
+      }
+
+      setAppliedCoupons(updatedCoupons);
+      setPatient((prev) => prev && { ...prev, payment_data: newPaymentData });
       setCouponMessage(`✓ Coupon "${data.code}" applied! Discount: ${fmt(discountAmount)}`);
       setCouponInput("");
     } catch (err) {
@@ -809,15 +829,7 @@ export default function PatientJourney() {
                                           {appliedCoupons.map((coupon, idx) => (
                                             <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 8px", background: "white", borderRadius: "4px" }}>
                                               <span style={{ fontSize: "13px", fontWeight: "700", color: "#111827" }}>{coupon.code}</span>
-                                              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                                                <span style={{ fontSize: "12px", color: "#6b7280" }}>- {fmt(coupon.discount)}</span>
-                                                <button
-                                                  onClick={() => setAppliedCoupons(appliedCoupons.filter((_, i) => i !== idx))}
-                                                  style={{ background: "none", border: "none", color: "#dc2626", fontWeight: "700", cursor: "pointer", fontSize: "12px" }}
-                                                >
-                                                  ✕
-                                                </button>
-                                              </div>
+                                              <span style={{ fontSize: "12px", color: "#6b7280" }}>- {fmt(coupon.discount)}</span>
                                             </div>
                                           ))}
                                         </div>
