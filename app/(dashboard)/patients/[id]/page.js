@@ -305,7 +305,15 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
 
   const savePayChoice = async (choice) => {
     setPayChoice(choice);
-    const newPaymentData = { ...(appt?.payment_data || {}), pay_choice: choice };
+    const newPaymentData = {
+      ...(appt?.payment_data || {}),
+      pay_choice: choice,
+      // Persist the down payment amount right away too — otherwise the
+      // pre-filled ₹12,500 default only ever reaches the patient page if
+      // the admin separately remembers to click Save next to the field,
+      // and shows as ₹0 until then.
+      ...(choice === "down_payment" ? { down_payment: downAmt } : {}),
+    };
     const { error } = await supabase.from("appointments_booking").update({ payment_data: newPaymentData }).eq("id", appointmentId);
     if (!error) setAppt((prev) => prev && { ...prev, payment_data: newPaymentData });
   };
