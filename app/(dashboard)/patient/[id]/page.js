@@ -9,6 +9,16 @@ const supabase = getSupabaseClient();
 
 const PROVISIONAL_PLAN_NOTE = "Your tooth will be rotated to required degree. Alignment will be corrected. Spaces will be gained. Your plan might involve IPR and buttons.";
 
+// Same set count applies to both plans — only wear duration differs
+// (OrisPro: 15 days/set, OrisPro Plus: 10 days/set).
+function provisionalDurationText(sets, daysPerSet) {
+  const n = parseInt(sets, 10);
+  if (!n || n <= 0) return "—";
+  const days = n * daysPerSet;
+  const months = Math.round((days / 30) * 10) / 10;
+  return `${days} days (~${months} months)`;
+}
+
 const JOURNEY_STEPS = [
   { key: "booked",                  label: "Appointment Booked" },
   { key: "confirmed",               label: "Appointment Confirmed" },
@@ -444,21 +454,19 @@ export default function PatientJourney() {
                   {/* Expanded Panel — Scanning and Provisional Planning */}
                   {step.key === "scanning_done" && isExpanded && (
                     <div style={{ marginLeft: "58px", marginTop: "8px", background: "white", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
-                      {/* Sets required — OrisPro (as planned) and the OrisPro Plus equivalent */}
+                      {/* Same number of sets for both plans — only the wear duration differs */}
                       {patient?.provisional_sets_orispro && (
                         <div style={{ padding: "10px 12px", background: "#f3f4f6", borderRadius: "8px", marginBottom: "12px" }}>
-                          <p style={{ margin: "0 0 8px", fontSize: "11px", fontWeight: "700", color: "#6b7280", textTransform: "uppercase" }}>Sets Required</p>
+                          <p style={{ margin: "0 0 8px", fontSize: "11px", fontWeight: "700", color: "#6b7280", textTransform: "uppercase" }}>{patient.provisional_sets_orispro} Sets Required</p>
                           <div style={{ display: "flex", gap: "8px" }}>
                             <div style={{ flex: 1, padding: "8px 10px", background: "#ede9fe", borderRadius: "6px" }}>
                               <p style={{ margin: "0 0 4px", fontSize: "10px", fontWeight: "700", color: "#6d28d9", textTransform: "uppercase" }}>OrisPro</p>
-                              <p style={{ margin: 0, fontSize: "13px", fontWeight: "700", color: "#4c1d95" }}>{patient.provisional_sets_orispro} sets</p>
+                              <p style={{ margin: 0, fontSize: "13px", fontWeight: "700", color: "#4c1d95" }}>{provisionalDurationText(patient.provisional_sets_orispro, 15)}</p>
                             </div>
-                            {patient?.provisional_sets_orisplus && (
-                              <div style={{ flex: 1, padding: "8px 10px", background: "#ede9fe", borderRadius: "6px" }}>
-                                <p style={{ margin: "0 0 4px", fontSize: "10px", fontWeight: "700", color: "#6d28d9", textTransform: "uppercase" }}>OrisPro Plus</p>
-                                <p style={{ margin: 0, fontSize: "13px", fontWeight: "700", color: "#4c1d95" }}>{patient.provisional_sets_orisplus} sets</p>
-                              </div>
-                            )}
+                            <div style={{ flex: 1, padding: "8px 10px", background: "#ede9fe", borderRadius: "6px" }}>
+                              <p style={{ margin: "0 0 4px", fontSize: "10px", fontWeight: "700", color: "#6d28d9", textTransform: "uppercase" }}>OrisPro Plus</p>
+                              <p style={{ margin: 0, fontSize: "13px", fontWeight: "700", color: "#4c1d95" }}>{provisionalDurationText(patient.provisional_sets_orispro, 10)}</p>
+                            </div>
                           </div>
                         </div>
                       )}

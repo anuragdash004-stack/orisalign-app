@@ -58,15 +58,17 @@ const SHEET_CATS = {
   "Retainer":            [3, 5, 8, 10, 13, 17, 18, 19, 21, 22],
 };
 
-// Ortho only enters the OrisPro (15 days/set) set count — OrisPro Plus
-// (10 days/set) needs fewer, longer-per-day sets to cover the same total
-// wear duration, so it's derived rather than entered separately.
+// Ortho enters one set count that's the same for both plans — only the
+// wear duration differs, since OrisPro wears each set for longer than
+// OrisPro Plus does.
 const ORISPRO_DAYS_PER_SET = 15;
 const ORISPLUS_DAYS_PER_SET = 10;
-const orisPlusSetsFor = (orisProSets) => {
-  const n = parseInt(orisProSets, 10);
-  if (!n || n <= 0) return 0;
-  return Math.ceil((n * ORISPRO_DAYS_PER_SET) / ORISPLUS_DAYS_PER_SET);
+const durationFor = (sets, daysPerSet) => {
+  const n = parseInt(sets, 10);
+  if (!n || n <= 0) return null;
+  const days = n * daysPerSet;
+  const months = Math.round((days / 30) * 10) / 10;
+  return `${days} days (~${months} months)`;
 };
 
 const PROVISIONAL_PLAN_NOTE = "Your tooth will be rotated to required degree. Alignment will be corrected. Spaces will be gained. Your plan might involve IPR and buttons.";
@@ -214,7 +216,6 @@ export default function OrthoCase() {
       return;
     }
     const setsOp = parseInt(setsOrisPro, 10) || null;
-    const setsPlus = orisPlusSetsFor(setsOrisPro) || null;
     setProvisionalSaving(true);
     const { error } = await supabase
       .from("appointments_booking")
@@ -222,13 +223,12 @@ export default function OrthoCase() {
         provisional_plan: provisionalPlan,
         ortho_note: orthoNote,
         provisional_sets_orispro: setsOp,
-        provisional_sets_orisplus: setsPlus,
         provisional_plan_submitted: true,
       })
       .eq("id", id);
     setProvisionalSaving(false);
     if (error) { alert("Failed to submit plan: " + error.message); return; }
-    logAudit({ appointmentId: id, actor, action: "Provisional Plan Submitted", entity: "provisional_plan", newData: { provisional_plan: provisionalPlan, ortho_note: orthoNote, provisional_sets_orispro: setsOp, provisional_sets_orisplus: setsPlus } });
+    logAudit({ appointmentId: id, actor, action: "Provisional Plan Submitted", entity: "provisional_plan", newData: { provisional_plan: provisionalPlan, ortho_note: orthoNote, provisional_sets_orispro: setsOp } });
     setProvisionalSubmitted(true);
   };
 
@@ -464,7 +464,7 @@ export default function OrthoCase() {
               {!provisionalSubmitted && (
                 <div style={{ marginBottom: "16px", padding: "14px", borderRadius: "12px", border: "1px solid #e5e7eb", background: "#f9fafb" }}>
                   <label style={{ fontWeight: "600", fontSize: "13px", color: "#111827", display: "block", marginBottom: "6px" }}>
-                    Number of Sets Required (OrisPro — {ORISPRO_DAYS_PER_SET} days/set)
+                    Number of Sets Required (same for both plans — only duration differs)
                   </label>
                   <input
                     type="number" min="1" placeholder="e.g. 12"
@@ -472,9 +472,10 @@ export default function OrthoCase() {
                     onChange={(e) => setSetsOrisPro(e.target.value)}
                     style={{ ...inputStyle, marginBottom: 0 }}
                   />
-                  {orisPlusSetsFor(setsOrisPro) > 0 && (
+                  {durationFor(setsOrisPro, ORISPRO_DAYS_PER_SET) && (
                     <p style={{ fontSize: "12px", color: "#6b7280", margin: "8px 0 0" }}>
-                      OrisPro Plus ({ORISPLUS_DAYS_PER_SET} days/set) equivalent: <strong style={{ color: "#111827" }}>{orisPlusSetsFor(setsOrisPro)} sets</strong>
+                      OrisPro ({ORISPRO_DAYS_PER_SET} days/set): <strong style={{ color: "#111827" }}>{durationFor(setsOrisPro, ORISPRO_DAYS_PER_SET)}</strong><br />
+                      OrisPro Plus ({ORISPLUS_DAYS_PER_SET} days/set): <strong style={{ color: "#111827" }}>{durationFor(setsOrisPro, ORISPLUS_DAYS_PER_SET)}</strong>
                     </p>
                   )}
                 </div>
@@ -484,8 +485,8 @@ export default function OrthoCase() {
                 <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "8px", padding: "14px", fontSize: "14px", color: "#111827", whiteSpace: "pre-wrap" }}>
                   {setsOrisPro && (
                     <div style={{ marginBottom: "12px", paddingBottom: "12px", borderBottom: "1px solid #bbf7d0" }}>
-                      <p style={{ fontSize: "11px", fontWeight: "700", color: "#16a34a", textTransform: "uppercase", letterSpacing: "0.5px", margin: "0 0 4px" }}>Sets Required</p>
-                      <p style={{ margin: 0, fontSize: "14px", color: "#111827" }}>OrisPro: {setsOrisPro} sets · OrisPro Plus: {orisPlusSetsFor(setsOrisPro)} sets</p>
+                      <p style={{ fontSize: "11px", fontWeight: "700", color: "#16a34a", textTransform: "uppercase", letterSpacing: "0.5px", margin: "0 0 4px" }}>Sets Required: {setsOrisPro}</p>
+                      <p style={{ margin: 0, fontSize: "14px", color: "#111827" }}>OrisPro: {durationFor(setsOrisPro, ORISPRO_DAYS_PER_SET)} · OrisPro Plus: {durationFor(setsOrisPro, ORISPLUS_DAYS_PER_SET)}</p>
                     </div>
                   )}
                   {provisionalPlan}
