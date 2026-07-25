@@ -58,71 +58,18 @@ const SHEET_CATS = {
   "Retainer":            [3, 5, 8, 10, 13, 17, 18, 19, 21, 22],
 };
 
-const MODEL_OPTIONS = [
-  { label: "6-8", value: "6-8", fullAmount: 65000 },
-  { label: "8-10", value: "8-10", fullAmount: 70000 },
-  { label: "10-12", value: "10-12", fullAmount: 80000 },
-  { label: "12-14", value: "12-14", fullAmount: 89000 },
-  { label: "14-16", value: "14-16", fullAmount: 99000 },
-  { label: "16-18", value: "16-18", fullAmount: 108000 },
-];
-
-const ORISPRO_MODELS = {
-  "6-8": {
-    one: { duration: "6-8 months", fullAmount: 65000, downPayment: 12500 },
-    two: { duration: "4-6 months", fullAmount: 72000, downPayment: 15500 },
-  },
-  "8-10": {
-    one: { duration: "8-10 months", fullAmount: 70000, downPayment: 12500 },
-    two: { duration: "6-7 months", fullAmount: 78000, downPayment: 15500 },
-  },
-  "10-12": {
-    one: { duration: "10-12 months", fullAmount: 80000, downPayment: 12500 },
-    two: { duration: "6-8 months", fullAmount: 102000, downPayment: 15500 },
-  },
-  "12-14": {
-    one: { duration: "12-14 months", fullAmount: 89000, downPayment: 12500 },
-    two: { duration: "8-9 months", fullAmount: 115000, downPayment: 15500 },
-  },
-  "14-16": {
-    one: { duration: "14-16 months", fullAmount: 99000, downPayment: 12500 },
-    two: { duration: "9-11 months", fullAmount: 128000, downPayment: 15500 },
-  },
-  "16-18": {
-    one: { duration: "16-18 months", fullAmount: 108000, downPayment: 12500 },
-    two: { duration: "10-12 months", fullAmount: 141000, downPayment: 15500 },
-  },
+// Ortho only enters the OrisPro (15 days/set) set count — OrisPro Plus
+// (10 days/set) needs fewer, longer-per-day sets to cover the same total
+// wear duration, so it's derived rather than entered separately.
+const ORISPRO_DAYS_PER_SET = 15;
+const ORISPLUS_DAYS_PER_SET = 10;
+const orisPlusSetsFor = (orisProSets) => {
+  const n = parseInt(orisProSets, 10);
+  if (!n || n <= 0) return 0;
+  return Math.ceil((n * ORISPRO_DAYS_PER_SET) / ORISPLUS_DAYS_PER_SET);
 };
 
-const DURATION_OPTIONS = [
-  "6-8 months",
-  "8-10 months",
-  "10-12 months",
-  "12-14 months",
-  "14-16 months",
-  "16-18 months",
-];
-
 const PROVISIONAL_PLAN_NOTE = "Your tooth will be rotated to required degree. Alignment will be corrected. Spaces will be gained. Your plan might involve IPR and buttons.";
-
-// Wraps a single-choice control with a Cancel (✕) button when it has a value.
-function Clearable({ show, onClear, children }) {
-  return (
-    <div style={{ display: "flex", gap: "6px", alignItems: "stretch" }}>
-      <div style={{ flex: 1, minWidth: 0 }}>{children}</div>
-      {show && (
-        <button
-          type="button"
-          onClick={onClear}
-          title="Clear selection"
-          style={{ flexShrink: 0, padding: "0 12px", borderRadius: "8px", border: "1px solid #fecaca", background: "#fef2f2", color: "#dc2626", fontWeight: "700", fontSize: "13px", cursor: "pointer" }}
-        >
-          ✕
-        </button>
-      )}
-    </div>
-  );
-}
 
 function ViewSection({ title, done, activeSection, setActiveSection, children }) {
   const isOpen = activeSection === title;
@@ -177,16 +124,13 @@ export default function OrthoCase() {
   const [actor, setActor] = useState(null);
 
   // Planning state
-  const [treatmentDuration, setTreatmentDuration] = useState("");
+  const [setsOrisPro, setSetsOrisPro] = useState("");
   const [provisionalPlan, setProvisionalPlan] = useState("");
   const [provisionalSubmitted, setProvisionalSubmitted] = useState(false);
   const [provisionalSaving, setProvisionalSaving] = useState(false);
 
   const [orthoNote, setOrthoNote] = useState(PROVISIONAL_PLAN_NOTE);
   const [noteSaving, setNoteSaving] = useState(false);
-
-  const [selectedModel, setSelectedModel] = useState("");
-  const [showModelModal, setShowModelModal] = useState(false);
 
   const [finalPlan, setFinalPlan] = useState("");
   const [finalSaving, setFinalSaving] = useState(false);
@@ -223,8 +167,7 @@ export default function OrthoCase() {
         setProvisionalSubmitted(true);
         setProvisionalPlan(data.provisional_plan || "");
       }
-      setTreatmentDuration(data.treatment_duration || "");
-      setSelectedModel(data.treatment_model || "");
+      setSetsOrisPro(data.provisional_sets_orispro ? String(data.provisional_sets_orispro) : "");
       setOrthoNote(data.ortho_note || "");
       setFinalPlan(data.final_plan || "");
       setVideoLink(data.planning_video_link || "");
@@ -270,20 +213,22 @@ export default function OrthoCase() {
       alert("Please write the provisional plan first.");
       return;
     }
+    const setsOp = parseInt(setsOrisPro, 10) || null;
+    const setsPlus = orisPlusSetsFor(setsOrisPro) || null;
     setProvisionalSaving(true);
     const { error } = await supabase
       .from("appointments_booking")
       .update({
         provisional_plan: provisionalPlan,
         ortho_note: orthoNote,
-        treatment_duration: treatmentDuration,
-        treatment_model: selectedModel,
+        provisional_sets_orispro: setsOp,
+        provisional_sets_orisplus: setsPlus,
         provisional_plan_submitted: true,
       })
       .eq("id", id);
     setProvisionalSaving(false);
     if (error) { alert("Failed to submit plan: " + error.message); return; }
-    logAudit({ appointmentId: id, actor, action: "Provisional Plan Submitted", entity: "provisional_plan", newData: { provisional_plan: provisionalPlan, ortho_note: orthoNote, treatment_duration: treatmentDuration, treatment_model: selectedModel } });
+    logAudit({ appointmentId: id, actor, action: "Provisional Plan Submitted", entity: "provisional_plan", newData: { provisional_plan: provisionalPlan, ortho_note: orthoNote, provisional_sets_orispro: setsOp, provisional_sets_orisplus: setsPlus } });
     setProvisionalSubmitted(true);
   };
 
@@ -517,91 +462,30 @@ export default function OrthoCase() {
               </label>
 
               {!provisionalSubmitted && (
-                <>
-                  <div style={{ marginBottom: "16px", padding: "14px", borderRadius: "12px", border: "1px solid #e5e7eb", background: "#f9fafb" }}>
-                    <p style={{ fontSize: "11px", fontWeight: "700", color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.5px", margin: "0 0 10px" }}>Treatment Model</p>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "8px" }}>
-                      {MODEL_OPTIONS.map((model) => (
-                        <button
-                          key={model.value}
-                          onClick={() => {
-                            setSelectedModel(model.value);
-                            const modelData = ORISPRO_MODELS[model.value];
-                            if (modelData && modelData.one) {
-                              setTreatmentDuration(modelData.one.duration);
-                            }
-                          }}
-                          style={{
-                            padding: "10px 12px",
-                            borderRadius: "8px",
-                            border: selectedModel === model.value ? "2px solid #111827" : "1px solid #d1d5db",
-                            background: selectedModel === model.value ? "#f0f0f0" : "white",
-                            color: "#111827",
-                            fontWeight: selectedModel === model.value ? "700" : "600",
-                            fontSize: "13px",
-                            cursor: "pointer",
-                            transition: "all 0.2s",
-                          }}
-                        >
-                          {model.label}
-                        </button>
-                      ))}
-                    </div>
-                    {selectedModel && (
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", margin: "8px 0 0" }}>
-                        <p style={{ fontSize: "12px", color: "#16a34a", fontWeight: "600", margin: 0 }}>
-                          ✓ {MODEL_OPTIONS.find(m => m.value === selectedModel)?.label} selected
-                        </p>
-                        <button
-                          onClick={() => { setSelectedModel(""); setTreatmentDuration(""); }}
-                          style={{ padding: "4px 12px", borderRadius: "7px", border: "1px solid #fecaca", background: "#fef2f2", color: "#dc2626", fontWeight: "700", fontSize: "12px", cursor: "pointer" }}
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  <div style={{ marginBottom: "16px" }}>
-                    <label style={{ fontWeight: "600", fontSize: "13px", color: "#111827", display: "block", marginBottom: "6px" }}>
-                      Treatment Duration
-                    </label>
-                    <Clearable show={!!treatmentDuration} onClear={() => setTreatmentDuration("")}>
-                      <select
-                        value={treatmentDuration}
-                        onChange={(e) => setTreatmentDuration(e.target.value)}
-                        style={{
-                          ...inputStyle,
-                          width: "100%",
-                          padding: "10px 12px",
-                          borderRadius: "8px",
-                          border: "1px solid #d1d5db",
-                          fontSize: "14px",
-                          outline: "none",
-                        }}
-                      >
-                        <option value="">Select duration</option>
-                        {DURATION_OPTIONS.map((duration) => (
-                          <option key={duration} value={duration}>{duration}</option>
-                        ))}
-                      </select>
-                    </Clearable>
-                  </div>
-                </>
+                <div style={{ marginBottom: "16px", padding: "14px", borderRadius: "12px", border: "1px solid #e5e7eb", background: "#f9fafb" }}>
+                  <label style={{ fontWeight: "600", fontSize: "13px", color: "#111827", display: "block", marginBottom: "6px" }}>
+                    Number of Sets Required (OrisPro — {ORISPRO_DAYS_PER_SET} days/set)
+                  </label>
+                  <input
+                    type="number" min="1" placeholder="e.g. 12"
+                    value={setsOrisPro}
+                    onChange={(e) => setSetsOrisPro(e.target.value)}
+                    style={{ ...inputStyle, marginBottom: 0 }}
+                  />
+                  {orisPlusSetsFor(setsOrisPro) > 0 && (
+                    <p style={{ fontSize: "12px", color: "#6b7280", margin: "8px 0 0" }}>
+                      OrisPro Plus ({ORISPLUS_DAYS_PER_SET} days/set) equivalent: <strong style={{ color: "#111827" }}>{orisPlusSetsFor(setsOrisPro)} sets</strong>
+                    </p>
+                  )}
+                </div>
               )}
 
               {provisionalSubmitted ? (
                 <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "8px", padding: "14px", fontSize: "14px", color: "#111827", whiteSpace: "pre-wrap" }}>
-                  {selectedModel && (
+                  {setsOrisPro && (
                     <div style={{ marginBottom: "12px", paddingBottom: "12px", borderBottom: "1px solid #bbf7d0" }}>
-                      <p style={{ fontSize: "11px", fontWeight: "700", color: "#16a34a", textTransform: "uppercase", letterSpacing: "0.5px", margin: "0 0 4px" }}>Model</p>
-                      <p style={{ margin: 0, fontSize: "14px", color: "#111827" }}>{MODEL_OPTIONS.find(m => m.value === selectedModel)?.label}</p>
-                    </div>
-                  )}
-                  {treatmentDuration && (
-                    <div style={{ marginBottom: "12px", paddingBottom: "12px", borderBottom: "1px solid #bbf7d0" }}>
-                      <p style={{ fontSize: "11px", fontWeight: "700", color: "#16a34a", textTransform: "uppercase", letterSpacing: "0.5px", margin: "0 0 4px" }}>Duration</p>
-                      <p style={{ margin: 0, fontSize: "14px", color: "#111827" }}>{treatmentDuration}</p>
+                      <p style={{ fontSize: "11px", fontWeight: "700", color: "#16a34a", textTransform: "uppercase", letterSpacing: "0.5px", margin: "0 0 4px" }}>Sets Required</p>
+                      <p style={{ margin: 0, fontSize: "14px", color: "#111827" }}>OrisPro: {setsOrisPro} sets · OrisPro Plus: {orisPlusSetsFor(setsOrisPro)} sets</p>
                     </div>
                   )}
                   {provisionalPlan}
