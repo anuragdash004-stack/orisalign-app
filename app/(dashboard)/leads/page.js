@@ -1018,7 +1018,15 @@ function LeadForm({ lead, entry, actor, onClose, onSaved, onDuplicateFound, mode
       stageLog = stageLog.map((e) => (e.loggedAt === entry.loggedAt ? { ...e, confirmed: true } : e));
     }
     if (TRACKED_STAGES.includes(nextStage) && (stageChangedFromBefore || dateChanged || !lead)) {
-      const bucket = targetDate === todayKeyStr ? nextStage : "old";
+      // "fresh" always logs into its own bucket, same as promoteToLead — the
+      // section rendering already filters every bucket (fresh included) by
+      // entry.date === selectedDate, so there's no need to pre-decide
+      // today-vs-old here like callback/booked/denied intentionally do.
+      // Baking that decision in at save time was the bug: a lead added a day
+      // early with "Date Added" pointed at today got bucket:"old" frozen in
+      // permanently, since todayKeyStr is evaluated at the save moment, not
+      // whenever the lead is actually viewed.
+      const bucket = nextStage === "fresh" ? "fresh" : targetDate === todayKeyStr ? nextStage : "old";
       // "Confirm Lead → Booked" is itself the confirming action — no extra
       // re-pick-the-stage step needed on top of it.
       stageLog = [...stageLog, { bucket, stage: nextStage, date: targetDate, time: targetTime, confirmed: !!confirm, loggedAt: new Date().toISOString() }];

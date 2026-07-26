@@ -6,6 +6,13 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+// Date-only key in IST, regardless of the server's own timezone — matches
+// dateKey() in the Lead Tracker (app/(dashboard)/leads/page.js), which is
+// always evaluated from the staff browser's local (IST) clock.
+function dateKeyIST(d: Date | string) {
+  return new Date(d).toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" })
+}
+
 const CLINIC_INFO: Record<string, { name: string; address: string; mapsLink: string }> = {
   Nayapalli: {
     name: "Nayapalli Clinic",
@@ -30,9 +37,16 @@ export async function POST(req: Request) {
     // up in the Lead Tracker. Create it here, then send a short
     // notification — never the full booking template below.
     if (type === "callback") {
+      const nowIso = new Date().toISOString()
       const { error: insertError } = await supabase
         .from("appointments_booking")
-        .insert([{ name, phone, status: "lead", lead_stage: "fresh", lead_source: "website", problem: "Requested a callback from the homepage" }])
+        .insert([{
+          name, phone, status: "lead", lead_stage: "fresh", lead_source: "website",
+          problem: "Requested a callback from the homepage",
+          // Without this the Lead Tracker's Fresh Leads section (driven
+          // entirely by stage_log, not lead_stage) never shows this lead.
+          stage_log: [{ bucket: "fresh", stage: "fresh", date: dateKeyIST(nowIso), time: null, confirmed: false, loggedAt: nowIso }],
+        }])
 
       if (insertError) {
         console.error("[notify-booking] callback insert failed", insertError)

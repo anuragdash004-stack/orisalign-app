@@ -9,6 +9,13 @@ const supabase = createClient(
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
+// Date-only key in IST, regardless of the server's own timezone — matches
+// dateKey() in the Lead Tracker (app/(dashboard)/leads/page.js), which is
+// always evaluated from the staff browser's local (IST) clock.
+function dateKeyIST(d: Date | string) {
+  return new Date(d).toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" })
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json()
@@ -36,6 +43,10 @@ export async function POST(req: Request) {
           status: "lead",
           lead_verified: true,
           created_at: bookedAt,
+          // Without this the Lead Tracker's Fresh Leads section (which is
+          // driven entirely by stage_log, not lead_stage) never shows this
+          // lead at all until someone manually edits it.
+          stage_log: [{ bucket: "fresh", stage: "fresh", date: dateKeyIST(bookedAt), time: null, confirmed: false, loggedAt: bookedAt }],
         },
       ])
       .select("id")

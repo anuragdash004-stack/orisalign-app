@@ -170,6 +170,17 @@ export default function PatientDetailsPage() {
 
       const alreadyConfirmed = patient?.booking_confirmed
 
+      // The Lead Tracker's Booked section is driven entirely by stage_log,
+      // not lead_stage/booking_confirmed — without this entry, confirming a
+      // booking here (as opposed to via the admin's Lead Tracker) leaves the
+      // lead invisible there even though it correctly shows in Appointments.
+      const nowIso = new Date().toISOString()
+      const todayIST = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" })
+      const newStageLog = [
+        ...(patient?.stage_log || []),
+        { bucket: "booked", stage: "booked", date: todayIST, time: null, confirmed: true, loggedAt: nowIso },
+      ]
+
       const { error } = await supabase!
         .from("appointments_booking")
         .update({
@@ -177,6 +188,7 @@ export default function PatientDetailsPage() {
           problem: `[${consultationType.toUpperCase()}] ${problem}`,
           booking_confirmed: true,
           lead_stage: "booked",
+          stage_log: newStageLog,
         })
         .eq("id", id)
 
