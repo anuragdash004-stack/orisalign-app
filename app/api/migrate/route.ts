@@ -75,6 +75,8 @@ export async function GET() {
     )) WHERE lead_stage = 'fresh' AND NOT EXISTS (
       SELECT 1 FROM jsonb_array_elements(COALESCE(stage_log, '[]'::jsonb)) e WHERE e->>'bucket' = 'fresh'
     )`,
+    // ── Ortho: Provisional Planning sets-required (basis: OrisPro, 15 days/set) ──
+    "ALTER TABLE appointments_booking ADD COLUMN IF NOT EXISTS provisional_sets_orispro INTEGER",
   ];
 
   const results = [];
