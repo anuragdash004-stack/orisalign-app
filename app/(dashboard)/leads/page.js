@@ -997,14 +997,22 @@ function LeadForm({ lead, entry, actor, onClose, onSaved, onDuplicateFound, mode
     const todayKeyStr = dateKey(new Date());
     // The Edit form is the only place a stage/date can be changed — files an
     // entry into Old Leads instead of the live section when the target date
-    // isn't today.
+    // isn't today. For "booked", that target is the actual consultation
+    // date/slot (Consult Date/Slot fields) — not the day it was confirmed —
+    // so the Booked section shows who's actually booked in for today, not
+    // just whoever happened to get confirmed today.
     const targetDate = nextStage === "callback" ? (form.callback_date || todayKeyStr)
+      : nextStage === "booked" ? (form.date || todayKeyStr)
       : nextStage === "fresh" && !lead ? (form.add_date || todayKeyStr) // new lead can be backdated via "Date Added"
-      : todayKeyStr; // booked/denied have no date picker — always today
-    const targetTime = nextStage === "callback" ? (form.callback_time || null) : null;
+      : todayKeyStr; // denied has no date picker — always today
+    const targetTime = nextStage === "callback" ? (form.callback_time || null)
+      : nextStage === "booked" ? (form.time || null)
+      : null;
     const dateChanged = nextStage === "callback"
       ? form.callback_date !== (lead?.callback_date || "")
-      : false;
+      : nextStage === "booked"
+        ? form.date !== (lead?.date || "")
+        : false;
     const stageChangedFromBefore = nextStage !== (lead?.lead_stage || "fresh");
     // Log a new occurrence whenever this save is a real stage/date change (or
     // a brand-new lead) — editing other fields on an unchanged stage doesn't
