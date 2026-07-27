@@ -28,12 +28,11 @@ const ALL_STEPS = [
   { key: "feedback_submitted",      label: "Feedback Submitted" },
 ];
 const DELIVERY_PARTNERS = ["BlueDart", "Delhivery", "Other"];
-const DOWN_PAYMENT_FIXED = 12500;
-// Plan determines the per-set price — total amount is just sets × price,
-// no separate treatment-model selector anymore.
+// Plan determines the per-set price and the default down payment — total
+// amount is just sets × price, no separate treatment-model selector anymore.
 const PLAN_OPTIONS = [
-  { value: "ORISPRO", label: "OrisPro", pricePerSet: 3499 },
-  { value: "ORISPLUS", label: "OrisPro Plus", pricePerSet: 4499 },
+  { value: "ORISPRO", label: "OrisPro", pricePerSet: 3499, downPayment: 12499 },
+  { value: "ORISPLUS", label: "OrisPro Plus", pricePerSet: 4499, downPayment: 15499 },
 ];
 const PENDING_SPLIT_OPTIONS = ["Lump Sum", "Installments"];
 
@@ -213,7 +212,10 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
 
   // Card 2 — To Pay: Full Amount vs Down Payment, and marking things paid.
   const [payChoice, setPayChoice] = useState(initialData?.pay_choice ?? "");
-  const [downPayment, setDownPayment] = useState(initialData?.down_payment ? String(initialData.down_payment) : String(DOWN_PAYMENT_FIXED));
+  const [downPayment, setDownPayment] = useState(initialData?.down_payment ? String(initialData.down_payment) : "");
+  // Tracks whether the admin has typed a custom down payment — once they
+  // have, switching plans shouldn't silently overwrite it.
+  const downPaymentManuallySet = useRef(!!initialData?.down_payment);
   const [savingDownPayment, setSavingDownPayment] = useState(false);
   const [markingPaid, setMarkingPaid] = useState(null); // "full" | "down" | "pending"
 
@@ -262,6 +264,16 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
   const remainingAmt = Math.max(0, finalAmt - paidAmt);
   const fullyPaid = finalAmt > 0 && paidAmt >= finalAmt;
   const downPaymentPaid = downAmt > 0 && paidAmt >= downAmt;
+
+  // Down payment defaults to the selected plan's figure (OrisPro ₹12,499,
+  // OrisPro Plus ₹15,499) and updates automatically when the plan changes —
+  // unless the admin already typed a custom amount, or it's already paid.
+  useEffect(() => {
+    if (planInfo && !downPaymentManuallySet.current && !downPaymentPaid) {
+      setDownPayment(String(planInfo.downPayment));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plan]);
 
   const savePlan = async () => {
     if (!plan) { alert("Select a plan."); return; }
@@ -572,7 +584,7 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
                 <span style={label}>DOWN PAYMENT (₹)</span>
                 <div style={{ display: "flex", gap: "8px" }}>
                   <input style={{ ...input, flex: 1 }} type="number" value={downPayment} disabled={downPaymentPaid}
-                    onChange={(e) => setDownPayment(e.target.value)} />
+                    onChange={(e) => { downPaymentManuallySet.current = true; setDownPayment(e.target.value); }} />
                   {!downPaymentPaid && (
                     <button style={{ ...btnPrimary, opacity: savingDownPayment ? 0.6 : 1 }} onClick={saveDownPayment} disabled={savingDownPayment}>
                       {savingDownPayment ? "Saving..." : "Save"}
