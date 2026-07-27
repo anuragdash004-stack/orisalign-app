@@ -19,6 +19,13 @@ function provisionalDurationText(sets, daysPerSet) {
   return `${days} days (~${months} months)`;
 }
 
+// Kept in sync with PLAN_OPTIONS in app/(dashboard)/patients/[id]/page.js
+// (the admin Payment tab) — the patient picks between these two here.
+const PLAN_OPTIONS = [
+  { value: "ORISPRO", label: "OrisPro", pricePerSet: 3499, downPayment: 12499 },
+  { value: "ORISPLUS", label: "OrisPro Plus", pricePerSet: 4499, downPayment: 15499 },
+];
+
 const JOURNEY_STEPS = [
   { key: "booked",                  label: "Appointment Booked" },
   { key: "confirmed",               label: "Appointment Confirmed" },
@@ -73,18 +80,6 @@ function ReportRow({ label, value, last }) {
   );
 }
 
-function calculateFinalAmount(pd, appliedCoupons) {
-  let fullAmt = parseFloat(pd.full_amount) || 0;
-  fullAmt = fullAmt - (parseFloat(pd.discount) || 0);
-
-  // Apply all applied coupons
-  appliedCoupons.forEach((coupon) => {
-    fullAmt = Math.max(0, fullAmt - parseFloat(coupon.discount));
-  });
-
-  return Math.round(fullAmt * 100) / 100;
-}
-
 export default function PatientJourney() {
   const { id } = useParams();
   const router = useRouter();
@@ -100,6 +95,8 @@ export default function PatientJourney() {
   const [couponMessage, setCouponMessage] = useState("");
   const [applyingCoupon, setApplyingCoupon] = useState(false);
   const [payNowLoading, setPayNowLoading] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState("ORISPRO"); // "ORISPRO" or "ORISPLUS"
+  const [switchingPlan, setSwitchingPlan] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -114,6 +111,7 @@ export default function PatientJourney() {
       // just not surviving a re-render) silently dropped the discount and
       // made them re-enter the same code.
       setAppliedCoupons(data?.payment_data?.applied_coupons || []);
+      setSelectedPlan(data?.payment_data?.plan || "ORISPRO");
       setLoading(false);
     };
     load();
@@ -201,6 +199,44 @@ export default function PatientJourney() {
   const completedCount = Object.values(steps).filter(Boolean).length;
   const progressPct = Math.round((completedCount / JOURNEY_STEPS.length) * 100);
   const pd = patient.payment_data || {};
+
+  // Number of sets is the same regardless of plan (set by the orthodontist
+  // in Provisional Planning, or later confirmed in the Aligner Plan) — only
+  // price-per-set and down payment differ between OrisPro and OrisPro Plus.
+  const sets = patient.aligner_total_sets || patient.provisional_sets_orispro || 0;
+  const activePlanInfo = PLAN_OPTIONS.find((p) => p.value === selectedPlan) || PLAN_OPTIONS[0];
+  const discountAmt = parseFloat(pd.discount) || 0;
+  const couponsTotal = appliedCoupons.reduce((sum, c) => sum + (parseFloat(c.discount) || 0), 0);
+  const planGrossAmt = sets * activePlanInfo.pricePerSet;
+  const planFinalAmt = Math.max(0, planGrossAmt - discountAmt - couponsTotal);
+  const planDownAmt = activePlanInfo.downPayment;
+
+  // Patient's own plan choice — persisted immediately so the admin's
+  // Payment tab and this page always agree on which plan (and therefore
+  // which amounts) are current.
+  const selectPlan = async (value) => {
+    if (value === selectedPlan || switchingPlan) return;
+    setSwitchingPlan(true);
+    const info = PLAN_OPTIONS.find((p) => p.value === value);
+    const gross = sets * info.pricePerSet;
+    const final = Math.max(0, gross - discountAmt - couponsTotal);
+    const newPaymentData = {
+      ...pd,
+      plan: value,
+      price_per_set: info.pricePerSet,
+      full_amount: gross,
+      final_amount: final,
+      down_payment: info.downPayment,
+    };
+    const { error } = await supabase
+      .from("appointments_booking")
+      .update({ payment_data: newPaymentData })
+      .eq("id", id);
+    setSwitchingPlan(false);
+    if (error) { alert("Couldn't switch plan: " + error.message); return; }
+    setSelectedPlan(value);
+    setPatient((prev) => prev && { ...prev, payment_data: newPaymentData });
+  };
 
   const isPlanApprovalReady =
     steps.booked && steps.confirmed && steps.scanning_done &&
@@ -670,10 +706,37 @@ export default function PatientJourney() {
                   {step.key === "payment_done" && isExpanded && (
                     <div style={{ marginLeft: "58px", marginTop: "8px", background: "white", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
                       <p style={{ margin: "0 0 14px", fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Plan and Payment</p>
-                      {!pd.full_amount ? (
+                      {!sets ? (
                         <p style={{ margin: 0, fontSize: "13px", color: "#9ca3af", fontStyle: "italic" }}>Payment details will appear here once confirmed.</p>
                       ) : (
                         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                          {/* Plan toggle — same set count either way, only price/down
+                              payment differ. Locked once any payment has been made. */}
+                          {patient.payment_status !== "paid" && !patient.amount_paid && (
+                            <div style={{ display: "flex", gap: "8px" }}>
+                              {PLAN_OPTIONS.map((p) => (
+                                <button
+                                  key={p.value}
+                                  onClick={() => selectPlan(p.value)}
+                                  disabled={switchingPlan}
+                                  style={{
+                                    flex: 1,
+                                    padding: "10px",
+                                    borderRadius: "8px",
+                                    border: selectedPlan === p.value ? "2px solid #b8905a" : "1px solid #e5e7eb",
+                                    background: selectedPlan === p.value ? "#f8f7f5" : "white",
+                                    color: "#111827",
+                                    fontWeight: "700",
+                                    fontSize: "13px",
+                                    cursor: switchingPlan ? "not-allowed" : "pointer",
+                                    opacity: switchingPlan ? 0.7 : 1,
+                                  }}
+                                >
+                                  {p.label}
+                                </button>
+                              ))}
+                            </div>
+                          )}
                           {/* Full payment report — sourced only from the clinic's saved
                               figures (pushed from the backend or recorded automatically by
                               the gateway), so it always matches what's actually charged. */}
@@ -683,15 +746,15 @@ export default function PatientJourney() {
                             </div>
                           )}
                           <div style={{ padding: "14px", background: "#f8f7f5", borderRadius: "10px", border: "1px solid #e5e7eb" }}>
-                            {pd.plan && <ReportRow label="Plan" value={pd.plan} />}
-                            <ReportRow label="Down Payment" value={fmt(pd.down_payment)} />
-                            <ReportRow label="Full Payment" value={fmt(pd.full_amount)} />
-                            {parseFloat(pd.discount) > 0 && <ReportRow label="Coupon" value={`− ${fmt(pd.discount)}`} />}
-                            <ReportRow label="Final Amount" value={fmt(pd.final_amount || pd.full_amount)} />
+                            <ReportRow label="Plan" value={activePlanInfo.label} />
+                            <ReportRow label="Down Payment" value={fmt(planDownAmt)} />
+                            <ReportRow label="Full Payment" value={fmt(planGrossAmt)} />
+                            {(discountAmt + couponsTotal) > 0 && <ReportRow label="Coupon" value={`− ${fmt(discountAmt + couponsTotal)}`} />}
+                            <ReportRow label="Final Amount" value={fmt(planFinalAmt)} />
                             <ReportRow label="Paid" value={fmt(patient.amount_paid || 0)} />
                             <ReportRow
                               label="Pending"
-                              value={fmt(Math.max(0, (parseFloat(pd.final_amount || pd.full_amount) || 0) - (parseFloat(patient.amount_paid) || 0)))}
+                              value={fmt(Math.max(0, planFinalAmt - (parseFloat(patient.amount_paid) || 0)))}
                               last={!pd.payment_mode && !pd.pending_plan?.installments?.length}
                             />
                             {pd.payment_mode && (
@@ -758,10 +821,10 @@ export default function PatientJourney() {
                             // a different price.
                             const hasPartialPaid = !!patient.amount_paid;
                             const amountDue = hasPartialPaid
-                              ? Math.max(0, (parseFloat(pd.full_amount) || 0) - (parseFloat(patient.amount_paid) || 0))
+                              ? Math.max(0, planFinalAmt - (parseFloat(patient.amount_paid) || 0))
                               : paymentMode === "down"
-                                ? (parseFloat(pd.down_payment) || 0)
-                                : calculateFinalAmount({ full_amount: pd.full_amount, discount: pd.discount }, appliedCoupons);
+                                ? planDownAmt
+                                : planFinalAmt;
                             return (
                               <>
                                 {/* Amount Display */}
