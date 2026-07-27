@@ -235,10 +235,14 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
 
   // Number of sets lives on the row itself (aligner_total_sets) — shared
   // with the Journey tab's Aligner Plan, so whichever side sets it first
-  // shows up here without clobbering anything already typed.
+  // shows up here without clobbering anything already typed. Before either
+  // of those has been set, fall back to whatever the orthodontist already
+  // entered in Provisional Planning (provisional_sets_orispro), so the
+  // total amount here calculates automatically without re-typing the count.
   useEffect(() => {
     if (appt && !initializedSets.current) {
-      setTotalSets(appt.aligner_total_sets ? String(appt.aligner_total_sets) : "");
+      const sets = appt.aligner_total_sets || appt.provisional_sets_orispro;
+      setTotalSets(sets ? String(sets) : "");
       initializedSets.current = true;
     }
   }, [appt]);
