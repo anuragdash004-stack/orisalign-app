@@ -31,10 +31,10 @@ const JOURNEY_STEPS = [
   { key: "confirmed",               label: "Appointment Confirmed" },
   { key: "scanning_done",           label: "Scanning and Provisional Planning", expandable: true },
   { key: "payment_done",            label: "Plan and Payment",            expandable: true },
+  { key: "prealigner_treatment",    label: "Prealigner Treatment",        expandable: true },
   { key: "planning_done",           label: "Full Plan", expandable: true },
   { key: "plan_approved",           label: "Plan Approval", approveAction: true },
-  { key: "manufacturing_started",   label: "Manufacturing Started" },
-  { key: "manufacturing_completed", label: "Manufacturing Completed" },
+  { key: "manufacturing",           label: "Manufacturing",               expandable: true },
   { key: "aligners_dispatched",     label: "Aligners Dispatched", expandable: true },
   { key: "aligners_received",       label: "Aligners Received", expandable: true },
   { key: "followup_appointment",    label: "Appointment Book" },
@@ -44,18 +44,33 @@ const JOURNEY_STEPS = [
   { key: "feedback_submitted",      label: "Feedback Form Submitted",    expandable: true },
 ];
 
+// All pre-aligner procedures the dentist selected on the Patient Form
+// ("Restorations", "Extraction", "Scaling", etc. — see PROCEDURE_OPTIONS in
+// app/(dashboard)/dentist/[id]/appointment/page.js), expanded to include a
+// readable "Others: <text>" entry when "Others" was selected.
+function prealignerProcedures(appt) {
+  const pfd = appt?.patient_form_data || {};
+  const procs = [...(pfd.pre_orthodontic_procedures || [])];
+  return procs.map((p) => (p === "Others" && pfd.pre_orthodontic_others ? `Others: ${pfd.pre_orthodontic_others}` : p));
+}
+
 function deriveSteps(appt) {
   if (!appt) return {};
   const js = appt.journey_steps || {};
+  const procs = prealignerProcedures(appt);
+  const prealignerDone = js.prealigner_done || {};
   return {
     booked:                  true,
     confirmed:               appt.status === "confirmed" || appt.status === "completed",
     scanning_done:           js.scanning_done        !== undefined ? !!js.scanning_done        : !!appt.stl_submitted,
     payment_done:            js.payment_done         !== undefined ? !!js.payment_done         : !!(appt.payment_data?.final_amount),
+    // No pre-aligner procedures selected → nothing to wait on, counts as done.
+    prealigner_treatment:    procs.length === 0 ? true : procs.every((p) => !!prealignerDone[p]),
     planning_done:           js.planning_done        !== undefined ? !!js.planning_done        : !!appt.provisional_plan_submitted,
     plan_approved:           js.plan_approved        !== undefined ? !!js.plan_approved        : !!(appt.final_plan && appt.final_plan.trim()),
-    manufacturing_started:   !!js.manufacturing_started,
-    manufacturing_completed: !!js.manufacturing_completed,
+    // Manufacturing counts as "done" (green, roadmap moves on) once fully
+    // completed — Started/Ended are shown separately inside its own panel.
+    manufacturing:           !!js.manufacturing_completed,
     aligners_dispatched:     !!js.aligners_dispatched,
     aligners_received:       !!js.aligners_received,
     followup_appointment:    !!js.followup_appointment,
@@ -89,6 +104,7 @@ export default function PatientJourney() {
   const [approving, setApproving] = useState(false);
   const [copiedNum, setCopiedNum] = useState(null);
   const [receivingBatch, setReceivingBatch] = useState(null);
+  const [markingProcedureDone, setMarkingProcedureDone] = useState(null);
   const [paymentMode, setPaymentMode] = useState("down"); // "down" or "full"
   const [appliedCoupons, setAppliedCoupons] = useState([]); // Array of {code, discount}
   const [couponInput, setCouponInput] = useState("");
@@ -344,6 +360,28 @@ export default function PatientJourney() {
     }
   };
 
+  // Patient marks one of the dentist-selected prealigner procedures as
+  // done themselves — recorded with a timestamp, one entry per procedure,
+  // never overwritten once set.
+  const markPrealignerDone = async (procName) => {
+    if (patient?.journey_steps?.prealigner_done?.[procName]) return;
+    setMarkingProcedureDone(procName);
+    try {
+      const newDone = { ...(patient?.journey_steps?.prealigner_done || {}), [procName]: new Date().toISOString() };
+      const newJourneySteps = { ...(patient?.journey_steps || {}), prealigner_done: newDone };
+      const { error } = await supabase
+        .from("appointments_booking")
+        .update({ journey_steps: newJourneySteps })
+        .eq("id", id);
+      if (error) { alert("Failed to record: " + error.message); return; }
+      setPatient((prev) => prev && { ...prev, journey_steps: newJourneySteps });
+    } catch {
+      alert("Network error. Please try again.");
+    } finally {
+      setMarkingProcedureDone(null);
+    }
+  };
+
   return (
     <div style={{ minHeight: "100vh", paddingBottom: "60px", fontFamily: "'Inter', system-ui, sans-serif", colorScheme: "light" }}>
 
@@ -439,16 +477,16 @@ export default function PatientJourney() {
                               Thank you for approving your treatment plan.
                             </p>
                           )}
-                          {step.key === "manufacturing_started" && done && patient.journey_steps?.manufacturing_started_at && (() => {
+                          {step.key === "manufacturing" && !done && patient.journey_steps?.manufacturing_started && patient.journey_steps?.manufacturing_started_at && (() => {
                             const startedBatches = (patient.manufacturing_data?.batches || []).filter((b) => b.mfg_started).map((b) => b.num);
                             return (
-                              <p style={{ margin: "2px 0 0", fontSize: "11px", color: "#16a34a", lineHeight: "1.4" }}>
+                              <p style={{ margin: "2px 0 0", fontSize: "11px", color: "#b8905a", lineHeight: "1.4" }}>
                                 {startedBatches.length > 0 ? `Batch ${startedBatches.join(", ")} — ` : ""}
                                 Started on {new Date(patient.journey_steps.manufacturing_started_at + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                               </p>
                             );
                           })()}
-                          {step.key === "manufacturing_completed" && done && patient.journey_steps?.manufacturing_completed_at && (() => {
+                          {step.key === "manufacturing" && done && patient.journey_steps?.manufacturing_completed_at && (() => {
                             const doneBatches = (patient.manufacturing_data?.batches || []).filter((b) => b.mfg_done).map((b) => b.num);
                             return (
                               <p style={{ margin: "2px 0 0", fontSize: "11px", color: "#16a34a", lineHeight: "1.4" }}>
@@ -549,6 +587,49 @@ export default function PatientJourney() {
                     </div>
                   )}
 
+                  {/* Expanded Panel — Prealigner Treatment */}
+                  {step.key === "prealigner_treatment" && isExpanded && (() => {
+                    const procs = prealignerProcedures(patient);
+                    const doneMap = patient.journey_steps?.prealigner_done || {};
+                    return (
+                      <div style={{ marginLeft: "58px", marginTop: "8px", background: "white", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+                        <p style={{ margin: "0 0 14px", fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Prealigner Treatment</p>
+                        {procs.length === 0 ? (
+                          <p style={{ margin: 0, fontSize: "13px", color: "#9ca3af", fontStyle: "italic" }}>No prealigner treatment needed — your dentist didn't flag any procedures.</p>
+                        ) : (
+                          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                            {procs.map((proc) => {
+                              const doneAt = doneMap[proc];
+                              return (
+                                <div key={proc} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", padding: "10px 12px", background: doneAt ? "#f0fdf4" : "#f8f7f5", borderRadius: "8px", border: doneAt ? "1px solid #bbf7d0" : "1px solid transparent" }}>
+                                  <div>
+                                    <span style={{ fontSize: "13px", fontWeight: "700", color: "#111827" }}>{proc}</span>
+                                    {doneAt && (
+                                      <span style={{ display: "block", fontSize: "11px", color: "#16a34a", marginTop: "2px" }}>
+                                        Done on {new Date(doneAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                                      </span>
+                                    )}
+                                  </div>
+                                  {doneAt ? (
+                                    <span style={{ fontSize: "12px", fontWeight: "700", color: "#16a34a" }}>✓ Done</span>
+                                  ) : (
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); markPrealignerDone(proc); }}
+                                      disabled={markingProcedureDone === proc}
+                                      style={{ padding: "6px 14px", borderRadius: "8px", border: "none", background: markingProcedureDone === proc ? "#d4a574" : "#b8905a", color: "white", fontWeight: "700", fontSize: "12px", cursor: markingProcedureDone === proc ? "not-allowed" : "pointer", whiteSpace: "nowrap" }}
+                                    >
+                                      {markingProcedureDone === proc ? "Saving..." : "Mark as Done"}
+                                    </button>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
                   {/* Expanded Panel — Planning Done */}
                   {step.key === "planning_done" && isExpanded && (
                     <div style={{ marginLeft: "58px", marginTop: "8px", background: "white", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
@@ -579,6 +660,48 @@ export default function PatientJourney() {
                       )}
                     </div>
                   )}
+
+                  {/* Expanded Panel — Manufacturing (Started / Ended) */}
+                  {step.key === "manufacturing" && isExpanded && (() => {
+                    const js = patient.journey_steps || {};
+                    const startedBatches = (patient.manufacturing_data?.batches || []).filter((b) => b.mfg_started).map((b) => b.num);
+                    const doneBatches = (patient.manufacturing_data?.batches || []).filter((b) => b.mfg_done).map((b) => b.num);
+                    const rows = [
+                      {
+                        label: "Started",
+                        done: !!js.manufacturing_started,
+                        at: js.manufacturing_started_at,
+                        batches: startedBatches,
+                      },
+                      {
+                        label: "Ended",
+                        done: !!js.manufacturing_completed,
+                        at: js.manufacturing_completed_at,
+                        batches: doneBatches,
+                      },
+                    ];
+                    return (
+                      <div style={{ marginLeft: "58px", marginTop: "8px", background: "white", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+                        <p style={{ margin: "0 0 14px", fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Manufacturing</p>
+                        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                          {rows.map((r) => (
+                            <div key={r.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", padding: "10px 12px", background: r.done ? "#f0fdf4" : "#f8f7f5", borderRadius: "8px", border: r.done ? "1px solid #bbf7d0" : "1px solid transparent" }}>
+                              <div>
+                                <span style={{ fontSize: "13px", fontWeight: "700", color: "#111827" }}>{r.label}</span>
+                                {r.done && r.at && (
+                                  <span style={{ display: "block", fontSize: "11px", color: "#16a34a", marginTop: "2px" }}>
+                                    {r.batches.length > 0 ? `Batch ${r.batches.join(", ")} — ` : ""}
+                                    {new Date(r.at + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                                  </span>
+                                )}
+                              </div>
+                              <span style={{ fontSize: "12px", fontWeight: "700", color: r.done ? "#16a34a" : "#9ca3af" }}>{r.done ? "✓ Done" : "Pending"}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {/* Expanded Panel — Aligners Dispatched */}
                   {step.key === "aligners_dispatched" && isExpanded && (
