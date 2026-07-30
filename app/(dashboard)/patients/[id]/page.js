@@ -254,7 +254,13 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
   const sets = parseInt(totalSets, 10) || 0;
   const grossAmt = pricePerSet * sets;
   const discountAmt = parseFloat(discount) || 0;
-  const finalAmt = Math.max(0, grossAmt - discountAmt);
+  // Coupons the patient applied themselves (on their own Plan and Payment
+  // page) live in payment_data.applied_coupons — fold that total in here too,
+  // so the admin's Final Amount always matches what the patient actually
+  // sees and owes, not just the admin's own manually-entered Discount.
+  const appliedCouponsTotal = (appt?.payment_data?.applied_coupons || [])
+    .reduce((sum, c) => sum + (parseFloat(c.discount) || 0), 0);
+  const finalAmt = Math.max(0, grossAmt - discountAmt - appliedCouponsTotal);
   const downAmt = parseFloat(downPayment) || 0;
   // amount_paid lives outside payment_data, on the row itself, and is the
   // one trusted running total — kept in sync by recordPaymentReceived
@@ -541,8 +547,19 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
               onChange={(e) => setDiscount(e.target.value)} />
           </div>
         </div>
+        {appliedCouponsTotal > 0 && (
+          <div style={{ marginBottom: "16px", padding: "10px 12px", background: "#fef3c7", borderRadius: "8px" }}>
+            <p style={{ margin: "0 0 6px", fontSize: "11px", fontWeight: "700", color: "#92400e", textTransform: "uppercase" }}>Coupon(s) applied by patient</p>
+            {(appt?.payment_data?.applied_coupons || []).map((c, i) => (
+              <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", color: "#111827" }}>
+                <span style={{ fontWeight: "700" }}>{c.code}</span>
+                <span>− {inr(c.discount)}</span>
+              </div>
+            ))}
+          </div>
+        )}
         <div style={{ marginBottom: "20px" }}>
-          <span style={label}>FINAL AMOUNT (₹) — auto-calculated, after discount</span>
+          <span style={label}>FINAL AMOUNT (₹) — auto-calculated, after discount{appliedCouponsTotal > 0 ? " & coupon(s)" : ""}</span>
           <input style={readonlyInput} type="text" readOnly value={`₹ ${finalAmt.toLocaleString("en-IN")}`} />
         </div>
         <button style={savingPlan ? { ...btnGold, opacity: 0.6 } : btnGold} onClick={savePlan} disabled={savingPlan}>
