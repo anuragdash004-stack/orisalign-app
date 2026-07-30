@@ -166,7 +166,7 @@ async function handleEvent(payload: CashfreeWebhookPayload) {
   }
 
   const currentPending = Number(pd.pending_amount) || 0;
-  const newPaymentData = {
+  const newPaymentData: Record<string, unknown> = {
     ...pd,
     cashfree_order_id: orderId,
     cashfree_status: "PAID",
@@ -175,6 +175,11 @@ async function handleEvent(payload: CashfreeWebhookPayload) {
     cashfree_source: "webhook",
     pending_amount: Math.max(0, currentPending - paymentAmount),
   };
+  // Resolved here — the reconciliation cron doesn't need to poll this order.
+  if (pd.pending_cashfree_order_id === orderId) {
+    delete newPaymentData.pending_cashfree_order_id;
+    delete newPaymentData.pending_cashfree_order_created_at;
+  }
 
   const { error: updateError } = await supabase
     .from("appointments_booking")

@@ -161,6 +161,28 @@ export async function POST(req: Request) {
       );
     }
 
+    // Record the attempt immediately — before the customer ever reaches
+    // Cashfree's checkout, not just after. Previously nothing was written
+    // until the webhook/redirect fired, so a payment that succeeded but
+    // whose confirmation never reached us (dropped redirect, webhook not
+    // configured, app closed mid-UPI-app-switch) left zero trace to
+    // reconcile from — exactly what happened for at least one patient.
+    // /api/cron/reconcile-payments polls Cashfree for any order still
+    // "pending" here so a missed webhook/redirect doesn't require a manual
+    // fix.
+    const pdWithPending = {
+      ...((appt.payment_data as Record<string, unknown>) || {}),
+      pending_cashfree_order_id: orderId,
+      pending_cashfree_order_created_at: new Date().toISOString(),
+    };
+    await supabase
+      .from("appointments_booking")
+      .update({ payment_data: pdWithPending })
+      .eq("id", appointmentId)
+      .then(({ error: pendingErr }) => {
+        if (pendingErr) console.error("[cashfree/order] failed to record pending order", pendingErr);
+      });
+
     return NextResponse.json({
       paymentSessionId: cfData.payment_session_id,
       orderId,

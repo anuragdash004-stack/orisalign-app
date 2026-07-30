@@ -81,7 +81,7 @@ export async function GET(req: Request) {
       alreadyApplied = true;
     } else {
       const currentPending = Number(pd.pending_amount) || 0;
-      const newPaymentData = {
+      const newPaymentData: Record<string, unknown> = {
         ...pd,
         cashfree_order_id: orderId,
         cashfree_status: status,
@@ -90,6 +90,11 @@ export async function GET(req: Request) {
         cashfree_source: "verify_redirect",
         pending_amount: Math.max(0, currentPending - orderAmount),
       };
+      // Resolved here — the reconciliation cron doesn't need to poll this order.
+      if (pd.pending_cashfree_order_id === orderId) {
+        delete newPaymentData.pending_cashfree_order_id;
+        delete newPaymentData.pending_cashfree_order_created_at;
+      }
       await supabase
         .from("appointments_booking")
         .update({ payment_data: newPaymentData })

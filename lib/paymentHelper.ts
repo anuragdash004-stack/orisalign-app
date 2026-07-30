@@ -178,7 +178,7 @@ export async function recordPaymentReceived(params: RecordPaymentParams): Promis
 
   const { data: appt, error: fetchError } = await supabase
     .from("appointments_booking")
-    .select("id, name, payment_data, amount_paid, amount_to_pay, payment_status, first_payment_date")
+    .select("id, name, email, payment_data, amount_paid, amount_to_pay, payment_status, first_payment_date")
     .eq("id", appointmentId)
     .single();
 
@@ -244,6 +244,18 @@ export async function recordPaymentReceived(params: RecordPaymentParams): Promis
     userAgent,
   });
 
+  // Fire-and-forget — a flaky email send should never fail the payment
+  // itself, since amount_paid has already been committed above.
+  sendPaymentReceivedEmail({
+    name: (appt as { name?: string }).name || "Patient",
+    appointmentId,
+    amountPaid,
+    paymentMethod,
+    newTotalPaid,
+    newAmountToPay,
+    paymentStatus,
+  }).catch(() => {});
+
   return {
     success: true,
     previouslyPaid,
@@ -252,4 +264,53 @@ export async function recordPaymentReceived(params: RecordPaymentParams): Promis
     stillToPay: newAmountToPay,
     paymentStatus,
   };
+}
+
+/**
+ * Notifies the clinic every time a payment is recorded, regardless of which
+ * path recorded it (gateway webhook, redirect verify, admin's manual "Mark
+ * as Paid", or a future reconciliation job) — this is the single place
+ * recordPaymentReceived funnels through, so every payment triggers exactly
+ * one email without each caller needing its own notification logic.
+ */
+async function sendPaymentReceivedEmail(params: {
+  name: string;
+  appointmentId: string;
+  amountPaid: number;
+  paymentMethod?: string;
+  newTotalPaid: number;
+  newAmountToPay: number;
+  paymentStatus: "pending" | "partial" | "paid";
+}) {
+  const { name, appointmentId, amountPaid, paymentMethod, newTotalPaid, newAmountToPay, paymentStatus } = params;
+  const shortId = appointmentId.substring(0, 8).toUpperCase();
+  const statusLabel = paymentStatus === "paid" ? "✅ Fully Paid" : paymentStatus === "partial" ? "⏳ Partial" : "⏳ Pending";
+  const inr = (n: number) => `₹${n.toLocaleString("en-IN")}`;
+
+  await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+    },
+    body: JSON.stringify({
+      from: "OrisAlign Payments <noreply@orisalign.com>",
+      to: "leads@orisalign.com",
+      subject: `💳 Payment Received: ${name} — ${inr(amountPaid)}`,
+      html: `
+        <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:20px;">
+          <h2 style="color:#16a34a;margin:0 0 8px;">💳 Payment Received</h2>
+          <table style="width:100%;font-size:14px;border-collapse:collapse;margin-top:8px;">
+            <tr><td style="padding:6px 0;color:#6b7280;width:140px;">Patient</td><td style="color:#111827;font-weight:700;">${name}</td></tr>
+            <tr><td style="padding:6px 0;color:#6b7280;">Patient ID</td><td style="color:#111827;font-family:monospace;">${shortId}</td></tr>
+            <tr><td style="padding:6px 0;color:#6b7280;">Amount Paid Now</td><td style="color:#16a34a;font-weight:800;">${inr(amountPaid)}</td></tr>
+            <tr><td style="padding:6px 0;color:#6b7280;">Method</td><td style="color:#111827;">${paymentMethod || "—"}</td></tr>
+            <tr><td style="padding:6px 0;color:#6b7280;">Total Paid</td><td style="color:#111827;">${inr(newTotalPaid)}</td></tr>
+            <tr><td style="padding:6px 0;color:#6b7280;">Still Pending</td><td style="color:#111827;">${inr(newAmountToPay)}</td></tr>
+            <tr><td style="padding:6px 0;color:#6b7280;">Status</td><td style="color:#111827;font-weight:700;">${statusLabel}</td></tr>
+          </table>
+        </div>
+      `,
+    }),
+  });
 }
