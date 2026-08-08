@@ -19,7 +19,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "OrisAlign – #1 Clear Aligners in Bhubaneswar, Odisha | OrisAlign.com",
-  description: "OrisAlign offers affordable clear aligners in Bhubaneswar, Odisha. Get straighter teeth in 6 months with OrisAlign's expert dentists. Starting ₹2,499/month. Book your consultation at OrisAlign today.",
+  description: "OrisAlign offers affordable clear aligners in Bhubaneswar, Odisha. Get straighter teeth in 6 months* with OrisAlign's expert dentists. Just ₹39,999 for a 6-month plan*. Book your consultation at OrisAlign today.",
   keywords: "OrisAlign, Orisalign clear aligners, Orisalign Bhubaneswar, clear aligners Bhubaneswar, teeth aligners Odisha, invisible braces Bhubaneswar, affordable aligners Odisha, OrisAlign.com, clear aligners India, OrisAlign dental",
   icons: {
     icon: "/pattern-icon.png",
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "OrisAlign – #1 Clear Aligners in Bhubaneswar, Odisha",
-    description: "OrisAlign: Straighter teeth in 6 months. Affordable clear aligners starting at ₹2,499/month. Expert dentists in Bhubaneswar, Odisha.",
+    description: "OrisAlign: Straighter teeth in 6 months*. Affordable clear aligners at ₹39,999 for 6 months*. Expert dentists in Bhubaneswar, Odisha.",
     url: "https://orisalign.com",
     siteName: "OrisAlign",
     images: [
@@ -45,7 +45,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "OrisAlign – Clear Aligners in Bhubaneswar, Odisha",
-    description: "OrisAlign: Straighter teeth in 6 months. Starting at ₹2,499/month. Expert dentists in Odisha.",
+    description: "OrisAlign: Straighter teeth in 6 months*. At ₹39,999 for 6 months*. Expert dentists in Odisha.",
     images: ["https://orisalign.com/smiles-collage.jpg"],
   },
   alternates: {
@@ -118,7 +118,7 @@ const jsonLd = {
       "name": "OrisAlign Dental Clinic",
       "url": "https://orisalign.com",
       "image": "https://orisalign.com/smiles-collage.jpg",
-      "description": "OrisAlign provides clear aligner orthodontic treatment in Bhubaneswar, Odisha. Expert dentists, Made in India aligners, starting at ₹2,499/month.",
+      "description": "OrisAlign provides clear aligner orthodontic treatment in Bhubaneswar, Odisha. Expert dentists, Made in India aligners, at ₹39,999 for a 6-month plan*.",
       "email": "hello@orisalign.com",
       "priceRange": "₹₹",
       "medicalSpecialty": "Dentistry",
