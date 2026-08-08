@@ -22,7 +22,7 @@ const NAV_LINKS = [
 
 const COMPARISON = [
   { feature: 'Visibility', orisalign: 'Invisible', braces: 'Very visible', invisalign: 'Nearly invisible' },
-  { feature: 'Monthly cost', orisalign: '₹6,666/mo*', braces: '₹2,499/mo*', invisalign: '₹5,000–10,000/mo*' },
+  { feature: 'Monthly cost', orisalign: '₹4,999/mo*', braces: '₹4,999/mo*', invisalign: '₹9,999/mo*' },
   { feature: 'Total cost', orisalign: '₹39,999*', braces: '₹30–40K*', invisalign: '₹1.5L–3L*' },
   { feature: 'Treatment time', orisalign: '6–12 months*', braces: '12–36 months*', invisalign: '6–12 months*' },
   { feature: 'Removable', orisalign: '✓ Yes', braces: '✗ No', invisalign: '✓ Yes' },
@@ -220,7 +220,7 @@ export default function LandingPage() {
             </h1>
             <p className="text-xs mb-5" style={{ color: INK2 }}>*Terms &amp; conditions apply</p>
             <p className="text-lg sm:text-xl mb-5 leading-relaxed" style={{ color: INK2 }}>
-              International quality and precision, designed and fabricated by expert dentists of India. Now payable in easy <span className="font-bold" style={{ color: INK }}>EMI</span>.
+              International quality and precision, designed and fabricated by expert dentists of India.
             </p>
             <div className="flex flex-col gap-2.5 mb-8">
               {['🇮🇳 Made in India', 'Invisible', 'No food restrictions'].map((t, i) => (
