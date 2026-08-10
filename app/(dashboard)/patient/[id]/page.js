@@ -482,7 +482,7 @@ export default function PatientJourney() {
             <div style={{ height: "8px", borderRadius: "99px", background: "#e5e7eb", overflow: "hidden" }}>
               <div style={{ height: "100%", borderRadius: "99px", width: `${progressPct}%`, background: "linear-gradient(90deg, #22c55e, #16a34a)", transition: "width 1s ease" }} />
             </div>
-            <p style={{ margin: "6px 0 0", fontSize: "11px", color: "#9ca3af" }}>{completedCount} of {JOURNEY_STEPS.length} steps completed</p>
+            <p style={{ margin: "6px 0 0", fontSize: "11px", color: "#9ca3af" }}>{completedCount} of {journeySteps.length} steps completed</p>
           </div>
         </div>
 
