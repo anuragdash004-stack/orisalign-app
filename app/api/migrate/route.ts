@@ -77,6 +77,12 @@ export async function GET() {
     )`,
     // ── Ortho: Provisional Planning sets-required (basis: OrisPro, 15 days/set) ──
     "ALTER TABLE appointments_booking ADD COLUMN IF NOT EXISTS provisional_sets_orispro INTEGER",
+    // ── New per-arch, month-by-month planning & billing model (see migrations/014) ──
+    "ALTER TABLE appointments_booking ADD COLUMN IF NOT EXISTS provisional_min_months INTEGER",
+    "ALTER TABLE appointments_booking ADD COLUMN IF NOT EXISTS provisional_max_months INTEGER",
+    "ALTER TABLE appointments_booking ADD COLUMN IF NOT EXISTS final_upper_sets INTEGER",
+    "ALTER TABLE appointments_booking ADD COLUMN IF NOT EXISTS final_lower_sets INTEGER",
+    "ALTER TABLE appointments_booking ADD COLUMN IF NOT EXISTS monthly_plan JSONB",
   ];
 
   const results = [];

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { useParams, useRouter } from "next/navigation";
 import { logAudit } from "@/lib/logAudit";
+import { estimateRange, buildMonthlyPlan, alignerRangeLabel } from "@/lib/monthlyPlan";
 
 const supabase = getSupabaseClient();
 
@@ -58,18 +59,7 @@ const SHEET_CATS = {
   "Retainer":            [3, 5, 8, 10, 13, 17, 18, 19, 21, 22],
 };
 
-// Ortho enters one set count that's the same for both plans — only the
-// wear duration differs, since OrisPro wears each set for longer than
-// OrisPro Plus does.
-const ORISPRO_DAYS_PER_SET = 15;
-const ORISPLUS_DAYS_PER_SET = 10;
-const durationFor = (sets, daysPerSet) => {
-  const n = parseInt(sets, 10);
-  if (!n || n <= 0) return null;
-  const days = n * daysPerSet;
-  const months = Math.round((days / 30) * 10) / 10;
-  return `${days} days (~${months} months)`;
-};
+const fmtRs = (n) => `₹ ${Math.round(n).toLocaleString("en-IN")}`;
 
 const PROVISIONAL_PLAN_NOTE = "Your tooth will be rotated to required degree. Alignment will be corrected. Spaces will be gained. Your plan might involve IPR and buttons.";
 
@@ -126,7 +116,8 @@ export default function OrthoCase() {
   const [actor, setActor] = useState(null);
 
   // Planning state
-  const [setsOrisPro, setSetsOrisPro] = useState("");
+  const [minMonths, setMinMonths] = useState("");
+  const [maxMonths, setMaxMonths] = useState("");
   const [provisionalPlan, setProvisionalPlan] = useState("");
   const [provisionalSubmitted, setProvisionalSubmitted] = useState(false);
   const [provisionalSaving, setProvisionalSaving] = useState(false);
@@ -138,6 +129,13 @@ export default function OrthoCase() {
   const [finalSaving, setFinalSaving] = useState(false);
 
   const [videoLink, setVideoLink] = useState("");
+
+  // Final Plan Review — upper/lower arch set counts + generated schedule
+  const [upperSets, setUpperSets] = useState("");
+  const [lowerSets, setLowerSets] = useState("");
+  const [finalReviewSubmitted, setFinalReviewSubmitted] = useState(false);
+  const [finalReviewSaving, setFinalReviewSaving] = useState(false);
+  const [monthlyPlan, setMonthlyPlan] = useState(null);
 
   const [pdfFile, setPdfFile] = useState(null);
   const [pdfUploading, setPdfUploading] = useState(false);
@@ -169,11 +167,20 @@ export default function OrthoCase() {
         setProvisionalSubmitted(true);
         setProvisionalPlan(data.provisional_plan || "");
       }
-      setSetsOrisPro(data.provisional_sets_orispro ? String(data.provisional_sets_orispro) : "");
+      setMinMonths(data.provisional_min_months ? String(data.provisional_min_months) : "");
+      setMaxMonths(data.provisional_max_months ? String(data.provisional_max_months) : "");
       setOrthoNote(data.ortho_note || "");
       setFinalPlan(data.final_plan || "");
       setVideoLink(data.planning_video_link || "");
       if (data.plan_pdf_url) setPdfSubmitted(true);
+      if (data.final_upper_sets || data.final_lower_sets) {
+        setUpperSets(data.final_upper_sets ? String(data.final_upper_sets) : "");
+        setLowerSets(data.final_lower_sets ? String(data.final_lower_sets) : "");
+      }
+      if (data.monthly_plan) {
+        setMonthlyPlan(data.monthly_plan);
+        setFinalReviewSubmitted(true);
+      }
       if (data.sheet_selection) {
         const ss = data.sheet_selection;
         if (ss.activeCategory) setActiveSheetCat(ss.activeCategory);
@@ -215,21 +222,49 @@ export default function OrthoCase() {
       alert("Please write the provisional plan first.");
       return;
     }
-    const setsOp = parseInt(setsOrisPro, 10) || null;
+    const minM = parseInt(minMonths, 10) || null;
+    const maxM = parseInt(maxMonths, 10) || null;
     setProvisionalSaving(true);
     const { error } = await supabase
       .from("appointments_booking")
       .update({
         provisional_plan: provisionalPlan,
         ortho_note: orthoNote,
-        provisional_sets_orispro: setsOp,
+        provisional_min_months: minM,
+        provisional_max_months: maxM,
         provisional_plan_submitted: true,
       })
       .eq("id", id);
     setProvisionalSaving(false);
     if (error) { alert("Failed to submit plan: " + error.message); return; }
-    logAudit({ appointmentId: id, actor, action: "Provisional Plan Submitted", entity: "provisional_plan", newData: { provisional_plan: provisionalPlan, ortho_note: orthoNote, provisional_sets_orispro: setsOp } });
+    logAudit({ appointmentId: id, actor, action: "Provisional Plan Submitted", entity: "provisional_plan", newData: { provisional_plan: provisionalPlan, ortho_note: orthoNote, provisional_min_months: minM, provisional_max_months: maxM } });
     setProvisionalSubmitted(true);
+  };
+
+  // ── FINAL PLAN REVIEW (upper/lower sets + monthly schedule) ────
+  const submitFinalReview = async () => {
+    const upper = parseInt(upperSets, 10) || 0;
+    const lower = parseInt(lowerSets, 10) || 0;
+    if (upper <= 0 || lower <= 0) {
+      alert("Enter both upper and lower arch set counts.");
+      return;
+    }
+    const plan = buildMonthlyPlan(upper, lower);
+    setFinalReviewSaving(true);
+    const { error } = await supabase
+      .from("appointments_booking")
+      .update({
+        final_upper_sets: upper,
+        final_lower_sets: lower,
+        monthly_plan: plan,
+        journey_steps: { ...(patient?.journey_steps || {}), final_plan_review: true },
+      })
+      .eq("id", id);
+    setFinalReviewSaving(false);
+    if (error) { alert("Failed to save: " + error.message); return; }
+    logAudit({ appointmentId: id, actor, action: "Final Plan Review Submitted", entity: "monthly_plan", newData: { final_upper_sets: upper, final_lower_sets: lower, monthly_plan: plan } });
+    setMonthlyPlan(plan);
+    setFinalReviewSubmitted(true);
   };
 
   // ── FINAL PLAN ────────────────────────────────────────────────
@@ -464,31 +499,48 @@ export default function OrthoCase() {
               {!provisionalSubmitted && (
                 <div style={{ marginBottom: "16px", padding: "14px", borderRadius: "12px", border: "1px solid #e5e7eb", background: "#f9fafb" }}>
                   <label style={{ fontWeight: "600", fontSize: "13px", color: "#111827", display: "block", marginBottom: "6px" }}>
-                    Number of Sets Required (same for both plans — only duration differs)
+                    Estimated Treatment Duration (months)
                   </label>
-                  <input
-                    type="number" min="1" placeholder="e.g. 12"
-                    value={setsOrisPro}
-                    onChange={(e) => setSetsOrisPro(e.target.value)}
-                    style={{ ...inputStyle, marginBottom: 0 }}
-                  />
-                  {durationFor(setsOrisPro, ORISPRO_DAYS_PER_SET) && (
-                    <p style={{ fontSize: "12px", color: "#6b7280", margin: "8px 0 0" }}>
-                      OrisPro ({ORISPRO_DAYS_PER_SET} days/set): <strong style={{ color: "#111827" }}>{durationFor(setsOrisPro, ORISPRO_DAYS_PER_SET)}</strong><br />
-                      OrisPro Plus ({ORISPLUS_DAYS_PER_SET} days/set): <strong style={{ color: "#111827" }}>{durationFor(setsOrisPro, ORISPLUS_DAYS_PER_SET)}</strong>
-                    </p>
-                  )}
+                  <div style={{ display: "flex", gap: "10px" }}>
+                    <input
+                      type="number" min="1" placeholder="Min months"
+                      value={minMonths}
+                      onChange={(e) => setMinMonths(e.target.value)}
+                      style={{ ...inputStyle, marginBottom: 0, flex: 1 }}
+                    />
+                    <input
+                      type="number" min="1" placeholder="Max months"
+                      value={maxMonths}
+                      onChange={(e) => setMaxMonths(e.target.value)}
+                      style={{ ...inputStyle, marginBottom: 0, flex: 1 }}
+                    />
+                  </div>
+                  {(parseInt(minMonths, 10) > 0 || parseInt(maxMonths, 10) > 0) && (() => {
+                    const r = estimateRange(parseInt(minMonths, 10) || 0, parseInt(maxMonths, 10) || 0);
+                    return (
+                      <p style={{ fontSize: "12px", color: "#6b7280", margin: "8px 0 0" }}>
+                        Estimated price: <strong style={{ color: "#111827" }}>{fmtRs(r.min)} – {fmtRs(r.max)}</strong> (₹4,999/month)
+                      </p>
+                    );
+                  })()}
                 </div>
               )}
 
               {provisionalSubmitted ? (
                 <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "8px", padding: "14px", fontSize: "14px", color: "#111827", whiteSpace: "pre-wrap" }}>
-                  {setsOrisPro && (
+                  {(minMonths || maxMonths) ? (() => {
+                    const r = estimateRange(parseInt(minMonths, 10) || 0, parseInt(maxMonths, 10) || 0);
+                    return (
+                      <div style={{ marginBottom: "12px", paddingBottom: "12px", borderBottom: "1px solid #bbf7d0" }}>
+                        <p style={{ fontSize: "11px", fontWeight: "700", color: "#16a34a", textTransform: "uppercase", letterSpacing: "0.5px", margin: "0 0 4px" }}>Estimated Duration: {minMonths}–{maxMonths} months</p>
+                        <p style={{ margin: 0, fontSize: "14px", color: "#111827" }}>Estimated price: {fmtRs(r.min)} – {fmtRs(r.max)}</p>
+                      </div>
+                    );
+                  })() : patient?.provisional_sets_orispro ? (
                     <div style={{ marginBottom: "12px", paddingBottom: "12px", borderBottom: "1px solid #bbf7d0" }}>
-                      <p style={{ fontSize: "11px", fontWeight: "700", color: "#16a34a", textTransform: "uppercase", letterSpacing: "0.5px", margin: "0 0 4px" }}>Sets Required: {setsOrisPro}</p>
-                      <p style={{ margin: 0, fontSize: "14px", color: "#111827" }}>OrisPro: {durationFor(setsOrisPro, ORISPRO_DAYS_PER_SET)} · OrisPro Plus: {durationFor(setsOrisPro, ORISPLUS_DAYS_PER_SET)}</p>
+                      <p style={{ fontSize: "11px", fontWeight: "700", color: "#16a34a", textTransform: "uppercase", letterSpacing: "0.5px", margin: "0 0 4px" }}>Sets Required: {patient.provisional_sets_orispro}</p>
                     </div>
-                  )}
+                  ) : null}
                   {provisionalPlan}
                   {orthoNote ? (
                     <div style={{ marginTop: "12px", paddingTop: "12px", borderTop: "1px solid #bbf7d0" }}>
@@ -558,6 +610,61 @@ export default function OrthoCase() {
               >
                 {finalSaving ? "Saving..." : "Save Final Plan & Video"}
               </button>
+            </div>
+
+            {/* ── Final Plan Review (upper/lower sets + monthly schedule) ── */}
+            <div>
+              <label style={{ fontWeight: "600", fontSize: "14px", color: "#111827", display: "block", marginBottom: "8px" }}>
+                Final Plan Review
+              </label>
+
+              {finalReviewSubmitted ? (
+                <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "8px", padding: "14px" }}>
+                  <p style={{ fontSize: "11px", fontWeight: "700", color: "#16a34a", textTransform: "uppercase", letterSpacing: "0.5px", margin: "0 0 10px" }}>
+                    Upper: {upperSets} sets · Lower: {lowerSets} sets · {monthlyPlan?.totalMonths} months
+                  </p>
+                  {monthlyPlan && (
+                    <div style={{ display: "grid", gap: "6px" }}>
+                      {monthlyPlan.months.map((m) => (
+                        <div key={m.num} style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", padding: "6px 0", borderBottom: "1px dashed #bbf7d0" }}>
+                          <span style={{ color: "#111827" }}>
+                            Month {m.num} — Upper {alignerRangeLabel(m.upper)}, Lower {alignerRangeLabel(m.lower)}
+                          </span>
+                          <strong style={{ color: "#111827" }}>{fmtRs(m.amount)}</strong>
+                        </div>
+                      ))}
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "14px", paddingTop: "8px", fontWeight: "700" }}>
+                        <span>Total (incl. ₹999 planning fee)</span>
+                        <span>{fmtRs(monthlyPlan.months[monthlyPlan.months.length - 1]?.cumulative || 999)}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <div style={{ display: "flex", gap: "10px", marginBottom: "12px" }}>
+                    <input
+                      type="number" min="1" placeholder="Upper arch sets"
+                      value={upperSets}
+                      onChange={(e) => setUpperSets(e.target.value)}
+                      style={{ ...inputStyle, marginBottom: 0, flex: 1 }}
+                    />
+                    <input
+                      type="number" min="1" placeholder="Lower arch sets"
+                      value={lowerSets}
+                      onChange={(e) => setLowerSets(e.target.value)}
+                      style={{ ...inputStyle, marginBottom: 0, flex: 1 }}
+                    />
+                  </div>
+                  <button
+                    onClick={submitFinalReview}
+                    disabled={finalReviewSaving}
+                    style={{ ...btnStyle(true), opacity: finalReviewSaving ? 0.7 : 1 }}
+                  >
+                    {finalReviewSaving ? "Generating..." : "Generate Schedule & Submit →"}
+                  </button>
+                </>
+              )}
             </div>
 
             {/* ── Planning PDF ── */}

@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { useParams, useRouter } from "next/navigation";
 import { logAudit } from "@/lib/logAudit";
+import { FINAL_PLAN_FEE, estimateRange, applyCouponDiscount, alignerRangeLabel, totalCost } from "@/lib/monthlyPlan";
 
 const supabase = getSupabaseClient();
 
@@ -10,7 +11,9 @@ const TABS = ["Payment", "Manufacturing", "Journey", "LMC", "Message", "Patient 
 
 const LMC_TREATMENT_TYPES = ["Aligners", "RCT", "Implant", "Extraction", "Restoration", "Scaling", "Polishing", "Checkup"];
 
-const ALL_STEPS = [
+// Legacy (lump-sum OrisPro/OrisPro Plus) list — unchanged, for any
+// appointment still in progress without a monthly_plan.
+const LEGACY_ALL_STEPS = [
   { key: "booked",                  label: "Appointment Booked" },
   { key: "confirmed",               label: "Appointment Confirmed" },
   { key: "scanning_done",           label: "Scanning and Provisional Planning" },
@@ -21,6 +24,25 @@ const ALL_STEPS = [
   { key: "manufacturing_completed", label: "Manufacturing Completed" },
   { key: "aligners_dispatched",     label: "Aligners Dispatched" },
   { key: "aligners_received",       label: "Aligners Received" },
+  { key: "followup_appointment",    label: "Appointment Book" },
+  { key: "aligners_delivered",      label: "Aligners Delivered" },
+  { key: "smile_correction",        label: "Smile Correction Started" },
+  { key: "treatment_completed",     label: "Treatment Completed" },
+  { key: "feedback_submitted",      label: "Feedback Submitted" },
+];
+
+// New per-arch, month-by-month model — Manufacturing/Dispatched/Received
+// collapse into one manually-toggleable "Aligner Sets" step (per-month
+// detail is managed in the Manufacturing tab's batches, same as before).
+const NEW_ALL_STEPS = [
+  { key: "booked",                  label: "Appointment Booked" },
+  { key: "confirmed",               label: "Appointment Confirmed" },
+  { key: "scanning_done",           label: "Scanning and Provisional Planning" },
+  { key: "payment_done",            label: "Final Planning Payment" },
+  { key: "planning_done",           label: "Full Plan" },
+  { key: "final_plan_review",       label: "Final Plan Review" },
+  { key: "plan_approved",           label: "Plan Approved" },
+  { key: "aligner_sets",            label: "Aligner Sets" },
   { key: "followup_appointment",    label: "Appointment Book" },
   { key: "aligners_delivered",      label: "Aligners Delivered" },
   { key: "smile_correction",        label: "Smile Correction Started" },
@@ -517,6 +539,10 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
   const okBanner = { marginTop: "12px", padding: "10px 12px", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "8px", color: "#16a34a", fontWeight: "700", fontSize: "13px" };
   const changeLinkStyle = { marginTop: "10px", padding: "8px 16px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "white", color: "#374151", fontWeight: "600", fontSize: "12px", cursor: "pointer" };
 
+  if (appt?.monthly_plan) {
+    return <MonthlyBillingCards appointmentId={appointmentId} appt={appt} setAppt={setAppt} actor={actor} />;
+  }
+
   return (
     <div>
       {/* Card 1 — Plan & Amount */}
@@ -720,6 +746,120 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
   );
 }
 
+// ─── New per-arch, month-by-month billing (Payment tab) ───────────────────────
+function MonthlyBillingCards({ appointmentId, appt, setAppt, actor }) {
+  const [markingPaid, setMarkingPaid] = useState(null); // "final_fee" | month num
+
+  const couponsTotal = (appt.payment_data?.applied_coupons || [])
+    .reduce((sum, c) => sum + (parseFloat(c.discount) || 0), 0);
+  const discounted = applyCouponDiscount(appt.monthly_plan, couponsTotal);
+  const amountPaid = Number(appt.amount_paid) || 0;
+  const finalFeePaid = amountPaid >= FINAL_PLAN_FEE;
+
+  // Same trusted, additive endpoint the gateways and legacy manual payments
+  // use — recordPaymentReceived (via /api/update-payment-status) — so the
+  // figures here, the patient page, and any gateway payment always agree.
+  const markPaid = async (amount, label, markKey) => {
+    if (amount <= 0) return;
+    setMarkingPaid(markKey);
+    try {
+      const res = await fetch("/api/update-payment-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          appointmentId,
+          amountPaid: amount,
+          paymentMethod: "Manual",
+          notes: label,
+          actorEmail: actor?.email,
+          actorRole: actor?.role,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || json.error) {
+        alert("Failed to record payment: " + (json.error || "Unknown error"));
+        return;
+      }
+      logAudit({ appointmentId, actor, action: `${label} Marked Paid`, entity: "payment_status", newData: { amount, totalPaid: json.totalPaid } });
+      setAppt((prev) => prev && { ...prev, amount_paid: json.totalPaid, amount_to_pay: json.stillToPay, payment_status: json.paymentStatus });
+    } catch {
+      alert("Network error. Please try again.");
+    } finally {
+      setMarkingPaid(null);
+    }
+  };
+
+  const nextMonth = discounted.months.find((m) => amountPaid < m.discountedCumulative);
+
+  return (
+    <div>
+      <div style={card}>
+        <h3 style={{ margin: "0 0 16px", fontSize: "16px", color: "#111827" }}>Provisional Estimate</h3>
+        {appt.provisional_min_months && appt.provisional_max_months ? (() => {
+          const r = estimateRange(appt.provisional_min_months, appt.provisional_max_months);
+          return <p style={{ margin: 0, fontSize: "14px", color: "#374151" }}>{appt.provisional_min_months}–{appt.provisional_max_months} months · {inr(r.min)} – {inr(r.max)}</p>;
+        })() : (
+          <p style={{ margin: 0, fontSize: "13px", color: "#9ca3af", fontStyle: "italic" }}>Not entered yet.</p>
+        )}
+      </div>
+
+      <div style={card}>
+        <h3 style={{ margin: "0 0 16px", fontSize: "16px", color: "#111827" }}>Final Planning Payment</h3>
+        {finalFeePaid ? (
+          <p style={okBannerText}>✅ Paid — {inr(FINAL_PLAN_FEE)}</p>
+        ) : (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
+            <span style={{ fontSize: "14px", color: "#374151" }}>{inr(FINAL_PLAN_FEE)} pending</span>
+            <button
+              onClick={() => markPaid(FINAL_PLAN_FEE, "Final Planning Payment", "final_fee")}
+              disabled={markingPaid === "final_fee"}
+              style={btnPrimary}
+            >
+              {markingPaid === "final_fee" ? "Saving..." : "Mark as Paid"}
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div style={card}>
+        <h3 style={{ margin: "0 0 16px", fontSize: "16px", color: "#111827" }}>
+          Final Plan {appt.final_upper_sets ? `— Upper ${appt.final_upper_sets} · Lower ${appt.final_lower_sets} · ${appt.monthly_plan.totalMonths} months` : ""}
+        </h3>
+        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+          {discounted.months.map((m) => {
+            const isPaid = amountPaid >= m.discountedCumulative;
+            const isNext = nextMonth && nextMonth.num === m.num;
+            return (
+              <div key={m.num} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", padding: "10px 12px", background: isPaid ? "#f0fdf4" : "#fafafa", borderRadius: "8px", border: isPaid ? "1px solid #bbf7d0" : "1px solid #e5e7eb" }}>
+                <div>
+                  <span style={{ fontSize: "13px", fontWeight: "700", color: "#111827" }}>
+                    Month {m.num} — Upper {alignerRangeLabel(m.upper)}, Lower {alignerRangeLabel(m.lower)}
+                  </span>
+                  <span style={{ marginLeft: "8px", fontSize: "13px", color: "#6b7280" }}>{inr(m.payableAmount)}</span>
+                </div>
+                {isPaid ? (
+                  <span style={{ fontSize: "12px", fontWeight: "700", color: "#16a34a" }}>✓ Paid</span>
+                ) : isNext ? (
+                  <button
+                    onClick={() => markPaid(m.payableAmount, `Month ${m.num} Aligner Sets`, m.num)}
+                    disabled={markingPaid === m.num}
+                    style={{ padding: "6px 14px", borderRadius: "8px", border: "none", background: "#111827", color: "white", fontWeight: "700", fontSize: "12px", cursor: markingPaid === m.num ? "not-allowed" : "pointer", flexShrink: 0 }}
+                  >
+                    {markingPaid === m.num ? "Saving..." : "Mark as Paid"}
+                  </button>
+                ) : (
+                  <span style={{ fontSize: "12px", color: "#9ca3af" }}>Locked</span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+const okBannerText = { margin: 0, fontSize: "14px", fontWeight: "800", color: "#16a34a" };
+
 // ─── Manufacturing & Logistics Tab (merged) ───────────────────────────────────
 function ManufacturingTab({ appointmentId, initialData, logisticsData, actor }) {
   const [batches, setBatches] = useState(() => {
@@ -729,6 +869,10 @@ function ManufacturingTab({ appointmentId, initialData, logisticsData, actor }) 
       const l = log.find((x) => x.num === b.num) || {};
       return {
         num: b.num, start: b.start ?? "", end: b.end ?? "",
+        // Set instead of start/end for batches auto-created by a paid month
+        // under the new per-arch, month-by-month model — see
+        // lib/paymentHelper.ts.
+        upper_aligners: b.upper_aligners || "", lower_aligners: b.lower_aligners || "",
         mfg_started: b.mfg_started || "", mfg_done: b.mfg_done || "",
         shipment_link: b.shipment_link || l.shipment_link || "",
         shipment_id: l.shipment_id || "",
@@ -759,7 +903,7 @@ function ManufacturingTab({ appointmentId, initialData, logisticsData, actor }) 
   // step that just turned on. Returns whether it succeeded.
   const persistBatches = async (updatedBatches, auditAction) => {
     const mfgPayload = {
-      batches: updatedBatches.map(({ num, start, end, mfg_started, mfg_done, shipment_link }) => ({ num, start, end, mfg_started, mfg_done, shipment_link })),
+      batches: updatedBatches.map(({ num, start, end, upper_aligners, lower_aligners, mfg_started, mfg_done, shipment_link }) => ({ num, start, end, upper_aligners, lower_aligners, mfg_started, mfg_done, shipment_link })),
       aligner_delivered: alignerDelivered,
     };
     const logPayload = {
@@ -803,7 +947,8 @@ function ManufacturingTab({ appointmentId, initialData, logisticsData, actor }) 
 
   const markStarted = async (num) => {
     const batch = batches.find((b) => b.num === num);
-    if (batch.start === "" || batch.end === "") { alert("Enter the aligner set range for this batch first."); return; }
+    const hasArchLabels = batch.upper_aligners || batch.lower_aligners;
+    if (!hasArchLabels && (batch.start === "" || batch.end === "")) { alert("Enter the aligner set range for this batch first."); return; }
     setSaving(`${num}-started`);
     const updated = batches.map((b) => b.num === num ? { ...b, mfg_started: new Date().toISOString().slice(0, 10) } : b);
     const ok = await persistBatches(updated, `Manufacturing Started — Batch ${num}`);
@@ -839,7 +984,9 @@ function ManufacturingTab({ appointmentId, initialData, logisticsData, actor }) 
       {batches.map((batch) => (
         <div key={batch.num} style={card}>
           <h4 style={{ margin: "0 0 16px", fontSize: "14px", color: "#b8905a", fontWeight: "800", letterSpacing: "0.5px" }}>
-            BATCH {batch.num}
+            {batch.upper_aligners || batch.lower_aligners
+              ? `MONTH ${batch.num} — UPPER ${batch.upper_aligners || "—"}, LOWER ${batch.lower_aligners || "—"}`
+              : `BATCH ${batch.num}`}
           </h4>
           <div style={row}>
             <div>
@@ -976,23 +1123,38 @@ function ManufacturingTab({ appointmentId, initialData, logisticsData, actor }) 
 function deriveSteps(appt) {
   if (!appt) return {};
   const js = appt.journey_steps || {};
-  return {
+  const hasMonthlyPlan = !!appt.monthly_plan;
+  const amountPaid = Number(appt.amount_paid) || 0;
+
+  const base = {
     booked:                  true,
     confirmed:               appt.status === "confirmed" || appt.status === "completed",
     scanning_done:           js.scanning_done        !== undefined ? !!js.scanning_done        : !!appt.stl_submitted,
-    payment_done:            js.payment_done         !== undefined ? !!js.payment_done         : !!(appt.payment_data?.final_amount),
+    payment_done:            hasMonthlyPlan
+      ? amountPaid >= FINAL_PLAN_FEE
+      : (js.payment_done !== undefined ? !!js.payment_done : !!(appt.payment_data?.final_amount)),
     planning_done:           js.planning_done        !== undefined ? !!js.planning_done        : !!appt.provisional_plan_submitted,
+    final_plan_review:       !!(appt.final_upper_sets && appt.final_lower_sets),
     plan_approved:           js.plan_approved        !== undefined ? !!js.plan_approved        : !!(appt.final_plan && appt.final_plan.trim()),
-    manufacturing_started:   js.manufacturing_started  !== undefined ? !!js.manufacturing_started  : false,
-    manufacturing_completed: js.manufacturing_completed !== undefined ? !!js.manufacturing_completed : false,
-    aligners_dispatched:     js.aligners_dispatched  !== undefined ? !!js.aligners_dispatched  : false,
-    aligners_received:       js.aligners_received    !== undefined ? !!js.aligners_received    : false,
     followup_appointment:    js.followup_appointment !== undefined ? !!js.followup_appointment : false,
     aligners_delivered:      js.aligners_delivered   !== undefined ? !!js.aligners_delivered   : false,
     smile_correction:        js.smile_correction     !== undefined ? !!js.smile_correction     : false,
     treatment_completed:     js.treatment_completed  !== undefined ? !!js.treatment_completed  : appt.status === "completed",
     feedback_submitted:      js.feedback_submitted   !== undefined ? !!js.feedback_submitted   : false,
   };
+
+  if (hasMonthlyPlan) {
+    const couponsTotal = (appt.payment_data?.applied_coupons || [])
+      .reduce((sum, c) => sum + (parseFloat(c.discount) || 0), 0);
+    base.aligner_sets = amountPaid >= totalCost(applyCouponDiscount(appt.monthly_plan, couponsTotal));
+  } else {
+    base.manufacturing_started =   js.manufacturing_started   !== undefined ? !!js.manufacturing_started   : false;
+    base.manufacturing_completed = js.manufacturing_completed !== undefined ? !!js.manufacturing_completed : false;
+    base.aligners_dispatched =     js.aligners_dispatched     !== undefined ? !!js.aligners_dispatched     : false;
+    base.aligners_received =       js.aligners_received       !== undefined ? !!js.aligners_received       : false;
+  }
+
+  return base;
 }
 
 // ─── Patient Page Tab ─────────────────────────────────────────────────────────
@@ -1250,7 +1412,8 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
     }
   };
 
-  const doneCount = ALL_STEPS.filter((s) => !!steps[s.key]).length;
+  const allSteps = appt?.monthly_plan ? NEW_ALL_STEPS : LEGACY_ALL_STEPS;
+  const doneCount = allSteps.filter((s) => !!steps[s.key]).length;
 
   return (
     <div>
@@ -1258,16 +1421,16 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "8px" }}>
           <h3 style={{ margin: 0, fontSize: "16px", color: "#111827" }}>Treatment Roadmap</h3>
           <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-            <span style={{ fontSize: "13px", color: "#6b7280" }}>{doneCount} / {ALL_STEPS.length} steps done</span>
+            <span style={{ fontSize: "13px", color: "#6b7280" }}>{doneCount} / {allSteps.length} steps done</span>
             <div style={{ height: "8px", width: "120px", borderRadius: "99px", background: "#e5e7eb", overflow: "hidden" }}>
-              <div style={{ height: "100%", borderRadius: "99px", width: `${Math.round((doneCount / ALL_STEPS.length) * 100)}%`, background: "linear-gradient(90deg, #22c55e, #16a34a)", transition: "width 0.4s ease" }} />
+              <div style={{ height: "100%", borderRadius: "99px", width: `${Math.round((doneCount / allSteps.length) * 100)}%`, background: "linear-gradient(90deg, #22c55e, #16a34a)", transition: "width 0.4s ease" }} />
             </div>
           </div>
         </div>
         {!isAdmin && <p style={{ margin: "10px 0 0", fontSize: "12px", color: "#9ca3af" }}>Only admins can approve steps.</p>}
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-        {ALL_STEPS.map((step, i) => {
+        {allSteps.map((step, i) => {
           const done = !!steps[step.key];
           const isSaving = saving === step.key;
           return (
@@ -1290,7 +1453,7 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                 <p style={{ margin: 0, flex: 1, fontSize: "14px", fontWeight: done ? "700" : "500", color: done ? "#15803d" : "#374151" }}>
                   {step.label}
                 </p>
-                {isAdmin && step.key !== "plan_approved" && step.key !== "booked" && step.key !== "confirmed" && step.key !== "payment_done" && step.key !== "followup_appointment" && (
+                {isAdmin && step.key !== "plan_approved" && step.key !== "booked" && step.key !== "confirmed" && step.key !== "payment_done" && step.key !== "followup_appointment" && step.key !== "final_plan_review" && step.key !== "aligner_sets" && (
                   <button
                     onClick={() => toggle(step.key)}
                     disabled={isSaving}
@@ -1760,7 +1923,7 @@ function ReportTab({ appointmentId, appt }) {
     at: mfgStartLog?.created_at || null,
     detail: manufacturingBatches.length > 0
       ? manufacturingBatches.map((b) =>
-          `Batch ${b.num} (Aligners ${b.start}–${b.end}): started ${b.mfg_started || "date not recorded"}${b.mfg_done ? `, completed ${b.mfg_done}` : ""}.`
+          `Batch ${b.num} (${b.upper_aligners || b.lower_aligners ? `Upper ${b.upper_aligners || "—"}, Lower ${b.lower_aligners || "—"}` : `Aligners ${b.start}–${b.end}`}): started ${b.mfg_started || "date not recorded"}${b.mfg_done ? `, completed ${b.mfg_done}` : ""}.`
         )
       : [],
   });

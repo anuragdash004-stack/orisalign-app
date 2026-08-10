@@ -5,6 +5,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { logAuditEntry } from "./auditLog";
+import { applyCouponDiscount, alignerRangeLabel, FINAL_PLAN_FEE, type MonthlyPlan } from "./monthlyPlan";
 
 export type PaymentType = "down_payment" | "pending" | "full" | "others";
 
@@ -178,7 +179,7 @@ export async function recordPaymentReceived(params: RecordPaymentParams): Promis
 
   const { data: appt, error: fetchError } = await supabase
     .from("appointments_booking")
-    .select("id, name, email, payment_data, amount_paid, amount_to_pay, payment_status, first_payment_date")
+    .select("id, name, email, payment_data, amount_paid, amount_to_pay, payment_status, first_payment_date, monthly_plan, manufacturing_data, provisional_min_months, provisional_max_months")
     .eq("id", appointmentId)
     .single();
 
@@ -187,10 +188,29 @@ export async function recordPaymentReceived(params: RecordPaymentParams): Promis
   }
 
   const pd = (appt.payment_data as Record<string, unknown>) || {};
-  // Prefer final_amount (post-discount) over full_amount (pre-discount
-  // gross) as the cap — otherwise a discounted patient's balance can never
-  // reach "paid" and payments up to the discount gap wouldn't be rejected.
-  const fullAmount = Number(pd.final_amount ?? pd.full_amount) || 0;
+  // New per-arch, month-by-month model: the cap is derived fresh from
+  // monthly_plan (+ any coupon discount) every time, rather than relying on
+  // a separately-maintained payment_data.final_amount — that field is easy
+  // to leave stale (as it repeatedly has been for the old lump-sum model;
+  // see the comment below) since it would otherwise need updating in three
+  // separate places (provisional submit, final review submit, coupon apply).
+  const monthlyPlan = appt.monthly_plan as MonthlyPlan | null | undefined;
+  const isNewModel = !!monthlyPlan || appt.provisional_min_months != null || appt.provisional_max_months != null;
+  let fullAmount: number;
+  if (monthlyPlan) {
+    const couponsTotal = ((pd.applied_coupons as { discount?: number }[]) || [])
+      .reduce((sum, c) => sum + (Number(c.discount) || 0), 0);
+    fullAmount = applyCouponDiscount(monthlyPlan, couponsTotal).months.slice(-1)[0]?.discountedCumulative || FINAL_PLAN_FEE;
+  } else if (isNewModel) {
+    // Provisional Planning submitted but Final Plan Review hasn't happened
+    // yet — the only chargeable amount at this point is the ₹999 fee.
+    fullAmount = FINAL_PLAN_FEE;
+  } else {
+    // Prefer final_amount (post-discount) over full_amount (pre-discount
+    // gross) as the cap — otherwise a discounted patient's balance can never
+    // reach "paid" and payments up to the discount gap wouldn't be rejected.
+    fullAmount = Number(pd.final_amount ?? pd.full_amount) || 0;
+  }
   const previouslyPaid = Number(appt.amount_paid) || 0;
   const newTotalPaid = previouslyPaid + amountPaid;
 
@@ -221,6 +241,49 @@ export async function recordPaymentReceived(params: RecordPaymentParams): Promis
 
   if (updateError) {
     return { success: false, error: "Failed to update payment status" };
+  }
+
+  // New per-arch, month-by-month billing model: a paid month should
+  // immediately show up as a batch for the admin to manufacture, regardless
+  // of which payment path fired (gateway webhook, redirect verify, manual
+  // admin mark-as-paid, or the reconcile cron). Centralized here — the one
+  // funnel every payment path already goes through — instead of duplicated
+  // in each of those four call sites. Appointments without a monthly_plan
+  // (the old lump-sum model) are completely untouched.
+  if (monthlyPlan) {
+    try {
+      const couponsTotal = ((pd.applied_coupons as { discount?: number }[]) || [])
+        .reduce((sum, c) => sum + (Number(c.discount) || 0), 0);
+      const discounted = applyCouponDiscount(monthlyPlan, couponsTotal);
+      const newlyPaidMonths = discounted.months.filter(
+        (m) => previouslyPaid < m.discountedCumulative && newTotalPaid >= m.discountedCumulative
+      );
+      if (newlyPaidMonths.length > 0) {
+        const mfg = (appt.manufacturing_data as { batches?: Record<string, unknown>[] } | null) || {};
+        const existingBatches = mfg.batches || [];
+        const newBatches = newlyPaidMonths
+          .filter((m) => !existingBatches.some((b) => Number(b.num) === m.num))
+          .map((m) => ({
+            num: m.num,
+            start: "",
+            end: "",
+            mfg_started: "",
+            mfg_done: "",
+            shipment_link: "",
+            upper_aligners: alignerRangeLabel(m.upper),
+            lower_aligners: alignerRangeLabel(m.lower),
+          }));
+        if (newBatches.length > 0) {
+          await supabase
+            .from("appointments_booking")
+            .update({ manufacturing_data: { ...mfg, batches: [...existingBatches, ...newBatches] } })
+            .eq("id", appointmentId);
+        }
+      }
+    } catch {
+      // Never let batch auto-creation block the payment itself — amount_paid
+      // has already been committed above; admin can add a batch manually.
+    }
   }
 
   await logAuditEntry({

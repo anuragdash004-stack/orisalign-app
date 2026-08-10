@@ -47,16 +47,23 @@ function getStepContent(stepKey: string): StepContent | null {
     },
     payment_done: {
       emoji: "💳",
-      subject: "Payment Confirmed — OrisAlign",
-      headline: "Payment Confirmed!",
-      body: "Your payment details have been finalised. Thank you for your trust in OrisAlign. Our team will now proceed with your treatment planning and keep you updated at every step.",
+      subject: "Final Planning Payment Received — OrisAlign",
+      headline: "Payment Received!",
+      body: "Your ₹999 Final Planning Payment has been received. Thank you for your trust in OrisAlign. Our orthodontic team will now prepare your full treatment plan and keep you updated at every step.",
       nextStep: "Treatment Planning",
     },
     planning_done: {
       emoji: "📋",
       subject: "Your Treatment Plan is Ready — OrisAlign",
       headline: "Treatment Plan Ready!",
-      body: "Your personalised 3D treatment plan has been prepared by our orthodontic team! Please visit your journey page to review it. Once you're satisfied, click the Approve Plan button to authorise us to begin fabricating your aligners.",
+      body: "Your personalised 3D treatment plan has been prepared by our orthodontic team! Please visit your journey page to review it.",
+      nextStep: "Final Plan Review",
+    },
+    final_plan_review: {
+      emoji: "🔢",
+      subject: "Your Final Aligner Count & Schedule Are Ready — OrisAlign",
+      headline: "Final Plan Review Ready!",
+      body: "Your orthodontist has finalised your exact upper and lower aligner set counts and your month-by-month schedule. Please visit your journey page to review it, then click the Approve Plan button to authorise us to begin fabricating your aligners.",
       nextStep: "Plan Approval",
     },
     plan_approved: {

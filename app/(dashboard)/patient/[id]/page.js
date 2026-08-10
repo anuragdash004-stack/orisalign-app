@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
+import { FINAL_PLAN_FEE, estimateRange, applyCouponDiscount, nextPayableMonth, totalCost, alignerRangeLabel } from "@/lib/monthlyPlan";
 
 const supabase = getSupabaseClient();
 
@@ -26,7 +27,9 @@ const PLAN_OPTIONS = [
   { value: "ORISPLUS", label: "OrisPro Plus", pricePerSet: 4499, downPayment: 15499 },
 ];
 
-const JOURNEY_STEPS = [
+// Old lump-sum model (OrisPro/OrisPro Plus, one upfront payment) — unchanged,
+// still used for any patient already in progress under it.
+const LEGACY_JOURNEY_STEPS = [
   { key: "booked",                  label: "Appointment Booked" },
   { key: "confirmed",               label: "Appointment Confirmed" },
   { key: "scanning_done",           label: "Scanning and Provisional Planning", expandable: true },
@@ -37,6 +40,27 @@ const JOURNEY_STEPS = [
   { key: "manufacturing",           label: "Manufacturing",               expandable: true },
   { key: "aligners_dispatched",     label: "Aligners Dispatched", expandable: true },
   { key: "aligners_received",       label: "Aligners Received", expandable: true },
+  { key: "followup_appointment",    label: "Appointment Book" },
+  { key: "aligners_delivered",      label: "Aligners Delivered" },
+  { key: "smile_correction",        label: "Smile Correction Started",   smileLink: true },
+  { key: "treatment_completed",     label: "Treatment Completed" },
+  { key: "feedback_submitted",      label: "Feedback Form Submitted",    expandable: true },
+];
+
+// New per-arch, month-by-month model — used once the orthodontist has
+// entered final upper/lower sets (appt.monthly_plan present). Manufacturing
+// / Aligners Dispatched / Aligners Received collapse into one "Aligner Sets"
+// step, one row per month.
+const NEW_JOURNEY_STEPS = [
+  { key: "booked",                  label: "Appointment Booked" },
+  { key: "confirmed",               label: "Appointment Confirmed" },
+  { key: "scanning_done",           label: "Scanning and Provisional Planning", expandable: true },
+  { key: "payment_done",            label: "Final Planning Payment",      expandable: true },
+  { key: "prealigner_treatment",    label: "Prealigner Treatment",        expandable: true },
+  { key: "planning_done",           label: "Full Plan", expandable: true },
+  { key: "final_plan_review",       label: "Final Plan Review",           expandable: true },
+  { key: "plan_approved",           label: "Plan Approval", approveAction: true },
+  { key: "aligner_sets",            label: "Aligner Sets",                expandable: true },
   { key: "followup_appointment",    label: "Appointment Book" },
   { key: "aligners_delivered",      label: "Aligners Delivered" },
   { key: "smile_correction",        label: "Smile Correction Started",   smileLink: true },
@@ -59,26 +83,42 @@ function deriveSteps(appt) {
   const js = appt.journey_steps || {};
   const procs = prealignerProcedures(appt);
   const prealignerDone = js.prealigner_done || {};
-  return {
+  const hasMonthlyPlan = !!appt.monthly_plan;
+  const amountPaid = Number(appt.amount_paid) || 0;
+
+  const base = {
     booked:                  true,
     confirmed:               appt.status === "confirmed" || appt.status === "completed",
     scanning_done:           js.scanning_done        !== undefined ? !!js.scanning_done        : !!appt.stl_submitted,
-    payment_done:            js.payment_done         !== undefined ? !!js.payment_done         : !!(appt.payment_data?.final_amount),
+    payment_done:            hasMonthlyPlan
+      ? amountPaid >= FINAL_PLAN_FEE
+      : (js.payment_done !== undefined ? !!js.payment_done : !!(appt.payment_data?.final_amount)),
     // No pre-aligner procedures selected → nothing to wait on, counts as done.
     prealigner_treatment:    procs.length === 0 ? true : procs.every((p) => !!prealignerDone[p]),
     planning_done:           js.planning_done        !== undefined ? !!js.planning_done        : !!appt.provisional_plan_submitted,
+    final_plan_review:       !!(appt.final_upper_sets && appt.final_lower_sets),
     plan_approved:           js.plan_approved        !== undefined ? !!js.plan_approved        : !!(appt.final_plan && appt.final_plan.trim()),
-    // Manufacturing counts as "done" (green, roadmap moves on) once fully
-    // completed — Started/Ended are shown separately inside its own panel.
-    manufacturing:           !!js.manufacturing_completed,
-    aligners_dispatched:     !!js.aligners_dispatched,
-    aligners_received:       !!js.aligners_received,
     followup_appointment:    !!js.followup_appointment,
     aligners_delivered:      !!js.aligners_delivered,
     smile_correction:        !!js.smile_correction,
     treatment_completed:     js.treatment_completed  !== undefined ? !!js.treatment_completed  : appt.status === "completed",
     feedback_submitted:      !!js.feedback_submitted,
   };
+
+  if (hasMonthlyPlan) {
+    const couponsTotal = (appt.payment_data?.applied_coupons || [])
+      .reduce((sum, c) => sum + (parseFloat(c.discount) || 0), 0);
+    const discounted = applyCouponDiscount(appt.monthly_plan, couponsTotal);
+    base.aligner_sets = amountPaid >= totalCost(discounted);
+  } else {
+    // Manufacturing counts as "done" (green, roadmap moves on) once fully
+    // completed — Started/Ended are shown separately inside its own panel.
+    base.manufacturing =       !!js.manufacturing_completed;
+    base.aligners_dispatched = !!js.aligners_dispatched;
+    base.aligners_received =   !!js.aligners_received;
+  }
+
+  return base;
 }
 
 function fmt(n) {
@@ -101,6 +141,7 @@ export default function PatientJourney() {
   const [patient, setPatient] = useState(null);
   const [loading, setLoading] = useState(true);
   const [expandedStep, setExpandedStep] = useState(null);
+  const [expandedMonth, setExpandedMonth] = useState(null);
   const [approving, setApproving] = useState(false);
   const [copiedNum, setCopiedNum] = useState(null);
   const [receivingBatch, setReceivingBatch] = useState(null);
@@ -210,11 +251,17 @@ export default function PatientJourney() {
   );
 
   const steps = deriveSteps(patient);
+  const journeySteps = patient.monthly_plan ? NEW_JOURNEY_STEPS : LEGACY_JOURNEY_STEPS;
   const shortId = id.substring(0, 8).toUpperCase();
   const patientIdLabel = patient.booking_confirmed ? shortId : "Pending";
-  const completedCount = Object.values(steps).filter(Boolean).length;
-  const progressPct = Math.round((completedCount / JOURNEY_STEPS.length) * 100);
+  // Filtered against the active roadmap's own keys — `steps` always carries
+  // a couple of extra keys from the model not in use (see deriveSteps).
+  const completedCount = journeySteps.filter((s) => steps[s.key]).length;
+  const progressPct = Math.round((completedCount / journeySteps.length) * 100);
   const pd = patient.payment_data || {};
+  const couponsTotalForMonths = appliedCoupons.reduce((sum, c) => sum + (parseFloat(c.discount) || 0), 0);
+  const discountedMonthlyPlan = patient.monthly_plan ? applyCouponDiscount(patient.monthly_plan, couponsTotalForMonths) : null;
+  const nextMonth = discountedMonthlyPlan ? nextPayableMonth(discountedMonthlyPlan, Number(patient.amount_paid) || 0) : null;
 
   // Number of sets is the same regardless of plan (set by the orthodontist
   // in Provisional Planning, or later confirmed in the Aligner Plan) — only
@@ -256,7 +303,8 @@ export default function PatientJourney() {
 
   const isPlanApprovalReady =
     steps.booked && steps.confirmed && steps.scanning_done &&
-    steps.payment_done && steps.planning_done;
+    steps.payment_done && steps.planning_done &&
+    (!patient.monthly_plan || steps.final_plan_review);
 
   const handleApprovePlan = async () => {
     const confirmed = window.confirm(
@@ -448,9 +496,9 @@ export default function PatientJourney() {
           <div style={{ position: "absolute", left: "22px", top: "22px", bottom: "22px", width: "2px", background: "linear-gradient(180deg, #22c55e 0%, #e5e7eb 60%)", zIndex: 0 }} />
 
           <div style={{ display: "flex", flexDirection: "column", gap: "0" }}>
-            {JOURNEY_STEPS.map((step, index) => {
+            {journeySteps.map((step, index) => {
               const done = steps[step.key];
-              const isNext = !done && index > 0 && steps[JOURNEY_STEPS[index - 1]?.key];
+              const isNext = !done && index > 0 && steps[journeySteps[index - 1]?.key];
               const isClickable = step.expandable || (step.smileLink && steps[step.key]);
               const isExpanded = expandedStep === step.key;
 
@@ -564,6 +612,18 @@ export default function PatientJourney() {
                           </div>
                         </div>
                       )}
+
+                      {patient?.provisional_min_months && patient?.provisional_max_months && (() => {
+                        const r = estimateRange(patient.provisional_min_months, patient.provisional_max_months);
+                        return (
+                          <div style={{ padding: "10px 12px", background: "#f3f4f6", borderRadius: "8px", marginBottom: "12px" }}>
+                            <p style={{ margin: "0 0 6px", fontSize: "11px", fontWeight: "700", color: "#6b7280", textTransform: "uppercase" }}>Estimated Duration</p>
+                            <p style={{ margin: 0, fontSize: "14px", fontWeight: "700", color: "#111827" }}>
+                              {patient.provisional_min_months}–{patient.provisional_max_months} months · {fmt(r.min)} – {fmt(r.max)}
+                            </p>
+                          </div>
+                        );
+                      })()}
 
                       <p style={{ margin: "0 0 10px", fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Your Provisional Plan</p>
                       {patient.provisional_plan ? (
@@ -826,7 +886,39 @@ export default function PatientJourney() {
                   )}
 
                   {/* Expanded Panel — Plan and Payment */}
-                  {step.key === "payment_done" && isExpanded && (
+                  {step.key === "payment_done" && isExpanded && (patient.monthly_plan ? (
+                    <div style={{ marginLeft: "58px", marginTop: "8px", background: "white", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+                      <p style={{ margin: "0 0 14px", fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Final Planning Payment</p>
+                      {(Number(patient.amount_paid) || 0) >= FINAL_PLAN_FEE ? (
+                        <div style={{ padding: "10px 12px", background: "#f0fdf4", borderRadius: "8px", border: "1px solid #bbf7d0" }}>
+                          <p style={{ margin: 0, fontSize: "13px", fontWeight: "800", color: "#16a34a" }}>✅ Paid — {fmt(FINAL_PLAN_FEE)}</p>
+                        </div>
+                      ) : (
+                        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                          <p style={{ margin: 0, fontSize: "13px", color: "#374151", lineHeight: "1.6" }}>
+                            A one-time ₹999 fee unlocks your final treatment plan — our team will prepare it as soon as this is paid.
+                          </p>
+                          <div style={{ padding: "12px", background: "#f0fdf4", borderRadius: "8px", border: "1px solid #bbf7d0" }}>
+                            <p style={{ margin: "0 0 4px", fontSize: "11px", fontWeight: "700", color: "#16a34a", textTransform: "uppercase" }}>Amount to Pay</p>
+                            <p style={{ margin: 0, fontSize: "24px", fontWeight: "900", color: "#15803d" }}>{fmt(FINAL_PLAN_FEE)}</p>
+                          </div>
+                          <button
+                            onClick={() => handlePayNow(FINAL_PLAN_FEE)}
+                            disabled={payNowLoading}
+                            style={{
+                              display: "block", width: "100%", padding: "12px", borderRadius: "10px", border: "none",
+                              background: "linear-gradient(135deg, #b8905a, #f59e0b)", color: "white", fontWeight: "800",
+                              fontSize: "14px", textAlign: "center", letterSpacing: "0.3px",
+                              boxShadow: "0 4px 10px rgba(184, 144, 90, 0.25)",
+                              cursor: payNowLoading ? "not-allowed" : "pointer", opacity: payNowLoading ? 0.7 : 1,
+                            }}
+                          >
+                            {payNowLoading ? "Starting payment..." : `Pay Now · ${fmt(FINAL_PLAN_FEE)}`}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
                     <div style={{ marginLeft: "58px", marginTop: "8px", background: "white", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
                       <p style={{ margin: "0 0 14px", fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Plan and Payment</p>
                       {!sets ? (
@@ -1052,6 +1144,131 @@ export default function PatientJourney() {
                           })()}
                         </div>
                       )}
+                    </div>
+                  ))}
+
+                  {/* Expanded Panel — Final Plan Review */}
+                  {step.key === "final_plan_review" && isExpanded && (
+                    <div style={{ marginLeft: "58px", marginTop: "8px", background: "white", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+                      <p style={{ margin: "0 0 14px", fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Final Plan Review</p>
+                      {!patient.monthly_plan ? (
+                        <p style={{ margin: 0, fontSize: "13px", color: "#9ca3af", fontStyle: "italic" }}>Your final aligner count and monthly schedule will appear here once your orthodontist reviews your case.</p>
+                      ) : (
+                        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                          <div style={{ padding: "10px 12px", background: "#f3f4f6", borderRadius: "8px", marginBottom: "4px" }}>
+                            <p style={{ margin: 0, fontSize: "13px", fontWeight: "700", color: "#111827" }}>
+                              Upper: {patient.final_upper_sets} sets · Lower: {patient.final_lower_sets} sets · {patient.monthly_plan.totalMonths} months
+                            </p>
+                          </div>
+                          {(discountedMonthlyPlan || patient.monthly_plan).months.map((m) => (
+                            <div key={m.num} style={{ display: "flex", justifyContent: "space-between", padding: "8px 12px", background: "#f8f7f5", borderRadius: "8px" }}>
+                              <span style={{ fontSize: "13px", color: "#374151" }}>
+                                Month {m.num} — Upper {alignerRangeLabel(m.upper)}, Lower {alignerRangeLabel(m.lower)}
+                              </span>
+                              <strong style={{ fontSize: "13px", color: "#111827" }}>{fmt(m.payableAmount ?? m.amount)}</strong>
+                            </div>
+                          ))}
+                          <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 12px", fontWeight: "800", fontSize: "14px", color: "#111827" }}>
+                            <span>Total (incl. ₹999 planning fee)</span>
+                            <span>{fmt(discountedMonthlyPlan ? totalCost(discountedMonthlyPlan) : patient.monthly_plan.months[patient.monthly_plan.months.length - 1]?.cumulative)}</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Expanded Panel — Aligner Sets (month by month) */}
+                  {step.key === "aligner_sets" && isExpanded && discountedMonthlyPlan && (
+                    <div style={{ marginLeft: "58px", marginTop: "8px", background: "white", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+                      <p style={{ margin: "0 0 14px", fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Aligner Sets — Month by Month</p>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                        {discountedMonthlyPlan.months.map((m) => {
+                          const amountPaidNow = Number(patient.amount_paid) || 0;
+                          const isPaid = amountPaidNow >= m.discountedCumulative;
+                          const isNextPayable = nextMonth && nextMonth.num === m.num;
+                          const batch = (patient.manufacturing_data?.batches || []).find((b) => Number(b.num) === m.num);
+                          const isExpandedMonth = expandedMonth === m.num;
+                          return (
+                            <div key={m.num} style={{ border: `1px solid ${isPaid ? "#bbf7d0" : "#e5e7eb"}`, borderRadius: "10px", overflow: "hidden" }}>
+                              <div
+                                onClick={() => isPaid && setExpandedMonth(isExpandedMonth ? null : m.num)}
+                                style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px", background: isPaid ? "#f0fdf4" : "#f8f7f5", cursor: isPaid ? "pointer" : "default" }}
+                              >
+                                <div>
+                                  <p style={{ margin: 0, fontSize: "13px", fontWeight: "700", color: "#111827" }}>
+                                    Month {m.num} — Upper {alignerRangeLabel(m.upper)}, Lower {alignerRangeLabel(m.lower)}
+                                  </p>
+                                  <p style={{ margin: "2px 0 0", fontSize: "12px", color: isPaid ? "#16a34a" : "#9ca3af" }}>
+                                    {fmt(m.payableAmount)}{isPaid ? " · Paid" : isNextPayable ? "" : " · Locked"}
+                                  </p>
+                                </div>
+                                {isPaid ? (
+                                  <span style={{ fontSize: "12px", color: "#16a34a" }}>{isExpandedMonth ? "▲" : "▼"}</span>
+                                ) : isNextPayable ? (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); handlePayNow(m.payableAmount); }}
+                                    disabled={payNowLoading}
+                                    style={{ flexShrink: 0, padding: "8px 16px", borderRadius: "8px", border: "none", background: "linear-gradient(135deg, #b8905a, #f59e0b)", color: "white", fontWeight: "700", fontSize: "12px", cursor: payNowLoading ? "not-allowed" : "pointer", whiteSpace: "nowrap" }}
+                                  >
+                                    {payNowLoading ? "..." : "Order"}
+                                  </button>
+                                ) : (
+                                  <span style={{ fontSize: "16px" }}>🔒</span>
+                                )}
+                              </div>
+                              {isPaid && isExpandedMonth && (
+                                <div style={{ padding: "12px", borderTop: "1px solid #e5e7eb", display: "flex", flexDirection: "column", gap: "8px" }}>
+                                  {[
+                                    { label: "Manufacturing Started", done: !!batch?.mfg_started, at: batch?.mfg_started },
+                                    { label: "Manufacturing Ended", done: !!batch?.mfg_done, at: batch?.mfg_done },
+                                  ].map((r) => (
+                                    <div key={r.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 10px", background: r.done ? "#f0fdf4" : "#f8f7f5", borderRadius: "8px" }}>
+                                      <span style={{ fontSize: "12px", fontWeight: "700", color: "#111827" }}>
+                                        {r.label}{r.done && r.at ? ` — ${new Date(r.at + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}` : ""}
+                                      </span>
+                                      <span style={{ fontSize: "11px", fontWeight: "700", color: r.done ? "#16a34a" : "#9ca3af" }}>{r.done ? "✓ Done" : "Pending"}</span>
+                                    </div>
+                                  ))}
+                                  {batch?.shipment_id && (
+                                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                      <div style={{ flex: 1, padding: "8px 12px", borderRadius: "8px", background: "white", border: "1px solid #e5e7eb", fontSize: "13px", color: "#111827", fontWeight: "600", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                        {batch.shipment_id}
+                                      </div>
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); handleCopyShipmentId(m.num, batch.shipment_id); }}
+                                        style={{ flexShrink: 0, padding: "8px 12px", borderRadius: "8px", border: "none", background: copiedNum === m.num ? "#16a34a" : "#b8905a", color: "white", fontWeight: "700", fontSize: "12px", cursor: "pointer", whiteSpace: "nowrap" }}
+                                      >
+                                        {copiedNum === m.num ? "Copied!" : "Copy"}
+                                      </button>
+                                    </div>
+                                  )}
+                                  {batch?.shipment_link && (
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); window.open(batch.shipment_link, "_blank", "noopener,noreferrer"); }}
+                                      style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "none", background: "linear-gradient(135deg, #b8905a, #f59e0b)", color: "white", fontWeight: "700", fontSize: "13px", cursor: "pointer" }}
+                                    >
+                                      Track Shipment
+                                    </button>
+                                  )}
+                                  {batch?.aligner_received ? (
+                                    <p style={{ margin: 0, fontSize: "12px", fontWeight: "700", color: "#16a34a" }}>
+                                      ✓ Received on {new Date(batch.aligner_received + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                                    </p>
+                                  ) : batch?.shipment_link ? (
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); handleMarkReceived(m.num); }}
+                                      disabled={receivingBatch === m.num}
+                                      style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #16a34a", background: receivingBatch === m.num ? "#f0fdf4" : "white", color: "#16a34a", fontWeight: "700", fontSize: "13px", cursor: receivingBatch === m.num ? "not-allowed" : "pointer" }}
+                                    >
+                                      {receivingBatch === m.num ? "Saving..." : "I've Received This Batch"}
+                                    </button>
+                                  ) : null}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
                 </div>
