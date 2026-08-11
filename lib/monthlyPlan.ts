@@ -1,15 +1,18 @@
 /**
  * Per-arch, month-by-month planning & billing model.
  *
- * One aligner set = 15 days. Two sets fit in a month. Each month's price
- * depends on whether BOTH arches still have an active set that month
- * (₹4,999) or only one does, because the other arch's sets ran out first
- * (₹2,499.50 — half price).
+ * One aligner set = 15 days. Two sets fit in a month, and each set is a pair
+ * (one upper + one lower aligner) — so a full month is 4 aligners at
+ * ₹1,249.75 each = ₹4,999. Priced strictly per aligner actually due that
+ * month, not per arch-presence — a month with only 3 aligners (e.g. an arch
+ * running out mid-month) costs 3 × ₹1,249.75 = ₹3,749.25, not the full
+ * ₹4,999 and not the ₹2,499.50 two-aligner rate either.
  */
 
 export const FINAL_PLAN_FEE = 999;
 export const MONTH_RATE = 4999;
 export const HALF_MONTH_RATE = 2499.5;
+export const ALIGNER_RATE = MONTH_RATE / 4; // 1249.75
 
 export interface MonthEntry {
   num: number;
@@ -70,9 +73,7 @@ export function buildMonthlyPlan(upperSets: number, lowerSets: number): MonthlyP
         lower.push(lowerCursor);
       }
     }
-    const hasUpper = upper.length > 0;
-    const hasLower = lower.length > 0;
-    const amount = hasUpper && hasLower ? MONTH_RATE : hasUpper || hasLower ? HALF_MONTH_RATE : 0;
+    const amount = Math.round((upper.length + lower.length) * ALIGNER_RATE * 100) / 100;
     cumulative += amount;
     months.push({ num: m, upper, lower, amount, cumulative });
   }
