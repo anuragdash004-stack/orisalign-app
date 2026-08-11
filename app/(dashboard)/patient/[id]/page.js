@@ -48,18 +48,19 @@ const LEGACY_JOURNEY_STEPS = [
 ];
 
 // New per-arch, month-by-month model — used once the orthodontist has
-// entered final upper/lower sets (appt.monthly_plan present). Manufacturing
-// / Aligners Dispatched / Aligners Received collapse into one "Aligner Sets"
+// entered final upper/lower sets (appt.monthly_plan present). The old
+// separate "Plan and Payment"/"Full Plan"/"Final Plan Review" steps merge
+// into one "Full Plan" step (pay ₹999, then — in the same step, once paid —
+// review the aligner plan and total treatment duration). Manufacturing /
+// Aligners Dispatched / Aligners Received collapse into one "Aligner Sets"
 // step, one row per month.
 const NEW_JOURNEY_STEPS = [
   { key: "booked",                  label: "Appointment Booked" },
   { key: "confirmed",               label: "Appointment Confirmed" },
   { key: "scanning_done",           label: "Scanning and Provisional Planning", expandable: true },
-  { key: "payment_done",            label: "Final Planning Payment",      expandable: true },
-  { key: "prealigner_treatment",    label: "Prealigner Treatment",        expandable: true },
-  { key: "planning_done",           label: "Full Plan", expandable: true },
-  { key: "final_plan_review",       label: "Final Plan Review",           expandable: true },
+  { key: "payment_done",            label: "Full Plan",                   expandable: true },
   { key: "plan_approved",           label: "Plan Approval", approveAction: true },
+  { key: "prealigner_treatment",    label: "Prealigner Treatment",        expandable: true },
   { key: "aligner_sets",            label: "Aligner Sets",                expandable: true },
   { key: "followup_appointment",    label: "Appointment Book" },
   { key: "aligners_delivered",      label: "Aligners Delivered" },
@@ -888,10 +889,38 @@ export default function PatientJourney() {
                   {/* Expanded Panel — Plan and Payment */}
                   {step.key === "payment_done" && isExpanded && (patient.monthly_plan ? (
                     <div style={{ marginLeft: "58px", marginTop: "8px", background: "white", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
-                      <p style={{ margin: "0 0 14px", fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Final Planning Payment</p>
+                      <p style={{ margin: "0 0 14px", fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Full Plan</p>
                       {(Number(patient.amount_paid) || 0) >= FINAL_PLAN_FEE ? (
-                        <div style={{ padding: "10px 12px", background: "#f0fdf4", borderRadius: "8px", border: "1px solid #bbf7d0" }}>
-                          <p style={{ margin: 0, fontSize: "13px", fontWeight: "800", color: "#16a34a" }}>✅ Paid — {fmt(FINAL_PLAN_FEE)}</p>
+                        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                          <div style={{ padding: "10px 12px", background: "#f0fdf4", borderRadius: "8px", border: "1px solid #bbf7d0" }}>
+                            <p style={{ margin: 0, fontSize: "13px", fontWeight: "800", color: "#16a34a" }}>✅ Final Planning Payment Paid — {fmt(FINAL_PLAN_FEE)}</p>
+                          </div>
+                          <p style={{ margin: 0, fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Your Aligner Plan</p>
+                          {patient.monthly_plan.totalMonths ? (
+                            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                              {[
+                                ["Upper Arch Sets", patient.final_upper_sets],
+                                ["Lower Arch Sets", patient.final_lower_sets],
+                                ["Wear Duration per Set", "15 days"],
+                                ["Total Treatment Duration", `${patient.monthly_plan.totalMonths} month${patient.monthly_plan.totalMonths !== 1 ? "s" : ""}`],
+                              ].map(([lbl, val]) => (
+                                <div key={lbl} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: "#f8f7f5", borderRadius: "8px" }}>
+                                  <span style={{ fontSize: "13px", color: "#6b7280", fontWeight: "600" }}>{lbl}</span>
+                                  <span style={{ fontSize: "13px", color: "#111827", fontWeight: "700" }}>{val}</span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p style={{ margin: 0, fontSize: "13px", color: "#9ca3af", fontStyle: "italic" }}>Your aligner plan details will appear here once set by your orthodontist.</p>
+                          )}
+                          {patient.review_link && (
+                            <a
+                              href={patient.review_link} target="_blank" rel="noopener noreferrer"
+                              style={{ display: "block", padding: "12px", borderRadius: "10px", background: "#b8905a", color: "white", fontWeight: "700", fontSize: "14px", textAlign: "center", textDecoration: "none" }}
+                            >
+                              Review Treatment Plan
+                            </a>
+                          )}
                         </div>
                       ) : (
                         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
@@ -1146,36 +1175,6 @@ export default function PatientJourney() {
                       )}
                     </div>
                   ))}
-
-                  {/* Expanded Panel — Final Plan Review */}
-                  {step.key === "final_plan_review" && isExpanded && (
-                    <div style={{ marginLeft: "58px", marginTop: "8px", background: "white", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
-                      <p style={{ margin: "0 0 14px", fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Final Plan Review</p>
-                      {!patient.monthly_plan ? (
-                        <p style={{ margin: 0, fontSize: "13px", color: "#9ca3af", fontStyle: "italic" }}>Your final aligner count and monthly schedule will appear here once your orthodontist reviews your case.</p>
-                      ) : (
-                        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                          <div style={{ padding: "10px 12px", background: "#f3f4f6", borderRadius: "8px", marginBottom: "4px" }}>
-                            <p style={{ margin: 0, fontSize: "13px", fontWeight: "700", color: "#111827" }}>
-                              Upper: {patient.final_upper_sets} sets · Lower: {patient.final_lower_sets} sets · {patient.monthly_plan.totalMonths} months
-                            </p>
-                          </div>
-                          {(discountedMonthlyPlan || patient.monthly_plan).months.map((m) => (
-                            <div key={m.num} style={{ display: "flex", justifyContent: "space-between", padding: "8px 12px", background: "#f8f7f5", borderRadius: "8px" }}>
-                              <span style={{ fontSize: "13px", color: "#374151" }}>
-                                Month {m.num} — Upper {alignerRangeLabel(m.upper)}, Lower {alignerRangeLabel(m.lower)}
-                              </span>
-                              <strong style={{ fontSize: "13px", color: "#111827" }}>{fmt(m.payableAmount ?? m.amount)}</strong>
-                            </div>
-                          ))}
-                          <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 12px", fontWeight: "800", fontSize: "14px", color: "#111827" }}>
-                            <span>Total (incl. ₹999 planning fee)</span>
-                            <span>{fmt(discountedMonthlyPlan ? totalCost(discountedMonthlyPlan) : patient.monthly_plan.months[patient.monthly_plan.months.length - 1]?.cumulative)}</span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
 
                   {/* Expanded Panel — Aligner Sets (month by month) */}
                   {step.key === "aligner_sets" && isExpanded && discountedMonthlyPlan && (

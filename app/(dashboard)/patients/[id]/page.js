@@ -31,16 +31,17 @@ const LEGACY_ALL_STEPS = [
   { key: "feedback_submitted",      label: "Feedback Submitted" },
 ];
 
-// New per-arch, month-by-month model — Manufacturing/Dispatched/Received
-// collapse into one manually-toggleable "Aligner Sets" step (per-month
-// detail is managed in the Manufacturing tab's batches, same as before).
+// New per-arch, month-by-month model — the old "Plan and Payment"/"Full
+// Plan"/"Final Plan Review" steps merge into one "Full Plan" step (pay ₹999,
+// then review the aligner plan in the same step). Manufacturing/Dispatched/
+// Received collapse into one manually-toggleable "Aligner Sets" step
+// (per-month detail is managed in the Manufacturing tab's batches, same as
+// before).
 const NEW_ALL_STEPS = [
   { key: "booked",                  label: "Appointment Booked" },
   { key: "confirmed",               label: "Appointment Confirmed" },
   { key: "scanning_done",           label: "Scanning and Provisional Planning" },
-  { key: "payment_done",            label: "Final Planning Payment" },
-  { key: "planning_done",           label: "Full Plan" },
-  { key: "final_plan_review",       label: "Final Plan Review" },
+  { key: "payment_done",            label: "Full Plan" },
   { key: "plan_approved",           label: "Plan Approved" },
   { key: "aligner_sets",            label: "Aligner Sets" },
   { key: "followup_appointment",    label: "Appointment Book" },
