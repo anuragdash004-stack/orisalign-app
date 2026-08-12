@@ -1260,8 +1260,14 @@ export default function PatientJourney() {
                               {isPaid && isExpandedMonth && (
                                 <div style={{ padding: "12px", borderTop: "1px solid #e5e7eb", display: "flex", flexDirection: "column", gap: "8px" }}>
                                   {[
-                                    { label: "Manufacturing", done: !!batch?.mfg_started, at: batch?.mfg_started },
-                                    { label: "Order Dispatched", done: !!batch?.mfg_done, at: batch?.mfg_done },
+                                    // "Push to Production" is the active/in-progress label right
+                                    // after payment — it only flips to a done "Production Completed"
+                                    // once the admin actually marks manufacturing finished, not the
+                                    // moment payment succeeds (mfg_started just queues it).
+                                    { label: batch?.mfg_done ? "Production Completed" : "Push to Production", done: !!batch?.mfg_done, at: batch?.mfg_done },
+                                    // "Dispatched" is tied to the tracking link itself, not mfg_done —
+                                    // that's the actual signal the order shipped.
+                                    { label: "Dispatched", done: !!batch?.shipment_link, at: batch?.mfg_done },
                                   ].map((r) => (
                                     <div key={r.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 10px", background: r.done ? "#f0fdf4" : "#f8f7f5", borderRadius: "8px" }}>
                                       <span style={{ fontSize: "12px", fontWeight: "700", color: "#111827" }}>
