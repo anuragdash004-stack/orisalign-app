@@ -5,7 +5,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { logAuditEntry } from "./auditLog";
-import { applyCouponDiscount, alignerRangeLabel, FINAL_PLAN_FEE, type MonthlyPlan } from "./monthlyPlan";
+import { applyCouponDiscount, alignerRangeLabel, monthSlotLabels, FINAL_PLAN_FEE, type MonthlyPlan } from "./monthlyPlan";
 
 export type PaymentType = "down_payment" | "pending" | "full" | "others";
 
@@ -261,17 +261,21 @@ export async function recordPaymentReceived(params: RecordPaymentParams): Promis
       if (newlyPaidMonths.length > 0) {
         const mfg = (appt.manufacturing_data as { batches?: Record<string, unknown>[] } | null) || {};
         const existingBatches = mfg.batches || [];
+        // Manufacturing starts the moment payment succeeds — no separate
+        // admin click needed for a package's "Manufacturing" status.
+        const startedToday = new Date().toISOString().slice(0, 10);
         const newBatches = newlyPaidMonths
           .filter((m) => !existingBatches.some((b) => Number(b.num) === m.num))
           .map((m) => ({
             num: m.num,
             start: "",
             end: "",
-            mfg_started: "",
+            mfg_started: startedToday,
             mfg_done: "",
             shipment_link: "",
             upper_aligners: alignerRangeLabel(m.upper),
             lower_aligners: alignerRangeLabel(m.lower),
+            slot_label: monthSlotLabels(m.upper, m.lower).join(", "),
           }));
         if (newBatches.length > 0) {
           await supabase

@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { useParams, useRouter } from "next/navigation";
 import { logAudit } from "@/lib/logAudit";
-import { FINAL_PLAN_FEE, estimateRange, applyCouponDiscount, alignerRangeLabel, totalCost } from "@/lib/monthlyPlan";
+import { FINAL_PLAN_FEE, estimateRange, applyCouponDiscount, monthSlotLabels, totalCost } from "@/lib/monthlyPlan";
 
 const supabase = getSupabaseClient();
 
@@ -834,7 +834,7 @@ function MonthlyBillingCards({ appointmentId, appt, setAppt, actor }) {
               <div key={m.num} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", padding: "10px 12px", background: isPaid ? "#f0fdf4" : "#fafafa", borderRadius: "8px", border: isPaid ? "1px solid #bbf7d0" : "1px solid #e5e7eb" }}>
                 <div>
                   <span style={{ fontSize: "13px", fontWeight: "700", color: "#111827" }}>
-                    Month {m.num} — Upper {alignerRangeLabel(m.upper)}, Lower {alignerRangeLabel(m.lower)}
+                    Package {m.num} — {monthSlotLabels(m.upper, m.lower).join(", ")}
                   </span>
                   <span style={{ marginLeft: "8px", fontSize: "13px", color: "#6b7280" }}>{inr(m.payableAmount)}</span>
                 </div>
@@ -874,6 +874,7 @@ function ManufacturingTab({ appointmentId, initialData, logisticsData, actor }) 
         // under the new per-arch, month-by-month model — see
         // lib/paymentHelper.ts.
         upper_aligners: b.upper_aligners || "", lower_aligners: b.lower_aligners || "",
+        slot_label: b.slot_label || "",
         mfg_started: b.mfg_started || "", mfg_done: b.mfg_done || "",
         shipment_link: b.shipment_link || l.shipment_link || "",
         shipment_id: l.shipment_id || "",
@@ -904,7 +905,7 @@ function ManufacturingTab({ appointmentId, initialData, logisticsData, actor }) 
   // step that just turned on. Returns whether it succeeded.
   const persistBatches = async (updatedBatches, auditAction) => {
     const mfgPayload = {
-      batches: updatedBatches.map(({ num, start, end, upper_aligners, lower_aligners, mfg_started, mfg_done, shipment_link }) => ({ num, start, end, upper_aligners, lower_aligners, mfg_started, mfg_done, shipment_link })),
+      batches: updatedBatches.map(({ num, start, end, upper_aligners, lower_aligners, slot_label, mfg_started, mfg_done, shipment_link }) => ({ num, start, end, upper_aligners, lower_aligners, slot_label, mfg_started, mfg_done, shipment_link })),
       aligner_delivered: alignerDelivered,
     };
     const logPayload = {
@@ -948,7 +949,7 @@ function ManufacturingTab({ appointmentId, initialData, logisticsData, actor }) 
 
   const markStarted = async (num) => {
     const batch = batches.find((b) => b.num === num);
-    const hasArchLabels = batch.upper_aligners || batch.lower_aligners;
+    const hasArchLabels = batch.slot_label || batch.upper_aligners || batch.lower_aligners;
     if (!hasArchLabels && (batch.start === "" || batch.end === "")) { alert("Enter the aligner set range for this batch first."); return; }
     setSaving(`${num}-started`);
     const updated = batches.map((b) => b.num === num ? { ...b, mfg_started: new Date().toISOString().slice(0, 10) } : b);
@@ -985,8 +986,10 @@ function ManufacturingTab({ appointmentId, initialData, logisticsData, actor }) 
       {batches.map((batch) => (
         <div key={batch.num} style={card}>
           <h4 style={{ margin: "0 0 16px", fontSize: "14px", color: "#b8905a", fontWeight: "800", letterSpacing: "0.5px" }}>
-            {batch.upper_aligners || batch.lower_aligners
-              ? `MONTH ${batch.num} — UPPER ${batch.upper_aligners || "—"}, LOWER ${batch.lower_aligners || "—"}`
+            {batch.slot_label
+              ? `PACKAGE ${batch.num} — ${batch.slot_label.toUpperCase()}`
+              : batch.upper_aligners || batch.lower_aligners
+              ? `PACKAGE ${batch.num} — UPPER ${batch.upper_aligners || "—"}, LOWER ${batch.lower_aligners || "—"}`
               : `BATCH ${batch.num}`}
           </h4>
           <div style={row}>
@@ -1924,7 +1927,7 @@ function ReportTab({ appointmentId, appt }) {
     at: mfgStartLog?.created_at || null,
     detail: manufacturingBatches.length > 0
       ? manufacturingBatches.map((b) =>
-          `Batch ${b.num} (${b.upper_aligners || b.lower_aligners ? `Upper ${b.upper_aligners || "—"}, Lower ${b.lower_aligners || "—"}` : `Aligners ${b.start}–${b.end}`}): started ${b.mfg_started || "date not recorded"}${b.mfg_done ? `, completed ${b.mfg_done}` : ""}.`
+          `Package ${b.num} (${b.slot_label || (b.upper_aligners || b.lower_aligners ? `Upper ${b.upper_aligners || "—"}, Lower ${b.lower_aligners || "—"}` : `Aligners ${b.start}–${b.end}`)}): started ${b.mfg_started || "date not recorded"}${b.mfg_done ? `, completed ${b.mfg_done}` : ""}.`
         )
       : [],
   });

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
-import { FINAL_PLAN_FEE, estimateRange, applyCouponDiscount, nextPayableMonth, totalCost, alignerRangeLabel } from "@/lib/monthlyPlan";
+import { FINAL_PLAN_FEE, estimateRange, applyCouponDiscount, nextPayableMonth, totalCost, monthSlotLabels } from "@/lib/monthlyPlan";
 
 const supabase = getSupabaseClient();
 
@@ -1195,7 +1195,7 @@ export default function PatientJourney() {
                               >
                                 <div>
                                   <p style={{ margin: 0, fontSize: "13px", fontWeight: "700", color: "#111827" }}>
-                                    Month {m.num} — Upper {alignerRangeLabel(m.upper)}, Lower {alignerRangeLabel(m.lower)}
+                                    Package {m.num} — {monthSlotLabels(m.upper, m.lower).join(", ")}
                                   </p>
                                   <p style={{ margin: "2px 0 0", fontSize: "12px", color: isPaid ? "#16a34a" : "#9ca3af" }}>
                                     {fmt(m.payableAmount)}{isPaid ? " · Paid" : isNextPayable ? "" : " · Locked"}
@@ -1218,8 +1218,8 @@ export default function PatientJourney() {
                               {isPaid && isExpandedMonth && (
                                 <div style={{ padding: "12px", borderTop: "1px solid #e5e7eb", display: "flex", flexDirection: "column", gap: "8px" }}>
                                   {[
-                                    { label: "Manufacturing Started", done: !!batch?.mfg_started, at: batch?.mfg_started },
-                                    { label: "Manufacturing Ended", done: !!batch?.mfg_done, at: batch?.mfg_done },
+                                    { label: "Manufacturing", done: !!batch?.mfg_started, at: batch?.mfg_started },
+                                    { label: "Order Dispatched", done: !!batch?.mfg_done, at: batch?.mfg_done },
                                   ].map((r) => (
                                     <div key={r.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 10px", background: r.done ? "#f0fdf4" : "#f8f7f5", borderRadius: "8px" }}>
                                       <span style={{ fontSize: "12px", fontWeight: "700", color: "#111827" }}>

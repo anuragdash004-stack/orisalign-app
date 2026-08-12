@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { useParams, useRouter } from "next/navigation";
 import { logAudit } from "@/lib/logAudit";
-import { estimateRange, buildMonthlyPlan, alignerRangeLabel } from "@/lib/monthlyPlan";
+import { estimateRange, buildMonthlyPlan, monthSlotLabels } from "@/lib/monthlyPlan";
 
 const supabase = getSupabaseClient();
 
@@ -628,7 +628,7 @@ export default function OrthoCase() {
                       {monthlyPlan.months.map((m) => (
                         <div key={m.num} style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", padding: "6px 0", borderBottom: "1px dashed #bbf7d0" }}>
                           <span style={{ color: "#111827" }}>
-                            Month {m.num} — Upper {alignerRangeLabel(m.upper)}, Lower {alignerRangeLabel(m.lower)}
+                            Package {m.num} — {monthSlotLabels(m.upper, m.lower).join(", ")}
                           </span>
                           <strong style={{ color: "#111827" }}>{fmtRs(m.amount)}</strong>
                         </div>

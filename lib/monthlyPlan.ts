@@ -131,3 +131,24 @@ export function alignerRangeLabel(nums: number[]): string {
   if (nums.length === 1) return String(nums[0]);
   return `${nums[0]}–${nums[nums.length - 1]}`;
 }
+
+/**
+ * Per-slot labels for a package (month): while both arches still have an
+ * aligner in a given slot they're worn together, so it's labelled as one
+ * "Set N" (upper and lower share the same number at that point, since both
+ * cursors advance in lockstep until one arch runs out) — only once an arch
+ * is exhausted do the remaining slots show as "Upper N" / "Lower N" solo.
+ * e.g. upper 12 / lower 9 → Set 1..Set 9, then Upper 10, Upper 11, Upper 12.
+ */
+export function monthSlotLabels(upper: number[], lower: number[]): string[] {
+  const maxLen = Math.max(upper.length, lower.length);
+  const labels: string[] = [];
+  for (let i = 0; i < maxLen; i++) {
+    const u = upper[i];
+    const l = lower[i];
+    if (u !== undefined && l !== undefined) labels.push(`Set ${u}`);
+    else if (u !== undefined) labels.push(`Upper ${u}`);
+    else if (l !== undefined) labels.push(`Lower ${l}`);
+  }
+  return labels;
+}
