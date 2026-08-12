@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
-import { FINAL_PLAN_FEE, estimateRange, applyCouponDiscount, nextPayableMonth, totalCost, monthSlotLabels } from "@/lib/monthlyPlan";
+import { FINAL_PLAN_FEE, estimateRange, applyCouponDiscount, totalCost, monthSlotLabels } from "@/lib/monthlyPlan";
 
 const supabase = getSupabaseClient();
 
@@ -143,6 +143,7 @@ export default function PatientJourney() {
   const [loading, setLoading] = useState(true);
   const [expandedStep, setExpandedStep] = useState(null);
   const [expandedMonth, setExpandedMonth] = useState(null);
+  const [selectedPackages, setSelectedPackages] = useState([]); // unpaid package nums chosen to order together
   const [approving, setApproving] = useState(false);
   const [copiedNum, setCopiedNum] = useState(null);
   const [receivingBatch, setReceivingBatch] = useState(null);
@@ -262,7 +263,6 @@ export default function PatientJourney() {
   const pd = patient.payment_data || {};
   const couponsTotalForMonths = appliedCoupons.reduce((sum, c) => sum + (parseFloat(c.discount) || 0), 0);
   const discountedMonthlyPlan = patient.monthly_plan ? applyCouponDiscount(patient.monthly_plan, couponsTotalForMonths) : null;
-  const nextMonth = discountedMonthlyPlan ? nextPayableMonth(discountedMonthlyPlan, Number(patient.amount_paid) || 0) : null;
 
   // Number of sets is the same regardless of plan (set by the orthodontist
   // in Provisional Planning, or later confirmed in the Aligner Plan) — only
@@ -1177,43 +1177,85 @@ export default function PatientJourney() {
                   ))}
 
                   {/* Expanded Panel — Aligner Sets (month by month) */}
-                  {step.key === "aligner_sets" && isExpanded && discountedMonthlyPlan && (
+                  {step.key === "aligner_sets" && isExpanded && discountedMonthlyPlan && (() => {
+                    const amountPaidNow = Number(patient.amount_paid) || 0;
+                    const unpaidNums = discountedMonthlyPlan.months
+                      .filter((m) => amountPaidNow < m.discountedCumulative)
+                      .map((m) => m.num);
+                    // Selection must stay a contiguous run starting from the next
+                    // unpaid package — otherwise the cumulative-threshold "paid"
+                    // math (and the last-month-backward coupon discount) breaks.
+                    const toggleSelected = (num) => {
+                      const idx = unpaidNums.indexOf(num);
+                      setSelectedPackages((prev) =>
+                        prev.includes(num) ? unpaidNums.slice(0, idx) : unpaidNums.slice(0, idx + 1)
+                      );
+                    };
+                    const selectedTotal = discountedMonthlyPlan.months
+                      .filter((m) => selectedPackages.includes(m.num))
+                      .reduce((sum, m) => sum + m.payableAmount, 0);
+                    return (
                     <div style={{ marginLeft: "58px", marginTop: "8px", background: "white", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
-                      <p style={{ margin: "0 0 14px", fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Aligner Sets — Month by Month</p>
+                      <p style={{ margin: "0 0 14px", fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Aligner Sets — Package by Package</p>
+
+                      {unpaidNums.length > 0 && (
+                        <div style={{ marginBottom: "14px", padding: "12px", background: "#f0fdf4", borderRadius: "10px", border: "1px solid #bbf7d0" }}>
+                          <p style={{ margin: "0 0 10px", fontSize: "12px", color: "#374151" }}>
+                            Select one or more packages below, then place your order.
+                          </p>
+                          <button
+                            onClick={() => handlePayNow(selectedTotal)}
+                            disabled={payNowLoading || selectedPackages.length === 0}
+                            style={{
+                              display: "block", width: "100%", padding: "12px", borderRadius: "10px", border: "none",
+                              background: selectedPackages.length === 0 ? "#e5e7eb" : "linear-gradient(135deg, #b8905a, #f59e0b)",
+                              color: selectedPackages.length === 0 ? "#9ca3af" : "white", fontWeight: "800",
+                              fontSize: "14px", textAlign: "center", letterSpacing: "0.3px",
+                              cursor: (payNowLoading || selectedPackages.length === 0) ? "not-allowed" : "pointer",
+                              opacity: payNowLoading ? 0.7 : 1,
+                            }}
+                          >
+                            {payNowLoading
+                              ? "Starting payment..."
+                              : selectedPackages.length === 0
+                                ? "Select packages to order"
+                                : `Order ${selectedPackages.length} Package${selectedPackages.length > 1 ? "s" : ""} · ${fmt(selectedTotal)}`}
+                          </button>
+                        </div>
+                      )}
+
                       <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                         {discountedMonthlyPlan.months.map((m) => {
-                          const amountPaidNow = Number(patient.amount_paid) || 0;
                           const isPaid = amountPaidNow >= m.discountedCumulative;
-                          const isNextPayable = nextMonth && nextMonth.num === m.num;
+                          const isSelected = selectedPackages.includes(m.num);
                           const batch = (patient.manufacturing_data?.batches || []).find((b) => Number(b.num) === m.num);
                           const isExpandedMonth = expandedMonth === m.num;
                           return (
-                            <div key={m.num} style={{ border: `1px solid ${isPaid ? "#bbf7d0" : "#e5e7eb"}`, borderRadius: "10px", overflow: "hidden" }}>
+                            <div key={m.num} style={{ border: `1px solid ${isPaid ? "#bbf7d0" : isSelected ? "#f59e0b" : "#e5e7eb"}`, borderRadius: "10px", overflow: "hidden" }}>
                               <div
-                                onClick={() => isPaid && setExpandedMonth(isExpandedMonth ? null : m.num)}
-                                style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px", background: isPaid ? "#f0fdf4" : "#f8f7f5", cursor: isPaid ? "pointer" : "default" }}
+                                onClick={() => (isPaid ? setExpandedMonth(isExpandedMonth ? null : m.num) : toggleSelected(m.num))}
+                                style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px", background: isPaid ? "#f0fdf4" : isSelected ? "#fffbeb" : "#f8f7f5", cursor: "pointer" }}
                               >
-                                <div>
-                                  <p style={{ margin: 0, fontSize: "13px", fontWeight: "700", color: "#111827" }}>
-                                    Package {m.num} — {monthSlotLabels(m.upper, m.lower).join(", ")}
-                                  </p>
-                                  <p style={{ margin: "2px 0 0", fontSize: "12px", color: isPaid ? "#16a34a" : "#9ca3af" }}>
-                                    {fmt(m.payableAmount)}{isPaid ? " · Paid" : isNextPayable ? "" : " · Locked"}
-                                  </p>
+                                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                                  {!isPaid && (
+                                    <input
+                                      type="checkbox"
+                                      checked={isSelected}
+                                      onChange={() => toggleSelected(m.num)}
+                                      onClick={(e) => e.stopPropagation()}
+                                      style={{ width: "18px", height: "18px", accentColor: "#b8905a", cursor: "pointer", flexShrink: 0 }}
+                                    />
+                                  )}
+                                  <div>
+                                    <p style={{ margin: 0, fontSize: "13px", fontWeight: "700", color: "#111827" }}>
+                                      Package {m.num} — {monthSlotLabels(m.upper, m.lower).join(", ")}
+                                    </p>
+                                    <p style={{ margin: "2px 0 0", fontSize: "12px", color: isPaid ? "#16a34a" : "#9ca3af" }}>
+                                      {fmt(m.payableAmount)}{isPaid ? " · Paid" : ""}
+                                    </p>
+                                  </div>
                                 </div>
-                                {isPaid ? (
-                                  <span style={{ fontSize: "12px", color: "#16a34a" }}>{isExpandedMonth ? "▲" : "▼"}</span>
-                                ) : isNextPayable ? (
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); handlePayNow(m.payableAmount); }}
-                                    disabled={payNowLoading}
-                                    style={{ flexShrink: 0, padding: "8px 16px", borderRadius: "8px", border: "none", background: "linear-gradient(135deg, #b8905a, #f59e0b)", color: "white", fontWeight: "700", fontSize: "12px", cursor: payNowLoading ? "not-allowed" : "pointer", whiteSpace: "nowrap" }}
-                                  >
-                                    {payNowLoading ? "..." : "Order"}
-                                  </button>
-                                ) : (
-                                  <span style={{ fontSize: "16px" }}>🔒</span>
-                                )}
+                                {isPaid && <span style={{ fontSize: "12px", color: "#16a34a" }}>{isExpandedMonth ? "▲" : "▼"}</span>}
                               </div>
                               {isPaid && isExpandedMonth && (
                                 <div style={{ padding: "12px", borderTop: "1px solid #e5e7eb", display: "flex", flexDirection: "column", gap: "8px" }}>
@@ -1269,7 +1311,8 @@ export default function PatientJourney() {
                         })}
                       </div>
                     </div>
-                  )}
+                    );
+                  })()}
                 </div>
               );
             })}
