@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">OrisAlign</string>
+    <string name="title_activity_main">OrisAlign</string>
+    <string name="package_name">com.orisalign.app</string>
+    <string name="custom_url_scheme">com.orisalign.app</string>
+</resources>
