@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { useParams, useRouter } from "next/navigation";
 import { logAudit } from "@/lib/logAudit";
-import { FINAL_PLAN_FEE, estimateRange, applyCouponDiscount, monthSlotLabels, totalCost } from "@/lib/monthlyPlan";
+import { FINAL_PLAN_FEE, estimateRange, applyCouponDiscount, monthSlotLabels, totalCost, recomputeCumulative } from "@/lib/monthlyPlan";
 
 const supabase = getSupabaseClient();
 
@@ -1241,6 +1241,66 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
   const [savingAligner, setSavingAligner] = useState(false);
   const [alignerSaved, setAlignerSaved] = useState(false);
 
+  // Aligner Sets (new per-arch model) — package pricing overrides + production/dispatch,
+  // folded in here instead of the Manufacturing tab (hidden for these patients).
+  const [monthlyPlanState, setMonthlyPlanState] = useState(appt.monthly_plan || null);
+  const [batchesState, setBatchesState] = useState(appt.manufacturing_data?.batches || []);
+  const [priceEdits, setPriceEdits] = useState({});
+  const [savingPrice, setSavingPrice] = useState(null);
+  const [trackingInputs, setTrackingInputs] = useState({});
+  const [savingBatch, setSavingBatch] = useState(null);
+
+  const savePackagePrice = async (num) => {
+    const newAmount = parseFloat(priceEdits[num]);
+    if (!newAmount || newAmount <= 0) { alert("Enter a valid amount."); return; }
+    setSavingPrice(num);
+    const months = monthlyPlanState.months.map((m) => (m.num === num ? { ...m, amount: newAmount } : m));
+    const newPlan = { ...monthlyPlanState, months: recomputeCumulative(months) };
+    const { error } = await supabase.from("appointments_booking").update({ monthly_plan: newPlan }).eq("id", appointmentId);
+    setSavingPrice(null);
+    if (error) { alert("Failed to save: " + error.message); return; }
+    logAudit({ appointmentId, actor, action: `Package ${num} Price Overridden`, entity: "monthly_plan", newData: { num, amount: newAmount } });
+    appt.monthly_plan = newPlan;
+    setMonthlyPlanState(newPlan);
+    setPriceEdits((prev) => { const next = { ...prev }; delete next[num]; return next; });
+  };
+
+  const markProductionCompleted = async (num) => {
+    setSavingBatch(`${num}-prod`);
+    const today = new Date().toISOString().slice(0, 10);
+    const updatedBatches = batchesState.map((b) => (b.num === num ? { ...b, mfg_done: b.mfg_done || today } : b));
+    const newMfg = { ...(appt.manufacturing_data || {}), batches: updatedBatches };
+    const { error } = await supabase.from("appointments_booking").update({ manufacturing_data: newMfg }).eq("id", appointmentId);
+    setSavingBatch(null);
+    if (error) { alert("Failed to save: " + error.message); return; }
+    logAudit({ appointmentId, actor, action: `Package ${num} Production Completed`, entity: "manufacturing_data", newData: { num, mfg_done: today } });
+    appt.manufacturing_data = newMfg;
+    setBatchesState(updatedBatches);
+  };
+
+  const saveDispatch = async (num) => {
+    const draft = trackingInputs[num] || {};
+    setSavingBatch(`${num}-dispatch`);
+    const today = new Date().toISOString().slice(0, 10);
+    const updatedBatches = batchesState.map((b) => {
+      if (b.num !== num) return b;
+      const shipment_link = draft.shipment_link !== undefined ? draft.shipment_link : (b.shipment_link || "");
+      return {
+        ...b,
+        shipment_id: draft.shipment_id !== undefined ? draft.shipment_id : (b.shipment_id || ""),
+        shipment_link,
+        mfg_done: b.mfg_done || (shipment_link ? today : b.mfg_done),
+      };
+    });
+    const newMfg = { ...(appt.manufacturing_data || {}), batches: updatedBatches };
+    const { error } = await supabase.from("appointments_booking").update({ manufacturing_data: newMfg }).eq("id", appointmentId);
+    setSavingBatch(null);
+    if (error) { alert("Failed to save: " + error.message); return; }
+    logAudit({ appointmentId, actor, action: `Package ${num} Dispatched`, entity: "manufacturing_data", newData: updatedBatches.find((b) => b.num === num) });
+    appt.manufacturing_data = newMfg;
+    setBatchesState(updatedBatches);
+  };
+
   // Smile Correction setup — number of sets, start date, days/set (admin-controlled)
   const [smileSets, setSmileSets] = useState(appt.journey_steps?.smile_sets_count ? String(appt.journey_steps.smile_sets_count) : "");
   const [smileStart, setSmileStart] = useState(appt.journey_steps?.smile_start_date || "");
@@ -1707,6 +1767,103 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                   </p>
                 </div>
               )}
+
+              {/* Aligner Sets (new per-arch model) — package pricing + production/dispatch,
+                  folded in here instead of a separate Manufacturing tab. */}
+              {isAdmin && step.key === "aligner_sets" && monthlyPlanState && (() => {
+                const couponsTotal = (appt.payment_data?.applied_coupons || [])
+                  .reduce((sum, c) => sum + (parseFloat(c.discount) || 0), 0);
+                const discounted = applyCouponDiscount(monthlyPlanState, couponsTotal);
+                const amountPaidNow = Number(appt.amount_paid) || 0;
+                return (
+                  <div style={subBox}>
+                    <span style={label}>ALIGNER SETS — PACKAGE BY PACKAGE</span>
+                    {discounted.months.map((m) => {
+                      const isPaid = amountPaidNow >= m.discountedCumulative;
+                      const batch = batchesState.find((b) => Number(b.num) === m.num);
+                      const editingPrice = priceEdits[m.num] !== undefined;
+                      const draft = trackingInputs[m.num] || {};
+                      return (
+                        <div key={m.num} style={{ padding: "12px", borderRadius: "10px", border: `1px solid ${isPaid ? "#bbf7d0" : "#e5e7eb"}`, background: isPaid ? "#f0fdf4" : "#fafafa", display: "flex", flexDirection: "column", gap: "8px" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px" }}>
+                            <span style={{ fontSize: "13px", fontWeight: "700", color: "#111827" }}>
+                              Package {m.num} — {monthSlotLabels(m.upper, m.lower).join(", ")}
+                            </span>
+                            <span style={{ fontSize: "11px", fontWeight: "700", color: isPaid ? "#16a34a" : "#9ca3af" }}>{isPaid ? "PAID" : "NOT YET ORDERED"}</span>
+                          </div>
+
+                          {isPaid ? (
+                            <>
+                              <span style={{ fontSize: "13px", color: "#374151" }}>{inr(m.payableAmount)}</span>
+                              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 10px", background: "white", borderRadius: "8px", border: "1px solid #e5e7eb" }}>
+                                <span style={{ fontSize: "12px", fontWeight: "700", color: "#111827" }}>
+                                  {batch?.mfg_done ? `Production Completed — ${batch.mfg_done}` : "Push to Production"}
+                                </span>
+                                {!batch?.mfg_done && (
+                                  <button
+                                    onClick={() => markProductionCompleted(m.num)}
+                                    disabled={savingBatch === `${m.num}-prod`}
+                                    style={{ padding: "6px 12px", borderRadius: "8px", border: "none", background: "#111827", color: "white", fontWeight: "700", fontSize: "12px", cursor: savingBatch === `${m.num}-prod` ? "not-allowed" : "pointer" }}
+                                  >
+                                    {savingBatch === `${m.num}-prod` ? "..." : "Mark Production Completed"}
+                                  </button>
+                                )}
+                              </div>
+                              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 10px", background: "white", borderRadius: "8px", border: "1px solid #e5e7eb" }}>
+                                <span style={{ fontSize: "12px", fontWeight: "700", color: "#111827" }}>
+                                  {batch?.shipment_link ? "Dispatched" : "Not yet dispatched"}
+                                </span>
+                                <span style={{ fontSize: "11px", fontWeight: "700", color: batch?.shipment_link ? "#16a34a" : "#9ca3af" }}>{batch?.shipment_link ? "✓ Done" : "Pending"}</span>
+                              </div>
+                              <div style={{ display: "flex", gap: "8px" }}>
+                                <input
+                                  style={{ ...input, flex: 1 }}
+                                  type="text"
+                                  placeholder="Tracking ID"
+                                  value={draft.shipment_id !== undefined ? draft.shipment_id : (batch?.shipment_id || "")}
+                                  onChange={(e) => setTrackingInputs((prev) => ({ ...prev, [m.num]: { ...prev[m.num], shipment_id: e.target.value } }))}
+                                />
+                                <input
+                                  style={{ ...input, flex: 2 }}
+                                  type="url"
+                                  placeholder="Tracking link https://..."
+                                  value={draft.shipment_link !== undefined ? draft.shipment_link : (batch?.shipment_link || "")}
+                                  onChange={(e) => setTrackingInputs((prev) => ({ ...prev, [m.num]: { ...prev[m.num], shipment_link: e.target.value } }))}
+                                />
+                              </div>
+                              <button
+                                style={savingBatch === `${m.num}-dispatch` ? { ...btnPrimary, opacity: 0.6 } : btnPrimary}
+                                onClick={() => saveDispatch(m.num)}
+                                disabled={savingBatch === `${m.num}-dispatch`}
+                              >
+                                {savingBatch === `${m.num}-dispatch` ? "Saving..." : "Save & Dispatch"}
+                              </button>
+                            </>
+                          ) : (
+                            <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                              <input
+                                style={{ ...input, flex: 1 }}
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={editingPrice ? priceEdits[m.num] : m.amount}
+                                onChange={(e) => setPriceEdits((prev) => ({ ...prev, [m.num]: e.target.value }))}
+                              />
+                              <button
+                                onClick={() => savePackagePrice(m.num)}
+                                disabled={savingPrice === m.num || !editingPrice}
+                                style={{ padding: "10px 18px", borderRadius: "10px", border: "none", background: editingPrice ? "#111827" : "#e5e7eb", color: editingPrice ? "white" : "#9ca3af", fontWeight: "700", fontSize: "13px", cursor: (savingPrice === m.num || !editingPrice) ? "not-allowed" : "pointer", flexShrink: 0 }}
+                              >
+                                {savingPrice === m.num ? "Saving..." : "Save Price"}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
 
               {/* Email message — collapsed behind a button; expands to edit */}
               {isAdmin && !done && stepMessages[step.key] && step.key !== "plan_approved" && (
@@ -2527,9 +2684,11 @@ export default function PatientDetailPage() {
         </div>
       </div>
 
-      {/* Tab Pills — Manufacturing/Logistics only apply once the appointment is confirmed */}
+      {/* Tab Pills — Manufacturing/Logistics only apply once the appointment is confirmed,
+          and only for legacy (lump-sum) patients — new-model patients manage
+          production/dispatch per package directly in the Journey tab instead. */}
       <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "20px" }}>
-        {TABS.filter((tab) => tab !== "Manufacturing" || appt.status === "confirmed" || appt.status === "completed").map((tab) => (
+        {TABS.filter((tab) => tab !== "Manufacturing" || (!appt.monthly_plan && (appt.status === "confirmed" || appt.status === "completed"))).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}

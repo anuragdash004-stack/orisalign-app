@@ -119,6 +119,20 @@ export function nextPayableMonth(discountedPlan: DiscountedMonthlyPlan, amountPa
   return discountedPlan.months.find((m) => amountPaid < m.discountedCumulative) || null;
 }
 
+/**
+ * Recomputes `cumulative` for every month after an admin edits one month's
+ * `amount` (a price override) — every downstream calculation (next-payable
+ * detection, coupon discount, paid-status checks) reads `cumulative` fresh,
+ * so this is the only step needed for an override to propagate correctly.
+ */
+export function recomputeCumulative(months: MonthEntry[]): MonthEntry[] {
+  let running = FINAL_PLAN_FEE;
+  return months.map((m) => {
+    running += m.amount;
+    return { ...m, cumulative: running };
+  });
+}
+
 /** Total treatment cost (₹999 fee + all months), after any coupon discount. */
 export function totalCost(discountedPlan: DiscountedMonthlyPlan): number {
   const last = discountedPlan.months[discountedPlan.months.length - 1];
