@@ -2000,8 +2000,12 @@ function ReportTab({ appointmentId, appt }) {
     });
   }
 
-  // 3. Confirmation
-  const confirmLog = findDoneLog("Appointment Confirmed");
+  // 3. Confirmation — logged by app/(dashboard)/appointment/page.js as a plain
+  // "Appointment Confirmed" action, not the generic "Step Marked Done: ..."
+  // pattern findDoneLog looks for (this step is auto-derived from
+  // appt.status, never toggled through the Journey tab), so it needs its own
+  // exact-match lookup or its timestamp is silently never found.
+  const confirmLog = logs.find((l) => l.action === "Appointment Confirmed") || findDoneLog("Appointment Confirmed");
   events.push({
     done: !!steps.confirmed,
     title: "Appointment Confirmed",
@@ -2024,13 +2028,17 @@ function ReportTab({ appointmentId, appt }) {
     ].filter(Boolean),
   });
 
-  // 5. Payment
-  const payLog = findDoneLog("Plan and Payment");
+  // 5. Payment — also an automatic/derived step (never goes through the
+  // generic "Step Marked Done" toggle — legacy logs it as "Plan & Amount
+  // Saved", the new per-package model never logs a matching action at all),
+  // so first_payment_date (set precisely by recordPaymentReceived on the
+  // first payment) is the reliable timestamp source here, not the log search.
+  const payLog = logs.find((l) => l.action === "Plan & Amount Saved") || findDoneLog("Plan and Payment");
   events.push({
     done: !!steps.payment_done,
     title: "Plan and Payment",
     by: payLog?.actor_email ? `counsellor / admin (${payLog.actor_email})` : "OrisAlign team",
-    at: payLog?.created_at || null,
+    at: appt.first_payment_date || payLog?.created_at || null,
     detail: [
       fullAmt > 0 ? `Full treatment cost quoted at ${inr(pd.full_amount)}.` : null,
       disc > 0 ? `A discount of ${inr(pd.discount)} was applied.` : null,
