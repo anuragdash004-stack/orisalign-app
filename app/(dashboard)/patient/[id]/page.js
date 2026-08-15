@@ -1297,19 +1297,11 @@ export default function PatientJourney() {
                                       Track Shipment
                                     </button>
                                   )}
-                                  {batch?.aligner_received ? (
+                                  {batch?.aligner_received && (
                                     <p style={{ margin: 0, fontSize: "12px", fontWeight: "700", color: "#16a34a" }}>
                                       ✓ Received on {new Date(batch.aligner_received + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                                     </p>
-                                  ) : batch?.shipment_link ? (
-                                    <button
-                                      onClick={(e) => { e.stopPropagation(); handleMarkReceived(m.num); }}
-                                      disabled={receivingBatch === m.num}
-                                      style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #16a34a", background: receivingBatch === m.num ? "#f0fdf4" : "white", color: "#16a34a", fontWeight: "700", fontSize: "13px", cursor: receivingBatch === m.num ? "not-allowed" : "pointer" }}
-                                    >
-                                      {receivingBatch === m.num ? "Saving..." : "I've Received This Batch"}
-                                    </button>
-                                  ) : null}
+                                  )}
                                 </div>
                               )}
                             </div>
