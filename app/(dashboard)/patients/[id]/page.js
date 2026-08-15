@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { useParams, useRouter } from "next/navigation";
 import { logAudit } from "@/lib/logAudit";
-import { FINAL_PLAN_FEE, estimateRange, applyCouponDiscount, monthSlotLabels, totalCost, recomputeCumulative } from "@/lib/monthlyPlan";
+import { FINAL_PLAN_FEE, estimateRange, applyCouponDiscount, monthSlotLabels, totalCost, recomputeCumulative, buildMonthlyPlan, PLAN_CONFIGS } from "@/lib/monthlyPlan";
 
 const supabase = getSupabaseClient();
 
@@ -1193,6 +1193,7 @@ function PatientPageTab({ appointmentId }) {
 const DEFAULT_STEP_MESSAGES = {
   confirmed:               { subject: "Your Appointment is Confirmed — OrisAlign", body: "Great news! Your appointment with OrisAlign has been confirmed. Our dentist will be in touch with you very soon to guide you through what to expect. Please carry any previous dental records if you have them." },
   scanning_done:           { subject: "Scanning & Planning Complete — OrisAlign", body: "Your scanning session and initial planning have been completed successfully. Our orthodontic team is now working on your personalised treatment proposal. We’ll notify you as soon as your plan is ready." },
+  provisional_planning:    { subject: "Your Plan is Ready to Choose — OrisAlign", body: "You can now choose between OrisPro and OrisPro Plus for your treatment. Visit your journey page to compare pricing and pace, and select the plan that works best for you." },
   payment_done:            { subject: "Payment Confirmed — OrisAlign", body: "Your payment details have been finalised. Thank you for your trust in OrisAlign. Our team will now proceed with your treatment planning and keep you updated at every step." },
   planning_done:           { subject: "Your Treatment Plan is Ready — OrisAlign", body: "Your personalised 3D treatment plan has been prepared by our orthodontic team! Please visit your journey page to review it. Once you’re satisfied, click the Approve Plan button to authorise us to begin fabricating your aligners." },
   plan_approved:           { subject: "Plan Approved — Manufacturing Begins Soon — OrisAlign", body: "Your treatment plan has been approved. Thank you for authorising OrisAlign to begin fabrication of your custom aligners. Our manufacturing team will start work on your aligners shortly. This process typically takes a few weeks — we’ll keep you posted." },
@@ -1255,6 +1256,128 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
   const [alignerDaysPerSet, setAlignerDaysPerSet] = useState(appt.aligner_days_per_set || null);
   const [savingAligner, setSavingAligner] = useState(false);
   const [alignerSaved, setAlignerSaved] = useState(false);
+
+  // Provisional Planning (new per-arch model) — plan choice, editable here too.
+  const [savingPlanChoice, setSavingPlanChoice] = useState(false);
+  const selectProvisionalPlanAdmin = async (planKey) => {
+    setSavingPlanChoice(true);
+    const newPaymentData = { ...(appt.payment_data || {}), plan: planKey };
+    const { error } = await supabase.from("appointments_booking").update({ payment_data: newPaymentData }).eq("id", appointmentId);
+    setSavingPlanChoice(false);
+    if (error) { alert("Failed to save: " + error.message); return; }
+    logAudit({ appointmentId, actor, action: "Provisional Plan Choice Set", entity: "payment_data", newData: { plan: planKey } });
+    appt.payment_data = newPaymentData;
+    setPlanChoiceTick((t) => t + 1);
+  };
+  const [, setPlanChoiceTick] = useState(0); // forces a re-render after mutating appt.payment_data in place
+
+  // Scanning — provisional plan text + estimated month range (same fields
+  // the Ortho portal's Provisional Planning section edits).
+  const [scanProvisionalPlan, setScanProvisionalPlan] = useState(appt.provisional_plan || "");
+  const [scanMinMonths, setScanMinMonths] = useState(appt.provisional_min_months ? String(appt.provisional_min_months) : "");
+  const [scanMaxMonths, setScanMaxMonths] = useState(appt.provisional_max_months ? String(appt.provisional_max_months) : "");
+  const [savingScanPlan, setSavingScanPlan] = useState(false);
+  const [scanPlanSaved, setScanPlanSaved] = useState(false);
+  const saveScanProvisionalPlan = async () => {
+    setSavingScanPlan(true);
+    const min = parseInt(scanMinMonths, 10) || null;
+    const max = parseInt(scanMaxMonths, 10) || null;
+    const { error } = await supabase
+      .from("appointments_booking")
+      .update({ provisional_plan: scanProvisionalPlan, provisional_min_months: min, provisional_max_months: max })
+      .eq("id", appointmentId);
+    setSavingScanPlan(false);
+    if (error) { alert("Failed to save: " + error.message); return; }
+    logAudit({ appointmentId, actor, action: "Provisional Plan Text/Estimate Updated", entity: "provisional_plan", newData: { provisional_plan: scanProvisionalPlan, provisional_min_months: min, provisional_max_months: max } });
+    appt.provisional_plan = scanProvisionalPlan;
+    appt.provisional_min_months = min;
+    appt.provisional_max_months = max;
+    setScanPlanSaved(true);
+    setTimeout(() => setScanPlanSaved(false), 3000);
+  };
+
+  // Full Plan (new per-arch model) — final plan text + upper/lower sets.
+  const [finalPlanText, setFinalPlanText] = useState(appt.final_plan || "");
+  const [savingFinalPlanText, setSavingFinalPlanText] = useState(false);
+  const [finalPlanTextSaved, setFinalPlanTextSaved] = useState(false);
+  const saveFinalPlanText = async () => {
+    setSavingFinalPlanText(true);
+    const { error } = await supabase.from("appointments_booking").update({ final_plan: finalPlanText }).eq("id", appointmentId);
+    setSavingFinalPlanText(false);
+    if (error) { alert("Failed to save: " + error.message); return; }
+    logAudit({ appointmentId, actor, action: "Final Plan Text Updated", entity: "final_plan", newData: { final_plan: finalPlanText } });
+    appt.final_plan = finalPlanText;
+    setFinalPlanTextSaved(true);
+    setTimeout(() => setFinalPlanTextSaved(false), 3000);
+  };
+
+  const [finalUpperSets, setFinalUpperSets] = useState(appt.final_upper_sets ? String(appt.final_upper_sets) : "");
+  const [finalLowerSets, setFinalLowerSets] = useState(appt.final_lower_sets ? String(appt.final_lower_sets) : "");
+  const [savingFinalReview, setSavingFinalReview] = useState(false);
+  const generateFinalSchedule = async () => {
+    const upper = parseInt(finalUpperSets, 10) || 0;
+    const lower = parseInt(finalLowerSets, 10) || 0;
+    if (upper <= 0 || lower <= 0) { alert("Enter both upper and lower arch set counts."); return; }
+    if (appt.monthly_plan && !window.confirm("A schedule already exists. Regenerating will recompute package numbers and pricing from scratch. Continue?")) return;
+    const plan = buildMonthlyPlan(upper, lower, appt.payment_data?.plan === "ORISPLUS" ? "ORISPLUS" : "ORISPRO");
+    setSavingFinalReview(true);
+    const { error } = await supabase
+      .from("appointments_booking")
+      .update({
+        final_upper_sets: upper,
+        final_lower_sets: lower,
+        monthly_plan: plan,
+        journey_steps: { ...(appt.journey_steps || {}), final_plan_review: true },
+      })
+      .eq("id", appointmentId);
+    setSavingFinalReview(false);
+    if (error) { alert("Failed to save: " + error.message); return; }
+    logAudit({ appointmentId, actor, action: "Final Plan Review Submitted (from Journey tab)", entity: "monthly_plan", newData: { final_upper_sets: upper, final_lower_sets: lower, monthly_plan: plan } });
+    appt.final_upper_sets = upper;
+    appt.final_lower_sets = lower;
+    appt.monthly_plan = plan;
+    appt.journey_steps = { ...(appt.journey_steps || {}), final_plan_review: true };
+    setMonthlyPlanState(plan);
+    setPlanChoiceTick((t) => t + 1);
+  };
+
+  const [markingFullPlanFee, setMarkingFullPlanFee] = useState(false);
+  const markFullPlanFeePaid = async () => {
+    setMarkingFullPlanFee(true);
+    try {
+      const res = await fetch("/api/update-payment-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ appointmentId, amountPaid: FINAL_PLAN_FEE, paymentMethod: "Manual", notes: "Final Planning Payment", actorEmail: actor?.email, actorRole: actor?.role }),
+      });
+      const json = await res.json();
+      if (!res.ok || json.error) { alert("Failed to record payment: " + (json.error || "Unknown error")); return; }
+      logAudit({ appointmentId, actor, action: "Final Planning Payment Marked Paid", entity: "payment_status", newData: { amount: FINAL_PLAN_FEE, totalPaid: json.totalPaid } });
+      appt.amount_paid = json.totalPaid;
+      setPlanChoiceTick((t) => t + 1);
+    } catch {
+      alert("Network error. Please try again.");
+    } finally {
+      setMarkingFullPlanFee(false);
+    }
+  };
+
+  // Prealigner Treatment — mark dentist-flagged procedures done on the patient's behalf.
+  const [markingPrealignerProc, setMarkingPrealignerProc] = useState(null);
+  const toggleAdminPrealignerDone = async (procName) => {
+    const doneMap = appt.journey_steps?.prealigner_done || {};
+    const isDone = !!doneMap[procName];
+    setMarkingPrealignerProc(procName);
+    const newDone = { ...doneMap };
+    if (isDone) delete newDone[procName]; else newDone[procName] = new Date().toISOString();
+    const newJourneySteps = { ...(appt.journey_steps || {}), prealigner_done: newDone };
+    const { error } = await supabase.from("appointments_booking").update({ journey_steps: newJourneySteps }).eq("id", appointmentId);
+    setMarkingPrealignerProc(null);
+    if (error) { alert("Failed to save: " + error.message); return; }
+    logAudit({ appointmentId, actor, action: isDone ? `Prealigner Procedure Marked Undone: ${procName}` : `Prealigner Procedure Marked Done: ${procName}`, entity: "prealigner_done", newData: newDone });
+    appt.journey_steps = newJourneySteps;
+    setPlanChoiceTick((t) => t + 1);
+  };
 
   // Aligner Sets (new per-arch model) — package pricing overrides + production/dispatch,
   // folded in here instead of the Manufacturing tab (hidden for these patients).
@@ -1662,6 +1785,177 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                 </div>
               )}
 
+              {/* Part A3 — Scanning: provisional plan text + estimated month range */}
+              {isAdmin && step.key === "scanning_done" && (
+                <div style={subBox}>
+                  <span style={label}>PROVISIONAL PLAN</span>
+                  <textarea
+                    style={{ ...input, minHeight: "90px", fontFamily: "inherit", resize: "vertical" }}
+                    placeholder="Write the provisional treatment plan..."
+                    value={scanProvisionalPlan}
+                    onChange={(e) => setScanProvisionalPlan(e.target.value)}
+                  />
+                  <span style={label}>ESTIMATED DURATION (MONTHS)</span>
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <input style={{ ...input, flex: 1 }} type="number" min="1" placeholder="Min" value={scanMinMonths} onChange={(e) => setScanMinMonths(e.target.value)} />
+                    <input style={{ ...input, flex: 1 }} type="number" min="1" placeholder="Max" value={scanMaxMonths} onChange={(e) => setScanMaxMonths(e.target.value)} />
+                  </div>
+                  <button
+                    style={savingScanPlan ? { ...btnPrimary, opacity: 0.6 } : btnPrimary}
+                    onClick={saveScanProvisionalPlan}
+                    disabled={savingScanPlan}
+                  >
+                    {savingScanPlan ? "Saving..." : scanPlanSaved ? "Saved ✓" : "Save Provisional Plan"}
+                  </button>
+                  <p style={{ margin: 0, fontSize: "11px", color: "#9ca3af" }}>
+                    Same fields the Ortho portal's Provisional Planning section edits — visible to the patient here too.
+                  </p>
+                </div>
+              )}
+
+              {/* Provisional Planning — plan choice (new per-arch model) */}
+              {isAdmin && step.key === "provisional_planning" && (
+                <div style={subBox}>
+                  <span style={label}>PATIENT&apos;S PLAN CHOICE</span>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                    {Object.values(PLAN_CONFIGS).map((cfg) => {
+                      const isSelected = appt.payment_data?.plan === cfg.key;
+                      return (
+                        <button
+                          key={cfg.key}
+                          onClick={() => selectProvisionalPlanAdmin(cfg.key)}
+                          disabled={savingPlanChoice}
+                          style={{
+                            textAlign: "left", padding: "14px", borderRadius: "10px",
+                            border: isSelected ? "2px solid #b8905a" : "1px solid #e5e7eb",
+                            background: isSelected ? "#fffbeb" : "white",
+                            cursor: savingPlanChoice ? "not-allowed" : "pointer",
+                          }}
+                        >
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                            <span style={{ fontSize: "14px", fontWeight: "800", color: "#111827" }}>{cfg.label}</span>
+                            {isSelected && <span style={{ fontSize: "11px", fontWeight: "700", color: "#b8905a" }}>✓ SELECTED</span>}
+                          </div>
+                          <span style={{ fontSize: "13px", color: "#374151", display: "block" }}>{inr(cfg.monthRate)}/month · {cfg.daysPerSet} days/set · {cfg.setsPerMonth} sets/month</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p style={{ margin: "8px 0 0", fontSize: "11px", color: "#9ca3af" }}>
+                    Overrides the patient&apos;s own choice. Locked automatically once a schedule has been generated in Final Plan Review.
+                  </p>
+                </div>
+              )}
+
+              {/* Full Plan (new per-arch model) — 999 fee, final plan text, review link, upper/lower sets */}
+              {isAdmin && step.key === "payment_done" && isNewModelAppt && (
+                <div style={subBox}>
+                  <span style={label}>FINAL PLANNING PAYMENT (₹999)</span>
+                  {(Number(appt.amount_paid) || 0) >= FINAL_PLAN_FEE ? (
+                    <p style={{ margin: 0, fontSize: "13px", fontWeight: "700", color: "#16a34a" }}>✅ Paid</p>
+                  ) : (
+                    <button
+                      style={markingFullPlanFee ? { ...btnPrimary, opacity: 0.6 } : btnPrimary}
+                      onClick={markFullPlanFeePaid}
+                      disabled={markingFullPlanFee}
+                    >
+                      {markingFullPlanFee ? "Saving..." : "Mark ₹999 as Paid"}
+                    </button>
+                  )}
+
+                  <span style={label}>WHAT IS THE FULL PLAN</span>
+                  <textarea
+                    style={{ ...input, minHeight: "90px", fontFamily: "inherit", resize: "vertical" }}
+                    placeholder="Describe the final treatment plan..."
+                    value={finalPlanText}
+                    onChange={(e) => setFinalPlanText(e.target.value)}
+                  />
+                  <button
+                    style={savingFinalPlanText ? { ...btnPrimary, opacity: 0.6 } : btnPrimary}
+                    onClick={saveFinalPlanText}
+                    disabled={savingFinalPlanText}
+                  >
+                    {savingFinalPlanText ? "Saving..." : finalPlanTextSaved ? "Saved ✓" : "Save Plan Description"}
+                  </button>
+
+                  <span style={label}>UPPER / LOWER ARCH SETS</span>
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <input style={{ ...input, flex: 1 }} type="number" min="1" placeholder="Upper" value={finalUpperSets} onChange={(e) => setFinalUpperSets(e.target.value)} />
+                    <input style={{ ...input, flex: 1 }} type="number" min="1" placeholder="Lower" value={finalLowerSets} onChange={(e) => setFinalLowerSets(e.target.value)} />
+                  </div>
+                  <button
+                    style={savingFinalReview ? { ...btnPrimary, opacity: 0.6 } : btnPrimary}
+                    onClick={generateFinalSchedule}
+                    disabled={savingFinalReview}
+                  >
+                    {savingFinalReview ? "Generating..." : appt.monthly_plan ? "Regenerate Schedule" : "Generate Schedule"}
+                  </button>
+                  {appt.monthly_plan && (
+                    <p style={{ margin: 0, fontSize: "12px", color: "#16a34a", fontWeight: "700" }}>
+                      Current: {appt.monthly_plan.totalMonths} months, {appt.monthly_plan.months?.length || 0} packages generated.
+                    </p>
+                  )}
+                </div>
+              )}
+              {isAdmin && step.key === "payment_done" && isNewModelAppt && (
+                <div style={subBox}>
+                  <span style={label}>TREATMENT PLAN REVIEW LINK</span>
+                  <input
+                    style={input}
+                    type="url"
+                    placeholder="https://..."
+                    value={reviewLink}
+                    onChange={(e) => setReviewLink(e.target.value)}
+                  />
+                  <button
+                    style={savingLink ? { ...btnPrimary, opacity: 0.6 } : btnPrimary}
+                    onClick={saveReviewLink}
+                    disabled={savingLink}
+                  >
+                    {savingLink ? "Saving..." : linkSaved ? "Saved ✓" : "Save Link"}
+                  </button>
+                  <p style={{ margin: 0, fontSize: "11px", color: "#9ca3af" }}>
+                    Appears to the patient as a &quot;Review Treatment Plan&quot; button.
+                  </p>
+                </div>
+              )}
+
+              {/* Prealigner Treatment — mark dentist-flagged procedures on the patient's behalf */}
+              {isAdmin && step.key === "prealigner_treatment" && (() => {
+                const pfd = appt.patient_form_data || {};
+                const procs = [...(pfd.pre_orthodontic_procedures || [])].map((p) => (p === "Others" && pfd.pre_orthodontic_others ? `Others: ${pfd.pre_orthodontic_others}` : p));
+                const doneMap = appt.journey_steps?.prealigner_done || {};
+                if (procs.length === 0) {
+                  return (
+                    <div style={subBox}>
+                      <p style={{ margin: 0, fontSize: "13px", color: "#9ca3af", fontStyle: "italic" }}>No prealigner procedures were flagged by the dentist for this patient.</p>
+                    </div>
+                  );
+                }
+                return (
+                  <div style={subBox}>
+                    <span style={label}>PREALIGNER PROCEDURES</span>
+                    {procs.map((proc) => {
+                      const doneAt = doneMap[proc];
+                      return (
+                        <div key={proc} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", padding: "10px 12px", background: doneAt ? "#f0fdf4" : "white", borderRadius: "8px", border: doneAt ? "1px solid #bbf7d0" : "1px solid #e5e7eb" }}>
+                          <div>
+                            <span style={{ fontSize: "13px", fontWeight: "700", color: "#111827" }}>{proc}</span>
+                            {doneAt && <span style={{ display: "block", fontSize: "11px", color: "#16a34a" }}>Done on {new Date(doneAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>}
+                          </div>
+                          <button
+                            onClick={() => toggleAdminPrealignerDone(proc)}
+                            disabled={markingPrealignerProc === proc}
+                            style={{ padding: "6px 14px", borderRadius: "8px", border: "none", cursor: markingPrealignerProc === proc ? "not-allowed" : "pointer", background: doneAt ? "#fee2e2" : "#111827", color: doneAt ? "#dc2626" : "white", fontWeight: "700", fontSize: "12px", flexShrink: 0 }}
+                          >
+                            {markingPrealignerProc === proc ? "..." : doneAt ? "Undo" : "Mark Done"}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
 
               {/* Part C0 — Planning Done: aligner set plan */}
               {isAdmin && step.key === "planning_done" && (

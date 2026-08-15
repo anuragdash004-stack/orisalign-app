@@ -994,13 +994,16 @@ export default function PatientJourney() {
                           <div style={{ padding: "10px 12px", background: "#f0fdf4", borderRadius: "8px", border: "1px solid #bbf7d0" }}>
                             <p style={{ margin: 0, fontSize: "13px", fontWeight: "800", color: "#16a34a" }}>✅ Final Planning Payment Paid — {fmt(FINAL_PLAN_FEE)}</p>
                           </div>
+                          {patient.final_plan && (
+                            <p style={{ margin: 0, fontSize: "13px", color: "#374151", lineHeight: "1.6", whiteSpace: "pre-wrap" }}>{patient.final_plan}</p>
+                          )}
                           <p style={{ margin: 0, fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Your Aligner Plan</p>
                           {patient.monthly_plan?.totalMonths ? (
                             <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                               {[
                                 ["Upper Arch Sets", patient.final_upper_sets],
                                 ["Lower Arch Sets", patient.final_lower_sets],
-                                ["Wear Duration per Set", "15 days"],
+                                ["Wear Duration per Set", `${(PLAN_CONFIGS[patient.payment_data?.plan] || PLAN_CONFIGS.ORISPRO).daysPerSet} days`],
                                 ["Total Treatment Duration", `${patient.monthly_plan.totalMonths} month${patient.monthly_plan.totalMonths !== 1 ? "s" : ""}`],
                               ].map(([lbl, val]) => (
                                 <div key={lbl} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: "#f8f7f5", borderRadius: "8px" }}>
