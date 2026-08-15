@@ -926,6 +926,9 @@ function ManufacturingTab({ appointmentId, initialData, logisticsData, actor }) 
       aligners_dispatched: dispatched,
       manufacturing_started_at: startDates[0] || null,
       manufacturing_completed_at: doneDates[doneDates.length - 1] || null,
+      // First moment any batch actually got a tracking link saved — the
+      // Report tab shows this as the dispatch timestamp.
+      aligners_dispatched_at: dispatched ? (js.aligners_dispatched_at || new Date().toISOString()) : null,
     };
 
     const { error } = await supabase
@@ -1409,7 +1412,12 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
     setSteps(updated);
     setSaving(key);
     const js = appt.journey_steps || {};
-    const newJs = { ...js, [key]: newVal };
+    // Record exactly when this step was actually marked done — previously
+    // nothing captured this at all (the Report tab's timestamp lookup
+    // searched for an audit action that was never logged), so every
+    // manually-toggled milestone always showed "exact timestamp not
+    // recorded" even though the real moment existed.
+    const newJs = { ...js, [key]: newVal, [`${key}_at`]: newVal ? new Date().toISOString() : null };
     const updatePayload = { journey_steps: newJs };
     const { error } = await supabase
       .from("appointments_booking")
@@ -1421,6 +1429,7 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
       setSteps((prev) => ({ ...prev, [key]: currentVal }));
       return;
     }
+    appt.journey_steps = newJs;
     if (key === "feedback_submitted") {
       logAudit({ appointmentId, actor, action: newVal ? "Feedback Submitted" : "Feedback Marked Undone", entity: "feedback_submitted", newData: { [key]: newVal } });
     }
@@ -1960,6 +1969,10 @@ function ReportTab({ appointmentId, appt }) {
   };
 
   const findDoneLog = (label) => logs.find((l) => l.action === `Step Marked Done: ${label}`);
+  // Some _at fields are full ISO timestamps, others (from ManufacturingTab's
+  // batch dates) are bare "YYYY-MM-DD" — normalize either into something
+  // `fmt`/`new Date()` can parse correctly.
+  const asDateTime = (v) => (!v ? null : v.includes("T") ? v : `${v}T00:00:00`);
   const staffLabel = (uuid) => {
     if (!uuid) return null;
     const u = staffMap[uuid];
@@ -2020,7 +2033,7 @@ function ReportTab({ appointmentId, appt }) {
     done: !!steps.scanning_done,
     title: "Scanning & Provisional Planning",
     by: scanLog?.actor_email ? `admin (${scanLog.actor_email})` : "OrisAlign team",
-    at: appt.appointment_started_at || scanLog?.created_at || null,
+    at: appt.appointment_started_at || js.scanning_done_at || scanLog?.created_at || null,
     detail: [
       appt.appointment_started_at ? `Scanning session started at the clinic on ${fmt(appt.appointment_started_at)}.` : null,
       appt.scanning_video_url ? `Provisional planning video recorded and uploaded.` : null,
@@ -2055,12 +2068,12 @@ function ReportTab({ appointmentId, appt }) {
   });
 
   // 6. Planning done
-  const planLog = findDoneLog("Planning Done");
+  const planLog = findDoneLog("Full Plan");
   events.push({
     done: !!steps.planning_done,
     title: "Treatment Planning Done",
     by: planLog?.actor_email ? `admin / orthodontist (${planLog.actor_email})` : "OrisAlign team",
-    at: planLog?.created_at || null,
+    at: js.planning_done_at || planLog?.created_at || null,
     detail: [
       appt.aligner_total_sets ? `Treatment plan consists of ${appt.aligner_total_sets} aligner set${appt.aligner_total_sets !== 1 ? "s" : ""}${appt.aligner_days_per_set ? `, worn ${appt.aligner_days_per_set} days per set` : ""}.` : null,
       appt.aligner_total_sets && appt.aligner_days_per_set
@@ -2089,7 +2102,7 @@ function ReportTab({ appointmentId, appt }) {
     done: !!steps.manufacturing_started,
     title: "Manufacturing Started",
     by: mfgStartLog?.actor_email ? `admin (${mfgStartLog.actor_email})` : "OrisAlign team",
-    at: mfgStartLog?.created_at || null,
+    at: asDateTime(js.manufacturing_started_at) || mfgStartLog?.created_at || null,
     detail: manufacturingBatches.length > 0
       ? manufacturingBatches.map((b) =>
           `Package ${b.num} (${b.slot_label || (b.upper_aligners || b.lower_aligners ? `Upper ${b.upper_aligners || "—"}, Lower ${b.lower_aligners || "—"}` : `Aligners ${b.start}–${b.end}`)}): started ${b.mfg_started || "date not recorded"}${b.mfg_done ? `, completed ${b.mfg_done}` : ""}.`
@@ -2103,7 +2116,7 @@ function ReportTab({ appointmentId, appt }) {
     done: !!steps.manufacturing_completed,
     title: "Manufacturing Completed",
     by: mfgDoneLog?.actor_email ? `admin (${mfgDoneLog.actor_email})` : "OrisAlign team",
-    at: mfgDoneLog?.created_at || null,
+    at: asDateTime(js.manufacturing_completed_at) || mfgDoneLog?.created_at || null,
     detail: [
       manufacturingData.aligner_delivered ? `All aligners delivered to the OrisAlign clinic on ${manufacturingData.aligner_delivered}.` : null,
     ].filter(Boolean),
@@ -2115,7 +2128,7 @@ function ReportTab({ appointmentId, appt }) {
     done: !!steps.aligners_dispatched,
     title: "Aligners Dispatched to Patient",
     by: dispatchLog?.actor_email ? `admin (${dispatchLog.actor_email})` : "OrisAlign team",
-    at: dispatchLog?.created_at || null,
+    at: js.aligners_dispatched_at || dispatchLog?.created_at || null,
     detail: logisticsBatches.length > 0
       ? logisticsBatches.map((b) => {
           const partner = b.delivery_partner === "Other" ? (b.delivery_partner_other || "courier") : b.delivery_partner;
@@ -2125,12 +2138,12 @@ function ReportTab({ appointmentId, appt }) {
   });
 
   // 11. Aligners received (by delivery partner)
-  const rcvLog = findDoneLog("Appointment Book");
+  const rcvLog = findDoneLog("Aligners Received");
   events.push({
     done: !!steps.aligners_received,
     title: "Aligners Received by Local Delivery Partner",
     by: rcvLog?.actor_email ? `admin (${rcvLog.actor_email})` : "OrisAlign team",
-    at: rcvLog?.created_at || null,
+    at: js.aligners_received_at || rcvLog?.created_at || null,
     detail: ["Aligners passed to the local delivery partner for last-mile delivery to the patient."],
   });
 
@@ -2140,7 +2153,7 @@ function ReportTab({ appointmentId, appt }) {
     done: !!steps.followup_appointment,
     title: "Follow-Up Appointment Booked",
     by: followLog?.actor_email ? `admin (${followLog.actor_email})` : "OrisAlign team",
-    at: followLog?.created_at || null,
+    at: asDateTime(js.followup_appointment_at) || followLog?.created_at || null,
     detail: ["A follow-up clinic appointment was scheduled for progress review and any required adjustments."],
   });
 
@@ -2150,7 +2163,7 @@ function ReportTab({ appointmentId, appt }) {
     done: !!steps.aligners_delivered,
     title: "Aligners Delivered to Patient",
     by: delivLog?.actor_email ? `admin (${delivLog.actor_email})` : "OrisAlign team",
-    at: delivLog?.created_at || null,
+    at: js.aligners_delivered_at || delivLog?.created_at || null,
     detail: [`The aligner package was successfully delivered to ${appt.name || "the patient"} at their address.`],
   });
 
@@ -2160,7 +2173,7 @@ function ReportTab({ appointmentId, appt }) {
     done: !!steps.smile_correction,
     title: "Smile Correction Phase Started",
     by: smileLog?.actor_email ? `admin (${smileLog.actor_email})` : "OrisAlign team",
-    at: smileLog?.created_at || null,
+    at: js.smile_correction_at || smileLog?.created_at || null,
     detail: [`${appt.name || "The patient"} began wearing their aligners. Active treatment is now in progress.`],
   });
 
@@ -2170,17 +2183,18 @@ function ReportTab({ appointmentId, appt }) {
     done: !!steps.treatment_completed,
     title: "Treatment Completed",
     by: completeLog?.actor_email ? `admin (${completeLog.actor_email})` : "OrisAlign team",
-    at: completeLog?.created_at || null,
+    at: js.treatment_completed_at || completeLog?.created_at || null,
     detail: [`The OrisAlign aligner treatment for ${appt.name || "the patient"} has been successfully completed.`],
   });
 
-  // 16. Feedback
-  const feedbackLog = findDoneLog("Feedback Submitted");
+  // 16. Feedback — actually logged as a plain "Feedback Submitted" action
+  // (see toggle()), not the generic "Step Marked Done: ..." pattern.
+  const feedbackLog = logs.find((l) => l.action === "Feedback Submitted") || findDoneLog("Feedback Submitted");
   events.push({
     done: !!steps.feedback_submitted,
     title: "Feedback Submitted",
     by: feedbackLog?.actor_email ? `admin (${feedbackLog.actor_email})` : "patient",
-    at: feedbackLog?.created_at || null,
+    at: js.feedback_submitted_at || feedbackLog?.created_at || null,
     detail: [`${appt.name || "The patient"} submitted their post-treatment feedback.`],
   });
 
