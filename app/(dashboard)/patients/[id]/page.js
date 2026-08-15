@@ -541,7 +541,7 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
   const okBanner = { marginTop: "12px", padding: "10px 12px", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "8px", color: "#16a34a", fontWeight: "700", fontSize: "13px" };
   const changeLinkStyle = { marginTop: "10px", padding: "8px 16px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "white", color: "#374151", fontWeight: "600", fontSize: "12px", cursor: "pointer" };
 
-  if (appt?.monthly_plan) {
+  if (appt?.monthly_plan || appt?.provisional_min_months != null || appt?.provisional_max_months != null) {
     return <MonthlyBillingCards appointmentId={appointmentId} appt={appt} setAppt={setAppt} actor={actor} />;
   }
 
@@ -754,7 +754,7 @@ function MonthlyBillingCards({ appointmentId, appt, setAppt, actor }) {
 
   const couponsTotal = (appt.payment_data?.applied_coupons || [])
     .reduce((sum, c) => sum + (parseFloat(c.discount) || 0), 0);
-  const discounted = applyCouponDiscount(appt.monthly_plan, couponsTotal);
+  const discounted = appt.monthly_plan ? applyCouponDiscount(appt.monthly_plan, couponsTotal) : null;
   const amountPaid = Number(appt.amount_paid) || 0;
   const finalFeePaid = amountPaid >= FINAL_PLAN_FEE;
 
@@ -791,7 +791,7 @@ function MonthlyBillingCards({ appointmentId, appt, setAppt, actor }) {
     }
   };
 
-  const nextMonth = discounted.months.find((m) => amountPaid < m.discountedCumulative);
+  const nextMonth = discounted ? discounted.months.find((m) => amountPaid < m.discountedCumulative) : null;
 
   return (
     <div>
@@ -825,8 +825,13 @@ function MonthlyBillingCards({ appointmentId, appt, setAppt, actor }) {
 
       <div style={card}>
         <h3 style={{ margin: "0 0 16px", fontSize: "16px", color: "#111827" }}>
-          Final Plan {appt.final_upper_sets ? `— Upper ${appt.final_upper_sets} · Lower ${appt.final_lower_sets} · ${appt.monthly_plan.totalMonths} months` : ""}
+          Final Plan {appt.final_upper_sets ? `— Upper ${appt.final_upper_sets} · Lower ${appt.final_lower_sets} · ${appt.monthly_plan?.totalMonths} months` : ""}
         </h3>
+        {!discounted ? (
+          <p style={{ margin: 0, fontSize: "13px", color: "#9ca3af", fontStyle: "italic" }}>
+            Not yet available — the orthodontist hasn&apos;t completed Final Plan Review for this patient.
+          </p>
+        ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
           {discounted.months.map((m) => {
             const isPaid = amountPaid >= m.discountedCumulative;
@@ -856,6 +861,7 @@ function MonthlyBillingCards({ appointmentId, appt, setAppt, actor }) {
             );
           })}
         </div>
+        )}
       </div>
     </div>
   );
@@ -1132,6 +1138,10 @@ function deriveSteps(appt) {
   if (!appt) return {};
   const js = appt.journey_steps || {};
   const hasMonthlyPlan = !!appt.monthly_plan;
+  // New-model as soon as Provisional Planning is done under it, not only
+  // once Final Plan Review generates monthly_plan — see the patient page's
+  // deriveSteps for the same reasoning.
+  const isNewModel = hasMonthlyPlan || appt.provisional_min_months != null || appt.provisional_max_months != null;
   const amountPaid = Number(appt.amount_paid) || 0;
 
   const base = {
@@ -1139,7 +1149,7 @@ function deriveSteps(appt) {
     confirmed:               appt.status === "confirmed" || appt.status === "completed",
     scanning_done:           js.scanning_done        !== undefined ? !!js.scanning_done        : !!appt.stl_submitted,
     provisional_planning:    !!appt.payment_data?.plan,
-    payment_done:            hasMonthlyPlan
+    payment_done:            isNewModel
       ? amountPaid >= FINAL_PLAN_FEE
       : (js.payment_done !== undefined ? !!js.payment_done : !!(appt.payment_data?.final_amount)),
     planning_done:           js.planning_done        !== undefined ? !!js.planning_done        : !!appt.provisional_plan_submitted,
@@ -1487,7 +1497,8 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
     }
   };
 
-  const allSteps = appt?.monthly_plan ? NEW_ALL_STEPS : LEGACY_ALL_STEPS;
+  const isNewModelAppt = !!(appt?.monthly_plan || appt?.provisional_min_months != null || appt?.provisional_max_months != null);
+  const allSteps = isNewModelAppt ? NEW_ALL_STEPS : LEGACY_ALL_STEPS;
   const doneCount = allSteps.filter((s) => !!steps[s.key]).length;
 
   return (
@@ -2712,7 +2723,7 @@ export default function PatientDetailPage() {
           and only for legacy (lump-sum) patients — new-model patients manage
           production/dispatch per package directly in the Journey tab instead. */}
       <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "20px" }}>
-        {TABS.filter((tab) => tab !== "Manufacturing" || (!appt.monthly_plan && (appt.status === "confirmed" || appt.status === "completed"))).map((tab) => (
+        {TABS.filter((tab) => tab !== "Manufacturing" || (!appt.monthly_plan && appt.provisional_min_months == null && appt.provisional_max_months == null && (appt.status === "confirmed" || appt.status === "completed"))).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}

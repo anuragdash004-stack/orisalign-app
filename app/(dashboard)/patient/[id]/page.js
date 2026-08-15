@@ -86,6 +86,12 @@ function deriveSteps(appt) {
   const procs = prealignerProcedures(appt);
   const prealignerDone = js.prealigner_done || {};
   const hasMonthlyPlan = !!appt.monthly_plan;
+  // A patient counts as "new model" as soon as Provisional Planning has been
+  // done under it (provisional_min_months set), not only once Final Plan
+  // Review generates monthly_plan — otherwise a patient mid-transition (plan
+  // picked, fee paid, schedule not generated yet) would incorrectly still
+  // see the legacy roadmap/payment UI.
+  const isNewModel = hasMonthlyPlan || appt.provisional_min_months != null || appt.provisional_max_months != null;
   const amountPaid = Number(appt.amount_paid) || 0;
 
   const base = {
@@ -93,7 +99,7 @@ function deriveSteps(appt) {
     confirmed:               appt.status === "confirmed" || appt.status === "completed",
     scanning_done:           js.scanning_done        !== undefined ? !!js.scanning_done        : !!appt.stl_submitted,
     provisional_planning:    !!appt.payment_data?.plan,
-    payment_done:            hasMonthlyPlan
+    payment_done:            isNewModel
       ? amountPaid >= FINAL_PLAN_FEE
       : (js.payment_done !== undefined ? !!js.payment_done : !!(appt.payment_data?.final_amount)),
     // No pre-aligner procedures selected → nothing to wait on, counts as done.
@@ -257,7 +263,10 @@ export default function PatientJourney() {
   );
 
   const steps = deriveSteps(patient);
-  const journeySteps = patient.monthly_plan ? NEW_JOURNEY_STEPS : LEGACY_JOURNEY_STEPS;
+  // Counts as "new model" from Provisional Planning onward, not only once
+  // Final Plan Review generates monthly_plan — see deriveSteps for why.
+  const isNewModel = !!(patient.monthly_plan || patient.provisional_min_months != null || patient.provisional_max_months != null);
+  const journeySteps = isNewModel ? NEW_JOURNEY_STEPS : LEGACY_JOURNEY_STEPS;
   const shortId = id.substring(0, 8).toUpperCase();
   const patientIdLabel = patient.booking_confirmed ? shortId : "Pending";
   // Filtered against the active roadmap's own keys — `steps` always carries
@@ -323,7 +332,7 @@ export default function PatientJourney() {
   const isPlanApprovalReady =
     steps.booked && steps.confirmed && steps.scanning_done &&
     steps.payment_done && steps.planning_done &&
-    (!patient.monthly_plan || (steps.provisional_planning && steps.final_plan_review));
+    (!isNewModel || (steps.provisional_planning && steps.final_plan_review));
 
   const handleApprovePlan = async () => {
     const confirmed = window.confirm(
@@ -977,7 +986,7 @@ export default function PatientJourney() {
                   )}
 
                   {/* Expanded Panel — Plan and Payment */}
-                  {step.key === "payment_done" && isExpanded && (patient.monthly_plan ? (
+                  {step.key === "payment_done" && isExpanded && (isNewModel ? (
                     <div style={{ marginLeft: "58px", marginTop: "8px", background: "white", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
                       <p style={{ margin: "0 0 14px", fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Full Plan</p>
                       {(Number(patient.amount_paid) || 0) >= FINAL_PLAN_FEE ? (
@@ -986,7 +995,7 @@ export default function PatientJourney() {
                             <p style={{ margin: 0, fontSize: "13px", fontWeight: "800", color: "#16a34a" }}>✅ Final Planning Payment Paid — {fmt(FINAL_PLAN_FEE)}</p>
                           </div>
                           <p style={{ margin: 0, fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Your Aligner Plan</p>
-                          {patient.monthly_plan.totalMonths ? (
+                          {patient.monthly_plan?.totalMonths ? (
                             <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                               {[
                                 ["Upper Arch Sets", patient.final_upper_sets],
