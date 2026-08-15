@@ -40,7 +40,8 @@ const LEGACY_ALL_STEPS = [
 const NEW_ALL_STEPS = [
   { key: "booked",                  label: "Appointment Booked" },
   { key: "confirmed",               label: "Appointment Confirmed" },
-  { key: "scanning_done",           label: "Scanning and Provisional Planning" },
+  { key: "scanning_done",           label: "Scanning" },
+  { key: "provisional_planning",    label: "Provisional Planning" },
   { key: "payment_done",            label: "Full Plan" },
   { key: "plan_approved",           label: "Plan Approved" },
   { key: "aligner_sets",            label: "Aligner Sets" },
@@ -1137,6 +1138,7 @@ function deriveSteps(appt) {
     booked:                  true,
     confirmed:               appt.status === "confirmed" || appt.status === "completed",
     scanning_done:           js.scanning_done        !== undefined ? !!js.scanning_done        : !!appt.stl_submitted,
+    provisional_planning:    !!appt.payment_data?.plan,
     payment_done:            hasMonthlyPlan
       ? amountPaid >= FINAL_PLAN_FEE
       : (js.payment_done !== undefined ? !!js.payment_done : !!(appt.payment_data?.final_amount)),
@@ -1526,7 +1528,7 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                 <p style={{ margin: 0, flex: 1, fontSize: "14px", fontWeight: done ? "700" : "500", color: done ? "#15803d" : "#374151" }}>
                   {step.label}
                 </p>
-                {isAdmin && step.key !== "plan_approved" && step.key !== "booked" && step.key !== "confirmed" && step.key !== "payment_done" && step.key !== "followup_appointment" && step.key !== "final_plan_review" && step.key !== "aligner_sets" && (
+                {isAdmin && step.key !== "plan_approved" && step.key !== "booked" && step.key !== "confirmed" && step.key !== "payment_done" && step.key !== "followup_appointment" && step.key !== "final_plan_review" && step.key !== "aligner_sets" && step.key !== "provisional_planning" && (
                   <button
                     onClick={() => toggle(step.key)}
                     disabled={isSaving}

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
-import { FINAL_PLAN_FEE, estimateRange, applyCouponDiscount, totalCost, monthSlotLabels } from "@/lib/monthlyPlan";
+import { FINAL_PLAN_FEE, estimateRange, applyCouponDiscount, totalCost, monthSlotLabels, PLAN_CONFIGS } from "@/lib/monthlyPlan";
 
 const supabase = getSupabaseClient();
 
@@ -57,7 +57,8 @@ const LEGACY_JOURNEY_STEPS = [
 const NEW_JOURNEY_STEPS = [
   { key: "booked",                  label: "Appointment Booked" },
   { key: "confirmed",               label: "Appointment Confirmed" },
-  { key: "scanning_done",           label: "Scanning and Provisional Planning", expandable: true },
+  { key: "scanning_done",           label: "Scanning",                    expandable: true },
+  { key: "provisional_planning",    label: "Provisional Planning",        expandable: true },
   { key: "payment_done",            label: "Full Plan",                   expandable: true },
   { key: "plan_approved",           label: "Plan Approval", approveAction: true },
   { key: "prealigner_treatment",    label: "Prealigner Treatment",        expandable: true },
@@ -91,6 +92,7 @@ function deriveSteps(appt) {
     booked:                  true,
     confirmed:               appt.status === "confirmed" || appt.status === "completed",
     scanning_done:           js.scanning_done        !== undefined ? !!js.scanning_done        : !!appt.stl_submitted,
+    provisional_planning:    !!appt.payment_data?.plan,
     payment_done:            hasMonthlyPlan
       ? amountPaid >= FINAL_PLAN_FEE
       : (js.payment_done !== undefined ? !!js.payment_done : !!(appt.payment_data?.final_amount)),
@@ -146,6 +148,7 @@ export default function PatientJourney() {
   const [selectedPackages, setSelectedPackages] = useState([]); // unpaid package nums chosen to order together
   const [approving, setApproving] = useState(false);
   const [consentChecked, setConsentChecked] = useState(true);
+  const [savingProvisionalPlan, setSavingProvisionalPlan] = useState(false);
   const [copiedNum, setCopiedNum] = useState(null);
   const [receivingBatch, setReceivingBatch] = useState(null);
   const [markingProcedureDone, setMarkingProcedureDone] = useState(null);
@@ -303,10 +306,24 @@ export default function PatientJourney() {
     setPatient((prev) => prev && { ...prev, payment_data: newPaymentData });
   };
 
+  // New per-arch model's Provisional Planning step — just the plan choice
+  // itself (OrisPro vs OrisPro Plus), no pricing/coupon/payment details.
+  // Locked once the orthodontist has already generated the monthly schedule
+  // from it (monthly_plan present).
+  const selectProvisionalPlan = async (planKey) => {
+    if (patient.monthly_plan || savingProvisionalPlan) return;
+    setSavingProvisionalPlan(true);
+    const newPaymentData = { ...(patient.payment_data || {}), plan: planKey };
+    const { error } = await supabase.from("appointments_booking").update({ payment_data: newPaymentData }).eq("id", id);
+    setSavingProvisionalPlan(false);
+    if (error) { alert("Couldn't save: " + error.message); return; }
+    setPatient((prev) => prev && { ...prev, payment_data: newPaymentData });
+  };
+
   const isPlanApprovalReady =
     steps.booked && steps.confirmed && steps.scanning_done &&
     steps.payment_done && steps.planning_done &&
-    (!patient.monthly_plan || steps.final_plan_review);
+    (!patient.monthly_plan || (steps.provisional_planning && steps.final_plan_review));
 
   const handleApprovePlan = async () => {
     const confirmed = window.confirm(
@@ -671,6 +688,52 @@ export default function PatientJourney() {
                             ⬇ Download Video
                           </a>
                         </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Expanded Panel — Provisional Planning (plan choice) */}
+                  {step.key === "provisional_planning" && isExpanded && (
+                    <div style={{ marginLeft: "58px", marginTop: "8px", background: "white", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+                      <p style={{ margin: "0 0 14px", fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Choose Your Plan</p>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                        {Object.values(PLAN_CONFIGS).map((cfg) => {
+                          const isSelected = patient.payment_data?.plan === cfg.key;
+                          const isLocked = !!patient.monthly_plan;
+                          return (
+                            <button
+                              key={cfg.key}
+                              onClick={(e) => { e.stopPropagation(); selectProvisionalPlan(cfg.key); }}
+                              disabled={isLocked || savingProvisionalPlan}
+                              style={{
+                                textAlign: "left", padding: "14px", borderRadius: "10px",
+                                border: isSelected ? "2px solid #b8905a" : "1px solid #e5e7eb",
+                                background: isSelected ? "#fffbeb" : "white",
+                                cursor: isLocked ? "default" : "pointer",
+                                opacity: isLocked && !isSelected ? 0.5 : 1,
+                              }}
+                            >
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                                <span style={{ fontSize: "14px", fontWeight: "800", color: "#111827" }}>{cfg.label}</span>
+                                {isSelected && <span style={{ fontSize: "11px", fontWeight: "700", color: "#b8905a" }}>✓ SELECTED</span>}
+                              </div>
+                              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                                <span style={{ fontSize: "13px", color: "#374151" }}>{fmt(cfg.monthRate)} per month</span>
+                                <span style={{ fontSize: "13px", color: "#374151" }}>Wear: {cfg.daysPerSet} days per set / {cfg.setsPerMonth} sets per month</span>
+                                <span style={{ fontSize: "13px", color: "#374151" }}>
+                                  Estimated duration: {patient.provisional_min_months && patient.provisional_max_months
+                                    ? `${patient.provisional_min_months}–${patient.provisional_max_months} months`
+                                    : "to be confirmed by your orthodontist"}
+                                </span>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {patient.monthly_plan && (
+                        <p style={{ margin: "12px 0 0", fontSize: "11px", color: "#9ca3af", fontStyle: "italic" }}>
+                          Your plan is locked in now that your final treatment schedule has been generated.
+                        </p>
                       )}
                     </div>
                   )}

@@ -249,7 +249,8 @@ export default function OrthoCase() {
       alert("Enter both upper and lower arch set counts.");
       return;
     }
-    const plan = buildMonthlyPlan(upper, lower);
+    const selectedPlan = patient?.payment_data?.plan === "ORISPLUS" ? "ORISPLUS" : "ORISPRO";
+    const plan = buildMonthlyPlan(upper, lower, selectedPlan);
     setFinalReviewSaving(true);
     const { error } = await supabase
       .from("appointments_booking")
@@ -642,6 +643,9 @@ export default function OrthoCase() {
                 </div>
               ) : (
                 <>
+                  <p style={{ fontSize: "12px", color: "#6b7280", margin: "0 0 10px" }}>
+                    Patient selected: <strong style={{ color: "#111827" }}>{patient?.payment_data?.plan === "ORISPLUS" ? "OrisPro Plus (10 days/set)" : "OrisPro (15 days/set)"}</strong>
+                  </p>
                   <div style={{ display: "flex", gap: "10px", marginBottom: "12px" }}>
                     <input
                       type="number" min="1" placeholder="Upper arch sets"

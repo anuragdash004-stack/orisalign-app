@@ -1,18 +1,35 @@
 /**
  * Per-arch, month-by-month planning & billing model.
  *
- * One aligner set = 15 days. Two sets fit in a month, and each set is a pair
- * (one upper + one lower aligner) — so a full month is 4 aligners at
- * ₹1,249.75 each = ₹4,999. Priced strictly per aligner actually due that
- * month, not per arch-presence — a month with only 3 aligners (e.g. an arch
- * running out mid-month) costs 3 × ₹1,249.75 = ₹3,749.25, not the full
- * ₹4,999 and not the ₹2,499.50 two-aligner rate either.
+ * Two plans, chosen by the patient during Provisional Planning, each with
+ * its own pace and price:
+ *   - OrisPro:      15 days/set · 2 sets/month · ₹4,999/month
+ *   - OrisPro Plus: 10 days/set · 3 sets/month · ₹6,999/month
+ * A month is priced strictly per aligner actually due that month, not per
+ * arch-presence — e.g. under OrisPro a month with only 3 (of 4 possible)
+ * aligners due (an arch running out mid-month) costs 3 × ₹1,249.75 =
+ * ₹3,749.25, not the full ₹4,999.
  */
 
 export const FINAL_PLAN_FEE = 999;
-export const MONTH_RATE = 4999;
+export const MONTH_RATE = 4999; // OrisPro — kept for the rough pre-Final-Plan-Review estimate
 export const HALF_MONTH_RATE = 2499.5;
 export const ALIGNER_RATE = MONTH_RATE / 4; // 1249.75
+
+export type PlanKey = "ORISPRO" | "ORISPLUS";
+
+export interface PlanConfig {
+  key: PlanKey;
+  label: string;
+  daysPerSet: number;
+  setsPerMonth: number;
+  monthRate: number;
+}
+
+export const PLAN_CONFIGS: Record<PlanKey, PlanConfig> = {
+  ORISPRO: { key: "ORISPRO", label: "OrisPro", daysPerSet: 15, setsPerMonth: 2, monthRate: 4999 },
+  ORISPLUS: { key: "ORISPLUS", label: "OrisPro Plus", daysPerSet: 10, setsPerMonth: 3, monthRate: 6999 },
+};
 
 export interface MonthEntry {
   num: number;
@@ -23,6 +40,7 @@ export interface MonthEntry {
 }
 
 export interface MonthlyPlan {
+  plan: PlanKey;
   upperSets: number;
   lowerSets: number;
   totalMonths: number;
@@ -49,12 +67,17 @@ export function estimateRange(minMonths: number, maxMonths: number) {
 
 /**
  * Builds the immutable base schedule once the orthodontist enters the final
- * upper/lower set counts. Two aligner "slots" per month per arch — a slot
- * is filled while that arch still has sets remaining, left empty once it
- * runs out (the uneven-arch trailing months).
+ * upper/lower set counts, priced according to the patient's chosen plan.
+ * `setsPerMonth` aligner "slots" per month per arch — a slot is filled while
+ * that arch still has sets remaining, left empty once it runs out (the
+ * uneven-arch trailing months). Each month's amount is the count of
+ * aligners actually due that month × the plan's per-aligner rate
+ * (monthRate / (setsPerMonth × 2 arches)) — e.g. OrisPro: 4999/4 = 1249.75.
  */
-export function buildMonthlyPlan(upperSets: number, lowerSets: number): MonthlyPlan {
-  const totalMonths = Math.ceil(Math.max(upperSets, lowerSets, 0) / 2);
+export function buildMonthlyPlan(upperSets: number, lowerSets: number, plan: PlanKey = "ORISPRO"): MonthlyPlan {
+  const config = PLAN_CONFIGS[plan] || PLAN_CONFIGS.ORISPRO;
+  const alignerRate = config.monthRate / (config.setsPerMonth * 2);
+  const totalMonths = Math.ceil(Math.max(upperSets, lowerSets, 0) / config.setsPerMonth);
   const months: MonthEntry[] = [];
   let upperCursor = 0;
   let lowerCursor = 0;
@@ -63,7 +86,7 @@ export function buildMonthlyPlan(upperSets: number, lowerSets: number): MonthlyP
   for (let m = 1; m <= totalMonths; m++) {
     const upper: number[] = [];
     const lower: number[] = [];
-    for (let i = 0; i < 2; i++) {
+    for (let i = 0; i < config.setsPerMonth; i++) {
       if (upperCursor < upperSets) {
         upperCursor++;
         upper.push(upperCursor);
@@ -73,12 +96,12 @@ export function buildMonthlyPlan(upperSets: number, lowerSets: number): MonthlyP
         lower.push(lowerCursor);
       }
     }
-    const amount = Math.round((upper.length + lower.length) * ALIGNER_RATE * 100) / 100;
+    const amount = Math.round((upper.length + lower.length) * alignerRate * 100) / 100;
     cumulative += amount;
     months.push({ num: m, upper, lower, amount, cumulative });
   }
 
-  return { upperSets, lowerSets, totalMonths, months, generatedAt: new Date().toISOString() };
+  return { plan: config.key, upperSets, lowerSets, totalMonths, months, generatedAt: new Date().toISOString() };
 }
 
 /**
@@ -105,6 +128,7 @@ export function applyCouponDiscount(plan: MonthlyPlan, couponsTotal: number): Di
   }
 
   return {
+    plan: plan.plan,
     upperSets: plan.upperSets,
     lowerSets: plan.lowerSets,
     totalMonths: plan.totalMonths,
