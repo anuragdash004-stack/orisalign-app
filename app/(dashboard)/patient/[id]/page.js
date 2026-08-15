@@ -145,6 +145,7 @@ export default function PatientJourney() {
   const [expandedMonth, setExpandedMonth] = useState(null);
   const [selectedPackages, setSelectedPackages] = useState([]); // unpaid package nums chosen to order together
   const [approving, setApproving] = useState(false);
+  const [consentChecked, setConsentChecked] = useState(true);
   const [copiedNum, setCopiedNum] = useState(null);
   const [receivingBatch, setReceivingBatch] = useState(null);
   const [markingProcedureDone, setMarkingProcedureDone] = useState(null);
@@ -558,8 +559,8 @@ export default function PatientJourney() {
                           ) : isPlanApprovalReady ? (
                             <button
                               onClick={(e) => { e.stopPropagation(); handleApprovePlan(); }}
-                              disabled={approving}
-                              style={{ flexShrink: 0, padding: "7px 14px", borderRadius: "8px", border: "none", background: approving ? "#d4a574" : "#b8905a", color: "white", fontWeight: "700", fontSize: "12px", cursor: approving ? "not-allowed" : "pointer", whiteSpace: "nowrap" }}
+                              disabled={approving || !consentChecked}
+                              style={{ flexShrink: 0, padding: "7px 14px", borderRadius: "8px", border: "none", background: (approving || !consentChecked) ? "#d4a574" : "#b8905a", color: "white", fontWeight: "700", fontSize: "12px", cursor: (approving || !consentChecked) ? "not-allowed" : "pointer", whiteSpace: "nowrap", opacity: !consentChecked ? 0.6 : 1 }}
                             >
                               {approving ? "Approving..." : "Approve Plan"}
                             </button>
@@ -590,6 +591,32 @@ export default function PatientJourney() {
                         )}
                         {isClickable && !step.approveAction && <span style={{ fontSize: "12px", color: done ? "#16a34a" : "#9ca3af", flexShrink: 0, marginLeft: "8px" }}>{isExpanded ? "▲" : "▼"}</span>}
                       </div>
+                      {step.key === "plan_approved" && isPlanApprovalReady && !patient.plan_approved && (
+                        <label
+                          onClick={(e) => e.stopPropagation()}
+                          style={{ display: "flex", alignItems: "flex-start", gap: "8px", marginTop: "12px", paddingTop: "12px", borderTop: "1px solid #e5e7eb", cursor: "pointer" }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={consentChecked}
+                            onChange={(e) => setConsentChecked(e.target.checked)}
+                            style={{ width: "16px", height: "16px", marginTop: "1px", accentColor: "#b8905a", cursor: "pointer", flexShrink: 0 }}
+                          />
+                          <span style={{ fontSize: "12px", color: "#374151", lineHeight: "1.5" }}>
+                            I have read and understood the{" "}
+                            <a
+                              href="/consent"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              style={{ color: "#b8905a", fontWeight: "700", textDecoration: "underline" }}
+                            >
+                              Consent Document
+                            </a>{" "}
+                            and agree to proceed with my treatment
+                          </span>
+                        </label>
+                      )}
                     </div>
                   </div>
 
