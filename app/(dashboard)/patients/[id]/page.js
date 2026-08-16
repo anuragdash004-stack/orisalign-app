@@ -3,7 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { useParams, useRouter } from "next/navigation";
 import { logAudit } from "@/lib/logAudit";
-import { PROVISIONAL_PLAN_FEE, estimateRangeForPlan, applyCouponDiscount, monthSlotLabels, totalCost, recomputeCumulative, buildMonthlyPlan, PLAN_CONFIGS } from "@/lib/monthlyPlan";
+import { PROVISIONAL_PLAN_FEE, estimateRangeForPlan, formatMonthsDays, applyCouponDiscount, monthSlotLabels, totalCost, recomputeCumulative, buildMonthlyPlan, PLAN_CONFIGS } from "@/lib/monthlyPlan";
+import { INVESTIGATION_TYPES, isInvestigationDone } from "@/lib/investigations";
 
 const supabase = getSupabaseClient();
 
@@ -43,6 +44,7 @@ const NEW_ALL_STEPS = [
   { key: "scanning_done",           label: "Scanning" },
   { key: "provisional_planning",    label: "Provisional Planning" },
   { key: "payment_done",            label: "Full Plan" },
+  { key: "investigation_required",  label: "Investigation Required" },
   { key: "plan_approved",           label: "Plan Approved" },
   { key: "aligner_sets",            label: "Aligner Sets" },
   { key: "followup_appointment",    label: "Appointment Book" },
@@ -808,7 +810,7 @@ function MonthlyBillingCards({ appointmentId, appt, setAppt, actor }) {
                 const r = estimateRangeForPlan(appt.provisional_min_months, appt.provisional_max_months, estPlan, cfg.key);
                 return (
                   <p key={cfg.key} style={{ margin: 0, fontSize: "14px", color: "#374151" }}>
-                    {cfg.label}: {r.min}–{r.max} months
+                    {cfg.label}: {r.min === r.max ? formatMonthsDays(r.min) : `${formatMonthsDays(r.min)} – ${formatMonthsDays(r.max)}`}
                   </p>
                 );
               })}
@@ -1179,6 +1181,7 @@ function deriveSteps(appt) {
       : (js.payment_done !== undefined ? !!js.payment_done : !!(appt.payment_data?.final_amount)),
     planning_done:           js.planning_done        !== undefined ? !!js.planning_done        : !!appt.provisional_plan_submitted,
     final_plan_review:       !!(appt.final_upper_sets && appt.final_lower_sets),
+    investigation_required:  isInvestigationDone(js),
     plan_approved:           js.plan_approved        !== undefined ? !!js.plan_approved        : !!(appt.final_plan && appt.final_plan.trim()),
     followup_appointment:    js.followup_appointment !== undefined ? !!js.followup_appointment : false,
     aligners_delivered:      js.aligners_delivered   !== undefined ? !!js.aligners_delivered   : false,
@@ -1220,6 +1223,7 @@ const DEFAULT_STEP_MESSAGES = {
   scanning_done:           { subject: "Scanning & Planning Complete — OrisAlign", body: "Your scanning session and initial planning have been completed successfully. Our orthodontic team is now working on your personalised treatment proposal. We’ll notify you as soon as your plan is ready." },
   provisional_planning:    { subject: "Your Plan is Ready to Choose — OrisAlign", body: "You can now choose between OrisPro and OrisPro Plus for your treatment. Visit your journey page to compare pricing and pace, and select the plan that works best for you." },
   payment_done:            { subject: "Payment Confirmed — OrisAlign", body: "Your payment details have been finalised. Thank you for your trust in OrisAlign. Our team will now proceed with your treatment planning and keep you updated at every step." },
+  investigation_required:  { subject: "Investigation Required — OrisAlign", body: "Before your plan can be approved, our orthodontist has requested a quick investigation (like an IOPA, OPG, Lateral Ceph, or blood test). Please visit your journey page to see what's needed and upload the relevant image or report." },
   planning_done:           { subject: "Your Treatment Plan is Ready — OrisAlign", body: "Your personalised 3D treatment plan has been prepared by our orthodontic team! Please visit your journey page to review it. Once you’re satisfied, click the Approve Plan button to authorise us to begin fabricating your aligners." },
   plan_approved:           { subject: "Plan Approved — Manufacturing Begins Soon — OrisAlign", body: "Your treatment plan has been approved. Thank you for authorising OrisAlign to begin fabrication of your custom aligners. Our manufacturing team will start work on your aligners shortly. This process typically takes a few weeks — we’ll keep you posted." },
   manufacturing_started:   { subject: "Your Aligners Are Being Made — OrisAlign", body: "Exciting news — manufacturing of your custom aligners has officially begun! Each set is precisely crafted to move your teeth gently and accurately according to your treatment plan. We’ll notify you as soon as they’re ready." },
@@ -1378,6 +1382,52 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ appointmentId }),
     }).catch(() => {});
+  };
+
+  // Investigation Required — admin picks which investigation(s) are needed
+  // (or "None Required"); the patient then uploads a file per required type.
+  const [investigationTypesSelection, setInvestigationTypesSelection] = useState(appt.journey_steps?.investigation_types || []);
+  const [savingInvestigationTypes, setSavingInvestigationTypes] = useState(false);
+  const [investigationTypesSaved, setInvestigationTypesSaved] = useState(false);
+  const toggleInvestigationType = (key) => {
+    setInvestigationTypesSelection((prev) => {
+      if (key === "NONE") return prev.includes("NONE") ? [] : ["NONE"];
+      const withoutNone = prev.filter((t) => t !== "NONE");
+      return withoutNone.includes(key) ? withoutNone.filter((t) => t !== key) : [...withoutNone, key];
+    });
+  };
+  const saveInvestigationTypes = async () => {
+    setSavingInvestigationTypes(true);
+    const newJourneySteps = { ...(appt.journey_steps || {}), investigation_types: investigationTypesSelection };
+    const { error } = await supabase.from("appointments_booking").update({ journey_steps: newJourneySteps }).eq("id", appointmentId);
+    setSavingInvestigationTypes(false);
+    if (error) { alert("Failed to save: " + error.message); return; }
+    logAudit({ appointmentId, actor, action: "Investigation Types Updated", entity: "journey_steps", newData: { investigation_types: investigationTypesSelection } });
+    appt.journey_steps = newJourneySteps;
+    setInvestigationTypesSaved(true);
+    setTimeout(() => setInvestigationTypesSaved(false), 3000);
+    setPlanChoiceTick((t) => t + 1);
+  };
+  const viewInvestigationFileAdmin = async (path) => {
+    const { data, error } = await supabase.storage.from("case-files").createSignedUrl(path, 3600);
+    if (error || !data?.signedUrl) { alert("Couldn't open the file."); return; }
+    window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+  };
+
+  // Plan Approval is never automatic for the new per-arch model — the
+  // patient's Approve Plan button stays locked until an admin explicitly
+  // switches it on here, regardless of how "ready" the plan otherwise is.
+  const [savingApprovalUnlock, setSavingApprovalUnlock] = useState(false);
+  const toggleApprovalUnlocked = async () => {
+    const newVal = !appt.journey_steps?.plan_approval_unlocked;
+    setSavingApprovalUnlock(true);
+    const newJourneySteps = { ...(appt.journey_steps || {}), plan_approval_unlocked: newVal };
+    const { error } = await supabase.from("appointments_booking").update({ journey_steps: newJourneySteps }).eq("id", appointmentId);
+    setSavingApprovalUnlock(false);
+    if (error) { alert("Failed to save: " + error.message); return; }
+    logAudit({ appointmentId, actor, action: newVal ? "Plan Approval Switched On" : "Plan Approval Switched Off", entity: "journey_steps", newData: { plan_approval_unlocked: newVal } });
+    appt.journey_steps = newJourneySteps;
+    setPlanChoiceTick((t) => t + 1);
   };
 
   const [markingProvisionalPayment, setMarkingProvisionalPayment] = useState(false);
@@ -1710,7 +1760,7 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                 <p style={{ margin: 0, flex: 1, fontSize: "14px", fontWeight: done ? "700" : "500", color: done ? "#15803d" : "#374151" }}>
                   {step.label}
                 </p>
-                {isAdmin && step.key !== "plan_approved" && step.key !== "booked" && step.key !== "confirmed" && step.key !== "payment_done" && step.key !== "followup_appointment" && step.key !== "final_plan_review" && step.key !== "aligner_sets" && step.key !== "provisional_planning" && (
+                {isAdmin && step.key !== "plan_approved" && step.key !== "booked" && step.key !== "confirmed" && step.key !== "payment_done" && step.key !== "followup_appointment" && step.key !== "final_plan_review" && step.key !== "aligner_sets" && step.key !== "provisional_planning" && step.key !== "investigation_required" && (
                   <button
                     onClick={() => toggle(step.key)}
                     disabled={isSaving}
@@ -1723,6 +1773,21 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                     }}
                   >
                     {isSaving ? "..." : done ? "Undo" : "Mark Done"}
+                  </button>
+                )}
+                {isAdmin && step.key === "plan_approved" && isNewModelAppt && (
+                  <button
+                    onClick={toggleApprovalUnlocked}
+                    disabled={savingApprovalUnlock}
+                    style={{
+                      padding: "6px 14px", borderRadius: "8px", border: "none", cursor: savingApprovalUnlock ? "not-allowed" : "pointer",
+                      background: appt.journey_steps?.plan_approval_unlocked ? "#fee2e2" : "#111827",
+                      color: appt.journey_steps?.plan_approval_unlocked ? "#dc2626" : "white",
+                      fontWeight: "700", fontSize: "12px", flexShrink: 0,
+                      opacity: savingApprovalUnlock ? 0.6 : 1,
+                    }}
+                  >
+                    {savingApprovalUnlock ? "..." : appt.journey_steps?.plan_approval_unlocked ? "Switch Off" : "Switch On for Patient"}
                   </button>
                 )}
                 {!isAdmin && step.key === "followup_appointment" && (
@@ -1900,7 +1965,7 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                     const other = estimateRangeForPlan(parseInt(scanMinMonths, 10) || 0, parseInt(scanMaxMonths, 10) || 0, estimatePlan, otherKey);
                     return (
                       <p style={{ margin: 0, fontSize: "12px", color: "#6b7280" }}>
-                        Auto-calculated for {PLAN_CONFIGS[otherKey].label}: <strong style={{ color: "#111827" }}>{other.min}–{other.max} months</strong>
+                        Auto-calculated for {PLAN_CONFIGS[otherKey].label}: <strong style={{ color: "#111827" }}>{other.min === other.max ? formatMonthsDays(other.min) : `${formatMonthsDays(other.min)} – ${formatMonthsDays(other.max)}`}</strong>
                       </p>
                     );
                   })()}
@@ -2033,6 +2098,74 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                   <p style={{ margin: 0, fontSize: "11px", color: "#9ca3af" }}>
                     Appears to the patient as a &quot;Review Treatment Plan&quot; button.
                   </p>
+                </div>
+              )}
+
+              {/* Investigation Required — admin picks type(s) or None; patient uploads; admin reviews */}
+              {isAdmin && step.key === "investigation_required" && (
+                <div style={subBox}>
+                  <span style={label}>INVESTIGATION TYPE REQUIRED</span>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                    {INVESTIGATION_TYPES.map((t) => (
+                      <button
+                        key={t.key}
+                        onClick={() => toggleInvestigationType(t.key)}
+                        style={{
+                          padding: "8px 14px", borderRadius: "8px",
+                          border: investigationTypesSelection.includes(t.key) ? "2px solid #b8905a" : "1px solid #e5e7eb",
+                          background: investigationTypesSelection.includes(t.key) ? "#fff7ed" : "white",
+                          color: investigationTypesSelection.includes(t.key) ? "#b8905a" : "#374151",
+                          fontWeight: "700", fontSize: "13px", cursor: "pointer",
+                        }}
+                      >
+                        {t.label}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => toggleInvestigationType("NONE")}
+                      style={{
+                        padding: "8px 14px", borderRadius: "8px",
+                        border: investigationTypesSelection.includes("NONE") ? "2px solid #16a34a" : "1px solid #e5e7eb",
+                        background: investigationTypesSelection.includes("NONE") ? "#f0fdf4" : "white",
+                        color: investigationTypesSelection.includes("NONE") ? "#16a34a" : "#374151",
+                        fontWeight: "700", fontSize: "13px", cursor: "pointer",
+                      }}
+                    >
+                      None Required
+                    </button>
+                  </div>
+                  <button
+                    style={savingInvestigationTypes ? { ...btnPrimary, opacity: 0.6 } : btnPrimary}
+                    onClick={saveInvestigationTypes}
+                    disabled={savingInvestigationTypes}
+                  >
+                    {savingInvestigationTypes ? "Saving..." : investigationTypesSaved ? "Saved ✓" : "Save"}
+                  </button>
+
+                  {(appt.journey_steps?.investigation_types || []).length > 0 && !(appt.journey_steps?.investigation_types || []).includes("NONE") && (
+                    <>
+                      <span style={label}>UPLOADED FILES</span>
+                      {(appt.journey_steps.investigation_types || []).map((t) => {
+                        const typeInfo = INVESTIGATION_TYPES.find((it) => it.key === t);
+                        const file = appt.journey_steps?.investigation_files?.[t];
+                        return (
+                          <div key={t} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", padding: "10px 12px", background: file?.path ? "#f0fdf4" : "white", borderRadius: "8px", border: file?.path ? "1px solid #bbf7d0" : "1px solid #e5e7eb" }}>
+                            <span style={{ fontSize: "13px", fontWeight: "700", color: "#111827" }}>{typeInfo?.label || t}</span>
+                            {file?.path ? (
+                              <button
+                                onClick={() => viewInvestigationFileAdmin(file.path)}
+                                style={{ padding: "6px 12px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "white", color: "#111827", fontWeight: "700", fontSize: "12px", cursor: "pointer" }}
+                              >
+                                Review
+                              </button>
+                            ) : (
+                              <span style={{ fontSize: "12px", color: "#9ca3af", fontStyle: "italic" }}>Awaiting upload</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </>
+                  )}
                 </div>
               )}
 

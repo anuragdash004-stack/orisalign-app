@@ -108,6 +108,17 @@ export function estimateRangeForPlan(
   };
 }
 
+/** "5 months 10 days" / "6 months" — a decimal months figure as whole months + days (1 month = 30 days, this app's convention). */
+export function formatMonthsDays(months: number): string {
+  if (!months) return "0 months";
+  let wholeMonths = Math.floor(months);
+  let days = Math.round((months - wholeMonths) * 30);
+  if (days >= 30) { wholeMonths += 1; days -= 30; }
+  const monthPart = `${wholeMonths} month${wholeMonths !== 1 ? "s" : ""}`;
+  if (days === 0) return monthPart;
+  return `${monthPart} ${days} day${days !== 1 ? "s" : ""}`;
+}
+
 /**
  * Builds the immutable base schedule once the orthodontist enters the final
  * upper/lower set counts, priced according to the patient's chosen plan.

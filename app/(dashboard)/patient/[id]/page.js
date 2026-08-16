@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
-import { PROVISIONAL_PLAN_FEE, estimateRange, estimateRangeForPlan, applyCouponDiscount, totalCost, monthSlotLabels, PLAN_CONFIGS } from "@/lib/monthlyPlan";
+import { PROVISIONAL_PLAN_FEE, estimateRange, estimateRangeForPlan, formatMonthsDays, applyCouponDiscount, totalCost, monthSlotLabels, PLAN_CONFIGS } from "@/lib/monthlyPlan";
+import { INVESTIGATION_TYPES, MAX_INVESTIGATION_FILE_SIZE, isInvestigationDone } from "@/lib/investigations";
 
 const supabase = getSupabaseClient();
 
@@ -60,6 +61,7 @@ const NEW_JOURNEY_STEPS = [
   { key: "scanning_done",           label: "Scanning",                    expandable: true },
   { key: "provisional_planning",    label: "Provisional Planning",        expandable: true },
   { key: "payment_done",            label: "Full Plan",                   expandable: true },
+  { key: "investigation_required",  label: "Investigation Required",      expandable: true },
   { key: "plan_approved",           label: "Plan Approval", approveAction: true },
   { key: "prealigner_treatment",    label: "Prealigner Treatment",        expandable: true },
   { key: "aligner_sets",            label: "Aligner Sets",                expandable: true },
@@ -119,6 +121,7 @@ function deriveSteps(appt) {
     prealigner_treatment:    procs.length === 0 ? true : procs.every((p) => !!prealignerDone[p]),
     planning_done:           js.planning_done        !== undefined ? !!js.planning_done        : !!appt.provisional_plan_submitted,
     final_plan_review:       !!(appt.final_upper_sets && appt.final_lower_sets),
+    investigation_required:  isInvestigationDone(js),
     plan_approved:           js.plan_approved        !== undefined ? !!js.plan_approved        : !!(appt.final_plan && appt.final_plan.trim()),
     followup_appointment:    !!js.followup_appointment,
     aligners_delivered:      !!js.aligners_delivered,
@@ -168,6 +171,8 @@ export default function PatientJourney() {
   const [approving, setApproving] = useState(false);
   const [consentChecked, setConsentChecked] = useState(true);
   const [savingProvisionalPlan, setSavingProvisionalPlan] = useState(false);
+  const [uploadingInvestigation, setUploadingInvestigation] = useState(null); // investigation type key currently uploading
+  const [investigationFileUrls, setInvestigationFileUrls] = useState({}); // type -> signed url, fetched on demand
   const [copiedNum, setCopiedNum] = useState(null);
   const [receivingBatch, setReceivingBatch] = useState(null);
   const [markingProcedureDone, setMarkingProcedureDone] = useState(null);
@@ -360,10 +365,51 @@ export default function PatientJourney() {
     handlePayNow(amount);
   };
 
+  // Investigation Required — patient uploads one file (image or PDF) per
+  // investigation type the orthodontist flagged as needed.
+  const uploadInvestigationFile = async (typeKey, file) => {
+    if (!file) return;
+    if (file.size > MAX_INVESTIGATION_FILE_SIZE) {
+      alert("That file is too large — please upload an image or PDF under 15MB.");
+      return;
+    }
+    if (!file.type.startsWith("image/") && file.type !== "application/pdf") {
+      alert("Please upload an image or a PDF file.");
+      return;
+    }
+    setUploadingInvestigation(typeKey);
+    try {
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const path = `${id}/investigations/${typeKey}_${Date.now()}_${safeName}`;
+      const { error: upErr } = await supabase.storage.from("case-files").upload(path, file, { upsert: true });
+      if (upErr) { alert("Failed to upload: " + upErr.message); return; }
+      const newFiles = { ...(patient.journey_steps?.investigation_files || {}), [typeKey]: { path, name: file.name, uploadedAt: new Date().toISOString() } };
+      const newJourneySteps = { ...(patient.journey_steps || {}), investigation_files: newFiles };
+      const { error } = await supabase.from("appointments_booking").update({ journey_steps: newJourneySteps }).eq("id", id);
+      if (error) { alert("Failed to save: " + error.message); return; }
+      setPatient((prev) => prev && { ...prev, journey_steps: newJourneySteps });
+    } catch {
+      alert("Network error. Please try again.");
+    } finally {
+      setUploadingInvestigation(null);
+    }
+  };
+
+  const viewInvestigationFile = async (path) => {
+    const { data, error } = await supabase.storage.from("case-files").createSignedUrl(path, 3600);
+    if (error || !data?.signedUrl) { alert("Couldn't open the file. Please try again."); return; }
+    window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+  };
+
   const isPlanApprovalReady =
     steps.booked && steps.confirmed && steps.scanning_done &&
     steps.payment_done && steps.planning_done &&
-    (!isNewModel || (steps.provisional_planning && steps.final_plan_review));
+    (!isNewModel || (steps.provisional_planning && steps.final_plan_review && steps.investigation_required));
+
+  // Even once every prerequisite is ready, the Approve Plan button stays
+  // locked until an admin explicitly switches it on from the Journey tab —
+  // it's never automatic.
+  const isPlanApprovalUnlocked = !isNewModel || !!patient.journey_steps?.plan_approval_unlocked;
 
   const handleApprovePlan = async () => {
     const confirmed = window.confirm(
@@ -613,7 +659,7 @@ export default function PatientJourney() {
                             <span style={{ flexShrink: 0, padding: "4px 10px", borderRadius: "99px", background: "#dcfce7", color: "#16a34a", fontSize: "12px", fontWeight: "700", whiteSpace: "nowrap" }}>
                               ✓ Approved
                             </span>
-                          ) : isPlanApprovalReady ? (
+                          ) : isPlanApprovalReady && isPlanApprovalUnlocked ? (
                             <button
                               onClick={(e) => { e.stopPropagation(); handleApprovePlan(); }}
                               disabled={approving || !consentChecked}
@@ -648,7 +694,7 @@ export default function PatientJourney() {
                         )}
                         {isClickable && !step.approveAction && <span style={{ fontSize: "12px", color: done ? "#16a34a" : "#9ca3af", flexShrink: 0, marginLeft: "8px" }}>{isExpanded ? "▲" : "▼"}</span>}
                       </div>
-                      {step.key === "plan_approved" && isPlanApprovalReady && !patient.plan_approved && (
+                      {step.key === "plan_approved" && isPlanApprovalReady && isPlanApprovalUnlocked && !patient.plan_approved && (
                         <label
                           onClick={(e) => e.stopPropagation()}
                           style={{ display: "flex", alignItems: "flex-start", gap: "8px", marginTop: "12px", paddingTop: "12px", borderTop: "1px solid #e5e7eb", cursor: "pointer" }}
@@ -773,7 +819,9 @@ export default function PatientJourney() {
                                 <span style={{ fontSize: "13px", color: "#374151" }}>Wear: {cfg.daysPerSet} days per set / {cfg.setsPerMonth} sets per month</span>
                                 <span style={{ fontSize: "13px", color: "#374151" }}>
                                   Estimated duration: {durationForCfg
-                                    ? `${durationForCfg.min}–${durationForCfg.max} months`
+                                    ? (durationForCfg.min === durationForCfg.max
+                                        ? formatMonthsDays(durationForCfg.min)
+                                        : `${formatMonthsDays(durationForCfg.min)} – ${formatMonthsDays(durationForCfg.max)}`)
                                     : "to be confirmed by your orthodontist"}
                                 </span>
                               </div>
@@ -1332,6 +1380,67 @@ export default function PatientJourney() {
                       )}
                     </div>
                   ))}
+
+                  {/* Expanded Panel — Investigation Required */}
+                  {step.key === "investigation_required" && isExpanded && (
+                    <div style={{ marginLeft: "58px", marginTop: "8px", background: "white", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+                      <p style={{ margin: "0 0 14px", fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Investigation Required</p>
+                      {(() => {
+                        const types = patient.journey_steps?.investigation_types || [];
+                        const files = patient.journey_steps?.investigation_files || {};
+                        if (types.length === 0) {
+                          return <p style={{ margin: 0, fontSize: "13px", color: "#9ca3af", fontStyle: "italic" }}>Your orthodontist will confirm shortly whether any investigation is needed before your plan can be approved.</p>;
+                        }
+                        if (types.includes("NONE")) {
+                          return (
+                            <div style={{ padding: "10px 12px", background: "#f0fdf4", borderRadius: "8px", border: "1px solid #bbf7d0" }}>
+                              <p style={{ margin: 0, fontSize: "13px", fontWeight: "800", color: "#16a34a" }}>✅ No investigation required</p>
+                            </div>
+                          );
+                        }
+                        return (
+                          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                            {types.map((t) => {
+                              const typeInfo = INVESTIGATION_TYPES.find((it) => it.key === t);
+                              const file = files[t];
+                              const isUploading = uploadingInvestigation === t;
+                              return (
+                                <div key={t} style={{ padding: "12px", background: "#f8f7f5", borderRadius: "10px", border: "1px solid #e5e7eb" }}>
+                                  <p style={{ margin: "0 0 8px", fontSize: "13px", fontWeight: "700", color: "#111827" }}>{typeInfo?.label || t}</p>
+                                  {file?.path ? (
+                                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
+                                      <span style={{ fontSize: "12px", color: "#16a34a", fontWeight: "700" }}>✅ Uploaded — {file.name}</span>
+                                      <button
+                                        onClick={() => viewInvestigationFile(file.path)}
+                                        style={{ padding: "6px 12px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "white", color: "#111827", fontWeight: "700", fontSize: "12px", cursor: "pointer" }}
+                                      >
+                                        View
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <label style={{
+                                      display: "block", padding: "10px", borderRadius: "8px", textAlign: "center",
+                                      background: isUploading ? "#e5e7eb" : "#b8905a", color: isUploading ? "#9ca3af" : "white",
+                                      fontWeight: "700", fontSize: "13px", cursor: isUploading ? "not-allowed" : "pointer",
+                                    }}>
+                                      {isUploading ? "Uploading..." : "Upload Image or PDF"}
+                                      <input
+                                        type="file"
+                                        accept="image/*,application/pdf"
+                                        disabled={isUploading}
+                                        onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; uploadInvestigationFile(t, f); }}
+                                        style={{ display: "none" }}
+                                      />
+                                    </label>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
 
                   {/* Expanded Panel — Aligner Sets (month by month) */}
                   {step.key === "aligner_sets" && isExpanded && discountedMonthlyPlan && (() => {
