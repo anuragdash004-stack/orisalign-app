@@ -1182,7 +1182,11 @@ function deriveSteps(appt) {
     planning_done:           js.planning_done        !== undefined ? !!js.planning_done        : !!appt.provisional_plan_submitted,
     final_plan_review:       !!(appt.final_upper_sets && appt.final_lower_sets),
     investigation_required:  isInvestigationDone(js),
-    plan_approved:           js.plan_approved        !== undefined ? !!js.plan_approved        : !!(appt.final_plan && appt.final_plan.trim()),
+    // See the patient page's deriveSteps: the final_plan-text fallback is
+    // legacy-only — new-model patients always track approval explicitly via
+    // journey_steps.plan_approved, and their final_plan text is filled in at
+    // the Full Plan step, long before actual approval.
+    plan_approved:           isNewModel ? !!js.plan_approved : (js.plan_approved !== undefined ? !!js.plan_approved : !!(appt.final_plan && appt.final_plan.trim())),
     followup_appointment:    js.followup_appointment !== undefined ? !!js.followup_appointment : false,
     aligners_delivered:      js.aligners_delivered   !== undefined ? !!js.aligners_delivered   : false,
     smile_correction:        js.smile_correction     !== undefined ? !!js.smile_correction     : false,
