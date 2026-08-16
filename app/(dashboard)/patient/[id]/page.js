@@ -1131,7 +1131,8 @@ export default function PatientJourney() {
                               ["Upper Arch Sets", patient.final_upper_sets],
                               ["Lower Arch Sets", patient.final_lower_sets],
                               ["Wear Duration per Set", `${(PLAN_CONFIGS[patient.payment_data?.plan] || PLAN_CONFIGS.ORISPRO).daysPerSet} days`],
-                              ["Total Treatment Duration", `${patient.monthly_plan.totalMonths} month${patient.monthly_plan.totalMonths !== 1 ? "s" : ""}`],
+                              ["Upper Arch Duration", formatMonthsDays((patient.final_upper_sets * (PLAN_CONFIGS[patient.payment_data?.plan] || PLAN_CONFIGS.ORISPRO).daysPerSet) / 30)],
+                              ["Lower Arch Duration", formatMonthsDays((patient.final_lower_sets * (PLAN_CONFIGS[patient.payment_data?.plan] || PLAN_CONFIGS.ORISPRO).daysPerSet) / 30)],
                             ].map(([lbl, val]) => (
                               <div key={lbl} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: "#f8f7f5", borderRadius: "8px" }}>
                                 <span style={{ fontSize: "13px", color: "#6b7280", fontWeight: "600" }}>{lbl}</span>
