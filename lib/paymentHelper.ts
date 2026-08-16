@@ -5,7 +5,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { logAuditEntry } from "./auditLog";
-import { applyCouponDiscount, alignerRangeLabel, monthSlotLabels, FINAL_PLAN_FEE, type MonthlyPlan } from "./monthlyPlan";
+import { applyCouponDiscount, alignerRangeLabel, monthSlotLabels, FINAL_PLAN_FEE, PROVISIONAL_PLAN_FEE, provisionalPaymentBaseline, PLAN_CONFIGS, type MonthlyPlan, type PlanKey, type ProvisionalPaymentChoice } from "./monthlyPlan";
 
 export type PaymentType = "down_payment" | "pending" | "full" | "others";
 
@@ -143,6 +143,62 @@ export function formatPaymentDisplay(paymentData: PaymentData): {
   };
 }
 
+export interface AutoCreatePaidBatchesParams {
+  supabase: SupabaseClient;
+  appointmentId: string;
+  monthlyPlan: MonthlyPlan;
+  couponsTotal: number;
+  previouslyPaid: number;
+  newTotalPaid: number;
+  manufacturingData: { batches?: Record<string, unknown>[] } | null;
+}
+
+/**
+ * Creates a manufacturing batch for any package whose cumulative threshold
+ * amount_paid just crossed (or already covers) — the single place this
+ * happens, called from two situations:
+ *   1. recordPaymentReceived, right after a payment updates amount_paid
+ *      (previouslyPaid = the old total, newTotalPaid = the new one).
+ *   2. Final Plan Review being submitted/regenerated, when the patient
+ *      already pre-paid "first month" before a schedule even existed to
+ *      compare against — call with previouslyPaid = 0 and newTotalPaid =
+ *      the current amount_paid, which correctly treats every package
+ *      already covered by that pre-payment as newly due for manufacturing.
+ * Manufacturing starts (mfg_started stamped) the moment a package's batch
+ * is created this way — no separate admin click needed.
+ */
+export async function autoCreatePaidBatches(params: AutoCreatePaidBatchesParams): Promise<void> {
+  const { supabase, appointmentId, monthlyPlan, couponsTotal, previouslyPaid, newTotalPaid, manufacturingData } = params;
+  const discounted = applyCouponDiscount(monthlyPlan, couponsTotal);
+  const newlyPaidMonths = discounted.months.filter(
+    (m) => previouslyPaid < m.discountedCumulative && newTotalPaid >= m.discountedCumulative
+  );
+  if (newlyPaidMonths.length === 0) return;
+
+  const mfg = manufacturingData || {};
+  const existingBatches = mfg.batches || [];
+  const startedToday = new Date().toISOString().slice(0, 10);
+  const newBatches = newlyPaidMonths
+    .filter((m) => !existingBatches.some((b) => Number(b.num) === m.num))
+    .map((m) => ({
+      num: m.num,
+      start: "",
+      end: "",
+      mfg_started: startedToday,
+      mfg_done: "",
+      shipment_link: "",
+      upper_aligners: alignerRangeLabel(m.upper),
+      lower_aligners: alignerRangeLabel(m.lower),
+      slot_label: monthSlotLabels(m.upper, m.lower).join(", "),
+    }));
+  if (newBatches.length > 0) {
+    await supabase
+      .from("appointments_booking")
+      .update({ manufacturing_data: { ...mfg, batches: [...existingBatches, ...newBatches] } })
+      .eq("id", appointmentId);
+  }
+}
+
 export interface RecordPaymentParams {
   supabase: SupabaseClient;
   appointmentId: string;
@@ -203,8 +259,12 @@ export async function recordPaymentReceived(params: RecordPaymentParams): Promis
     fullAmount = applyCouponDiscount(monthlyPlan, couponsTotal).months.slice(-1)[0]?.discountedCumulative || FINAL_PLAN_FEE;
   } else if (isNewModel) {
     // Provisional Planning submitted but Final Plan Review hasn't happened
-    // yet — the only chargeable amount at this point is the ₹999 fee.
-    fullAmount = FINAL_PLAN_FEE;
+    // yet — the only chargeable amount right now is whichever the patient
+    // chose: the plan's full monthly rate ("first_month", pre-pays Month 1)
+    // or the flat provisional-planning fee ("full_plan").
+    const choice = pd.provisional_payment_choice as ProvisionalPaymentChoice | undefined;
+    const planKey = (pd.plan as PlanKey) || "ORISPRO";
+    fullAmount = choice === "first_month" ? (PLAN_CONFIGS[planKey] || PLAN_CONFIGS.ORISPRO).monthRate : PROVISIONAL_PLAN_FEE;
   } else {
     // Prefer final_amount (post-discount) over full_amount (pre-discount
     // gross) as the cap — otherwise a discounted patient's balance can never
@@ -245,45 +305,18 @@ export async function recordPaymentReceived(params: RecordPaymentParams): Promis
 
   // New per-arch, month-by-month billing model: a paid month should
   // immediately show up as a batch for the admin to manufacture, regardless
-  // of which payment path fired (gateway webhook, redirect verify, manual
-  // admin mark-as-paid, or the reconcile cron). Centralized here — the one
-  // funnel every payment path already goes through — instead of duplicated
-  // in each of those four call sites. Appointments without a monthly_plan
-  // (the old lump-sum model) are completely untouched.
+  // of which payment path fired. See autoCreatePaidBatches below.
   if (monthlyPlan) {
     try {
-      const couponsTotal = ((pd.applied_coupons as { discount?: number }[]) || [])
-        .reduce((sum, c) => sum + (Number(c.discount) || 0), 0);
-      const discounted = applyCouponDiscount(monthlyPlan, couponsTotal);
-      const newlyPaidMonths = discounted.months.filter(
-        (m) => previouslyPaid < m.discountedCumulative && newTotalPaid >= m.discountedCumulative
-      );
-      if (newlyPaidMonths.length > 0) {
-        const mfg = (appt.manufacturing_data as { batches?: Record<string, unknown>[] } | null) || {};
-        const existingBatches = mfg.batches || [];
-        // Manufacturing starts the moment payment succeeds — no separate
-        // admin click needed for a package's "Manufacturing" status.
-        const startedToday = new Date().toISOString().slice(0, 10);
-        const newBatches = newlyPaidMonths
-          .filter((m) => !existingBatches.some((b) => Number(b.num) === m.num))
-          .map((m) => ({
-            num: m.num,
-            start: "",
-            end: "",
-            mfg_started: startedToday,
-            mfg_done: "",
-            shipment_link: "",
-            upper_aligners: alignerRangeLabel(m.upper),
-            lower_aligners: alignerRangeLabel(m.lower),
-            slot_label: monthSlotLabels(m.upper, m.lower).join(", "),
-          }));
-        if (newBatches.length > 0) {
-          await supabase
-            .from("appointments_booking")
-            .update({ manufacturing_data: { ...mfg, batches: [...existingBatches, ...newBatches] } })
-            .eq("id", appointmentId);
-        }
-      }
+      await autoCreatePaidBatches({
+        supabase,
+        appointmentId,
+        monthlyPlan,
+        couponsTotal: ((pd.applied_coupons as { discount?: number }[]) || []).reduce((sum, c) => sum + (Number(c.discount) || 0), 0),
+        previouslyPaid,
+        newTotalPaid,
+        manufacturingData: appt.manufacturing_data as { batches?: Record<string, unknown>[] } | null,
+      });
     } catch {
       // Never let batch auto-creation block the payment itself — amount_paid
       // has already been committed above; admin can add a batch manually.

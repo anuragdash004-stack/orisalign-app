@@ -11,10 +11,24 @@
  * ₹3,749.25, not the full ₹4,999.
  */
 
+/** @deprecated superseded by PROVISIONAL_PLAN_FEE / the per-patient choice-based baseline */
 export const FINAL_PLAN_FEE = 999;
 export const MONTH_RATE = 4999; // OrisPro — kept for the rough pre-Final-Plan-Review estimate
 export const HALF_MONTH_RATE = 2499.5;
 export const ALIGNER_RATE = MONTH_RATE / 4; // 1249.75
+
+// Chosen in Provisional Planning, right after picking a plan:
+//   "first_month" — pay the plan's full monthly rate upfront (₹4,999/₹6,999).
+//     Strictly better for the patient: unlocks Final Plan Review AND pre-pays
+//     Month 1, so no separate fee at all (baseline 0 below).
+//   "full_plan"   — pay a flat ₹2,499 instead, just to unlock Final Plan
+//     Review; Month 1 is still paid separately once the real schedule exists.
+export type ProvisionalPaymentChoice = "first_month" | "full_plan";
+export const PROVISIONAL_PLAN_FEE = 2499;
+
+export function provisionalPaymentBaseline(choice: ProvisionalPaymentChoice | undefined | null): number {
+  return choice === "first_month" ? 0 : PROVISIONAL_PLAN_FEE;
+}
 
 export type PlanKey = "ORISPRO" | "ORISPLUS";
 
@@ -41,6 +55,8 @@ export interface MonthEntry {
 
 export interface MonthlyPlan {
   plan: PlanKey;
+  choice: ProvisionalPaymentChoice;
+  baseline: number;
   upperSets: number;
   lowerSets: number;
   totalMonths: number;
@@ -74,14 +90,20 @@ export function estimateRange(minMonths: number, maxMonths: number) {
  * aligners actually due that month × the plan's per-aligner rate
  * (monthRate / (setsPerMonth × 2 arches)) — e.g. OrisPro: 4999/4 = 1249.75.
  */
-export function buildMonthlyPlan(upperSets: number, lowerSets: number, plan: PlanKey = "ORISPRO"): MonthlyPlan {
+export function buildMonthlyPlan(
+  upperSets: number,
+  lowerSets: number,
+  plan: PlanKey = "ORISPRO",
+  choice: ProvisionalPaymentChoice = "full_plan"
+): MonthlyPlan {
   const config = PLAN_CONFIGS[plan] || PLAN_CONFIGS.ORISPRO;
+  const baseline = provisionalPaymentBaseline(choice);
   const alignerRate = config.monthRate / (config.setsPerMonth * 2);
   const totalMonths = Math.ceil(Math.max(upperSets, lowerSets, 0) / config.setsPerMonth);
   const months: MonthEntry[] = [];
   let upperCursor = 0;
   let lowerCursor = 0;
-  let cumulative = FINAL_PLAN_FEE;
+  let cumulative = baseline;
 
   for (let m = 1; m <= totalMonths; m++) {
     const upper: number[] = [];
@@ -101,7 +123,7 @@ export function buildMonthlyPlan(upperSets: number, lowerSets: number, plan: Pla
     months.push({ num: m, upper, lower, amount, cumulative });
   }
 
-  return { plan: config.key, upperSets, lowerSets, totalMonths, months, generatedAt: new Date().toISOString() };
+  return { plan: config.key, choice, baseline, upperSets, lowerSets, totalMonths, months, generatedAt: new Date().toISOString() };
 }
 
 /**
@@ -121,7 +143,8 @@ export function applyCouponDiscount(plan: MonthlyPlan, couponsTotal: number): Di
   });
   const months = reversed.reverse();
 
-  let discountedCumulative = FINAL_PLAN_FEE;
+  const baseline = plan.baseline ?? FINAL_PLAN_FEE;
+  let discountedCumulative = baseline;
   for (const month of months) {
     discountedCumulative += month.payableAmount;
     (month as DiscountedMonthEntry).discountedCumulative = discountedCumulative;
@@ -129,6 +152,8 @@ export function applyCouponDiscount(plan: MonthlyPlan, couponsTotal: number): Di
 
   return {
     plan: plan.plan,
+    choice: plan.choice,
+    baseline,
     upperSets: plan.upperSets,
     lowerSets: plan.lowerSets,
     totalMonths: plan.totalMonths,
@@ -149,18 +174,18 @@ export function nextPayableMonth(discountedPlan: DiscountedMonthlyPlan, amountPa
  * detection, coupon discount, paid-status checks) reads `cumulative` fresh,
  * so this is the only step needed for an override to propagate correctly.
  */
-export function recomputeCumulative(months: MonthEntry[]): MonthEntry[] {
-  let running = FINAL_PLAN_FEE;
+export function recomputeCumulative(months: MonthEntry[], baseline: number = FINAL_PLAN_FEE): MonthEntry[] {
+  let running = baseline;
   return months.map((m) => {
     running += m.amount;
     return { ...m, cumulative: running };
   });
 }
 
-/** Total treatment cost (₹999 fee + all months), after any coupon discount. */
+/** Total treatment cost (the provisional-planning fee/baseline + all months), after any coupon discount. */
 export function totalCost(discountedPlan: DiscountedMonthlyPlan): number {
   const last = discountedPlan.months[discountedPlan.months.length - 1];
-  return last ? last.discountedCumulative : FINAL_PLAN_FEE;
+  return last ? last.discountedCumulative : (discountedPlan.baseline ?? FINAL_PLAN_FEE);
 }
 
 /** "1–2" / "17–18" / "3" / "—" label for a month's aligner numbers for one arch. */

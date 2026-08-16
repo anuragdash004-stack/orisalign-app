@@ -250,7 +250,8 @@ export default function OrthoCase() {
       return;
     }
     const selectedPlan = patient?.payment_data?.plan === "ORISPLUS" ? "ORISPLUS" : "ORISPRO";
-    const plan = buildMonthlyPlan(upper, lower, selectedPlan);
+    const choice = patient?.payment_data?.provisional_payment_choice === "first_month" ? "first_month" : "full_plan";
+    const plan = buildMonthlyPlan(upper, lower, selectedPlan, choice);
     setFinalReviewSaving(true);
     const { error } = await supabase
       .from("appointments_booking")
@@ -266,6 +267,15 @@ export default function OrthoCase() {
     logAudit({ appointmentId: id, actor, action: "Final Plan Review Submitted", entity: "monthly_plan", newData: { final_upper_sets: upper, final_lower_sets: lower, monthly_plan: plan } });
     setMonthlyPlan(plan);
     setFinalReviewSubmitted(true);
+    // Patient may have already pre-paid "first month" before this schedule
+    // existed to compare against — check now and auto-create Month 1's
+    // batch immediately if so, instead of waiting for a payment event that
+    // won't fire again.
+    fetch("/api/sync-paid-packages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ appointmentId: id }),
+    }).catch(() => {});
   };
 
   // ── FINAL PLAN ────────────────────────────────────────────────
@@ -645,6 +655,7 @@ export default function OrthoCase() {
                 <>
                   <p style={{ fontSize: "12px", color: "#6b7280", margin: "0 0 10px" }}>
                     Patient selected: <strong style={{ color: "#111827" }}>{patient?.payment_data?.plan === "ORISPLUS" ? "OrisPro Plus (10 days/set)" : "OrisPro (15 days/set)"}</strong>
+                    {" · "}Payment: <strong style={{ color: "#111827" }}>{patient?.payment_data?.provisional_payment_choice === "first_month" ? "Paid First Month (Month 1 will show paid immediately)" : "Paid Full Plan Fee"}</strong>
                   </p>
                   <div style={{ display: "flex", gap: "10px", marginBottom: "12px" }}>
                     <input

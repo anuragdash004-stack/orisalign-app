@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
-import { FINAL_PLAN_FEE, estimateRange, applyCouponDiscount, totalCost, monthSlotLabels, PLAN_CONFIGS } from "@/lib/monthlyPlan";
+import { PROVISIONAL_PLAN_FEE, estimateRange, applyCouponDiscount, totalCost, monthSlotLabels, PLAN_CONFIGS } from "@/lib/monthlyPlan";
 
 const supabase = getSupabaseClient();
 
@@ -98,9 +98,22 @@ function deriveSteps(appt) {
     booked:                  true,
     confirmed:               appt.status === "confirmed" || appt.status === "completed",
     scanning_done:           js.scanning_done        !== undefined ? !!js.scanning_done        : !!appt.stl_submitted,
-    provisional_planning:    !!appt.payment_data?.plan,
+    // Provisional Planning now also gates payment: a plan must be picked AND
+    // paid for (either "first_month" at the plan's monthly rate, or the flat
+    // "full_plan" fee) before it counts as done.
+    provisional_planning:    isNewModel
+      ? (() => {
+          const planCfg = PLAN_CONFIGS[appt.payment_data?.plan] || PLAN_CONFIGS.ORISPRO;
+          const choice = appt.payment_data?.provisional_payment_choice;
+          const threshold = choice === "first_month" ? planCfg.monthRate : choice === "full_plan" ? PROVISIONAL_PLAN_FEE : null;
+          return !!appt.payment_data?.plan && threshold !== null && amountPaid >= threshold;
+        })()
+      : !!appt.payment_data?.plan,
+    // "Full Plan" is no longer a payment step — it's just the plan content
+    // (final plan text, upper/lower sets, review link), so it's done exactly
+    // when Final Plan Review has been completed.
     payment_done:            isNewModel
-      ? amountPaid >= FINAL_PLAN_FEE
+      ? !!(appt.final_upper_sets && appt.final_lower_sets)
       : (js.payment_done !== undefined ? !!js.payment_done : !!(appt.payment_data?.final_amount)),
     // No pre-aligner procedures selected → nothing to wait on, counts as done.
     prealigner_treatment:    procs.length === 0 ? true : procs.every((p) => !!prealignerDone[p]),
@@ -327,6 +340,17 @@ export default function PatientJourney() {
     setSavingProvisionalPlan(false);
     if (error) { alert("Couldn't save: " + error.message); return; }
     setPatient((prev) => prev && { ...prev, payment_data: newPaymentData });
+  };
+
+  // Payment choice made right after picking a plan — persists which choice
+  // was made (so the cumulative baseline generated at Final Plan Review
+  // matches it), then goes straight to checkout for the right amount.
+  const selectPaymentChoiceAndPay = async (choice, amount) => {
+    const newPaymentData = { ...(patient.payment_data || {}), provisional_payment_choice: choice };
+    const { error } = await supabase.from("appointments_booking").update({ payment_data: newPaymentData }).eq("id", id);
+    if (error) { alert("Couldn't save: " + error.message); return; }
+    setPatient((prev) => prev && { ...prev, payment_data: newPaymentData });
+    handlePayNow(amount);
   };
 
   const isPlanApprovalReady =
@@ -744,6 +768,47 @@ export default function PatientJourney() {
                           Your plan is locked in now that your final treatment schedule has been generated.
                         </p>
                       )}
+
+                      {/* Payment choice — shown once a plan is picked, until paid */}
+                      {patient.payment_data?.plan && (() => {
+                        const cfg = PLAN_CONFIGS[patient.payment_data.plan] || PLAN_CONFIGS.ORISPRO;
+                        const choice = patient.payment_data?.provisional_payment_choice;
+                        const amountPaidNow = Number(patient.amount_paid) || 0;
+                        const threshold = choice === "first_month" ? cfg.monthRate : choice === "full_plan" ? PROVISIONAL_PLAN_FEE : null;
+                        const isPaid = threshold !== null && amountPaidNow >= threshold;
+                        return (
+                          <div style={{ marginTop: "14px", paddingTop: "14px", borderTop: "1px solid #e5e7eb" }}>
+                            <p style={{ margin: "0 0 10px", fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Payment</p>
+                            {isPaid ? (
+                              <div style={{ padding: "10px 12px", background: "#f0fdf4", borderRadius: "8px", border: "1px solid #bbf7d0" }}>
+                                <p style={{ margin: 0, fontSize: "13px", fontWeight: "800", color: "#16a34a" }}>
+                                  ✅ Paid — {choice === "first_month" ? `First Month (${fmt(cfg.monthRate)})` : `Full Plan Fee (${fmt(PROVISIONAL_PLAN_FEE)})`}
+                                </p>
+                              </div>
+                            ) : (
+                              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                                <p style={{ margin: 0, fontSize: "13px", color: "#374151", lineHeight: "1.6" }}>
+                                  Pay your first month upfront (unlocks your final plan and pays for Month 1 in one go), or pay a smaller fee now to get your final plan first and pay for Month 1 separately once it's ready.
+                                </p>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); selectPaymentChoiceAndPay("first_month", cfg.monthRate); }}
+                                  disabled={payNowLoading}
+                                  style={{ display: "block", width: "100%", padding: "12px", borderRadius: "10px", border: "none", background: "linear-gradient(135deg, #b8905a, #f59e0b)", color: "white", fontWeight: "800", fontSize: "14px", cursor: payNowLoading ? "not-allowed" : "pointer", opacity: payNowLoading ? 0.7 : 1 }}
+                                >
+                                  Pay First Month · {fmt(cfg.monthRate)}
+                                </button>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); selectPaymentChoiceAndPay("full_plan", PROVISIONAL_PLAN_FEE); }}
+                                  disabled={payNowLoading}
+                                  style={{ display: "block", width: "100%", padding: "12px", borderRadius: "10px", border: "1px solid #b8905a", background: "white", color: "#b8905a", fontWeight: "800", fontSize: "14px", cursor: payNowLoading ? "not-allowed" : "pointer", opacity: payNowLoading ? 0.7 : 1 }}
+                                >
+                                  Pay for Full Plan · {fmt(PROVISIONAL_PLAN_FEE)}
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
                   )}
 
@@ -985,69 +1050,41 @@ export default function PatientJourney() {
                     </div>
                   )}
 
-                  {/* Expanded Panel — Plan and Payment */}
+                  {/* Expanded Panel — Full Plan (content only — payment now lives in Provisional Planning) */}
                   {step.key === "payment_done" && isExpanded && (isNewModel ? (
                     <div style={{ marginLeft: "58px", marginTop: "8px", background: "white", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
                       <p style={{ margin: "0 0 14px", fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Full Plan</p>
-                      {(Number(patient.amount_paid) || 0) >= FINAL_PLAN_FEE ? (
-                        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                          <div style={{ padding: "10px 12px", background: "#f0fdf4", borderRadius: "8px", border: "1px solid #bbf7d0" }}>
-                            <p style={{ margin: 0, fontSize: "13px", fontWeight: "800", color: "#16a34a" }}>✅ Final Planning Payment Paid — {fmt(FINAL_PLAN_FEE)}</p>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                        {patient.final_plan && (
+                          <p style={{ margin: 0, fontSize: "13px", color: "#374151", lineHeight: "1.6", whiteSpace: "pre-wrap" }}>{patient.final_plan}</p>
+                        )}
+                        <p style={{ margin: 0, fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Your Aligner Plan</p>
+                        {patient.monthly_plan?.totalMonths ? (
+                          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                            {[
+                              ["Upper Arch Sets", patient.final_upper_sets],
+                              ["Lower Arch Sets", patient.final_lower_sets],
+                              ["Wear Duration per Set", `${(PLAN_CONFIGS[patient.payment_data?.plan] || PLAN_CONFIGS.ORISPRO).daysPerSet} days`],
+                              ["Total Treatment Duration", `${patient.monthly_plan.totalMonths} month${patient.monthly_plan.totalMonths !== 1 ? "s" : ""}`],
+                            ].map(([lbl, val]) => (
+                              <div key={lbl} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: "#f8f7f5", borderRadius: "8px" }}>
+                                <span style={{ fontSize: "13px", color: "#6b7280", fontWeight: "600" }}>{lbl}</span>
+                                <span style={{ fontSize: "13px", color: "#111827", fontWeight: "700" }}>{val}</span>
+                              </div>
+                            ))}
                           </div>
-                          {patient.final_plan && (
-                            <p style={{ margin: 0, fontSize: "13px", color: "#374151", lineHeight: "1.6", whiteSpace: "pre-wrap" }}>{patient.final_plan}</p>
-                          )}
-                          <p style={{ margin: 0, fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Your Aligner Plan</p>
-                          {patient.monthly_plan?.totalMonths ? (
-                            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                              {[
-                                ["Upper Arch Sets", patient.final_upper_sets],
-                                ["Lower Arch Sets", patient.final_lower_sets],
-                                ["Wear Duration per Set", `${(PLAN_CONFIGS[patient.payment_data?.plan] || PLAN_CONFIGS.ORISPRO).daysPerSet} days`],
-                                ["Total Treatment Duration", `${patient.monthly_plan.totalMonths} month${patient.monthly_plan.totalMonths !== 1 ? "s" : ""}`],
-                              ].map(([lbl, val]) => (
-                                <div key={lbl} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: "#f8f7f5", borderRadius: "8px" }}>
-                                  <span style={{ fontSize: "13px", color: "#6b7280", fontWeight: "600" }}>{lbl}</span>
-                                  <span style={{ fontSize: "13px", color: "#111827", fontWeight: "700" }}>{val}</span>
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <p style={{ margin: 0, fontSize: "13px", color: "#9ca3af", fontStyle: "italic" }}>Your aligner plan details will appear here once set by your orthodontist.</p>
-                          )}
-                          {patient.review_link && (
-                            <a
-                              href={patient.review_link} target="_blank" rel="noopener noreferrer"
-                              style={{ display: "block", padding: "12px", borderRadius: "10px", background: "#b8905a", color: "white", fontWeight: "700", fontSize: "14px", textAlign: "center", textDecoration: "none" }}
-                            >
-                              Review Treatment Plan
-                            </a>
-                          )}
-                        </div>
-                      ) : (
-                        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                          <p style={{ margin: 0, fontSize: "13px", color: "#374151", lineHeight: "1.6" }}>
-                            A one-time ₹999 fee unlocks your final treatment plan — our team will prepare it as soon as this is paid.
-                          </p>
-                          <div style={{ padding: "12px", background: "#f0fdf4", borderRadius: "8px", border: "1px solid #bbf7d0" }}>
-                            <p style={{ margin: "0 0 4px", fontSize: "11px", fontWeight: "700", color: "#16a34a", textTransform: "uppercase" }}>Amount to Pay</p>
-                            <p style={{ margin: 0, fontSize: "24px", fontWeight: "900", color: "#15803d" }}>{fmt(FINAL_PLAN_FEE)}</p>
-                          </div>
-                          <button
-                            onClick={() => handlePayNow(FINAL_PLAN_FEE)}
-                            disabled={payNowLoading}
-                            style={{
-                              display: "block", width: "100%", padding: "12px", borderRadius: "10px", border: "none",
-                              background: "linear-gradient(135deg, #b8905a, #f59e0b)", color: "white", fontWeight: "800",
-                              fontSize: "14px", textAlign: "center", letterSpacing: "0.3px",
-                              boxShadow: "0 4px 10px rgba(184, 144, 90, 0.25)",
-                              cursor: payNowLoading ? "not-allowed" : "pointer", opacity: payNowLoading ? 0.7 : 1,
-                            }}
+                        ) : (
+                          <p style={{ margin: 0, fontSize: "13px", color: "#9ca3af", fontStyle: "italic" }}>Your aligner plan details will appear here once set by your orthodontist.</p>
+                        )}
+                        {patient.review_link && (
+                          <a
+                            href={patient.review_link} target="_blank" rel="noopener noreferrer"
+                            style={{ display: "block", padding: "12px", borderRadius: "10px", background: "#b8905a", color: "white", fontWeight: "700", fontSize: "14px", textAlign: "center", textDecoration: "none" }}
                           >
-                            {payNowLoading ? "Starting payment..." : `Pay Now · ${fmt(FINAL_PLAN_FEE)}`}
-                          </button>
-                        </div>
-                      )}
+                            Review Treatment Plan
+                          </a>
+                        )}
+                      </div>
                     </div>
                   ) : (
                     <div style={{ marginLeft: "58px", marginTop: "8px", background: "white", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>

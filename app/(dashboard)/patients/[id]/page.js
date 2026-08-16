@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { useParams, useRouter } from "next/navigation";
 import { logAudit } from "@/lib/logAudit";
-import { FINAL_PLAN_FEE, estimateRange, applyCouponDiscount, monthSlotLabels, totalCost, recomputeCumulative, buildMonthlyPlan, PLAN_CONFIGS } from "@/lib/monthlyPlan";
+import { PROVISIONAL_PLAN_FEE, estimateRange, applyCouponDiscount, monthSlotLabels, totalCost, recomputeCumulative, buildMonthlyPlan, PLAN_CONFIGS } from "@/lib/monthlyPlan";
 
 const supabase = getSupabaseClient();
 
@@ -756,7 +756,10 @@ function MonthlyBillingCards({ appointmentId, appt, setAppt, actor }) {
     .reduce((sum, c) => sum + (parseFloat(c.discount) || 0), 0);
   const discounted = appt.monthly_plan ? applyCouponDiscount(appt.monthly_plan, couponsTotal) : null;
   const amountPaid = Number(appt.amount_paid) || 0;
-  const finalFeePaid = amountPaid >= FINAL_PLAN_FEE;
+  const planCfg = PLAN_CONFIGS[appt.payment_data?.plan] || PLAN_CONFIGS.ORISPRO;
+  const provisionalChoice = appt.payment_data?.provisional_payment_choice;
+  const provisionalThreshold = provisionalChoice === "first_month" ? planCfg.monthRate : provisionalChoice === "full_plan" ? PROVISIONAL_PLAN_FEE : null;
+  const provisionalPaid = provisionalThreshold !== null && amountPaid >= provisionalThreshold;
 
   // Same trusted, additive endpoint the gateways and legacy manual payments
   // use — recordPaymentReceived (via /api/update-payment-status) — so the
@@ -806,14 +809,18 @@ function MonthlyBillingCards({ appointmentId, appt, setAppt, actor }) {
       </div>
 
       <div style={card}>
-        <h3 style={{ margin: "0 0 16px", fontSize: "16px", color: "#111827" }}>Final Planning Payment</h3>
-        {finalFeePaid ? (
-          <p style={okBannerText}>✅ Paid — {inr(FINAL_PLAN_FEE)}</p>
+        <h3 style={{ margin: "0 0 16px", fontSize: "16px", color: "#111827" }}>Provisional Planning Payment</h3>
+        {!appt.payment_data?.plan ? (
+          <p style={{ margin: 0, fontSize: "13px", color: "#9ca3af", fontStyle: "italic" }}>Patient hasn&apos;t picked a plan yet.</p>
+        ) : !provisionalChoice ? (
+          <p style={{ margin: 0, fontSize: "13px", color: "#9ca3af", fontStyle: "italic" }}>Plan picked ({planCfg.label}), payment choice not made yet.</p>
+        ) : provisionalPaid ? (
+          <p style={okBannerText}>✅ Paid — {provisionalChoice === "first_month" ? `First Month (${inr(planCfg.monthRate)})` : `Full Plan Fee (${inr(PROVISIONAL_PLAN_FEE)})`}</p>
         ) : (
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
-            <span style={{ fontSize: "14px", color: "#374151" }}>{inr(FINAL_PLAN_FEE)} pending</span>
+            <span style={{ fontSize: "14px", color: "#374151" }}>{provisionalChoice === "first_month" ? `First Month · ${inr(planCfg.monthRate)}` : `Full Plan Fee · ${inr(PROVISIONAL_PLAN_FEE)}`} pending</span>
             <button
-              onClick={() => markPaid(FINAL_PLAN_FEE, "Final Planning Payment", "final_fee")}
+              onClick={() => markPaid(provisionalThreshold, provisionalChoice === "first_month" ? "Provisional Planning — First Month" : "Provisional Planning — Full Plan Fee", "final_fee")}
               disabled={markingPaid === "final_fee"}
               style={btnPrimary}
             >
@@ -1148,9 +1155,16 @@ function deriveSteps(appt) {
     booked:                  true,
     confirmed:               appt.status === "confirmed" || appt.status === "completed",
     scanning_done:           js.scanning_done        !== undefined ? !!js.scanning_done        : !!appt.stl_submitted,
-    provisional_planning:    !!appt.payment_data?.plan,
+    provisional_planning:    isNewModel
+      ? (() => {
+          const planCfg = PLAN_CONFIGS[appt.payment_data?.plan] || PLAN_CONFIGS.ORISPRO;
+          const choice = appt.payment_data?.provisional_payment_choice;
+          const threshold = choice === "first_month" ? planCfg.monthRate : choice === "full_plan" ? PROVISIONAL_PLAN_FEE : null;
+          return !!appt.payment_data?.plan && threshold !== null && amountPaid >= threshold;
+        })()
+      : !!appt.payment_data?.plan,
     payment_done:            isNewModel
-      ? amountPaid >= FINAL_PLAN_FEE
+      ? !!(appt.final_upper_sets && appt.final_lower_sets)
       : (js.payment_done !== undefined ? !!js.payment_done : !!(appt.payment_data?.final_amount)),
     planning_done:           js.planning_done        !== undefined ? !!js.planning_done        : !!appt.provisional_plan_submitted,
     final_plan_review:       !!(appt.final_upper_sets && appt.final_lower_sets),
@@ -1319,7 +1333,9 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
     const lower = parseInt(finalLowerSets, 10) || 0;
     if (upper <= 0 || lower <= 0) { alert("Enter both upper and lower arch set counts."); return; }
     if (appt.monthly_plan && !window.confirm("A schedule already exists. Regenerating will recompute package numbers and pricing from scratch. Continue?")) return;
-    const plan = buildMonthlyPlan(upper, lower, appt.payment_data?.plan === "ORISPLUS" ? "ORISPLUS" : "ORISPRO");
+    const planKey = appt.payment_data?.plan === "ORISPLUS" ? "ORISPLUS" : "ORISPRO";
+    const choice = appt.payment_data?.provisional_payment_choice === "first_month" ? "first_month" : "full_plan";
+    const plan = buildMonthlyPlan(upper, lower, planKey, choice);
     setSavingFinalReview(true);
     const { error } = await supabase
       .from("appointments_booking")
@@ -1339,26 +1355,36 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
     appt.journey_steps = { ...(appt.journey_steps || {}), final_plan_review: true };
     setMonthlyPlanState(plan);
     setPlanChoiceTick((t) => t + 1);
+    // Patient may have already pre-paid "first month" before this schedule
+    // existed — check now and auto-create Month 1's batch immediately if so.
+    fetch("/api/sync-paid-packages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ appointmentId }),
+    }).catch(() => {});
   };
 
-  const [markingFullPlanFee, setMarkingFullPlanFee] = useState(false);
-  const markFullPlanFeePaid = async () => {
-    setMarkingFullPlanFee(true);
+  const [markingProvisionalPayment, setMarkingProvisionalPayment] = useState(false);
+  const markProvisionalPaymentPaid = async (choice, amount) => {
+    setMarkingProvisionalPayment(true);
     try {
+      const newPaymentData = { ...(appt.payment_data || {}), provisional_payment_choice: choice };
+      await supabase.from("appointments_booking").update({ payment_data: newPaymentData }).eq("id", appointmentId);
       const res = await fetch("/api/update-payment-status", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ appointmentId, amountPaid: FINAL_PLAN_FEE, paymentMethod: "Manual", notes: "Final Planning Payment", actorEmail: actor?.email, actorRole: actor?.role }),
+        body: JSON.stringify({ appointmentId, amountPaid: amount, paymentMethod: "Manual", notes: choice === "first_month" ? "Provisional Planning — First Month" : "Provisional Planning — Full Plan Fee", actorEmail: actor?.email, actorRole: actor?.role }),
       });
       const json = await res.json();
       if (!res.ok || json.error) { alert("Failed to record payment: " + (json.error || "Unknown error")); return; }
-      logAudit({ appointmentId, actor, action: "Final Planning Payment Marked Paid", entity: "payment_status", newData: { amount: FINAL_PLAN_FEE, totalPaid: json.totalPaid } });
+      logAudit({ appointmentId, actor, action: "Provisional Planning Payment Marked Paid", entity: "payment_status", newData: { choice, amount, totalPaid: json.totalPaid } });
+      appt.payment_data = newPaymentData;
       appt.amount_paid = json.totalPaid;
       setPlanChoiceTick((t) => t + 1);
     } catch {
       alert("Network error. Please try again.");
     } finally {
-      setMarkingFullPlanFee(false);
+      setMarkingProvisionalPayment(false);
     }
   };
 
@@ -1844,25 +1870,47 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                   <p style={{ margin: "8px 0 0", fontSize: "11px", color: "#9ca3af" }}>
                     Overrides the patient&apos;s own choice. Locked automatically once a schedule has been generated in Final Plan Review.
                   </p>
+
+                  {appt.payment_data?.plan && (() => {
+                    const cfg = PLAN_CONFIGS[appt.payment_data.plan] || PLAN_CONFIGS.ORISPRO;
+                    const choice = appt.payment_data?.provisional_payment_choice;
+                    const amountPaidNow = Number(appt.amount_paid) || 0;
+                    const threshold = choice === "first_month" ? cfg.monthRate : choice === "full_plan" ? PROVISIONAL_PLAN_FEE : null;
+                    const isPaid = threshold !== null && amountPaidNow >= threshold;
+                    return (
+                      <div style={{ marginTop: "12px", paddingTop: "12px", borderTop: "1px solid #e5e7eb" }}>
+                        <span style={label}>PAYMENT</span>
+                        {isPaid ? (
+                          <p style={{ margin: 0, fontSize: "13px", fontWeight: "700", color: "#16a34a" }}>
+                            ✅ Paid — {choice === "first_month" ? `First Month (${inr(cfg.monthRate)})` : `Full Plan Fee (${inr(PROVISIONAL_PLAN_FEE)})`}
+                          </p>
+                        ) : (
+                          <div style={{ display: "flex", gap: "8px" }}>
+                            <button
+                              style={markingProvisionalPayment ? { ...btnPrimary, opacity: 0.6, flex: 1 } : { ...btnPrimary, flex: 1 }}
+                              onClick={() => markProvisionalPaymentPaid("first_month", cfg.monthRate)}
+                              disabled={markingProvisionalPayment}
+                            >
+                              Mark First Month Paid ({inr(cfg.monthRate)})
+                            </button>
+                            <button
+                              style={markingProvisionalPayment ? { ...btnPrimary, opacity: 0.6, flex: 1 } : { ...btnPrimary, flex: 1 }}
+                              onClick={() => markProvisionalPaymentPaid("full_plan", PROVISIONAL_PLAN_FEE)}
+                              disabled={markingProvisionalPayment}
+                            >
+                              Mark Full Plan Fee Paid ({inr(PROVISIONAL_PLAN_FEE)})
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
 
-              {/* Full Plan (new per-arch model) — 999 fee, final plan text, review link, upper/lower sets */}
+              {/* Full Plan (new per-arch model) — final plan text, review link, upper/lower sets. No payment here anymore — that's in Provisional Planning. */}
               {isAdmin && step.key === "payment_done" && isNewModelAppt && (
                 <div style={subBox}>
-                  <span style={label}>FINAL PLANNING PAYMENT (₹999)</span>
-                  {(Number(appt.amount_paid) || 0) >= FINAL_PLAN_FEE ? (
-                    <p style={{ margin: 0, fontSize: "13px", fontWeight: "700", color: "#16a34a" }}>✅ Paid</p>
-                  ) : (
-                    <button
-                      style={markingFullPlanFee ? { ...btnPrimary, opacity: 0.6 } : btnPrimary}
-                      onClick={markFullPlanFeePaid}
-                      disabled={markingFullPlanFee}
-                    >
-                      {markingFullPlanFee ? "Saving..." : "Mark ₹999 as Paid"}
-                    </button>
-                  )}
-
                   <span style={label}>WHAT IS THE FULL PLAN</span>
                   <textarea
                     style={{ ...input, minHeight: "90px", fontFamily: "inherit", resize: "vertical" }}
