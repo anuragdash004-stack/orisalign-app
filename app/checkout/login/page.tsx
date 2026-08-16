@@ -65,7 +65,7 @@ export default function CheckoutLoginPage() {
     const res = await fetch("/api/send-booking-otp", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: appt.email, name: appt.name }),
+      body: JSON.stringify({ email: appt.email, name: appt.name, phone: appt.phone }),
     });
     setLoading(false);
 

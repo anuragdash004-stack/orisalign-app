@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { sendWhatsApp } from "@/lib/notifications/aisensy";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -20,10 +21,12 @@ export async function POST(req) {
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
     // Store OTP in Supabase
-    const { error: updateError } = await supabase
+    const { data: updatedAppt, error: updateError } = await supabase
       .from("appointments_booking")
       .update({ otp, otp_expires_at: expiresAt })
-      .eq("id", appointmentId);
+      .eq("id", appointmentId)
+      .select("phone")
+      .single();
 
     if (updateError) {
       return Response.json({ error: "Failed to save OTP" }, { status: 500 });
@@ -63,6 +66,16 @@ export async function POST(req) {
       const emailErr = await emailRes.json();
       console.error("Resend error:", emailErr);
       return Response.json({ error: "Failed to send email" }, { status: 500 });
+    }
+
+    // WhatsApp OTP — best-effort, never blocks the email flow that already succeeded.
+    if (updatedAppt?.phone) {
+      sendWhatsApp({
+        campaignName: "orisalign_otp",
+        destination: updatedAppt.phone,
+        userName: patientName || "Patient",
+        templateParams: [otp],
+      }).catch(() => {});
     }
 
     return Response.json({ success: true });

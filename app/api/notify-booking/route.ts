@@ -1,10 +1,15 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
+import { sendWhatsApp } from "@/lib/notifications/aisensy"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
+
+// Body: "Hi {{1}}, your OrisAlign appointment is booked for {{2}} at {{3}}.
+// Your Patient ID is {{4}} — save it to track your treatment journey."
+const WHATSAPP_BOOKING_CAMPAIGN = "orisalign_booking_confirmation"
 
 // Date-only key in IST, regardless of the server's own timezone — matches
 // dateKey() in the Lead Tracker (app/(dashboard)/leads/page.js), which is
@@ -198,6 +203,16 @@ export async function POST(req: Request) {
           `,
         }),
       })
+    }
+
+    // WhatsApp confirmation to patient — best-effort, never blocks the response.
+    if (phone) {
+      sendWhatsApp({
+        campaignName: WHATSAPP_BOOKING_CAMPAIGN,
+        destination: phone,
+        userName: name,
+        templateParams: [name, date, time, shortId],
+      }).catch(() => {})
     }
 
     return NextResponse.json({ success: true })

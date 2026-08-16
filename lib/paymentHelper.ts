@@ -5,6 +5,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { logAuditEntry } from "./auditLog";
+import { sendWhatsApp } from "./notifications/aisensy";
 import { applyCouponDiscount, alignerRangeLabel, monthSlotLabels, FINAL_PLAN_FEE, PROVISIONAL_PLAN_FEE, provisionalPaymentBaseline, PLAN_CONFIGS, type MonthlyPlan, type PlanKey, type ProvisionalPaymentChoice } from "./monthlyPlan";
 
 export type PaymentType = "down_payment" | "pending" | "full" | "others";
@@ -235,7 +236,7 @@ export async function recordPaymentReceived(params: RecordPaymentParams): Promis
 
   const { data: appt, error: fetchError } = await supabase
     .from("appointments_booking")
-    .select("id, name, email, payment_data, amount_paid, amount_to_pay, payment_status, first_payment_date, monthly_plan, manufacturing_data, provisional_min_months, provisional_max_months")
+    .select("id, name, email, phone, payment_data, amount_paid, amount_to_pay, payment_status, first_payment_date, monthly_plan, manufacturing_data, provisional_min_months, provisional_max_months")
     .eq("id", appointmentId)
     .single();
 
@@ -355,6 +356,24 @@ export async function recordPaymentReceived(params: RecordPaymentParams): Promis
     newAmountToPay,
     paymentStatus,
   }).catch(() => {});
+
+  // WhatsApp receipt to the patient — staff already gets the email above;
+  // this is the patient-facing confirmation, which previously didn't exist
+  // on this path at all.
+  const patientPhone = (appt as { phone?: string }).phone;
+  if (patientPhone) {
+    sendWhatsApp({
+      campaignName: "orisalign_payment_received",
+      destination: patientPhone,
+      userName: (appt as { name?: string }).name || "Patient",
+      templateParams: [
+        (appt as { name?: string }).name || "there",
+        `₹${amountPaid.toLocaleString("en-IN")}`,
+        `₹${newTotalPaid.toLocaleString("en-IN")}`,
+        `₹${newAmountToPay.toLocaleString("en-IN")}`,
+      ],
+    }).catch(() => {});
+  }
 
   return {
     success: true,

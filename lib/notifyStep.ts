@@ -1,9 +1,34 @@
 import { createClient } from "@supabase/supabase-js"
+import { sendWhatsApp } from "./notifications/aisensy"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
+
+// AiSensy campaign name for each journey step's WhatsApp template. Each
+// template's approved body must take exactly one variable, {{1}} = patient
+// name — keep it that way here unless the approved copy changes.
+// These must match the campaign names created in the AiSensy dashboard
+// exactly, or sends fail (silently, from the caller's point of view — see
+// sendWhatsApp's never-throws contract).
+const WHATSAPP_STEP_CAMPAIGNS: Record<string, string> = {
+  confirmed: "orisalign_appointment_confirmed",
+  scanning_done: "orisalign_scanning_done",
+  payment_done: "orisalign_payment_done",
+  planning_done: "orisalign_planning_done",
+  final_plan_review: "orisalign_final_plan_review",
+  plan_approved: "orisalign_plan_approved",
+  manufacturing_started: "orisalign_manufacturing_started",
+  manufacturing_completed: "orisalign_manufacturing_completed",
+  aligners_dispatched: "orisalign_aligners_dispatched",
+  aligners_received: "orisalign_aligners_received",
+  followup_appointment: "orisalign_followup_appointment",
+  aligners_delivered: "orisalign_aligners_delivered",
+  smile_correction: "orisalign_smile_correction",
+  treatment_completed: "orisalign_treatment_completed",
+  feedback_submitted: "orisalign_feedback_submitted",
+}
 
 // Kept in sync with app/api/notify-booking/route.ts's CLINIC_INFO.
 const CLINIC_INFO: Record<string, { name: string; address: string; mapsLink: string }> = {
@@ -243,7 +268,7 @@ export async function sendStepNotification(params: SendStepNotificationParams): 
 
   const { data: appt, error: fetchErr } = await supabase
     .from("appointments_booking")
-    .select("id, name, email, date, time, clinic_location, assigned_dentist, problem")
+    .select("id, name, email, phone, date, time, clinic_location, assigned_dentist, problem")
     .eq("id", appointmentId)
     .single()
 
@@ -330,6 +355,36 @@ export async function sendStepNotification(params: SendStepNotificationParams): 
       html,
     }),
   })
+
+  // WhatsApp fires alongside email, best-effort — a failure here (missing
+  // phone, template not yet approved, AiSensy error) never blocks the email
+  // channel or the caller. See sendWhatsApp's never-throws contract.
+  const campaignName = WHATSAPP_STEP_CAMPAIGNS[stepKey]
+  if (campaignName && appt.phone) {
+    sendWhatsApp({
+      campaignName,
+      destination: appt.phone,
+      userName: appt.name || "Patient",
+      templateParams: [appt.name || "Patient"],
+    })
+      .then((waResult) =>
+        supabase.from("message_history").insert({
+          appointment_id: appointmentId,
+          step_key: stepKey,
+          message_type: "whatsapp",
+          recipient_phone: appt.phone,
+          subject: mergedContent.subject,
+          body: mergedContent.body,
+          is_template: true,
+          delivery_status: waResult.success ? "sent" : "failed",
+          delivery_provider: "aisensy",
+          provider_response: waResult.success ? {} : { error: waResult.error },
+          sent_by: "system",
+          sent_by_role: "system",
+        }),
+      )
+      .catch(() => {})
+  }
 
   if (!res.ok) {
     const errText = await res.text()

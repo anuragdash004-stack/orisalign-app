@@ -1,10 +1,15 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
+import { sendWhatsApp } from "@/lib/notifications/aisensy"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
+
+// Body: "Hi {{1}}, you've been wearing Set {{2}}. Today is the day to switch
+// to Set {{3}} of {{4}}. Wear each set 20-22 hours a day for best results."
+const WHATSAPP_SET_CHANGE_CAMPAIGN = "orisalign_set_change_reminder"
 
 // Date-only key in IST, regardless of the server's own timezone.
 function dateKeyIST(d: Date | string) {
@@ -34,7 +39,7 @@ export async function GET(req: Request) {
   try {
     const { data: appts, error } = await supabase
       .from("appointments_booking")
-      .select("id, name, email, journey_steps, aligner_days_per_set, status")
+      .select("id, name, email, phone, journey_steps, aligner_days_per_set, status")
       .in("status", ["confirmed", "completed"])
       .not("journey_steps", "is", null)
 
@@ -50,7 +55,7 @@ export async function GET(req: Request) {
       const js = (appt.journey_steps as Record<string, any>) || {}
       const setsCount = Number(js.smile_sets_count) || 0
       const startDate = js.smile_start_date as string | undefined
-      if (!setsCount || !startDate || js.journey_ended || !appt.email) continue
+      if (!setsCount || !startDate || js.journey_ended || (!appt.email && !appt.phone)) continue
 
       const daysPerSet = Number(js.smile_days_per_set) || Number(appt.aligner_days_per_set) || 15
       const remindersSent = js.smile_reminders_sent || {}
@@ -97,15 +102,26 @@ export async function GET(req: Request) {
           </div>
         `
 
-        const ok = await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.RESEND_API_KEY}` },
-          body: JSON.stringify({ from: "OrisAlign <no-reply@orisalign.com>", to: [appt.email], subject, html }),
-        })
-          .then((r) => r.ok)
-          .catch(() => false)
+        const emailOk = appt.email
+          ? await fetch("https://api.resend.com/emails", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.RESEND_API_KEY}` },
+              body: JSON.stringify({ from: "OrisAlign <no-reply@orisalign.com>", to: [appt.email], subject, html }),
+            })
+              .then((r) => r.ok)
+              .catch(() => false)
+          : false
 
-        if (ok) {
+        const waResult = appt.phone
+          ? await sendWhatsApp({
+              campaignName: WHATSAPP_SET_CHANGE_CAMPAIGN,
+              destination: appt.phone,
+              userName: appt.name || "Patient",
+              templateParams: [appt.name || "there", String(previousSet), String(setNum), String(setsCount)],
+            })
+          : { success: false as const, error: "no phone on record" }
+
+        if (emailOk || waResult.success) {
           const updatedJourneySteps = {
             ...js,
             smile_reminders_sent: { ...remindersSent, [setNum]: new Date().toISOString() },
@@ -115,22 +131,42 @@ export async function GET(req: Request) {
             .update({ journey_steps: updatedJourneySteps })
             .eq("id", appt.id)
 
+          const reminderBody = `Automated reminder: switch from Set ${previousSet} to Set ${setNum} of ${setsCount}.`
+
           try {
-            await supabase.from("message_history").insert({
-              appointment_id: appt.id,
-              step_key: "smile_correction",
-              message_type: "email",
-              recipient_email: appt.email,
-              subject,
-              body: `Automated reminder: switch from Set ${previousSet} to Set ${setNum} of ${setsCount}.`,
-              is_template: true,
-              delivery_status: "sent",
-              delivery_provider: "resend",
-              sent_by: "system",
-              sent_by_role: "system",
-            })
+            if (emailOk) {
+              await supabase.from("message_history").insert({
+                appointment_id: appt.id,
+                step_key: "smile_correction",
+                message_type: "email",
+                recipient_email: appt.email,
+                subject,
+                body: reminderBody,
+                is_template: true,
+                delivery_status: "sent",
+                delivery_provider: "resend",
+                sent_by: "system",
+                sent_by_role: "system",
+              })
+            }
+            if (appt.phone) {
+              await supabase.from("message_history").insert({
+                appointment_id: appt.id,
+                step_key: "smile_correction",
+                message_type: "whatsapp",
+                recipient_phone: appt.phone,
+                subject,
+                body: reminderBody,
+                is_template: true,
+                delivery_status: waResult.success ? "sent" : "failed",
+                delivery_provider: "aisensy",
+                provider_response: waResult.success ? {} : { error: waResult.error },
+                sent_by: "system",
+                sent_by_role: "system",
+              })
+            }
           } catch {
-            // best-effort logging only — the email itself already sent
+            // best-effort logging only — the messages themselves already sent
           }
 
           sent++

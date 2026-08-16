@@ -1,4 +1,5 @@
 import crypto from "crypto"
+import { sendWhatsApp } from "@/lib/notifications/aisensy"
 
 function hmac(data: string) {
   return crypto
@@ -9,7 +10,7 @@ function hmac(data: string) {
 
 export async function POST(req: Request) {
   try {
-    const { email, name } = await req.json()
+    const { email, name, phone } = await req.json()
 
     if (!email || !name) {
       return Response.json({ error: "Missing fields" }, { status: 400 })
@@ -51,6 +52,16 @@ export async function POST(req: Request) {
       const err = await emailRes.json()
       console.error("Resend error:", err)
       return Response.json({ error: "Failed to send email" }, { status: 500 })
+    }
+
+    // WhatsApp OTP — best-effort, never blocks the email flow that already succeeded.
+    if (phone) {
+      sendWhatsApp({
+        campaignName: "orisalign_otp",
+        destination: phone,
+        userName: name,
+        templateParams: [otp],
+      }).catch(() => {})
     }
 
     return Response.json({ token })
