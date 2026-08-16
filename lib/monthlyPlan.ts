@@ -82,6 +82,33 @@ export function estimateRange(minMonths: number, maxMonths: number) {
 }
 
 /**
+ * Converts a months estimate from one plan's pace to another's. The
+ * estimate is entered assuming one plan's pace (setsPerMonth) — since the
+ * underlying number of sets needed is the same regardless of plan, a
+ * faster plan (more sets/month) reaches the same set count in fewer
+ * months: months × fromPlan.setsPerMonth / toPlan.setsPerMonth.
+ */
+export function convertMonthsForPlan(months: number, fromPlan: PlanKey, toPlan: PlanKey): number {
+  const from = PLAN_CONFIGS[fromPlan] || PLAN_CONFIGS.ORISPRO;
+  const to = PLAN_CONFIGS[toPlan] || PLAN_CONFIGS.ORISPRO;
+  if (!months) return 0;
+  return Math.round((months * from.setsPerMonth / to.setsPerMonth) * 10) / 10;
+}
+
+/** Estimated month range for `targetPlan`, given an estimate entered assuming `basePlan`'s pace. */
+export function estimateRangeForPlan(
+  minMonths: number,
+  maxMonths: number,
+  basePlan: PlanKey,
+  targetPlan: PlanKey
+): { min: number; max: number } {
+  return {
+    min: convertMonthsForPlan(minMonths, basePlan, targetPlan),
+    max: convertMonthsForPlan(maxMonths, basePlan, targetPlan),
+  };
+}
+
+/**
  * Builds the immutable base schedule once the orthodontist enters the final
  * upper/lower set counts, priced according to the patient's chosen plan.
  * `setsPerMonth` aligner "slots" per month per arch — a slot is filled while

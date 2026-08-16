@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
-import { PROVISIONAL_PLAN_FEE, estimateRange, applyCouponDiscount, totalCost, monthSlotLabels, PLAN_CONFIGS } from "@/lib/monthlyPlan";
+import { PROVISIONAL_PLAN_FEE, estimateRange, estimateRangeForPlan, applyCouponDiscount, totalCost, monthSlotLabels, PLAN_CONFIGS } from "@/lib/monthlyPlan";
 
 const supabase = getSupabaseClient();
 
@@ -698,7 +698,9 @@ export default function PatientJourney() {
                         </div>
                       )}
 
-                      {patient?.provisional_min_months && patient?.provisional_max_months && (() => {
+                      {/* Legacy model only — duration/plan text now live in Provisional
+                          Planning and Full Plan respectively for the new model. */}
+                      {!isNewModel && patient?.provisional_min_months && patient?.provisional_max_months && (() => {
                         const r = estimateRange(patient.provisional_min_months, patient.provisional_max_months);
                         return (
                           <div style={{ padding: "10px 12px", background: "#f3f4f6", borderRadius: "8px", marginBottom: "12px" }}>
@@ -710,11 +712,15 @@ export default function PatientJourney() {
                         );
                       })()}
 
-                      <p style={{ margin: "0 0 10px", fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Your Provisional Plan</p>
-                      {patient.provisional_plan ? (
-                        <p style={{ margin: 0, fontSize: "14px", color: "#111827", lineHeight: "1.6", whiteSpace: "pre-wrap" }}>{patient.provisional_plan}</p>
-                      ) : (
-                        <p style={{ margin: 0, fontSize: "13px", color: "#9ca3af", fontStyle: "italic" }}>Your treatment plan is being prepared. Please check back soon.</p>
+                      {!isNewModel && (
+                        <>
+                          <p style={{ margin: "0 0 10px", fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Your Provisional Plan</p>
+                          {patient.provisional_plan ? (
+                            <p style={{ margin: 0, fontSize: "14px", color: "#111827", lineHeight: "1.6", whiteSpace: "pre-wrap" }}>{patient.provisional_plan}</p>
+                          ) : (
+                            <p style={{ margin: 0, fontSize: "13px", color: "#9ca3af", fontStyle: "italic" }}>Your treatment plan is being prepared. Please check back soon.</p>
+                          )}
+                        </>
                       )}
                       {patient.scanning_video_url && (
                         <div style={{ marginTop: "14px" }}>
@@ -740,6 +746,11 @@ export default function PatientJourney() {
                         {Object.values(PLAN_CONFIGS).map((cfg) => {
                           const isSelected = patient.payment_data?.plan === cfg.key;
                           const isLocked = !!patient.monthly_plan;
+                          const estimatePlan = patient.journey_steps?.provisional_estimate_plan || "ORISPRO";
+                          const hasEstimate = patient.provisional_min_months && patient.provisional_max_months;
+                          const durationForCfg = hasEstimate
+                            ? estimateRangeForPlan(patient.provisional_min_months, patient.provisional_max_months, estimatePlan, cfg.key)
+                            : null;
                           return (
                             <button
                               key={cfg.key}
@@ -761,8 +772,8 @@ export default function PatientJourney() {
                                 <span style={{ fontSize: "13px", color: "#374151" }}>{fmt(cfg.monthRate)} per month</span>
                                 <span style={{ fontSize: "13px", color: "#374151" }}>Wear: {cfg.daysPerSet} days per set / {cfg.setsPerMonth} sets per month</span>
                                 <span style={{ fontSize: "13px", color: "#374151" }}>
-                                  Estimated duration: {patient.provisional_min_months && patient.provisional_max_months
-                                    ? `${patient.provisional_min_months}–${patient.provisional_max_months} months`
+                                  Estimated duration: {durationForCfg
+                                    ? `${durationForCfg.min}–${durationForCfg.max} months`
                                     : "to be confirmed by your orthodontist"}
                                 </span>
                               </div>

@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { useParams, useRouter } from "next/navigation";
 import { logAudit } from "@/lib/logAudit";
-import { PROVISIONAL_PLAN_FEE, estimateRange, applyCouponDiscount, monthSlotLabels, totalCost, recomputeCumulative, buildMonthlyPlan, PLAN_CONFIGS } from "@/lib/monthlyPlan";
+import { PROVISIONAL_PLAN_FEE, estimateRangeForPlan, applyCouponDiscount, monthSlotLabels, totalCost, recomputeCumulative, buildMonthlyPlan, PLAN_CONFIGS } from "@/lib/monthlyPlan";
 
 const supabase = getSupabaseClient();
 
@@ -801,8 +801,19 @@ function MonthlyBillingCards({ appointmentId, appt, setAppt, actor }) {
       <div style={card}>
         <h3 style={{ margin: "0 0 16px", fontSize: "16px", color: "#111827" }}>Provisional Estimate</h3>
         {appt.provisional_min_months && appt.provisional_max_months ? (() => {
-          const r = estimateRange(appt.provisional_min_months, appt.provisional_max_months);
-          return <p style={{ margin: 0, fontSize: "14px", color: "#374151" }}>{appt.provisional_min_months}–{appt.provisional_max_months} months · {inr(r.min)} – {inr(r.max)}</p>;
+          const estPlan = appt.journey_steps?.provisional_estimate_plan || "ORISPRO";
+          return (
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+              {Object.values(PLAN_CONFIGS).map((cfg) => {
+                const r = estimateRangeForPlan(appt.provisional_min_months, appt.provisional_max_months, estPlan, cfg.key);
+                return (
+                  <p key={cfg.key} style={{ margin: 0, fontSize: "14px", color: "#374151" }}>
+                    {cfg.label}: {r.min}–{r.max} months
+                  </p>
+                );
+              })}
+            </div>
+          );
         })() : (
           <p style={{ margin: 0, fontSize: "13px", color: "#9ca3af", fontStyle: "italic" }}>Not entered yet.</p>
         )}
@@ -1290,22 +1301,27 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
   const [scanProvisionalPlan, setScanProvisionalPlan] = useState(appt.provisional_plan || "");
   const [scanMinMonths, setScanMinMonths] = useState(appt.provisional_min_months ? String(appt.provisional_min_months) : "");
   const [scanMaxMonths, setScanMaxMonths] = useState(appt.provisional_max_months ? String(appt.provisional_max_months) : "");
+  const [estimatePlan, setEstimatePlan] = useState(appt.journey_steps?.provisional_estimate_plan || "ORISPRO");
   const [savingScanPlan, setSavingScanPlan] = useState(false);
   const [scanPlanSaved, setScanPlanSaved] = useState(false);
   const saveScanProvisionalPlan = async () => {
     setSavingScanPlan(true);
     const min = parseInt(scanMinMonths, 10) || null;
     const max = parseInt(scanMaxMonths, 10) || null;
+    // The new per-arch model's panel doesn't show/edit the provisional_plan
+    // text field at all (Scanning is scan-only there) — never touch it from
+    // that panel so nothing gets silently overwritten with an empty value.
+    const updatePayload = isNewModelAppt
+      ? { provisional_min_months: min, provisional_max_months: max, journey_steps: { ...(appt.journey_steps || {}), provisional_estimate_plan: estimatePlan } }
+      : { provisional_plan: scanProvisionalPlan, provisional_min_months: min, provisional_max_months: max };
     const { error } = await supabase
       .from("appointments_booking")
-      .update({ provisional_plan: scanProvisionalPlan, provisional_min_months: min, provisional_max_months: max })
+      .update(updatePayload)
       .eq("id", appointmentId);
     setSavingScanPlan(false);
     if (error) { alert("Failed to save: " + error.message); return; }
-    logAudit({ appointmentId, actor, action: "Provisional Plan Text/Estimate Updated", entity: "provisional_plan", newData: { provisional_plan: scanProvisionalPlan, provisional_min_months: min, provisional_max_months: max } });
-    appt.provisional_plan = scanProvisionalPlan;
-    appt.provisional_min_months = min;
-    appt.provisional_max_months = max;
+    logAudit({ appointmentId, actor, action: "Provisional Plan Text/Estimate Updated", entity: "provisional_plan", newData: updatePayload });
+    Object.assign(appt, updatePayload);
     setScanPlanSaved(true);
     setTimeout(() => setScanPlanSaved(false), 3000);
   };
@@ -1817,8 +1833,10 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                 </div>
               )}
 
-              {/* Part A3 — Scanning: provisional plan text + estimated month range */}
-              {isAdmin && step.key === "scanning_done" && (
+              {/* Part A3 — Scanning: provisional plan text + estimated month range.
+                  Legacy model only — for the new model this lives in Provisional
+                  Planning instead, since Scanning is scan-only there. */}
+              {isAdmin && step.key === "scanning_done" && !isNewModelAppt && (
                 <div style={subBox}>
                   <span style={label}>PROVISIONAL PLAN</span>
                   <textarea
@@ -1842,6 +1860,50 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                   <p style={{ margin: 0, fontSize: "11px", color: "#9ca3af" }}>
                     Same fields the Ortho portal's Provisional Planning section edits — visible to the patient here too.
                   </p>
+                </div>
+              )}
+
+              {/* Provisional Planning — estimated duration (new per-arch model) */}
+              {isAdmin && step.key === "provisional_planning" && isNewModelAppt && (
+                <div style={subBox}>
+                  <span style={label}>ESTIMATE BASED ON PLAN</span>
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    {Object.values(PLAN_CONFIGS).map((cfg) => (
+                      <button
+                        key={cfg.key}
+                        onClick={() => setEstimatePlan(cfg.key)}
+                        style={{
+                          flex: 1, padding: "10px", borderRadius: "8px",
+                          border: estimatePlan === cfg.key ? "2px solid #b8905a" : "1px solid #e5e7eb",
+                          background: estimatePlan === cfg.key ? "#fffbeb" : "white",
+                          color: "#111827", fontWeight: "700", fontSize: "13px", cursor: "pointer",
+                        }}
+                      >
+                        {cfg.label}
+                      </button>
+                    ))}
+                  </div>
+                  <span style={label}>ESTIMATED DURATION (MONTHS) — FOR {PLAN_CONFIGS[estimatePlan]?.label.toUpperCase()}</span>
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <input style={{ ...input, flex: 1 }} type="number" min="1" placeholder="Min" value={scanMinMonths} onChange={(e) => setScanMinMonths(e.target.value)} />
+                    <input style={{ ...input, flex: 1 }} type="number" min="1" placeholder="Max" value={scanMaxMonths} onChange={(e) => setScanMaxMonths(e.target.value)} />
+                  </div>
+                  <button
+                    style={savingScanPlan ? { ...btnPrimary, opacity: 0.6 } : btnPrimary}
+                    onClick={saveScanProvisionalPlan}
+                    disabled={savingScanPlan}
+                  >
+                    {savingScanPlan ? "Saving..." : scanPlanSaved ? "Saved ✓" : "Save Estimate"}
+                  </button>
+                  {scanMinMonths && scanMaxMonths && (() => {
+                    const otherKey = estimatePlan === "ORISPRO" ? "ORISPLUS" : "ORISPRO";
+                    const other = estimateRangeForPlan(parseInt(scanMinMonths, 10) || 0, parseInt(scanMaxMonths, 10) || 0, estimatePlan, otherKey);
+                    return (
+                      <p style={{ margin: 0, fontSize: "12px", color: "#6b7280" }}>
+                        Auto-calculated for {PLAN_CONFIGS[otherKey].label}: <strong style={{ color: "#111827" }}>{other.min}–{other.max} months</strong>
+                      </p>
+                    );
+                  })()}
                 </div>
               )}
 
