@@ -58,7 +58,7 @@ const LEGACY_JOURNEY_STEPS = [
 const NEW_JOURNEY_STEPS = [
   { key: "booked",                  label: "Appointment Booked" },
   { key: "confirmed",               label: "Appointment Confirmed" },
-  { key: "scanning_done",           label: "Scanning",                    expandable: true },
+  { key: "scanning_done",           label: "Scanning" },
   { key: "provisional_planning",    label: "Provisional Planning",        expandable: true },
   { key: "payment_done",            label: "Full Plan",                   expandable: true },
   { key: "investigation_required",  label: "Investigation Required",      expandable: true },
