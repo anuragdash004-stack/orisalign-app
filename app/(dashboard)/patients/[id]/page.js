@@ -820,7 +820,7 @@ function MonthlyBillingCards({ appointmentId, appt, setAppt, actor }) {
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
             <span style={{ fontSize: "14px", color: "#374151" }}>{provisionalChoice === "first_month" ? `First Month · ${inr(planCfg.monthRate)}` : `Full Plan Fee · ${inr(PROVISIONAL_PLAN_FEE)}`} pending</span>
             <button
-              onClick={() => markPaid(provisionalThreshold, provisionalChoice === "first_month" ? "Provisional Planning — First Month" : "Provisional Planning — Full Plan Fee", "final_fee")}
+              onClick={() => markPaid(Math.max(0, provisionalThreshold - amountPaid), provisionalChoice === "first_month" ? "Provisional Planning — First Month" : "Provisional Planning — Full Plan Fee", "final_fee")}
               disabled={markingPaid === "final_fee"}
               style={btnPrimary}
             >
@@ -1365,7 +1365,13 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
   };
 
   const [markingProvisionalPayment, setMarkingProvisionalPayment] = useState(false);
-  const markProvisionalPaymentPaid = async (choice, amount) => {
+  // `threshold` is the full target amount (e.g. ₹4,999) — recordPaymentReceived
+  // is additive, so if some amount is already sitting on the row (a partial
+  // payment, or a reclassified choice like Somyashree's), only the shortfall
+  // must be sent, not the full nominal figure again on top of it.
+  const markProvisionalPaymentPaid = async (choice, threshold) => {
+    const amount = Math.max(0, threshold - (Number(appt.amount_paid) || 0));
+    if (amount <= 0) { setPlanChoiceTick((t) => t + 1); return; }
     setMarkingProvisionalPayment(true);
     try {
       const newPaymentData = { ...(appt.payment_data || {}), provisional_payment_choice: choice };
@@ -1891,14 +1897,14 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                               onClick={() => markProvisionalPaymentPaid("first_month", cfg.monthRate)}
                               disabled={markingProvisionalPayment}
                             >
-                              Mark First Month Paid ({inr(cfg.monthRate)})
+                              Mark First Month Paid ({inr(Math.max(0, cfg.monthRate - amountPaidNow))} more)
                             </button>
                             <button
                               style={markingProvisionalPayment ? { ...btnPrimary, opacity: 0.6, flex: 1 } : { ...btnPrimary, flex: 1 }}
                               onClick={() => markProvisionalPaymentPaid("full_plan", PROVISIONAL_PLAN_FEE)}
                               disabled={markingProvisionalPayment}
                             >
-                              Mark Full Plan Fee Paid ({inr(PROVISIONAL_PLAN_FEE)})
+                              Mark Full Plan Fee Paid ({inr(Math.max(0, PROVISIONAL_PLAN_FEE - amountPaidNow))} more)
                             </button>
                           </div>
                         )}

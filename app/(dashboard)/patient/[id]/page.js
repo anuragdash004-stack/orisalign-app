@@ -345,7 +345,14 @@ export default function PatientJourney() {
   // Payment choice made right after picking a plan — persists which choice
   // was made (so the cumulative baseline generated at Final Plan Review
   // matches it), then goes straight to checkout for the right amount.
-  const selectPaymentChoiceAndPay = async (choice, amount) => {
+  // `threshold` is the full target (e.g. ₹4,999); recordPaymentReceived is
+  // additive against a cap of that same target, so if any amount is already
+  // on the row only the shortfall must actually be charged — otherwise the
+  // gateway would take the full amount but recordPaymentReceived would then
+  // reject saving it for exceeding the cap.
+  const selectPaymentChoiceAndPay = async (choice, threshold) => {
+    const amount = Math.max(0, threshold - (Number(patient.amount_paid) || 0));
+    if (amount <= 0) return;
     const newPaymentData = { ...(patient.payment_data || {}), provisional_payment_choice: choice };
     const { error } = await supabase.from("appointments_booking").update({ payment_data: newPaymentData }).eq("id", id);
     if (error) { alert("Couldn't save: " + error.message); return; }
@@ -795,14 +802,14 @@ export default function PatientJourney() {
                                   disabled={payNowLoading}
                                   style={{ display: "block", width: "100%", padding: "12px", borderRadius: "10px", border: "none", background: "linear-gradient(135deg, #b8905a, #f59e0b)", color: "white", fontWeight: "800", fontSize: "14px", cursor: payNowLoading ? "not-allowed" : "pointer", opacity: payNowLoading ? 0.7 : 1 }}
                                 >
-                                  Pay First Month · {fmt(cfg.monthRate)}
+                                  Pay First Month · {fmt(Math.max(0, cfg.monthRate - amountPaidNow))}
                                 </button>
                                 <button
                                   onClick={(e) => { e.stopPropagation(); selectPaymentChoiceAndPay("full_plan", PROVISIONAL_PLAN_FEE); }}
                                   disabled={payNowLoading}
                                   style={{ display: "block", width: "100%", padding: "12px", borderRadius: "10px", border: "1px solid #b8905a", background: "white", color: "#b8905a", fontWeight: "800", fontSize: "14px", cursor: payNowLoading ? "not-allowed" : "pointer", opacity: payNowLoading ? 0.7 : 1 }}
                                 >
-                                  Pay for Full Plan · {fmt(PROVISIONAL_PLAN_FEE)}
+                                  Pay for Full Plan · {fmt(Math.max(0, PROVISIONAL_PLAN_FEE - amountPaidNow))}
                                 </button>
                               </div>
                             )}
