@@ -62,7 +62,7 @@ const WHATSAPP_STEP_PARAMS: Partial<
 // smile_correction WhatsApp template. AiSensy requires a public https:// URL
 // it can fetch — hosted from this app's own /public folder.
 const WHATSAPP_SMILE_CORRECTION_MEDIA = {
-  url: "https://orisalign.com/documents/aligner-care-instructions.pdf",
+  url: "https://www.orisalign.com/documents/aligner-care-instructions.pdf",
   filename: "OrisAlign-Aligner-Care-Instructions.pdf",
 }
 
