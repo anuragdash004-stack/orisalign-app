@@ -1249,6 +1249,21 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
   const [stepMessages, setStepMessages] = useState(() => JSON.parse(JSON.stringify(DEFAULT_STEP_MESSAGES)));
   const [openEmail, setOpenEmail] = useState({}); // which steps have their email editor expanded
 
+  // Direct link to the patient's own journey-tracking page — for sharing
+  // (WhatsApp, SMS, email) so the patient can open it straight in their browser.
+  const [linkCopied, setLinkCopied] = useState(false);
+  const patientJourneyLink = typeof window !== "undefined" ? `${window.location.origin}/patient/${appointmentId}` : `https://app.orisalign.com/patient/${appointmentId}`;
+  const copyPatientJourneyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(patientJourneyLink);
+    } catch {
+      window.prompt("Copy this link:", patientJourneyLink);
+      return;
+    }
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2500);
+  };
+
   // Prefill each step's editable message from the saved Message Templates so
   // what gets sent here always reflects the latest admin-edited template.
   useEffect(() => {
@@ -1729,6 +1744,26 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
   return (
     <div>
       <div style={{ ...card, marginBottom: "16px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "8px", marginBottom: "12px" }}>
+          <button
+            onClick={copyPatientJourneyLink}
+            style={{
+              display: "flex", alignItems: "center", gap: "6px", padding: "8px 14px", borderRadius: "8px", border: "none",
+              background: linkCopied ? "#dcfce7" : "#111827", color: linkCopied ? "#16a34a" : "white",
+              fontWeight: "700", fontSize: "13px", cursor: "pointer",
+            }}
+          >
+            {linkCopied ? "✓ Link Copied" : "🔗 Generate Patient Journey Link"}
+          </button>
+          <a
+            href={patientJourneyLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ fontSize: "12px", color: "#b8905a", textDecoration: "underline", wordBreak: "break-all" }}
+          >
+            {patientJourneyLink}
+          </a>
+        </div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "8px" }}>
           <h3 style={{ margin: 0, fontSize: "16px", color: "#111827" }}>Treatment Roadmap</h3>
           <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
