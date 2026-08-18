@@ -31,6 +31,26 @@ function PlaceholderDiagram() {
   )
 }
 
+/**
+ * Real reference photo if one's been dropped into public/smile-report/{key}.jpg,
+ * falling back to the generic line-art diagram when the file doesn't exist yet.
+ */
+function ReferenceImage({ photoKey }: { photoKey: PhotoKey }) {
+  const [failed, setFailed] = useState(false)
+  if (failed) return <PlaceholderDiagram />
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- small reference thumbnail, next/image is overkill here
+    <img
+      src={`/smile-report/${photoKey}.jpg`}
+      alt=""
+      width={56}
+      height={42}
+      style={{ width: 56, height: 42, objectFit: "cover", borderRadius: 6, flexShrink: 0 }}
+      onError={() => setFailed(true)}
+    />
+  )
+}
+
 const CONDITION_FIELDS = [
   { key: "blood_pressure", label: "Blood pressure" },
   { key: "sugar_diabetes", label: "Sugar / Diabetes" },
@@ -230,7 +250,7 @@ export default function UploadStepPage() {
             {PHOTO_SLOTS.map((slot) => (
               <div key={slot.key} style={{ border: `2px dashed ${photos[slot.key] ? "#22c55e" : "#e5e7eb"}`, borderRadius: 12, padding: 14, background: photos[slot.key] ? "#f0fdf4" : "#fafafa" }}>
                 <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 8 }}>
-                  <PlaceholderDiagram />
+                  <ReferenceImage photoKey={slot.key} />
                   <div>
                     <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "#374151" }}>{slot.label}</p>
                     <p style={{ margin: "2px 0 0", fontSize: 10, color: "#9ca3af" }}>{slot.hint}</p>
@@ -248,7 +268,7 @@ export default function UploadStepPage() {
             ))}
           </div>
           <p style={{ fontSize: 11, color: "#9ca3af", marginTop: 8 }}>
-            Reference diagrams shown are placeholders — sample reference photos should be added before this goes live.
+            Reference photos are pulled from /public/smile-report/{"{"}slot{"}"}.jpg — until added, a placeholder diagram shows instead.
           </p>
         </Section>
 
