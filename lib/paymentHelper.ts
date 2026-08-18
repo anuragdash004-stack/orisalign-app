@@ -360,19 +360,54 @@ export async function recordPaymentReceived(params: RecordPaymentParams): Promis
   // WhatsApp receipt to the patient — staff already gets the email above;
   // this is the patient-facing confirmation, which previously didn't exist
   // on this path at all.
+  //
+  // Two templates, depending on what was actually paid for:
+  //   - orisalign_full_plan_payment_done: the ₹2,499 provisional-planning fee
+  //     (pd.provisional_payment_choice === "full_plan") — pays for the 3D
+  //     plan only, no aligners yet. Static text, no variables.
+  //   - orisalign_payment_done ("Hi your month {{1}} Payment has been
+  //     received. Welcome to OrisAlign"): fires for the ₹4,999 "first_month"
+  //     provisional choice (which bundles the plan + Month 1's aligners, so
+  //     {{1}} = "1"), and for every later monthly_plan installment once a
+  //     schedule exists — {{1}} = the highest month number this payment
+  //     newly crossed the cumulative threshold for.
+  // Legacy (pre-monthly-plan) appointments have no matching template and are
+  // skipped — email above is their only patient-facing receipt.
   const patientPhone = (appt as { phone?: string }).phone;
   if (patientPhone) {
-    sendWhatsApp({
-      campaignName: "orisalign_payment_received",
-      destination: patientPhone,
-      userName: (appt as { name?: string }).name || "Patient",
-      templateParams: [
-        (appt as { name?: string }).name || "there",
-        `₹${amountPaid.toLocaleString("en-IN")}`,
-        `₹${newTotalPaid.toLocaleString("en-IN")}`,
-        `₹${newAmountToPay.toLocaleString("en-IN")}`,
-      ],
-    }).catch(() => {});
+    if (monthlyPlan) {
+      const couponsTotal = ((pd.applied_coupons as { discount?: number }[]) || [])
+        .reduce((sum, c) => sum + (Number(c.discount) || 0), 0);
+      const crossedMonths = applyCouponDiscount(monthlyPlan, couponsTotal).months.filter(
+        (m) => previouslyPaid < m.discountedCumulative && newTotalPaid >= m.discountedCumulative,
+      );
+      const monthNum = crossedMonths.slice(-1)[0]?.num;
+      if (monthNum) {
+        sendWhatsApp({
+          campaignName: "orisalign_payment_done",
+          destination: patientPhone,
+          userName: (appt as { name?: string }).name || "Patient",
+          templateParams: [String(monthNum)],
+        }).catch(() => {});
+      }
+    } else if (isNewModel) {
+      const choice = pd.provisional_payment_choice as ProvisionalPaymentChoice | undefined;
+      if (choice === "first_month") {
+        sendWhatsApp({
+          campaignName: "orisalign_payment_done",
+          destination: patientPhone,
+          userName: (appt as { name?: string }).name || "Patient",
+          templateParams: ["1"],
+        }).catch(() => {});
+      } else {
+        sendWhatsApp({
+          campaignName: "orisalign_full_plan_payment_done",
+          destination: patientPhone,
+          userName: (appt as { name?: string }).name || "Patient",
+          templateParams: [],
+        }).catch(() => {});
+      }
+    }
   }
 
   return {

@@ -7,8 +7,8 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-// Body: "Hi {{1}}, you've been wearing Set {{2}}. Today is the day to switch
-// to Set {{3}} of {{4}}. Wear each set 20-22 hours a day for best results."
+// Body: "Hi, you've been wearing Set {{1}}. Today is the day to switch to
+// Set {{2}}. Wear each set 20-22 hours a day for the best results."
 const WHATSAPP_SET_CHANGE_CAMPAIGN = "orisalign_set_change_reminder"
 
 // Date-only key in IST, regardless of the server's own timezone.
@@ -117,7 +117,7 @@ export async function GET(req: Request) {
               campaignName: WHATSAPP_SET_CHANGE_CAMPAIGN,
               destination: appt.phone,
               userName: appt.name || "Patient",
-              templateParams: [appt.name || "there", String(previousSet), String(setNum), String(setsCount)],
+              templateParams: [String(previousSet), String(setNum)],
             })
           : { success: false as const, error: "no phone on record" }
 

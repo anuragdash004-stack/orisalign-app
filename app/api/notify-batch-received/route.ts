@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { logAuditEntry, getClientInfo } from "@/lib/auditLog"
-import { sendWhatsApp } from "@/lib/notifications/aisensy"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -100,16 +99,6 @@ export async function POST(req: Request) {
             </div>
           `,
         }),
-      }).catch(() => {})
-    }
-
-    // WhatsApp thank-you to the patient — best-effort.
-    if (appt.phone) {
-      sendWhatsApp({
-        campaignName: "orisalign_batch_received",
-        destination: appt.phone,
-        userName: appt.name || "Patient",
-        templateParams: [appt.name || "there", batchLabel],
       }).catch(() => {})
     }
 

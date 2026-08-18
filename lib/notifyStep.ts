@@ -13,19 +13,21 @@ const supabase = createClient(
 // These must match the campaign names created in the AiSensy dashboard
 // exactly, or sends fail (silently, from the caller's point of view — see
 // sendWhatsApp's never-throws contract).
+// final_plan_review, manufacturing_started, manufacturing_completed,
+// aligners_received and aligners_delivered deliberately have no WhatsApp
+// campaign — business decision: after plan_approved ("moved to production")
+// the next WhatsApp update patients get is aligners_dispatched, skipping the
+// intermediate manufacturing/receiving steps. payment_done has no campaign
+// here either — real payment confirmations (which need the exact amount/
+// month) fire from lib/paymentHelper.ts's recordPaymentReceived instead,
+// not from this generic step-completed path.
 const WHATSAPP_STEP_CAMPAIGNS: Record<string, string> = {
   confirmed: "orisalign_appointment_confirmed",
   scanning_done: "orisalign_scanning_done",
-  payment_done: "orisalign_payment_done",
   planning_done: "orisalign_planning_done",
-  final_plan_review: "orisalign_final_plan_review",
   plan_approved: "orisalign_plan_approved",
-  manufacturing_started: "orisalign_manufacturing_started",
-  manufacturing_completed: "orisalign_manufacturing_completed",
   aligners_dispatched: "orisalign_aligners_dispatched",
-  aligners_received: "orisalign_aligners_received",
   followup_appointment: "orisalign_followup_appointment",
-  aligners_delivered: "orisalign_aligners_delivered",
   smile_correction: "orisalign_smile_correction",
   treatment_completed: "orisalign_treatment_completed",
   feedback_submitted: "orisalign_feedback_submitted",
@@ -36,11 +38,32 @@ const WHATSAPP_STEP_CAMPAIGNS: Record<string, string> = {
 // fallback in sendStepNotification below). Add an entry here whenever a
 // template gets approved with a different variable count/order than drafted.
 const WHATSAPP_STEP_PARAMS: Partial<
-  Record<string, (ctx: { name: string; dentistName: string | null }) => string[]>
+  Record<string, (ctx: { name: string; dentistName: string | null; followupAt: string | null }) => string[]>
 > = {
   // Approved as fully static text — zero body variables.
   scanning_done: () => [],
+  planning_done: () => [],
+  aligners_dispatched: () => [],
+  treatment_completed: () => [],
+  // "Thank you for approving your treatment plan, your case has been moved
+  // to production." — static, no variables.
+  plan_approved: () => [],
   confirmed: ({ name, dentistName }) => [name, dentistName || "our team"],
+  // "Hi, your appointment with has been scheduled on {{1}}." — {{1}} = the
+  // follow-up date entered by staff (journey_steps.followup_appointment_at).
+  followup_appointment: ({ followupAt }) => [followupAt || "the scheduled date"],
+  // Document-type template — the Aligner Care Instructions PDF is sent as
+  // the header media (see WHATSAPP_SMILE_CORRECTION_MEDIA below), no body
+  // variables.
+  smile_correction: () => [],
+}
+
+// Aligner Care Instructions PDF, sent as the document header on the
+// smile_correction WhatsApp template. AiSensy requires a public https:// URL
+// it can fetch — hosted from this app's own /public folder.
+const WHATSAPP_SMILE_CORRECTION_MEDIA = {
+  url: "https://orisalign.com/documents/aligner-care-instructions.pdf",
+  filename: "OrisAlign-Aligner-Care-Instructions.pdf",
 }
 
 // Kept in sync with app/api/notify-booking/route.ts's CLINIC_INFO.
@@ -281,7 +304,7 @@ export async function sendStepNotification(params: SendStepNotificationParams): 
 
   const { data: appt, error: fetchErr } = await supabase
     .from("appointments_booking")
-    .select("id, name, email, phone, date, time, clinic_location, assigned_dentist, problem")
+    .select("id, name, email, phone, date, time, clinic_location, assigned_dentist, problem, journey_steps")
     .eq("id", appointmentId)
     .single()
 
@@ -374,15 +397,17 @@ export async function sendStepNotification(params: SendStepNotificationParams): 
   // channel or the caller. See sendWhatsApp's never-throws contract.
   const campaignName = WHATSAPP_STEP_CAMPAIGNS[stepKey]
   if (campaignName && appt.phone) {
+    const followupAt = (appt.journey_steps as Record<string, any> | null)?.followup_appointment_at || null
     const paramsBuilder = WHATSAPP_STEP_PARAMS[stepKey]
     const templateParams = paramsBuilder
-      ? paramsBuilder({ name: appt.name || "Patient", dentistName })
+      ? paramsBuilder({ name: appt.name || "Patient", dentistName, followupAt })
       : [appt.name || "Patient"]
     sendWhatsApp({
       campaignName,
       destination: appt.phone,
       userName: appt.name || "Patient",
       templateParams,
+      media: stepKey === "smile_correction" ? WHATSAPP_SMILE_CORRECTION_MEDIA : undefined,
     })
       .then((waResult) =>
         supabase.from("message_history").insert({
