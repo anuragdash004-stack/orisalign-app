@@ -4,18 +4,15 @@
 -- SHOW THIS FILE TO THE USER FOR REVIEW BEFORE RUNNING. Do not apply
 -- automatically.
 
--- ── Extend existing coupons table ──────────────────────────────────────────
--- Existing rows keep discount_type='fixed', matching current discount_amount
--- semantics (an absolute rupee amount). New percentage coupons should only be
--- used by the Online Smile Report flow — the old checkout page doesn't check
--- discount_type, so a percentage coupon applied there would be misread as a
--- rupee amount.
-alter table coupons
-  add column if not exists discount_type text not null default 'fixed'
-    check (discount_type in ('fixed', 'percentage')),
-  add column if not exists max_uses integer,
-  add column if not exists times_used integer not null default 0,
-  add column if not exists expires_at timestamptz;
+-- ── coupons table ────────────────────────────────────────────────────────
+-- No schema change needed here — the live coupons table already has
+-- discount_type ('fixed'/'percentage', default 'fixed') and expires_at, plus
+-- usage_limit/used_count (equivalent to what was originally spec'd as
+-- max_uses/times_used — the app code was updated to use the real column
+-- names instead of adding duplicate columns). New percentage coupons should
+-- only be used by the Online Smile Report flow — the old checkout page
+-- doesn't check discount_type, so a percentage coupon applied there would be
+-- misread as a rupee amount.
 
 -- ── Reviewer profiles ───────────────────────────────────────────────────────
 create table if not exists report_reviewers (

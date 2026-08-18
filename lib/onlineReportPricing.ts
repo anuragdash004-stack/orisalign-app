@@ -33,8 +33,8 @@ export type CouponRow = {
   discount_type: "fixed" | "percentage";
   discount_amount: number;
   is_active: boolean;
-  max_uses: number | null;
-  times_used: number;
+  usage_limit: number | null;
+  used_count: number;
   expires_at: string | null;
 };
 
@@ -57,7 +57,7 @@ export async function validateAndApplyCoupon(
 
   const { data: coupon, error } = await supabase
     .from("coupons")
-    .select("id, code, discount_type, discount_amount, is_active, max_uses, times_used, expires_at")
+    .select("id, code, discount_type, discount_amount, is_active, usage_limit, used_count, expires_at")
     .ilike("code", normalized)
     .maybeSingle();
 
@@ -70,7 +70,7 @@ export async function validateAndApplyCoupon(
   if (coupon.expires_at && new Date(coupon.expires_at).getTime() < Date.now()) {
     return { valid: false, error: "Coupon has expired" };
   }
-  if (coupon.max_uses != null && coupon.times_used >= coupon.max_uses) {
+  if (coupon.usage_limit != null && coupon.used_count >= coupon.usage_limit) {
     return { valid: false, error: "Coupon has reached its usage limit" };
   }
 
@@ -85,13 +85,13 @@ export async function validateAndApplyCoupon(
 }
 
 /**
- * Increments times_used — call once, only after the associated payment/
+ * Increments used_count — call once, only after the associated payment/
  * free-submit actually completes. Plain read-then-write; has a race window
  * under concurrent redemptions of the same coupon, acceptable at this flow's
  * volume.
  */
 export async function incrementCouponUsage(supabase: SupabaseClient, couponId: string): Promise<void> {
-  const { data } = await supabase.from("coupons").select("times_used").eq("id", couponId).single();
-  const current = Number(data?.times_used) || 0;
-  await supabase.from("coupons").update({ times_used: current + 1 }).eq("id", couponId);
+  const { data } = await supabase.from("coupons").select("used_count").eq("id", couponId).single();
+  const current = Number(data?.used_count) || 0;
+  await supabase.from("coupons").update({ used_count: current + 1 }).eq("id", couponId);
 }
