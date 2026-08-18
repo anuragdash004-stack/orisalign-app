@@ -6,9 +6,10 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-// AiSensy campaign name for each journey step's WhatsApp template. Each
-// template's approved body must take exactly one variable, {{1}} = patient
-// name — keep it that way here unless the approved copy changes.
+// AiSensy campaign name for each journey step's WhatsApp template. Every
+// step takes a single variable, {{1}} = patient name, EXCEPT "confirmed"
+// which takes two: {{1}} = patient name, {{2}} = assigned dentist's name
+// (see the templateParams branch in sendStepNotification below).
 // These must match the campaign names created in the AiSensy dashboard
 // exactly, or sends fail (silently, from the caller's point of view — see
 // sendWhatsApp's never-throws contract).
@@ -301,12 +302,12 @@ export async function sendStepNotification(params: SendStepNotificationParams): 
   // (with address) and which dentist will see the patient — whatever is
   // already on file at confirmation time.
   let detailsBlock: string | undefined
+  let dentistName: string | null = null
   if (stepKey === "confirmed") {
     const clinic = appt.clinic_location ? CLINIC_INFO[appt.clinic_location] : null
     // Consultation type is stored as a "[TYPE] complaint" prefix on `problem`
     // (see parseProblem in the Lead Tracker / booking form).
     const consultationType = appt.problem?.match(/^\[(\w+)\]/)?.[1]?.toLowerCase()
-    let dentistName: string | null = null
     if (appt.assigned_dentist) {
       const { data: dentist } = await supabase
         .from("users")
@@ -361,11 +362,15 @@ export async function sendStepNotification(params: SendStepNotificationParams): 
   // channel or the caller. See sendWhatsApp's never-throws contract.
   const campaignName = WHATSAPP_STEP_CAMPAIGNS[stepKey]
   if (campaignName && appt.phone) {
+    const templateParams =
+      stepKey === "confirmed"
+        ? [appt.name || "Patient", dentistName || "our team"]
+        : [appt.name || "Patient"]
     sendWhatsApp({
       campaignName,
       destination: appt.phone,
       userName: appt.name || "Patient",
-      templateParams: [appt.name || "Patient"],
+      templateParams,
     })
       .then((waResult) =>
         supabase.from("message_history").insert({
