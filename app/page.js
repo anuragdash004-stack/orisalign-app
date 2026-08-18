@@ -274,12 +274,6 @@ export default function LandingPage() {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3">
-              <a href="/consultation" className="inline-flex items-center justify-center gap-2 text-base font-semibold px-7 py-3.5 rounded-xl transition-colors text-center" style={{ background: INK, color: '#fff' }}
-                onMouseEnter={e => e.currentTarget.style.background = '#000'}
-                onMouseLeave={e => e.currentTarget.style.background = INK}>
-                Choose Your 3D Scan Type
-                <svg viewBox="0 0 24 24" className="w-4 h-4" {...ic}><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-              </a>
               <a href={WA_LINK} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 text-base font-semibold px-7 py-3.5 rounded-xl transition-colors" style={{ background: '#fff', color: INK, border: `1px solid ${LINE}` }}
                 onMouseEnter={e => e.currentTarget.style.borderColor = '#cfd4d6'}
                 onMouseLeave={e => e.currentTarget.style.borderColor = LINE}>
@@ -331,6 +325,51 @@ export default function LandingPage() {
                 <span className="font-bold"> · Made in India · 10-day delivery</span>
               </span>
             </div>
+          </div>
+        </div>
+
+        {/* ── Choose your consultation ── */}
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 pb-14 sm:pb-20">
+          <div className="grid sm:grid-cols-2 gap-4 sm:gap-5">
+            <a
+              href="/smile-report/upload"
+              className="group block rounded-2xl px-6 sm:px-7 py-6 sm:py-7 transition-transform hover:scale-[1.015]"
+              style={{ background: INK, boxShadow: '0 24px 50px -22px rgba(19,24,27,.5)' }}
+            >
+              <span className="inline-block text-[11px] font-bold uppercase tracking-wide px-3 py-1 rounded-full mb-3" style={{ background: GOLD, color: '#fff' }}>
+                From anywhere · ₹399
+              </span>
+              <h3 className="font-display text-xl sm:text-2xl font-extrabold mb-1.5" style={{ color: '#fff' }}>
+                Get Your Online Smile Report
+              </h3>
+              <p className="text-sm mb-4" style={{ color: '#C7CDD1' }}>
+                Upload 5 photos, get a provisional assessment reviewed by our dental team in 24–48 hours.
+              </p>
+              <span className="inline-flex items-center gap-2 text-sm font-bold" style={{ color: GOLD }}>
+                Start now
+                <svg viewBox="0 0 24 24" className="w-4 h-4 transition-transform group-hover:translate-x-1" {...ic} stroke={GOLD}><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+              </span>
+            </a>
+
+            <a
+              href="/consultation"
+              className="group block rounded-2xl px-6 sm:px-7 py-6 sm:py-7 transition-transform hover:scale-[1.015]"
+              style={{ background: '#fff', border: `2px solid ${INK}` }}
+            >
+              <span className="inline-block text-[11px] font-bold uppercase tracking-wide px-3 py-1 rounded-full mb-3" style={{ background: MINT, color: MINTD }}>
+                In-clinic
+              </span>
+              <h3 className="font-display text-xl sm:text-2xl font-extrabold mb-1.5" style={{ color: INK }}>
+                Book Your 3D Scan
+              </h3>
+              <p className="text-sm mb-4" style={{ color: INK2 }}>
+                An in-person 3D intraoral scan and consultation at our clinic in Bhubaneswar.
+              </p>
+              <span className="inline-flex items-center gap-2 text-sm font-bold" style={{ color: INK }}>
+                Book now
+                <svg viewBox="0 0 24 24" className="w-4 h-4 transition-transform group-hover:translate-x-1" {...ic}><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+              </span>
+            </a>
           </div>
         </div>
       </section>
@@ -430,14 +469,6 @@ export default function LandingPage() {
                 </div>
               </div>
             ))}
-          </div>
-          <div className="text-center mt-10">
-            <a href="/consultation" className="inline-flex items-center gap-2 font-semibold px-7 py-3.5 rounded-xl transition-colors" style={{ background: INK, color: '#fff' }}
-              onMouseEnter={e => e.currentTarget.style.background = '#000'}
-              onMouseLeave={e => e.currentTarget.style.background = INK}>
-              Choose Your 3D Scan Type
-              <svg viewBox="0 0 24 24" className="w-4 h-4" {...ic}><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-            </a>
           </div>
         </div>
       </section>
@@ -544,12 +575,6 @@ export default function LandingPage() {
 
             {/* CTA */}
             <div className="px-8 py-6 text-center bg-white">
-              <a href="/consultation" className="inline-flex items-center gap-2 font-semibold px-8 py-3.5 rounded-xl text-base transition-colors" style={{ background: INK, color: '#fff' }}
-                onMouseEnter={e => e.currentTarget.style.background = '#000'}
-                onMouseLeave={e => e.currentTarget.style.background = INK}>
-                Choose Your 3D Scan Type
-                <svg viewBox="0 0 24 24" className="w-4 h-4" {...ic}><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-              </a>
               <p className="text-xs mt-3" style={{ color: INK2 }}>Exact pricing shared after consultation — your case may cost less.</p>
               <p className="text-xs mt-1" style={{ color: INK2 }}>The lifetime membership card is provided by <span className="font-semibold">Kalp Dental Clinic</span>.</p>
               <p className="text-xs mt-1.5 font-semibold" style={{ color: INK }}>Other solutions available — <a href="#still-in-doubt" style={{ color: GOLD, textDecoration: 'underline' }}>contact us to know more</a></p>
@@ -927,7 +952,6 @@ export default function LandingPage() {
                 {['How It Works', 'Pricing', 'Before & After', 'FAQs'].map(l => (
                   <div key={l}><a href="#" className="transition-colors" style={{ color: '#8a949a' }} onMouseEnter={e => e.currentTarget.style.color = '#fff'} onMouseLeave={e => e.currentTarget.style.color = '#8a949a'}>{l}</a></div>
                 ))}
-                <div><a href="/consultation" className="transition-colors" style={{ color: '#8a949a' }} onMouseEnter={e => e.currentTarget.style.color = '#fff'} onMouseLeave={e => e.currentTarget.style.color = '#8a949a'}>Choose Your 3D Scan Type</a></div>
               </div>
             </div>
             <div>
