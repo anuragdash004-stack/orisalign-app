@@ -31,6 +31,18 @@ const WHATSAPP_STEP_CAMPAIGNS: Record<string, string> = {
   feedback_submitted: "orisalign_feedback_submitted",
 }
 
+// Per-step override for templateParams, for steps whose approved AiSensy
+// copy doesn't match the "single {{1}} = patient name" default (see the
+// fallback in sendStepNotification below). Add an entry here whenever a
+// template gets approved with a different variable count/order than drafted.
+const WHATSAPP_STEP_PARAMS: Partial<
+  Record<string, (ctx: { name: string; dentistName: string | null }) => string[]>
+> = {
+  // Approved as fully static text — zero body variables.
+  scanning_done: () => [],
+  confirmed: ({ name, dentistName }) => [name, dentistName || "our team"],
+}
+
 // Kept in sync with app/api/notify-booking/route.ts's CLINIC_INFO.
 const CLINIC_INFO: Record<string, { name: string; address: string; mapsLink: string }> = {
   Nayapalli: {
@@ -362,10 +374,10 @@ export async function sendStepNotification(params: SendStepNotificationParams): 
   // channel or the caller. See sendWhatsApp's never-throws contract.
   const campaignName = WHATSAPP_STEP_CAMPAIGNS[stepKey]
   if (campaignName && appt.phone) {
-    const templateParams =
-      stepKey === "confirmed"
-        ? [appt.name || "Patient", dentistName || "our team"]
-        : [appt.name || "Patient"]
+    const paramsBuilder = WHATSAPP_STEP_PARAMS[stepKey]
+    const templateParams = paramsBuilder
+      ? paramsBuilder({ name: appt.name || "Patient", dentistName })
+      : [appt.name || "Patient"]
     sendWhatsApp({
       campaignName,
       destination: appt.phone,
