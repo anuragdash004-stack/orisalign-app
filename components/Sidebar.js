@@ -67,6 +67,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
     campaigns:    userRole === "admin" || userRole === "counselor",
     audit:        userRole === "admin",
     lmc:          userRole === "admin",
+    onlineReports: userRole === "admin" || userRole === "dentist" || userRole === "orthodontist",
   };
 
   const expanded = !collapsed || isMobile && !collapsed;
@@ -260,6 +261,14 @@ export default function Sidebar({ collapsed, setCollapsed }) {
               ...(path.startsWith("/coupons") ? { background: "#ffffff90" } : {}),
             }}>
               {showContent ? "COUPONS" : ""}
+            </Link>
+          )}
+          {show.onlineReports && (
+            <Link href="/online-reports" style={{
+              ...linkStyle("/online-reports"),
+              ...(path.startsWith("/online-reports") ? { background: "#ffffff90" } : {}),
+            }}>
+              {showContent ? "SMILE REPORTS" : ""}
             </Link>
           )}
           {show.campaigns && (

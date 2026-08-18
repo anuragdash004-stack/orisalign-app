@@ -35,6 +35,16 @@ export const AISENSY_CAMPAIGNS = {
   bookingConfirmation: "orisalign_booking_confirmation",
   /** Marketing template. */
   offerBroadcast: "oris_offer",
+  /**
+   * Online Smile Report flow — placeholder names. These templates don't
+   * exist in AiSensy yet; create + get them approved, then update these
+   * strings to match exactly, or WhatsApp sends for this flow will silently
+   * fail (email still goes out regardless — see dispatch()).
+   */
+  reportReady: "orisalign_report_ready",
+  zoomCallConfirmed: "orisalign_zoom_call_confirmed",
+  impressionPaid: "orisalign_impression_paid",
+  planPaid: "orisalign_plan_paid",
 } as const;
 
 async function dispatch(
@@ -136,6 +146,108 @@ export async function notifyBookingConfirmation(
   const whatsapp = {
     campaignName: AISENSY_CAMPAIGNS.bookingConfirmation,
     templateParams: [patient.name, bookingDate, bookingTime, location],
+  };
+
+  return dispatch(patient, email, whatsapp);
+}
+
+// ── Online Smile Report ──────────────────────────────────────────────────
+
+export async function notifyReportReady(patient: Patient, reportUrl: string): Promise<NotifyResult> {
+  const email = {
+    subject: "Your Online Smile Report is Ready — OrisAlign",
+    html: wrapEmail(
+      "Your Smile Report is Ready!",
+      `
+        <p style="color:#374151;font-size:15px;">Dear ${patient.name},</p>
+        <p style="color:#374151;font-size:14px;line-height:1.7;">
+          Your Online Smile Report has been reviewed and is ready to view.
+        </p>
+        <p style="text-align:center;margin:20px 0;">
+          <a href="${reportUrl}" style="display:inline-block;background:#1B2A4A;color:#C9A84C;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700;">View Your Report</a>
+        </p>
+      `,
+    ),
+  };
+
+  // One variable: the report link. Update once the real template is approved.
+  const whatsapp = {
+    campaignName: AISENSY_CAMPAIGNS.reportReady,
+    templateParams: [patient.name, reportUrl],
+  };
+
+  return dispatch(patient, email, whatsapp);
+}
+
+export async function notifyZoomCallConfirmed(
+  patient: Patient,
+  date: string,
+  time: string,
+): Promise<NotifyResult> {
+  const email = {
+    subject: `Video Call Confirmed — OrisAlign | ${date}`,
+    html: wrapEmail(
+      "Video Call Confirmed!",
+      `
+        <p style="color:#374151;font-size:15px;">Dear ${patient.name},</p>
+        <p style="color:#374151;font-size:14px;line-height:1.7;">
+          Your video call with our Smile Expert is confirmed for <strong>${date}</strong> at <strong>${time}</strong>.
+        </p>
+      `,
+    ),
+  };
+
+  const whatsapp = {
+    campaignName: AISENSY_CAMPAIGNS.zoomCallConfirmed,
+    templateParams: [patient.name, date, time],
+  };
+
+  return dispatch(patient, email, whatsapp);
+}
+
+export async function notifyImpressionPaid(patient: Patient): Promise<NotifyResult> {
+  const email = {
+    subject: "Impression Payment Received — OrisAlign",
+    html: wrapEmail(
+      "Payment Received",
+      `
+        <p style="color:#374151;font-size:15px;">Dear ${patient.name},</p>
+        <p style="color:#374151;font-size:14px;line-height:1.7;">
+          We've received your payment for the impression visit. Our team will be in touch to schedule it.
+        </p>
+      `,
+    ),
+  };
+
+  const whatsapp = {
+    campaignName: AISENSY_CAMPAIGNS.impressionPaid,
+    templateParams: [patient.name],
+  };
+
+  return dispatch(patient, email, whatsapp);
+}
+
+export async function notifyPlanPaid(
+  patient: Patient,
+  planChoice: "plan_only" | "plan_treatment",
+): Promise<NotifyResult> {
+  const planLabel = planChoice === "plan_treatment" ? "Full Plan + Start Treatment (Month 1)" : "Full Plan";
+  const email = {
+    subject: "Payment Received — OrisAlign",
+    html: wrapEmail(
+      "Payment Received",
+      `
+        <p style="color:#374151;font-size:15px;">Dear ${patient.name},</p>
+        <p style="color:#374151;font-size:14px;line-height:1.7;">
+          We've received your payment for <strong>${planLabel}</strong>. Our team will be in touch shortly.
+        </p>
+      `,
+    ),
+  };
+
+  const whatsapp = {
+    campaignName: AISENSY_CAMPAIGNS.planPaid,
+    templateParams: [patient.name, planLabel],
   };
 
   return dispatch(patient, email, whatsapp);
