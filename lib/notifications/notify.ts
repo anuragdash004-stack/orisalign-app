@@ -34,7 +34,7 @@ export const AISENSY_CAMPAIGNS = {
   /** Utility template. */
   bookingConfirmation: "orisalign_booking_confirmation",
   /** Marketing template. */
-  offerBroadcast: "orisalign_offer_broadcast",
+  offerBroadcast: "oris_offer",
 } as const;
 
 async function dispatch(
