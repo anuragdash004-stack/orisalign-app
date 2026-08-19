@@ -21,6 +21,7 @@ export type AmountType = "report" | "impression" | "plan_only" | "plan_treatment
 export type ReportFormData = {
   fullName: string
   age?: number | null
+  sex?: string | null
   patientPhone?: string | null
   patientEmail?: string | null
   conditions: Record<string, unknown>

@@ -38,6 +38,7 @@ export async function POST(req: Request) {
       id: reportId,
       full_name: formData.fullName,
       age: formData.age ?? null,
+      sex: formData.sex ?? null,
       patient_phone: formData.patientPhone ?? null,
       patient_email: formData.patientEmail ?? null,
       conditions: formData.conditions || {},

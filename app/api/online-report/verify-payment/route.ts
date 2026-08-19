@@ -19,6 +19,7 @@ const ADMIN_EMAIL = process.env.ONLINE_REPORT_ADMIN_EMAIL
 type ReportFormData = {
   fullName: string
   age?: number | null
+  sex?: string | null
   patientPhone?: string | null
   patientEmail?: string | null
   conditions: Record<string, unknown>
@@ -79,6 +80,7 @@ export async function POST(req: Request) {
         id: reportId,
         full_name: fd.fullName,
         age: fd.age ?? null,
+        sex: fd.sex ?? null,
         patient_phone: fd.patientPhone ?? null,
         patient_email: fd.patientEmail ?? null,
         conditions: fd.conditions || {},

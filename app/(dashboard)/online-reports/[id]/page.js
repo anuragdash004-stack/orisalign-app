@@ -9,11 +9,11 @@ const supabase = getSupabaseClient();
 const CONDITION_LABELS = {
   blood_pressure: "Blood pressure",
   sugar_diabetes: "Sugar / Diabetes",
-  pcod: "PCOD",
   vitamin_deficiency: "Vitamin deficiency",
-  recent_surgery: "Recent surgery",
+  recent_surgery: "Recent surgery (within 6 months to 1 year)",
   asthma: "Asthma",
   pregnancy: "Pregnancy",
+  bone_defect: "Any bone defect",
 };
 
 const label = { display: "block", fontSize: 11, fontWeight: 700, color: "#6b7280", marginBottom: 6, letterSpacing: 0.5, textTransform: "uppercase" };
@@ -136,6 +136,7 @@ export default function OnlineReportDetailPage() {
       <div style={cardStyle}>
         <h3 style={{ margin: "0 0 12px", fontSize: 14, fontWeight: 800, color: "#111827" }}>Patient Info</h3>
         <p style={{ fontSize: 13, color: "#374151", margin: "0 0 4px" }}><strong>Age:</strong> {report.age ?? "—"}</p>
+        <p style={{ fontSize: 13, color: "#374151", margin: "0 0 4px" }}><strong>Gender:</strong> {report.sex || "—"}</p>
         <p style={{ fontSize: 13, color: "#374151", margin: "0 0 4px" }}><strong>Phone:</strong> {report.patient_phone || "—"}</p>
         <p style={{ fontSize: 13, color: "#374151", margin: "0 0 4px" }}><strong>Email:</strong> {report.patient_email || "—"}</p>
         <p style={{ fontSize: 13, color: "#374151", margin: "0 0 4px" }}>
