@@ -80,6 +80,12 @@ function serializeLocations(selected: string[]): string {
   return selected.length ? selected.join(", ") : "Not available"
 }
 
+/**
+ * Collapsed by default — just the label and an "+ Add" button. Clicking Add
+ * reveals the 8 tooth-location options for this field. Stays expanded once
+ * opened, or if it already has selections (e.g. navigating back to this
+ * step), so the patient's picks are never hidden from them.
+ */
 function ToothLocationPicker({
   label,
   selected,
@@ -89,39 +95,70 @@ function ToothLocationPicker({
   selected: string[]
   onChange: (next: string[]) => void
 }) {
+  const [expanded, setExpanded] = useState(selected.length > 0)
+
   const toggle = (loc: string) => {
     onChange(selected.includes(loc) ? selected.filter((l) => l !== loc) : [...selected, loc])
   }
+
   return (
     <div style={{ marginBottom: 18 }}>
-      <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 700, color: NAVY }}>{label}</p>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 8 }}>
-        {TOOTH_LOCATIONS.map((loc) => {
-          const active = selected.includes(loc)
-          return (
-            <button
-              type="button"
-              key={loc}
-              onClick={() => toggle(loc)}
-              style={{
-                textAlign: "left",
-                padding: "9px 10px",
-                borderRadius: 8,
-                fontSize: 12,
-                fontWeight: 600,
-                border: `1.5px solid ${active ? GOLD : "#e5e7eb"}`,
-                background: active ? "#fff8ec" : "white",
-                color: active ? "#946F3F" : "#374151",
-                cursor: "pointer",
-              }}
-            >
-              {active ? "✓ " : ""}
-              {loc}
-            </button>
-          )
-        })}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: expanded ? 8 : 0 }}>
+        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: NAVY }}>{label}</p>
+        <button
+          type="button"
+          onClick={() => setExpanded((e) => !e)}
+          style={{
+            flexShrink: 0,
+            fontSize: 11,
+            fontWeight: 700,
+            color: expanded ? "#6b7280" : GOLD,
+            background: expanded ? "#f3f4f6" : "#fff8ec",
+            border: `1px solid ${expanded ? "#e5e7eb" : GOLD}`,
+            borderRadius: 999,
+            padding: "5px 12px",
+            cursor: "pointer",
+          }}
+        >
+          {expanded ? "Hide" : "+ Add"}
+        </button>
       </div>
-      <p style={{ margin: "6px 0 0", fontSize: 11, color: "#9ca3af" }}>Select all that apply — leave blank if not applicable.</p>
+
+      {!expanded && selected.length > 0 && (
+        <p style={{ margin: 0, fontSize: 12, color: "#946F3F" }}>{selected.join(", ")}</p>
+      )}
+
+      {expanded && (
+        <>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 8 }}>
+            {TOOTH_LOCATIONS.map((loc) => {
+              const active = selected.includes(loc)
+              return (
+                <button
+                  type="button"
+                  key={loc}
+                  onClick={() => toggle(loc)}
+                  style={{
+                    textAlign: "left",
+                    padding: "9px 10px",
+                    borderRadius: 8,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    border: `1.5px solid ${active ? GOLD : "#e5e7eb"}`,
+                    background: active ? "#fff8ec" : "white",
+                    color: active ? "#946F3F" : "#374151",
+                    cursor: "pointer",
+                  }}
+                >
+                  {active ? "✓ " : ""}
+                  {loc}
+                </button>
+              )
+            })}
+          </div>
+          <p style={{ margin: "6px 0 0", fontSize: 11, color: "#9ca3af" }}>Select all that apply — leave blank if not applicable.</p>
+        </>
+      )}
     </div>
   )
 }
@@ -177,6 +214,22 @@ export default function UploadStepPage() {
 
   // Step 2 — conditions + dental self-assessment
   const [conditions, setConditions] = useState<Record<string, boolean>>({})
+
+  /** "None" is mutually exclusive with every other condition (including Other). */
+  const toggleCondition = (key: string) => {
+    if (key === "none") {
+      const turningOn = !conditions.none
+      if (turningOn) {
+        setConditions({ none: true })
+        setConditionOtherChecked(false)
+      } else {
+        setConditions((cs) => ({ ...cs, none: false }))
+      }
+      return
+    }
+    setConditions((cs) => ({ ...cs, [key]: !cs[key], none: false }))
+  }
+
   const [conditionOtherChecked, setConditionOtherChecked] = useState(false)
   const [conditionOtherText, setConditionOtherText] = useState("")
   const [cavityLocations, setCavityLocations] = useState<string[]>([])
@@ -428,18 +481,31 @@ export default function UploadStepPage() {
 
             <Section title="Existing Conditions">
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10 }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700, color: NAVY, cursor: "pointer" }}>
+                  <input type="checkbox" checked={!!conditions.none} onChange={() => toggleCondition("none")} />
+                  None
+                </label>
                 {CONDITION_FIELDS.map((c) => (
                   <label key={c.key} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: NAVY, cursor: "pointer" }}>
                     <input
                       type="checkbox"
                       checked={!!conditions[c.key]}
-                      onChange={(e) => setConditions((cs) => ({ ...cs, [c.key]: e.target.checked }))}
+                      disabled={!!conditions.none}
+                      onChange={() => toggleCondition(c.key)}
                     />
                     {c.label}
                   </label>
                 ))}
                 <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: NAVY, cursor: "pointer" }}>
-                  <input type="checkbox" checked={conditionOtherChecked} onChange={(e) => setConditionOtherChecked(e.target.checked)} />
+                  <input
+                    type="checkbox"
+                    checked={conditionOtherChecked}
+                    disabled={!!conditions.none}
+                    onChange={(e) => {
+                      setConditionOtherChecked(e.target.checked)
+                      if (e.target.checked) setConditions((cs) => ({ ...cs, none: false }))
+                    }}
+                  />
                   Other
                 </label>
               </div>

@@ -7,6 +7,7 @@ import { getSupabaseClient } from "@/lib/supabaseClient";
 const supabase = getSupabaseClient();
 
 const CONDITION_LABELS = {
+  none: "None",
   blood_pressure: "Blood pressure",
   sugar_diabetes: "Sugar / Diabetes",
   vitamin_deficiency: "Vitamin deficiency",
