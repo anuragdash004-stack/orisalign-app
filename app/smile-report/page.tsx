@@ -44,7 +44,7 @@ export default function ChooseConsultationPage() {
           </Link>
 
           <Link
-            href="/consultation"
+            href="/book"
             style={{
               display: "block",
               textDecoration: "none",

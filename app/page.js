@@ -355,7 +355,7 @@ export default function LandingPage() {
             </a>
 
             <a
-              href="/consultation"
+              href="/book"
               className="group block rounded-2xl px-6 sm:px-7 py-7 sm:py-8 text-center transition-transform hover:scale-[1.015]"
               style={{ background: '#fff', border: `2px solid ${GOLD}`, boxShadow: '0 24px 50px -30px rgba(184,144,90,.55)' }}
             >
