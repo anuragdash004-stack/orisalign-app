@@ -90,10 +90,12 @@ function ToothLocationPicker({
   label,
   selected,
   onChange,
+  disabled,
 }: {
   label: string
   selected: string[]
   onChange: (next: string[]) => void
+  disabled?: boolean
 }) {
   const [expanded, setExpanded] = useState(selected.length > 0)
 
@@ -102,11 +104,12 @@ function ToothLocationPicker({
   }
 
   return (
-    <div style={{ marginBottom: 18 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: expanded ? 8 : 0 }}>
+    <div style={{ marginBottom: 18, opacity: disabled ? 0.5 : 1 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: expanded && !disabled ? 8 : 0 }}>
         <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: NAVY }}>{label}</p>
         <button
           type="button"
+          disabled={disabled}
           onClick={() => setExpanded((e) => !e)}
           style={{
             flexShrink: 0,
@@ -117,7 +120,7 @@ function ToothLocationPicker({
             border: `1px solid ${expanded ? "#e5e7eb" : GOLD}`,
             borderRadius: 999,
             padding: "5px 12px",
-            cursor: "pointer",
+            cursor: disabled ? "not-allowed" : "pointer",
           }}
         >
           {expanded ? "Hide" : "+ Add"}
@@ -128,7 +131,7 @@ function ToothLocationPicker({
         <p style={{ margin: 0, fontSize: 12, color: "#946F3F" }}>{selected.join(", ")}</p>
       )}
 
-      {expanded && (
+      {expanded && !disabled && (
         <>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 8 }}>
             {TOOTH_LOCATIONS.map((loc) => {
@@ -236,6 +239,38 @@ export default function UploadStepPage() {
   const [foodLodgementLocations, setFoodLodgementLocations] = useState<string[]>([])
   const [toothMobilityLocations, setToothMobilityLocations] = useState<string[]>([])
   const [otherConcerns, setOtherConcerns] = useState("")
+
+  /**
+   * "None" for the whole Dental Self-Assessment section — mutually exclusive
+   * with every field in it, same pattern as the Existing Conditions "None".
+   */
+  const [dentalNone, setDentalNone] = useState(false)
+  const toggleDentalNone = () => {
+    const turningOn = !dentalNone
+    setDentalNone(turningOn)
+    if (turningOn) {
+      setCavityLocations([])
+      setFoodLodgementLocations([])
+      setToothMobilityLocations([])
+      setOtherConcerns("")
+    }
+  }
+  const setCavityLocationsChecked = (next: string[]) => {
+    setCavityLocations(next)
+    if (next.length) setDentalNone(false)
+  }
+  const setFoodLodgementLocationsChecked = (next: string[]) => {
+    setFoodLodgementLocations(next)
+    if (next.length) setDentalNone(false)
+  }
+  const setToothMobilityLocationsChecked = (next: string[]) => {
+    setToothMobilityLocations(next)
+    if (next.length) setDentalNone(false)
+  }
+  const setOtherConcernsChecked = (val: string) => {
+    setOtherConcerns(val)
+    if (val.trim()) setDentalNone(false)
+  }
 
   // Step 3 — photos
   const [photos, setPhotos] = useState<Partial<Record<PhotoKey, File>>>({})
@@ -520,13 +555,22 @@ export default function UploadStepPage() {
             </Section>
 
             <Section title="Dental Self-Assessment">
-              <ToothLocationPicker label="1. Cavity" selected={cavityLocations} onChange={setCavityLocations} />
-              <ToothLocationPicker label="2. Food Lodgement" selected={foodLodgementLocations} onChange={setFoodLodgementLocations} />
-              <ToothLocationPicker label="3. Tooth Mobility (shakiness when pressed with finger)" selected={toothMobilityLocations} onChange={setToothMobilityLocations} />
-              <div>
+              <ToothLocationPicker label="1. Cavity" selected={cavityLocations} onChange={setCavityLocationsChecked} disabled={dentalNone} />
+              <ToothLocationPicker label="2. Food Lodgement" selected={foodLodgementLocations} onChange={setFoodLodgementLocationsChecked} disabled={dentalNone} />
+              <ToothLocationPicker label="3. Tooth Mobility (shakiness when pressed with finger)" selected={toothMobilityLocations} onChange={setToothMobilityLocationsChecked} disabled={dentalNone} />
+              <div style={{ opacity: dentalNone ? 0.5 : 1, marginBottom: 16 }}>
                 <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 700, color: NAVY }}>Any other concerns, in your own words</p>
-                <textarea value={otherConcerns} onChange={(e) => setOtherConcerns(e.target.value)} style={{ ...inputStyle, minHeight: 60 }} />
+                <textarea
+                  value={otherConcerns}
+                  disabled={dentalNone}
+                  onChange={(e) => setOtherConcernsChecked(e.target.value)}
+                  style={{ ...inputStyle, minHeight: 60 }}
+                />
               </div>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700, color: NAVY, cursor: "pointer" }}>
+                <input type="checkbox" checked={dentalNone} onChange={toggleDentalNone} />
+                None — no cavities, food lodgement, mobility or other concerns
+              </label>
             </Section>
 
             <div style={{ display: "flex", gap: 10 }}>
