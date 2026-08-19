@@ -12,18 +12,20 @@ const NAVY = "#1B2A4A"
 const GOLD = "#C9A84C"
 
 const PHOTO_SLOTS = [
-  { key: "front_bite", label: "Front Bite (teeth together)", hint: "Smile straight at the camera with teeth closed together." },
+  { key: "front_bite", label: "Front Bite (teeth together)", hint: "Retract your lips with your fingers and clench your teeth so your back teeth are completely closed — or try to swallow your saliva and then close your teeth." },
   { key: "upper_arch", label: "Upper Arch (top teeth)", hint: "Tilt your head back, photograph the roof-side view of your upper teeth." },
   { key: "lower_arch", label: "Lower Arch (bottom teeth)", hint: "Tilt your head down, photograph the top-down view of your lower teeth." },
-  { key: "left_buccal", label: "Left Side Bite", hint: "Turn your head to show the left side of your bite, teeth together." },
-  { key: "right_buccal", label: "Right Side Bite", hint: "Turn your head to show the right side of your bite, teeth together." },
+  { key: "left_buccal", label: "Left Side Bite", hint: "Retract your lips with your two left fingers and click the photograph so your last tooth is visible." },
+  { key: "right_buccal", label: "Right Side Bite", hint: "Swallow and bite your teeth together. Retract your lips with your two right fingers and click the photograph so your last tooth is visible." },
 ] as const
 
 type PhotoKey = (typeof PHOTO_SLOTS)[number]["key"]
 
+const REFERENCE_IMAGE_SIZE = 140
+
 function PlaceholderDiagram() {
   return (
-    <svg viewBox="0 0 64 48" width="100%" height="100%" fill="none" stroke="#b8905a" strokeWidth="1.5">
+    <svg viewBox="0 0 64 48" width="60%" height="60%" fill="none" stroke="#b8905a" strokeWidth="1.5">
       <rect x="8" y="10" width="48" height="28" rx="6" />
       <path d="M14 24h36M20 16v16M28 16v16M36 16v16M44 16v16" />
     </svg>
@@ -33,22 +35,23 @@ function PlaceholderDiagram() {
 /**
  * Real reference photo if one's been dropped into public/smile-report/{key}.jpg,
  * falling back to the generic line-art diagram when the file doesn't exist yet.
+ * Square, sits top-left of the card next to the label/instructions.
  */
 function ReferenceImage({ photoKey }: { photoKey: PhotoKey }) {
   const [failed, setFailed] = useState(false)
   if (failed) {
     return (
-      <div style={{ width: "100%", height: 200, background: "#fafafa", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+      <div style={{ width: REFERENCE_IMAGE_SIZE, height: REFERENCE_IMAGE_SIZE, flexShrink: 0, background: "#fafafa", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center" }}>
         <PlaceholderDiagram />
       </div>
     )
   }
   return (
-    // eslint-disable-next-line @next/next/no-img-element -- reference photo shown at full card width, next/image is overkill here
+    // eslint-disable-next-line @next/next/no-img-element -- reference photo shown as a fixed-size thumbnail, next/image is overkill here
     <img
       src={`/smile-report/${photoKey}.jpg`}
       alt=""
-      style={{ width: "100%", height: 200, objectFit: "cover", borderRadius: 10, display: "block" }}
+      style={{ width: REFERENCE_IMAGE_SIZE, height: REFERENCE_IMAGE_SIZE, flexShrink: 0, objectFit: "cover", borderRadius: 10, display: "block" }}
       onError={() => setFailed(true)}
     />
   )
@@ -589,23 +592,29 @@ export default function UploadStepPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {PHOTO_SLOTS.map((slot) => (
                 <div key={slot.key} style={{ background: "white", border: `2px solid ${photos[slot.key] ? "#22c55e" : "#e5e7eb"}`, borderRadius: 16, padding: 16 }}>
-                  <ReferenceImage photoKey={slot.key} />
-                  <p style={{ margin: "12px 0 2px", fontSize: 14, fontWeight: 800, color: NAVY }}>{slot.label}</p>
-                  <p style={{ margin: "0 0 12px", fontSize: 12, color: "#6b7280", lineHeight: 1.6 }}>{slot.hint}</p>
-                  {photos[slot.key] ? (
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                      <p style={{ margin: 0, fontSize: 12, color: "#16a34a", wordBreak: "break-all" }}>✓ {photos[slot.key]!.name}</p>
-                      <label style={{ fontSize: 12, color: GOLD, fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>
-                        Replace
+                  <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+                    <ReferenceImage photoKey={slot.key} />
+                    <div style={{ minWidth: 0 }}>
+                      <p style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 800, color: NAVY }}>{slot.label}</p>
+                      <p style={{ margin: 0, fontSize: 12, color: "#6b7280", lineHeight: 1.6 }}>{slot.hint}</p>
+                    </div>
+                  </div>
+                  <div style={{ marginTop: 14 }}>
+                    {photos[slot.key] ? (
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                        <p style={{ margin: 0, fontSize: 12, color: "#16a34a", wordBreak: "break-all" }}>✓ {photos[slot.key]!.name}</p>
+                        <label style={{ fontSize: 12, color: GOLD, fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>
+                          Replace
+                          <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => handlePhoto(slot.key, e.target.files?.[0] || null)} />
+                        </label>
+                      </div>
+                    ) : (
+                      <label style={{ display: "inline-block", fontSize: 13, color: "white", fontWeight: 700, cursor: "pointer", background: GOLD, padding: "10px 18px", borderRadius: 8 }}>
+                        Upload Photo
                         <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => handlePhoto(slot.key, e.target.files?.[0] || null)} />
                       </label>
-                    </div>
-                  ) : (
-                    <label style={{ display: "inline-block", fontSize: 13, color: "white", fontWeight: 700, cursor: "pointer", background: GOLD, padding: "10px 18px", borderRadius: 8 }}>
-                      Choose Photo
-                      <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => handlePhoto(slot.key, e.target.files?.[0] || null)} />
-                    </label>
-                  )}
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
