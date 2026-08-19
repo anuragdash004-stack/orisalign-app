@@ -23,7 +23,7 @@ const NAV_LINKS = [
 const COMPARISON = [
   { feature: 'Visibility', orisalign: 'Invisible', braces: 'Very visible', invisalign: 'Nearly invisible' },
   { feature: 'Monthly cost', orisalign: '₹4,999/mo*', braces: '₹4,999/mo*', invisalign: '₹9,999/mo*' },
-  { feature: 'Total cost', orisalign: '₹39,999*', braces: '₹30–40K*', invisalign: '₹1.5L–3L*' },
+  { feature: 'Total cost', orisalign: 'No minimum price', braces: '₹30–40K*', invisalign: '₹1.5L–3L*' },
   { feature: 'Treatment time', orisalign: '6–12 months*', braces: '12–36 months*', invisalign: '6–12 months*' },
   { feature: 'Removable', orisalign: '✓ Yes', braces: '✗ No', invisalign: '✓ Yes' },
   { feature: 'Food restrictions', orisalign: 'None', braces: 'Many', invisalign: 'None' },
@@ -32,19 +32,19 @@ const COMPARISON = [
   { feature: 'Transparent Pricing', orisalign: '✓ Yes', braces: '✗ No', invisalign: '✗ No' },
   { feature: 'Clinic', orisalign: 'Personal clinic', braces: 'Varies', invisalign: '✗ No' },
   { feature: '24/7 Support', orisalign: '✓ Yes', braces: '✗ No', invisalign: '✗ No' },
-  { feature: 'Waiting period', orisalign: '10 days', braces: '15 days', invisalign: '1.5–2 months' },
+  { feature: 'Waiting period', orisalign: '15 days', braces: '15 days', invisalign: '1.5–2 months' },
 ]
 
 const STEPS = [
   { icon: '🦷', title: 'Consultation', desc: 'Visit our clinic or book a home consultation. Our expert dentist reviews your teeth — at just ₹199 (regular price ₹599).' },
   { icon: '📡', title: '3D Scan', desc: 'A quick, painless 3D scan of your teeth. No moulds. Done in minutes.' },
   { icon: '📋', title: 'Planning', desc: 'Your provisional plan is shared immediately. 48 hours within enrolling, the final treatment plan and duration will be given.' },
-  { icon: '📦', title: 'Aligners Delivered', desc: 'Your custom aligners are manufactured in India and delivered to you in just 10 days.' },
+  { icon: '📦', title: 'Aligners Delivered', desc: 'Your custom aligners are manufactured in India and delivered to you in just 15 days.' },
   { icon: '😁', title: 'Smile in 6 Months*', desc: 'Wear aligners 20–22 hrs/day, swap sets every 2 weeks. Track progress with monthly check-ins and 24/7 support.' },
 ]
 
 const FAQS = [
-  { q: 'How much do OrisAlign aligners cost?', a: 'Treatment costs ₹39,999 for a 6-month plan* (EMI available). *Final pricing and duration depend on your individual teeth condition, confirmed after your 3D scan. We give a full quote after the consultation — no surprises.' },
+  { q: 'How much do OrisAlign aligners cost?', a: 'Treatment costs ₹4,999 per month* (EMI available). *Final pricing and duration depend on your individual teeth condition, confirmed after your 3D scan. We give a full quote after the consultation — no surprises.' },
   { q: 'Are OrisAlign aligners as effective as other imported brands?', a: 'OrisAlign uses the most advanced clear aligner technology, manufactured in India to international standards, supervised by expert dentists. OrisAlign uses the most premium materials to manufacture its aligners and is completely transparent about its cost.' },
   { q: 'How long does treatment take?', a: 'Most cases: 6–12 months. Mild cases can finish in as little as 5 months. Complex cases may take up to 18 months or more. Our expert dentist will give you an honest timeline at consultation.' },
   { q: 'Why is the consultation not free?', a: 'Our experienced dentist will visit your home or assess you at our clinic. The consultation and 3D scanning normally costs upwards of ₹3,999, but is offered to you at a minimal cost of ₹199. The fee is simply to keep things fair and maintain quality of service.' },
@@ -212,7 +212,7 @@ export default function LandingPage() {
           <div>
             <div className="inline-flex items-center gap-2 text-xs font-semibold px-3.5 py-1.5 rounded-full mb-6" style={{ background: MINT, color: MINTD, border: `1px solid ${LINE}` }}>
               <span className="w-1.5 h-1.5 rounded-full" style={{ background: MINTD }} />
-              #1 Clear Aligners in Odisha
+              #1 Clear Aligners
             </div>
             <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-[1.05] mb-3" style={{ color: INK }}>
               Straighter teeth<br />
@@ -314,7 +314,7 @@ export default function LandingPage() {
               <MapPin className="w-5 h-5" style={{ color: GOLD }} />
               <span className="text-sm leading-tight" style={{ color: INK }}>
                 <span className="font-extrabold" style={{ color: GOLD }}>International Quality</span>
-                <span className="font-bold"> · Made in India · 10-day delivery</span>
+                <span className="font-bold"> · Made in India · 15-day delivery</span>
               </span>
             </div>
           </div>
@@ -496,7 +496,7 @@ export default function LandingPage() {
             <div className="px-8 py-8 text-center" style={{ background: INK }}>
               <div className="flex items-end justify-center gap-2 mb-1 flex-wrap">
                 <span className="text-xl font-bold line-through mb-1" style={{ color: '#6b7479' }}>₹66,999</span>
-                <span className="text-5xl font-extrabold font-display" style={{ color: GOLD }}>₹39,999<span className="text-2xl"> / 6 months</span></span>
+                <span className="text-5xl font-extrabold font-display" style={{ color: GOLD }}>₹4,999<span className="text-2xl"> / month</span></span>
                 <span className="text-base font-semibold mb-1" style={{ color: '#9aa6ac' }}>*</span>
               </div>
               <p className="text-sm mt-2" style={{ color: '#9aa6ac' }}>*Final pricing and treatment duration depend on your individual teeth condition, confirmed after your 3D scan</p>
@@ -925,7 +925,7 @@ export default function LandingPage() {
           <h2 className="font-display text-lg font-extrabold mb-4" style={{ color: INK }}>Terms &amp; Conditions</h2>
           <div className="text-sm leading-relaxed space-y-2" style={{ color: INK2 }}>
             <p>* <strong>Treatment Duration:</strong> The duration of treatment depends on the complexity of each individual case. Results and timelines vary from person to person. The "6 months" claim is indicative of average mild-to-moderate cases and is not a guarantee for all patients.</p>
-            <p>* <strong>Pricing:</strong> ₹39,999 for a 6-month plan is indicative. Final pricing and treatment duration depend on your individual teeth condition and will be communicated after a clinical assessment and 3D scan during the free consultation.</p>
+            <p>* <strong>Pricing:</strong> ₹4,999 per month is indicative. Final pricing and treatment duration depend on your individual teeth condition and will be communicated after a clinical assessment and 3D scan during the free consultation.</p>
             <p>* OrisAlign aligners must be worn 20–22 hours per day for optimal results. Non-compliance may affect treatment outcome and duration.</p>
             <p>* Results may vary. Before-and-after images shown are of actual OrisAlign patients and individual outcomes vary.</p>
           </div>
