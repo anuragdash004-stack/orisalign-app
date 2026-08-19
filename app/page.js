@@ -333,41 +333,43 @@ export default function LandingPage() {
           <div className="grid sm:grid-cols-2 gap-4 sm:gap-5">
             <a
               href="/smile-report/upload"
-              className="group block rounded-2xl px-6 sm:px-7 py-6 sm:py-7 transition-transform hover:scale-[1.015]"
-              style={{ background: INK, boxShadow: '0 24px 50px -22px rgba(19,24,27,.5)' }}
+              className="group block rounded-2xl px-6 sm:px-7 py-7 sm:py-8 text-center transition-transform hover:scale-[1.015]"
+              style={{ background: '#fff', border: `2px solid ${GOLD}`, boxShadow: '0 24px 50px -30px rgba(184,144,90,.55)' }}
             >
-              <span className="inline-block text-[11px] font-bold uppercase tracking-wide px-3 py-1 rounded-full mb-3" style={{ background: GOLD, color: '#fff' }}>
-                From anywhere · ₹399
-              </span>
-              <h3 className="font-display text-xl sm:text-2xl font-extrabold mb-1.5" style={{ color: '#fff' }}>
-                Get Your Online Smile Report
+              <h3 className="font-display text-xl sm:text-2xl font-extrabold mb-2" style={{ color: INK }}>
+                Online Smile Report
               </h3>
-              <p className="text-sm mb-4" style={{ color: '#C7CDD1' }}>
-                Upload 5 photos, get a provisional assessment reviewed by our dental team in 24–48 hours.
+              <div className="flex items-center justify-center gap-2 mb-3">
+                <span className="text-2xl sm:text-3xl font-extrabold font-display" style={{ color: GOLD }}>₹399</span>
+                <span className="text-base sm:text-lg font-semibold" style={{ color: INK2, textDecoration: 'line-through' }}>₹999</span>
+              </div>
+              <p className="text-sm mb-5" style={{ color: INK2 }}>
+                Upload teeth photographs and get your personalised provisional plan from our smile expert.
               </p>
-              <span className="inline-flex items-center gap-2 text-sm font-bold" style={{ color: GOLD }}>
-                Start now
-                <svg viewBox="0 0 24 24" className="w-4 h-4 transition-transform group-hover:translate-x-1" {...ic} stroke={GOLD}><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+              <span className="inline-flex items-center justify-center gap-2 text-sm font-bold px-6 py-2.5 rounded-full transition-colors" style={{ background: GOLD, color: '#fff' }}>
+                Book now
+                <svg viewBox="0 0 24 24" className="w-4 h-4 transition-transform group-hover:translate-x-1" {...ic} stroke="#fff"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
               </span>
             </a>
 
             <a
               href="/consultation"
-              className="group block rounded-2xl px-6 sm:px-7 py-6 sm:py-7 transition-transform hover:scale-[1.015]"
-              style={{ background: '#fff', border: `2px solid ${INK}` }}
+              className="group block rounded-2xl px-6 sm:px-7 py-7 sm:py-8 text-center transition-transform hover:scale-[1.015]"
+              style={{ background: '#fff', border: `2px solid ${GOLD}`, boxShadow: '0 24px 50px -30px rgba(184,144,90,.55)' }}
             >
-              <span className="inline-block text-[11px] font-bold uppercase tracking-wide px-3 py-1 rounded-full mb-3" style={{ background: MINT, color: MINTD }}>
-                In-clinic
-              </span>
-              <h3 className="font-display text-xl sm:text-2xl font-extrabold mb-1.5" style={{ color: INK }}>
+              <h3 className="font-display text-xl sm:text-2xl font-extrabold mb-2" style={{ color: GOLD }}>
                 Book Your 3D Scan
               </h3>
-              <p className="text-sm mb-4" style={{ color: INK2 }}>
-                An in-person 3D intraoral scan and consultation at our clinic in Bhubaneswar.
+              <div className="flex items-center justify-center gap-2 mb-3">
+                <span className="text-2xl sm:text-3xl font-extrabold font-display" style={{ color: GOLD }}>₹199</span>
+                <span className="text-base sm:text-lg font-semibold" style={{ color: INK2, textDecoration: 'line-through' }}>₹999</span>
+              </div>
+              <p className="text-sm mb-5" style={{ color: INK2 }}>
+                At home or in-clinic consultation available.
               </p>
-              <span className="inline-flex items-center gap-2 text-sm font-bold" style={{ color: INK }}>
+              <span className="inline-flex items-center justify-center gap-2 text-sm font-bold px-6 py-2.5 rounded-full transition-colors" style={{ background: GOLD, color: '#fff' }}>
                 Book now
-                <svg viewBox="0 0 24 24" className="w-4 h-4 transition-transform group-hover:translate-x-1" {...ic}><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+                <svg viewBox="0 0 24 24" className="w-4 h-4 transition-transform group-hover:translate-x-1" {...ic} stroke="#fff"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
               </span>
             </a>
           </div>
