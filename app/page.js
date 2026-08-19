@@ -273,14 +273,6 @@ export default function LandingPage() {
               )}
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-3">
-              <a href={WA_LINK} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 text-base font-semibold px-7 py-3.5 rounded-xl transition-colors" style={{ background: '#fff', color: INK, border: `1px solid ${LINE}` }}
-                onMouseEnter={e => e.currentTarget.style.borderColor = '#cfd4d6'}
-                onMouseLeave={e => e.currentTarget.style.borderColor = LINE}>
-                <svg className="w-5 h-5 fill-current" style={{ color: '#25D366' }} viewBox="0 0 24 24"><path d={WA_ICON} /></svg>
-                Chat on WhatsApp
-              </a>
-            </div>
           </div>
 
           {/* Right — treatment plan card */}
@@ -330,6 +322,14 @@ export default function LandingPage() {
 
         {/* ── Choose your consultation ── */}
         <div className="max-w-6xl mx-auto px-4 sm:px-6 pb-14 sm:pb-20">
+          <div className="flex justify-center mb-6">
+            <a href={WA_LINK} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 text-base font-semibold px-7 py-3.5 rounded-xl transition-colors" style={{ background: '#fff', color: INK, border: `1px solid ${LINE}` }}
+              onMouseEnter={e => e.currentTarget.style.borderColor = '#cfd4d6'}
+              onMouseLeave={e => e.currentTarget.style.borderColor = LINE}>
+              <svg className="w-5 h-5 fill-current" style={{ color: '#25D366' }} viewBox="0 0 24 24"><path d={WA_ICON} /></svg>
+              Click to Connect
+            </a>
+          </div>
           <div className="grid sm:grid-cols-2 gap-4 sm:gap-5">
             <a
               href="/smile-report/upload"
