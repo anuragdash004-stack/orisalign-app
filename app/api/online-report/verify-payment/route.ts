@@ -76,7 +76,10 @@ export async function POST(req: Request) {
       }
       const fd = formData as ReportFormData
 
-      const { error: insertError } = await supabase.from("online_reports").insert([{
+      // Upsert, not insert — Step 1 (see app/api/online-report/lead) already
+      // created this row as a lead the moment the patient filled in their
+      // name/phone/gender/age, so this fills in the rest of that same row.
+      const { error: upsertError } = await supabase.from("online_reports").upsert([{
         id: reportId,
         full_name: fd.fullName,
         age: fd.age ?? null,
@@ -94,10 +97,10 @@ export async function POST(req: Request) {
         razorpay_order_id,
         razorpay_payment_id,
         status: "new_submission",
-      }])
+      }], { onConflict: "id" })
 
-      if (insertError) {
-        console.error("[online-report verify-payment] insert failed", insertError)
+      if (upsertError) {
+        console.error("[online-report verify-payment] upsert failed", upsertError)
         return NextResponse.json({ error: "Payment verified but failed to save submission" }, { status: 500 })
       }
 

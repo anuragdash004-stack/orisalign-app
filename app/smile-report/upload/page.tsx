@@ -196,20 +196,38 @@ export default function UploadStepPage() {
   const [couponError, setCouponError] = useState<string | null>(null)
 
   const [submitting, setSubmitting] = useState(false)
+  const [savingLead, setSavingLead] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState(false)
 
   const allPhotosSelected = PHOTO_SLOTS.every((s) => photos[s.key])
   const displayAmount = couponApplied ? couponApplied.discountedAmount : 399
 
-  const goToStep2 = () => {
+  const goToStep2 = async () => {
     setError(null)
     if (!fullName.trim() || !phone.trim() || !sex || !age) {
       setError("Please fill in your full name, phone number, gender and age.")
       return
     }
-    setStep(2)
-    window.scrollTo({ top: 0, behavior: "smooth" })
+    setSavingLead(true)
+    try {
+      const res = await fetch("/api/online-report/lead", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reportId, fullName: fullName.trim(), phone: phone.trim(), sex, age: Number(age) }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.success) {
+        setError(data.error || "Couldn't save your details — please try again.")
+        return
+      }
+      setStep(2)
+      window.scrollTo({ top: 0, behavior: "smooth" })
+    } catch {
+      setError("Couldn't reach the server — please check your connection and try again.")
+    } finally {
+      setSavingLead(false)
+    }
   }
 
   const goToStep3 = () => {
@@ -396,7 +414,9 @@ export default function UploadStepPage() {
               <Input label="Age" value={age} onChange={setAge} type="number" />
             </Section>
 
-            <button onClick={goToStep2} style={primaryBtn}>Continue</button>
+            <button onClick={goToStep2} disabled={savingLead} style={{ ...primaryBtn, opacity: savingLead ? 0.7 : 1, cursor: savingLead ? "wait" : "pointer" }}>
+              {savingLead ? "Saving…" : "Continue"}
+            </button>
           </>
         )}
 

@@ -34,7 +34,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "This coupon doesn't fully cover the price — use the payment flow instead" }, { status: 400 })
     }
 
-    const { error: insertError } = await supabase.from("online_reports").insert([{
+    // Upsert, not insert — Step 1 (see app/api/online-report/lead) already
+    // created this row as a lead, so this fills in the rest of that row.
+    const { error: upsertError } = await supabase.from("online_reports").upsert([{
       id: reportId,
       full_name: formData.fullName,
       age: formData.age ?? null,
@@ -51,10 +53,10 @@ export async function POST(req: Request) {
       payment_amount: 0,
       payment_status: "free_coupon",
       status: "new_submission",
-    }])
+    }], { onConflict: "id" })
 
-    if (insertError) {
-      console.error("[online-report free-submit] insert failed", insertError)
+    if (upsertError) {
+      console.error("[online-report free-submit] upsert failed", upsertError)
       return NextResponse.json({ error: "Failed to save submission" }, { status: 500 })
     }
 
