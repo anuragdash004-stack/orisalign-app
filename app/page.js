@@ -336,9 +336,11 @@ export default function LandingPage() {
               className="group block rounded-2xl px-6 sm:px-7 py-7 sm:py-8 text-center transition-transform hover:scale-[1.015]"
               style={{ background: '#fff', border: `2px solid ${GOLD}`, boxShadow: '0 24px 50px -30px rgba(184,144,90,.55)' }}
             >
-              <h3 className="font-display text-xl sm:text-2xl font-extrabold mb-2" style={{ color: INK }}>
-                Online Smile Report
-              </h3>
+              <div className="inline-flex items-center justify-center rounded-xl px-4 py-3 mb-3" style={{ background: INK }}>
+                <h3 className="font-display text-lg sm:text-xl font-extrabold uppercase tracking-wide" style={{ color: GOLD }}>
+                  Online Smile Report
+                </h3>
+              </div>
               <div className="flex items-center justify-center gap-2 mb-3">
                 <span className="text-2xl sm:text-3xl font-extrabold font-display" style={{ color: GOLD }}>₹399</span>
                 <span className="text-base sm:text-lg font-semibold" style={{ color: INK2, textDecoration: 'line-through' }}>₹999</span>
@@ -357,9 +359,11 @@ export default function LandingPage() {
               className="group block rounded-2xl px-6 sm:px-7 py-7 sm:py-8 text-center transition-transform hover:scale-[1.015]"
               style={{ background: '#fff', border: `2px solid ${GOLD}`, boxShadow: '0 24px 50px -30px rgba(184,144,90,.55)' }}
             >
-              <h3 className="font-display text-xl sm:text-2xl font-extrabold mb-2" style={{ color: GOLD }}>
-                Book Your 3D Scan
-              </h3>
+              <div className="inline-flex items-center justify-center rounded-xl px-4 py-3 mb-3" style={{ background: INK }}>
+                <h3 className="font-display text-lg sm:text-xl font-extrabold uppercase tracking-wide" style={{ color: GOLD }}>
+                  Book Your 3D Scan
+                </h3>
+              </div>
               <div className="flex items-center justify-center gap-2 mb-3">
                 <span className="text-2xl sm:text-3xl font-extrabold font-display" style={{ color: GOLD }}>₹199</span>
                 <span className="text-base sm:text-lg font-semibold" style={{ color: INK2, textDecoration: 'line-through' }}>₹999</span>
