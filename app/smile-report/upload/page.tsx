@@ -661,7 +661,8 @@ export default function UploadStepPage() {
         {/* ── STEP 2 — Conditions + Dental Self-Assessment ── */}
         {step === 2 && (
           <>
-            <h1 style={{ fontSize: 24, fontWeight: 900, color: NAVY, margin: "20px 0 4px" }}>Medical & Dental Assessment</h1>
+            <BackLink onClick={() => backTo(1)} />
+            <h1 style={{ fontSize: 24, fontWeight: 900, color: NAVY, margin: "10px 0 4px" }}>Medical & Dental Assessment</h1>
             <p style={{ fontSize: 13, color: "#6b7280", margin: "0 0 24px" }}>Step 2 of 4 — everything here is optional; leave anything blank that doesn't apply.</p>
 
             <Section title="Chief Complaint">
@@ -735,17 +736,15 @@ export default function UploadStepPage() {
               )}
             </Section>
 
-            <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => backTo(1)} style={secondaryBtn}>Back</button>
-              <button onClick={goToStep3} style={{ ...primaryBtn, flex: 1 }}>Continue</button>
-            </div>
+            <button onClick={goToStep3} style={primaryBtn}>Continue</button>
           </>
         )}
 
         {/* ── STEP 3 — Upload Photos ── */}
         {step === 3 && (
           <>
-            <h1 style={{ fontSize: 24, fontWeight: 900, color: NAVY, margin: "20px 0 4px" }}>Upload Your Photos</h1>
+            <BackLink onClick={() => backTo(2)} />
+            <h1 style={{ fontSize: 24, fontWeight: 900, color: NAVY, margin: "10px 0 4px" }}>Upload Your Photos</h1>
             <p style={{ fontSize: 13, color: "#6b7280", margin: "0 0 24px" }}>Step 3 of 4 — 5 clear photos, one at a time.</p>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -801,19 +800,17 @@ export default function UploadStepPage() {
               Reference photos are pulled from /public/smile-report/{"{"}slot{"}"}.jpg — until added, a placeholder diagram shows instead. Your photos are uploaded and saved as soon as you choose them.
             </p>
 
-            <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => backTo(2)} style={secondaryBtn}>Back</button>
-              <button onClick={goToStep4} disabled={anyPhotoUploading} style={{ ...primaryBtn, flex: 1, opacity: anyPhotoUploading ? 0.7 : 1, cursor: anyPhotoUploading ? "wait" : "pointer" }}>
-                {anyPhotoUploading ? "Uploading…" : "Continue"}
-              </button>
-            </div>
+            <button onClick={goToStep4} disabled={anyPhotoUploading} style={{ ...primaryBtn, opacity: anyPhotoUploading ? 0.7 : 1, cursor: anyPhotoUploading ? "wait" : "pointer" }}>
+              {anyPhotoUploading ? "Uploading…" : "Continue"}
+            </button>
           </>
         )}
 
         {/* ── STEP 4 — Consent, Coupon, Payment ── */}
         {step === 4 && (
           <>
-            <h1 style={{ fontSize: 24, fontWeight: 900, color: NAVY, margin: "20px 0 4px" }}>Review & Pay</h1>
+            <BackLink onClick={() => backTo(3)} disabled={submitting} />
+            <h1 style={{ fontSize: 24, fontWeight: 900, color: NAVY, margin: "10px 0 4px" }}>Review & Pay</h1>
             <p style={{ fontSize: 13, color: "#6b7280", margin: "0 0 24px" }}>
               Step 4 of 4 — ₹399 <span style={{ textDecoration: "line-through", color: "#9ca3af" }}>₹999</span>
             </p>
@@ -876,12 +873,9 @@ export default function UploadStepPage() {
               {couponApplied && <p style={{ color: "#16a34a", fontSize: 12, marginTop: 6 }}>Coupon "{couponApplied.code}" applied — ₹{couponApplied.discountedAmount} payable.</p>}
             </Section>
 
-            <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => backTo(3)} style={secondaryBtn} disabled={submitting}>Back</button>
-              <button onClick={handleSubmit} disabled={submitting} style={{ ...primaryBtn, flex: 1, opacity: submitting ? 0.7 : 1, cursor: submitting ? "wait" : "pointer" }}>
-                {submitting ? "Processing…" : displayAmount === 0 ? "Submit — Free" : `Pay ₹${displayAmount} & Submit`}
-              </button>
-            </div>
+            <button onClick={handleSubmit} disabled={submitting} style={{ ...primaryBtn, opacity: submitting ? 0.7 : 1, cursor: submitting ? "wait" : "pointer" }}>
+              {submitting ? "Processing…" : displayAmount === 0 ? "Submit — Free" : `Pay ₹${displayAmount} & Submit`}
+            </button>
           </>
         )}
       </div>
@@ -895,6 +889,31 @@ function Section({ title, children }: { title?: string; children: React.ReactNod
       {title && <h3 style={{ margin: "0 0 14px", fontSize: 14, fontWeight: 800, color: NAVY, textTransform: "uppercase", letterSpacing: 0.5 }}>{title}</h3>}
       {children}
     </div>
+  )
+}
+
+function BackLink({ onClick, disabled }: { onClick: () => void; disabled?: boolean }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        background: "none",
+        border: "none",
+        padding: 0,
+        margin: "20px 0 0",
+        fontSize: 13,
+        fontWeight: 700,
+        color: NAVY,
+        cursor: disabled ? "not-allowed" : "pointer",
+        opacity: disabled ? 0.5 : 1,
+      }}
+    >
+      ← Back
+    </button>
   )
 }
 
@@ -930,13 +949,3 @@ const primaryBtn: React.CSSProperties = {
   cursor: "pointer",
 }
 
-const secondaryBtn: React.CSSProperties = {
-  background: "white",
-  color: NAVY,
-  border: "1.5px solid #e5e7eb",
-  borderRadius: 12,
-  padding: "16px 20px",
-  fontSize: 15,
-  fontWeight: 700,
-  cursor: "pointer",
-}
