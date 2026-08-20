@@ -12,11 +12,11 @@ const NAVY = "#1B2A4A"
 const GOLD = "#C9A84C"
 
 const PHOTO_SLOTS = [
-  { key: "front_bite", label: "Front Bite (teeth together)", hint: "Retract your lips with your fingers and clench your teeth so your back teeth are completely closed — or try to swallow your saliva and then close your teeth." },
+  { key: "front_bite", label: "Front Bite (teeth together)", hint: "Retract your lips with your fingers, as in the sample image, and clench/close your teeth so your back teeth are completely closed." },
   { key: "upper_arch", label: "Upper Arch (top teeth)", hint: "Tilt your head back, photograph the roof-side view of your upper teeth." },
   { key: "lower_arch", label: "Lower Arch (bottom teeth)", hint: "Tilt your head down, photograph the top-down view of your lower teeth." },
-  { key: "left_buccal", label: "Left Side Bite", hint: "Retract your lips with your two left fingers and click the photograph so your last tooth is visible." },
-  { key: "right_buccal", label: "Right Side Bite", hint: "Swallow and bite your teeth together. Retract your lips with your two right fingers and click the photograph so your last tooth is visible." },
+  { key: "left_buccal", label: "Left Side Bite", hint: "Bite your teeth together and retract your lips with your two left fingers, as in the sample image, then click the photograph so as to capture your last tooth." },
+  { key: "right_buccal", label: "Right Side Bite", hint: "Bite your teeth together and retract your lips with your two right fingers, as in the sample image, then click the photograph so as to capture your last tooth." },
 ] as const
 
 type PhotoKey = (typeof PHOTO_SLOTS)[number]["key"]
@@ -53,6 +53,30 @@ function ReferenceImage({ photoKey }: { photoKey: PhotoKey }) {
       alt=""
       style={{ width: REFERENCE_IMAGE_SIZE, height: REFERENCE_IMAGE_SIZE, flexShrink: 0, objectFit: "cover", borderRadius: 10, display: "block" }}
       onError={() => setFailed(true)}
+    />
+  )
+}
+
+/**
+ * Live preview of the patient's own chosen file, shown directly under the
+ * sample so they can compare the two before continuing. Uses a local
+ * object URL for an instant preview — separate from the actual upload to
+ * Supabase Storage, which happens in parallel (see handlePhoto).
+ */
+function UploadedPreview({ file }: { file: File }) {
+  const [url, setUrl] = useState<string | null>(null)
+  useEffect(() => {
+    const objectUrl = URL.createObjectURL(file)
+    setUrl(objectUrl)
+    return () => URL.revokeObjectURL(objectUrl)
+  }, [file])
+  if (!url) return null
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- local object URL preview, next/image doesn't support blob: sources
+    <img
+      src={url}
+      alt="Your photo"
+      style={{ width: REFERENCE_IMAGE_SIZE, height: REFERENCE_IMAGE_SIZE, flexShrink: 0, objectFit: "cover", borderRadius: 10, display: "block", marginTop: 8 }}
     />
   )
 }
@@ -341,9 +365,14 @@ export default function UploadStepPage() {
     }
   }
 
-  // Step 3 — photos
+  // Step 3 — photos. Each photo uploads to Supabase Storage the moment it's
+  // chosen (not deferred to Step 4), so it's actually persisted in the
+  // backend as soon as it's picked — photoUrls holds the resulting public
+  // URL per slot once its upload finishes.
   const [photos, setPhotos] = useState<Partial<Record<PhotoKey, File>>>({})
-  const [uploading, setUploading] = useState(false)
+  const [photoUrls, setPhotoUrls] = useState<Partial<Record<PhotoKey, string>>>({})
+  const [photoUploading, setPhotoUploading] = useState<Partial<Record<PhotoKey, boolean>>>({})
+  const [photoUploadError, setPhotoUploadError] = useState<Partial<Record<PhotoKey, string>>>({})
 
   // Step 4 — consent, coupon, payment
   const [consent, setConsent] = useState(false)
@@ -357,7 +386,8 @@ export default function UploadStepPage() {
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState(false)
 
-  const allPhotosSelected = PHOTO_SLOTS.every((s) => photos[s.key])
+  const allPhotosUploaded = PHOTO_SLOTS.every((s) => photoUrls[s.key])
+  const anyPhotoUploading = PHOTO_SLOTS.some((s) => photoUploading[s.key])
   const displayAmount = couponApplied ? couponApplied.discountedAmount : 399
 
   const goToStep2 = async () => {
@@ -395,7 +425,11 @@ export default function UploadStepPage() {
 
   const goToStep4 = () => {
     setError(null)
-    if (!allPhotosSelected) {
+    if (anyPhotoUploading) {
+      setError("Please wait for all photos to finish uploading.")
+      return
+    }
+    if (!allPhotosUploaded) {
       setError("Please upload all 5 photos.")
       return
     }
@@ -409,9 +443,24 @@ export default function UploadStepPage() {
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
-  const handlePhoto = (key: PhotoKey, file: File | null) => {
+  const handlePhoto = async (key: PhotoKey, file: File | null) => {
     if (!file) return
     setPhotos((p) => ({ ...p, [key]: file }))
+    setPhotoUrls((p) => ({ ...p, [key]: undefined }))
+    setPhotoUploadError((p) => ({ ...p, [key]: undefined }))
+    setPhotoUploading((p) => ({ ...p, [key]: true }))
+    try {
+      const slot = PHOTO_SLOTS.find((s) => s.key === key)!
+      const path = `${reportId}/${key}_${file.name}`
+      const { error: uploadError } = await supabase!.storage.from("online-report-photos").upload(path, file, { upsert: true })
+      if (uploadError) throw new Error(`Failed to upload ${slot.label}: ${uploadError.message}`)
+      const { data } = supabase!.storage.from("online-report-photos").getPublicUrl(path)
+      setPhotoUrls((p) => ({ ...p, [key]: data.publicUrl }))
+    } catch (err: unknown) {
+      setPhotoUploadError((p) => ({ ...p, [key]: err instanceof Error ? err.message : "Upload failed" }))
+    } finally {
+      setPhotoUploading((p) => ({ ...p, [key]: false }))
+    }
   }
 
   const applyCoupon = async () => {
@@ -438,20 +487,6 @@ export default function UploadStepPage() {
     }
   }
 
-  const uploadPhotos = async (): Promise<string[]> => {
-    const urls: string[] = []
-    for (const slot of PHOTO_SLOTS) {
-      const file = photos[slot.key]
-      if (!file) continue
-      const path = `${reportId}/${slot.key}_${file.name}`
-      const { error: uploadError } = await supabase!.storage.from("online-report-photos").upload(path, file, { upsert: true })
-      if (uploadError) throw new Error(`Failed to upload ${slot.label}: ${uploadError.message}`)
-      const { data } = supabase!.storage.from("online-report-photos").getPublicUrl(path)
-      urls.push(data.publicUrl)
-    }
-    return urls
-  }
-
   const handleSubmit = async () => {
     setError(null)
 
@@ -459,13 +494,13 @@ export default function UploadStepPage() {
       setError("Please accept the consent section to continue.")
       return
     }
+    if (!allPhotosUploaded) {
+      setError("Please go back and finish uploading all 5 photos.")
+      return
+    }
 
     setSubmitting(true)
-    setUploading(true)
     try {
-      const photoUrls = await uploadPhotos()
-      setUploading(false)
-
       const formData: ReportFormData = {
         fullName: fullName.trim(),
         age: Number(age),
@@ -478,7 +513,7 @@ export default function UploadStepPage() {
         toothMobility: serializeLocations(toothMobilityLocations),
         pain: serializeLocations(painLocations),
         otherConcerns: otherConcerns.trim() || null,
-        photoUrls,
+        photoUrls: PHOTO_SLOTS.map((s) => photoUrls[s.key]!),
       }
 
       if (couponApplied && couponApplied.discountedAmount === 0) {
@@ -518,7 +553,6 @@ export default function UploadStepPage() {
       setError(err instanceof Error ? err.message : "Something went wrong — please try again.")
     } finally {
       setSubmitting(false)
-      setUploading(false)
     }
   }
 
@@ -665,41 +699,63 @@ export default function UploadStepPage() {
             <p style={{ fontSize: 13, color: "#6b7280", margin: "0 0 24px" }}>Step 3 of 4 — 5 clear photos, one at a time.</p>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              {PHOTO_SLOTS.map((slot) => (
-                <div key={slot.key} style={{ background: "white", border: `2px solid ${photos[slot.key] ? "#22c55e" : "#e5e7eb"}`, borderRadius: 16, padding: 16 }}>
-                  <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
-                    <ReferenceImage photoKey={slot.key} />
-                    <div style={{ minWidth: 0 }}>
-                      <p style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 800, color: NAVY }}>{slot.label}</p>
-                      <p style={{ margin: 0, fontSize: 12, color: "#6b7280", lineHeight: 1.6 }}>{slot.hint}</p>
+              {PHOTO_SLOTS.map((slot) => {
+                const file = photos[slot.key]
+                const uploadedUrl = photoUrls[slot.key]
+                const isUploading = photoUploading[slot.key]
+                const uploadError = photoUploadError[slot.key]
+                const borderColor = uploadError ? "#f87171" : uploadedUrl ? "#22c55e" : isUploading ? GOLD : "#e5e7eb"
+                return (
+                  <div key={slot.key} style={{ background: "white", border: `2px solid ${borderColor}`, borderRadius: 16, padding: 16 }}>
+                    <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+                      <div>
+                        <ReferenceImage photoKey={slot.key} />
+                        {file && <UploadedPreview file={file} />}
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <p style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 800, color: NAVY }}>{slot.label}</p>
+                        <p style={{ margin: 0, fontSize: 12, color: "#6b7280", lineHeight: 1.6 }}>{slot.hint}</p>
+                      </div>
                     </div>
-                  </div>
-                  <div style={{ marginTop: 14 }}>
-                    {photos[slot.key] ? (
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                        <p style={{ margin: 0, fontSize: 12, color: "#16a34a", wordBreak: "break-all" }}>✓ {photos[slot.key]!.name}</p>
-                        <label style={{ fontSize: 12, color: GOLD, fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>
-                          Replace
+                    <div style={{ marginTop: 14 }}>
+                      {isUploading ? (
+                        <p style={{ margin: 0, fontSize: 12, color: GOLD, fontWeight: 700 }}>Uploading…</p>
+                      ) : uploadError ? (
+                        <div>
+                          <p style={{ margin: "0 0 8px", fontSize: 12, color: "#dc2626" }}>{uploadError}</p>
+                          <label style={{ display: "inline-block", fontSize: 13, color: "white", fontWeight: 700, cursor: "pointer", background: GOLD, padding: "10px 18px", borderRadius: 8 }}>
+                            Retry Upload
+                            <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => handlePhoto(slot.key, e.target.files?.[0] || null)} />
+                          </label>
+                        </div>
+                      ) : uploadedUrl ? (
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                          <p style={{ margin: 0, fontSize: 12, color: "#16a34a", wordBreak: "break-all" }}>✓ Uploaded</p>
+                          <label style={{ fontSize: 12, color: GOLD, fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>
+                            Replace
+                            <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => handlePhoto(slot.key, e.target.files?.[0] || null)} />
+                          </label>
+                        </div>
+                      ) : (
+                        <label style={{ display: "inline-block", fontSize: 13, color: "white", fontWeight: 700, cursor: "pointer", background: GOLD, padding: "10px 18px", borderRadius: 8 }}>
+                          Upload Photo
                           <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => handlePhoto(slot.key, e.target.files?.[0] || null)} />
                         </label>
-                      </div>
-                    ) : (
-                      <label style={{ display: "inline-block", fontSize: 13, color: "white", fontWeight: 700, cursor: "pointer", background: GOLD, padding: "10px 18px", borderRadius: 8 }}>
-                        Upload Photo
-                        <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => handlePhoto(slot.key, e.target.files?.[0] || null)} />
-                      </label>
-                    )}
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
             <p style={{ fontSize: 11, color: "#9ca3af", margin: "10px 0 20px" }}>
-              Reference photos are pulled from /public/smile-report/{"{"}slot{"}"}.jpg — until added, a placeholder diagram shows instead.
+              Reference photos are pulled from /public/smile-report/{"{"}slot{"}"}.jpg — until added, a placeholder diagram shows instead. Your photos are uploaded and saved as soon as you choose them.
             </p>
 
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={() => backTo(2)} style={secondaryBtn}>Back</button>
-              <button onClick={goToStep4} style={{ ...primaryBtn, flex: 1 }}>Continue</button>
+              <button onClick={goToStep4} disabled={anyPhotoUploading} style={{ ...primaryBtn, flex: 1, opacity: anyPhotoUploading ? 0.7 : 1, cursor: anyPhotoUploading ? "wait" : "pointer" }}>
+                {anyPhotoUploading ? "Uploading…" : "Continue"}
+              </button>
             </div>
           </>
         )}
@@ -753,7 +809,7 @@ export default function UploadStepPage() {
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={() => backTo(3)} style={secondaryBtn} disabled={submitting}>Back</button>
               <button onClick={handleSubmit} disabled={submitting} style={{ ...primaryBtn, flex: 1, opacity: submitting ? 0.7 : 1, cursor: submitting ? "wait" : "pointer" }}>
-                {uploading ? "Uploading photos…" : submitting ? "Processing…" : displayAmount === 0 ? "Submit — Free" : `Pay ₹${displayAmount} & Submit`}
+                {submitting ? "Processing…" : displayAmount === 0 ? "Submit — Free" : `Pay ₹${displayAmount} & Submit`}
               </button>
             </div>
           </>
