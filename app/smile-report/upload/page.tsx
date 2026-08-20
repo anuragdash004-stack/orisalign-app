@@ -786,6 +786,24 @@ export default function UploadStepPage() {
               Step 4 of 4 — ₹399 <span style={{ textDecoration: "line-through", color: "#9ca3af" }}>₹999</span>
             </p>
 
+            <Section title="Your Online Smile Report Includes:">
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {[
+                  { title: "Treatment Objective", desc: "a clear picture of what your treatment aims to achieve" },
+                  { title: "Treatment Planning with Reasoning", desc: "our expert's provisional plan, along with the thinking behind it" },
+                  { title: "3D Simulated Plan (for educational purposes only)", desc: "a visual preview of how your smile transformation may look" },
+                  { title: "1-on-1 Video Consultation with a Smile Expert", desc: "get your questions answered directly, face to face" },
+                ].map((item) => (
+                  <div key={item.title} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                    <span style={{ flexShrink: 0, color: GOLD, fontWeight: 800, fontSize: 14, lineHeight: "20px" }}>✓</span>
+                    <p style={{ margin: 0, fontSize: 13, color: "#374151", lineHeight: 1.6 }}>
+                      <span style={{ fontWeight: 700, color: NAVY }}>{item.title}</span> — {item.desc}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </Section>
+
             <Section title="Please Read & Accept">
               <div style={{ background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: 10, padding: 14, fontSize: 12, color: "#4b5563", lineHeight: 1.7 }}>
                 <p style={{ margin: "0 0 8px" }}>
@@ -804,7 +822,9 @@ export default function UploadStepPage() {
               </div>
               <label style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 13, marginTop: 10, cursor: "pointer" }}>
                 <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} style={{ marginTop: 2 }} />
-                I have read and accept the above.
+                I understand that this is a provisional report, generated based on the photographs and information
+                provided by me to the best of my knowledge, and that the final diagnosis may differ from this after a
+                thorough in-person checkup by a registered smile expert.
               </label>
             </Section>
 
