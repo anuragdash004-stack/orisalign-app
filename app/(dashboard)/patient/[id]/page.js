@@ -407,10 +407,14 @@ export default function PatientJourney() {
     window.open(data.signedUrl, "_blank", "noopener,noreferrer");
   };
 
+  // planning_done is a legacy-only step (not part of the new per-arch
+  // roadmap at all) — requiring it here blocked new-model patients from ever
+  // reaching Plan Approval, since nothing in their flow ever sets it.
   const isPlanApprovalReady =
-    steps.booked && steps.confirmed && steps.scanning_done &&
-    steps.payment_done && steps.planning_done &&
-    (!isNewModel || (steps.provisional_planning && steps.final_plan_review && steps.investigation_required));
+    steps.booked && steps.confirmed && steps.scanning_done && steps.payment_done &&
+    (isNewModel
+      ? (steps.provisional_planning && steps.final_plan_review && steps.investigation_required)
+      : steps.planning_done);
 
   // Even once every prerequisite is ready, the Approve Plan button stays
   // locked until an admin explicitly switches it on from the Journey tab —
@@ -1443,6 +1447,12 @@ export default function PatientJourney() {
                                 </div>
                               );
                             })}
+                            {patient.journey_steps?.investigation_review_note && (
+                              <div style={{ padding: "12px", background: "#fffbeb", borderRadius: "10px", border: "1px solid #fde68a" }}>
+                                <p style={{ margin: "0 0 6px", fontSize: "11px", fontWeight: "700", color: "#b45309", textTransform: "uppercase" }}>Orthodontist's Review Note</p>
+                                <p style={{ margin: 0, fontSize: "13px", color: "#374151", lineHeight: "1.6", whiteSpace: "pre-wrap" }}>{patient.journey_steps.investigation_review_note}</p>
+                              </div>
+                            )}
                           </div>
                         );
                       })()}

@@ -1433,6 +1433,24 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
     window.open(data.signedUrl, "_blank", "noopener,noreferrer");
   };
 
+  // Review note — the orthodontist's written finding after reviewing the
+  // uploaded investigation file(s); shown to the patient once submitted.
+  const [investigationReviewNote, setInvestigationReviewNote] = useState(appt.journey_steps?.investigation_review_note || "");
+  const [savingInvestigationReviewNote, setSavingInvestigationReviewNote] = useState(false);
+  const [investigationReviewNoteSaved, setInvestigationReviewNoteSaved] = useState(false);
+  const saveInvestigationReviewNote = async () => {
+    setSavingInvestigationReviewNote(true);
+    const newJourneySteps = { ...(appt.journey_steps || {}), investigation_review_note: investigationReviewNote };
+    const { error } = await supabase.from("appointments_booking").update({ journey_steps: newJourneySteps }).eq("id", appointmentId);
+    setSavingInvestigationReviewNote(false);
+    if (error) { alert("Failed to save: " + error.message); return; }
+    logAudit({ appointmentId, actor, action: "Investigation Review Note Submitted", entity: "journey_steps", newData: { investigation_review_note: investigationReviewNote } });
+    appt.journey_steps = newJourneySteps;
+    setInvestigationReviewNoteSaved(true);
+    setTimeout(() => setInvestigationReviewNoteSaved(false), 3000);
+    setPlanChoiceTick((t) => t + 1);
+  };
+
   // Inline previews for uploaded investigation files — fetched once so the
   // photo/report shows directly in the Journey tab, not just behind a link.
   const [investigationSignedUrls, setInvestigationSignedUrls] = useState({}); // type -> signed url
@@ -2247,6 +2265,24 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                         );
                       })}
                     </>
+                  )}
+
+                  <span style={label}>REVIEW NOTE FOR PATIENT</span>
+                  <textarea
+                    style={{ ...input, minHeight: "80px", fontFamily: "inherit", resize: "vertical" }}
+                    placeholder="Write your findings after reviewing the uploaded investigation(s)..."
+                    value={investigationReviewNote}
+                    onChange={(e) => setInvestigationReviewNote(e.target.value)}
+                  />
+                  <button
+                    style={savingInvestigationReviewNote ? { ...btnPrimary, opacity: 0.6 } : btnPrimary}
+                    onClick={saveInvestigationReviewNote}
+                    disabled={savingInvestigationReviewNote}
+                  >
+                    {savingInvestigationReviewNote ? "Saving..." : investigationReviewNoteSaved ? "Submitted ✓" : "Submit Review Note"}
+                  </button>
+                  {appt.journey_steps?.investigation_review_note && (
+                    <p style={{ margin: 0, fontSize: "11px", color: "#16a34a" }}>Visible to the patient on their journey page.</p>
                   )}
                 </div>
               )}
