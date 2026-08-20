@@ -47,6 +47,7 @@ export async function POST(req: Request) {
       known_cavities: formData.knownCavities ?? null,
       food_lodgement: formData.foodLodgement ?? null,
       tooth_mobility: formData.toothMobility ?? null,
+      pain: formData.pain ?? null,
       other_concerns: formData.otherConcerns ?? null,
       photo_urls: formData.photoUrls || [],
       coupon_code: couponCode.trim().toUpperCase(),

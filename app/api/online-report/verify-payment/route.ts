@@ -26,6 +26,7 @@ type ReportFormData = {
   knownCavities?: string | null
   foodLodgement?: string | null
   toothMobility?: string | null
+  pain?: string | null
   otherConcerns?: string | null
   photoUrls: string[]
 }
@@ -90,6 +91,7 @@ export async function POST(req: Request) {
         known_cavities: fd.knownCavities ?? null,
         food_lodgement: fd.foodLodgement ?? null,
         tooth_mobility: fd.toothMobility ?? null,
+        pain: fd.pain ?? null,
         other_concerns: fd.otherConcerns ?? null,
         photo_urls: fd.photoUrls || [],
         payment_amount: amountPaidRupees,

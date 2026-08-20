@@ -257,6 +257,7 @@ export default function UploadStepPage() {
   const [cavityLocations, setCavityLocations] = useState<string[]>([])
   const [foodLodgementLocations, setFoodLodgementLocations] = useState<string[]>([])
   const [toothMobilityLocations, setToothMobilityLocations] = useState<string[]>([])
+  const [painLocations, setPainLocations] = useState<string[]>([])
   const [otherConcerns, setOtherConcerns] = useState("")
 
   /**
@@ -271,6 +272,7 @@ export default function UploadStepPage() {
       setCavityLocations([])
       setFoodLodgementLocations([])
       setToothMobilityLocations([])
+      setPainLocations([])
       setOtherConcerns("")
     }
   }
@@ -284,6 +286,10 @@ export default function UploadStepPage() {
   }
   const setToothMobilityLocationsChecked = (next: string[]) => {
     setToothMobilityLocations(next)
+    if (next.length) setDentalNone(false)
+  }
+  const setPainLocationsChecked = (next: string[]) => {
+    setPainLocations(next)
     if (next.length) setDentalNone(false)
   }
   const setOtherConcernsChecked = (val: string) => {
@@ -323,6 +329,7 @@ export default function UploadStepPage() {
       setCavityLocations(parseLocations(draft.known_cavities))
       setFoodLodgementLocations(parseLocations(draft.food_lodgement))
       setToothMobilityLocations(parseLocations(draft.tooth_mobility))
+      setPainLocations(parseLocations(draft.pain))
       setOtherConcerns(draft.other_concerns || "")
 
       setResumedDraft(true)
@@ -469,6 +476,7 @@ export default function UploadStepPage() {
         knownCavities: serializeLocations(cavityLocations),
         foodLodgement: serializeLocations(foodLodgementLocations),
         toothMobility: serializeLocations(toothMobilityLocations),
+        pain: serializeLocations(painLocations),
         otherConcerns: otherConcerns.trim() || null,
         photoUrls,
       }
@@ -627,6 +635,7 @@ export default function UploadStepPage() {
               <ToothLocationPicker label="1. Cavity" selected={cavityLocations} onChange={setCavityLocationsChecked} disabled={dentalNone} />
               <ToothLocationPicker label="2. Food Lodgement" selected={foodLodgementLocations} onChange={setFoodLodgementLocationsChecked} disabled={dentalNone} />
               <ToothLocationPicker label="3. Tooth Mobility (shakiness when pressed with finger)" selected={toothMobilityLocations} onChange={setToothMobilityLocationsChecked} disabled={dentalNone} />
+              <ToothLocationPicker label="4. Pain" selected={painLocations} onChange={setPainLocationsChecked} disabled={dentalNone} />
               <div style={{ opacity: dentalNone ? 0.5 : 1, marginBottom: 16 }}>
                 <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 700, color: NAVY }}>Any other concerns, in your own words</p>
                 <textarea
@@ -638,7 +647,7 @@ export default function UploadStepPage() {
               </div>
               <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700, color: NAVY, cursor: "pointer" }}>
                 <input type="checkbox" checked={dentalNone} onChange={toggleDentalNone} />
-                None — no cavities, food lodgement, mobility or other concerns
+                None — no cavities, food lodgement, mobility, pain or other concerns
               </label>
             </Section>
 

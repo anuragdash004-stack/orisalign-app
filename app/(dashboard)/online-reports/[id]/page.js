@@ -157,6 +157,7 @@ export default function OnlineReportDetailPage() {
         <p style={{ fontSize: 13, color: "#374151", margin: "0 0 4px" }}><strong>Known cavities:</strong> {report.known_cavities || "—"}</p>
         <p style={{ fontSize: 13, color: "#374151", margin: "0 0 4px" }}><strong>Food lodgement:</strong> {report.food_lodgement || "—"}</p>
         <p style={{ fontSize: 13, color: "#374151", margin: "0 0 4px" }}><strong>Tooth mobility:</strong> {report.tooth_mobility || "—"}</p>
+        <p style={{ fontSize: 13, color: "#374151", margin: "0 0 4px" }}><strong>Pain:</strong> {report.pain || "—"}</p>
         <p style={{ fontSize: 13, color: "#374151", margin: 0 }}><strong>Other concerns:</strong> {report.other_concerns || "—"}</p>
       </div>
 

@@ -28,6 +28,7 @@ export type ReportFormData = {
   knownCavities?: string | null
   foodLodgement?: string | null
   toothMobility?: string | null
+  pain?: string | null
   otherConcerns?: string | null
   photoUrls: string[]
 }
