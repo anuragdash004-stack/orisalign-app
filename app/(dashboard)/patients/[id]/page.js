@@ -1433,6 +1433,25 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
     window.open(data.signedUrl, "_blank", "noopener,noreferrer");
   };
 
+  // Inline previews for uploaded investigation files — fetched once so the
+  // photo/report shows directly in the Journey tab, not just behind a link.
+  const [investigationSignedUrls, setInvestigationSignedUrls] = useState({}); // type -> signed url
+  useEffect(() => {
+    const files = appt.journey_steps?.investigation_files || {};
+    const paths = Object.entries(files).filter(([, f]) => f?.path);
+    if (paths.length === 0) return;
+    (async () => {
+      const entries = await Promise.all(
+        paths.map(async ([type, f]) => {
+          const { data } = await supabase.storage.from("case-files").createSignedUrl(f.path, 3600);
+          return [type, data?.signedUrl || null];
+        })
+      );
+      setInvestigationSignedUrls(Object.fromEntries(entries));
+    })();
+  }, [appt.journey_steps?.investigation_files]);
+  const isImageFile = (name) => /\.(png|jpe?g|gif|webp|heic|heif)$/i.test(name || "");
+
   // Plan Approval is never automatic for the new per-arch model — the
   // patient's Approve Plan button stays locked until an admin explicitly
   // switches it on here, regardless of how "ready" the plan otherwise is.
@@ -2187,18 +2206,42 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                       {(appt.journey_steps.investigation_types || []).map((t) => {
                         const typeInfo = INVESTIGATION_TYPES.find((it) => it.key === t);
                         const file = appt.journey_steps?.investigation_files?.[t];
+                        const signedUrl = investigationSignedUrls[t];
                         return (
-                          <div key={t} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", padding: "10px 12px", background: file?.path ? "#f0fdf4" : "white", borderRadius: "8px", border: file?.path ? "1px solid #bbf7d0" : "1px solid #e5e7eb" }}>
-                            <span style={{ fontSize: "13px", fontWeight: "700", color: "#111827" }}>{typeInfo?.label || t}</span>
-                            {file?.path ? (
-                              <button
-                                onClick={() => viewInvestigationFileAdmin(file.path)}
-                                style={{ padding: "6px 12px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "white", color: "#111827", fontWeight: "700", fontSize: "12px", cursor: "pointer" }}
-                              >
-                                Review
-                              </button>
-                            ) : (
-                              <span style={{ fontSize: "12px", color: "#9ca3af", fontStyle: "italic" }}>Awaiting upload</span>
+                          <div key={t} style={{ padding: "10px 12px", background: file?.path ? "#f0fdf4" : "white", borderRadius: "8px", border: file?.path ? "1px solid #bbf7d0" : "1px solid #e5e7eb" }}>
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px" }}>
+                              <span style={{ fontSize: "13px", fontWeight: "700", color: "#111827" }}>{typeInfo?.label || t}</span>
+                              {file?.path ? (
+                                <button
+                                  onClick={() => viewInvestigationFileAdmin(file.path)}
+                                  style={{ padding: "6px 12px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "white", color: "#111827", fontWeight: "700", fontSize: "12px", cursor: "pointer" }}
+                                >
+                                  Open Full Size
+                                </button>
+                              ) : (
+                                <span style={{ fontSize: "12px", color: "#9ca3af", fontStyle: "italic" }}>Awaiting upload</span>
+                              )}
+                            </div>
+                            {file?.path && (
+                              signedUrl ? (
+                                isImageFile(file.name) ? (
+                                  <img
+                                    src={signedUrl}
+                                    alt={typeInfo?.label || t}
+                                    onClick={() => viewInvestigationFileAdmin(file.path)}
+                                    style={{ marginTop: "10px", width: "100%", maxHeight: "320px", objectFit: "contain", borderRadius: "8px", border: "1px solid #e5e7eb", background: "#111827", cursor: "pointer" }}
+                                  />
+                                ) : (
+                                  <a
+                                    href={signedUrl} target="_blank" rel="noopener noreferrer"
+                                    style={{ marginTop: "10px", display: "block", padding: "10px", borderRadius: "8px", background: "#f3f4f6", color: "#374151", fontWeight: "700", fontSize: "12px", textAlign: "center", textDecoration: "none" }}
+                                  >
+                                    📄 {file.name} — View PDF
+                                  </a>
+                                )
+                              ) : (
+                                <p style={{ margin: "10px 0 0", fontSize: "12px", color: "#9ca3af" }}>Loading preview...</p>
+                              )
                             )}
                           </div>
                         );
