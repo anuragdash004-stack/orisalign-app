@@ -43,6 +43,7 @@ export async function POST(req: Request) {
       sex: formData.sex ?? null,
       patient_phone: formData.patientPhone ?? null,
       patient_email: formData.patientEmail ?? null,
+      chief_complaint: formData.chiefComplaint ?? null,
       conditions: formData.conditions || {},
       known_cavities: formData.knownCavities ?? null,
       food_lodgement: formData.foodLodgement ?? null,

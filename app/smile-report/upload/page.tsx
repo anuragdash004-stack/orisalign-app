@@ -258,7 +258,8 @@ export default function UploadStepPage() {
   const [checkingDraft, setCheckingDraft] = useState(false)
   const [resumedDraft, setResumedDraft] = useState(false)
 
-  // Step 2 — conditions + dental self-assessment
+  // Step 2 — chief complaint + conditions + dental self-assessment
+  const [chiefComplaint, setChiefComplaint] = useState("")
   const [conditions, setConditions] = useState<Record<string, boolean>>({})
 
   /** "None" is mutually exclusive with every other condition (including Other). */
@@ -329,6 +330,7 @@ export default function UploadStepPage() {
    * draft, and get saved as the latest Step 1 info for that same record.
    */
   const applyDraftStep2Fields = (draft: {
+    chief_complaint?: string | null
     conditions?: Record<string, unknown> | null
     known_cavities?: string | null
     food_lodgement?: string | null
@@ -336,6 +338,8 @@ export default function UploadStepPage() {
     pain?: string | null
     other_concerns?: string | null
   }) => {
+    setChiefComplaint(draft.chief_complaint || "")
+
     const cond = draft.conditions || {}
     const { other, ...boolFlags } = cond
     setConditions(boolFlags as Record<string, boolean>)
@@ -541,6 +545,7 @@ export default function UploadStepPage() {
         sex,
         patientPhone: phone.trim(),
         patientEmail: null,
+        chiefComplaint: chiefComplaint.trim() || null,
         conditions: { ...conditions, other: conditionOtherChecked ? conditionOtherText.trim() : "" },
         knownCavities: serializeLocations(cavityLocations),
         foodLodgement: serializeLocations(foodLodgementLocations),
@@ -659,6 +664,37 @@ export default function UploadStepPage() {
             <h1 style={{ fontSize: 24, fontWeight: 900, color: NAVY, margin: "20px 0 4px" }}>Medical & Dental Assessment</h1>
             <p style={{ fontSize: 13, color: "#6b7280", margin: "0 0 24px" }}>Step 2 of 4 — everything here is optional; leave anything blank that doesn't apply.</p>
 
+            <Section title="Chief Complaint">
+              <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 700, color: NAVY }}>
+                Write your concern or problem in your own words, in your preferred language.
+              </p>
+              <textarea
+                value={chiefComplaint}
+                onChange={(e) => setChiefComplaint(e.target.value)}
+                style={{ ...inputStyle, minHeight: 70 }}
+              />
+            </Section>
+
+            <Section title="Dental Self-Assessment">
+              <ToothLocationPicker label="1. Cavity" selected={cavityLocations} onChange={setCavityLocationsChecked} disabled={dentalNone} />
+              <ToothLocationPicker label="2. Food Lodgement" selected={foodLodgementLocations} onChange={setFoodLodgementLocationsChecked} disabled={dentalNone} />
+              <ToothLocationPicker label="3. Tooth Mobility (shakiness when pressed with finger)" selected={toothMobilityLocations} onChange={setToothMobilityLocationsChecked} disabled={dentalNone} />
+              <ToothLocationPicker label="4. Pain" selected={painLocations} onChange={setPainLocationsChecked} disabled={dentalNone} />
+              <div style={{ opacity: dentalNone ? 0.5 : 1, marginBottom: 16 }}>
+                <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 700, color: NAVY }}>Any other concerns, in your own words</p>
+                <textarea
+                  value={otherConcerns}
+                  disabled={dentalNone}
+                  onChange={(e) => setOtherConcernsChecked(e.target.value)}
+                  style={{ ...inputStyle, minHeight: 60 }}
+                />
+              </div>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700, color: NAVY, cursor: "pointer" }}>
+                <input type="checkbox" checked={dentalNone} onChange={toggleDentalNone} />
+                None — no cavities, food lodgement, mobility, pain or other concerns
+              </label>
+            </Section>
+
             <Section title="Existing Conditions">
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10 }}>
                 <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700, color: NAVY, cursor: "pointer" }}>
@@ -697,26 +733,6 @@ export default function UploadStepPage() {
                   style={{ ...inputStyle, marginTop: 10 }}
                 />
               )}
-            </Section>
-
-            <Section title="Dental Self-Assessment">
-              <ToothLocationPicker label="1. Cavity" selected={cavityLocations} onChange={setCavityLocationsChecked} disabled={dentalNone} />
-              <ToothLocationPicker label="2. Food Lodgement" selected={foodLodgementLocations} onChange={setFoodLodgementLocationsChecked} disabled={dentalNone} />
-              <ToothLocationPicker label="3. Tooth Mobility (shakiness when pressed with finger)" selected={toothMobilityLocations} onChange={setToothMobilityLocationsChecked} disabled={dentalNone} />
-              <ToothLocationPicker label="4. Pain" selected={painLocations} onChange={setPainLocationsChecked} disabled={dentalNone} />
-              <div style={{ opacity: dentalNone ? 0.5 : 1, marginBottom: 16 }}>
-                <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 700, color: NAVY }}>Any other concerns, in your own words</p>
-                <textarea
-                  value={otherConcerns}
-                  disabled={dentalNone}
-                  onChange={(e) => setOtherConcernsChecked(e.target.value)}
-                  style={{ ...inputStyle, minHeight: 60 }}
-                />
-              </div>
-              <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700, color: NAVY, cursor: "pointer" }}>
-                <input type="checkbox" checked={dentalNone} onChange={toggleDentalNone} />
-                None — no cavities, food lodgement, mobility, pain or other concerns
-              </label>
             </Section>
 
             <div style={{ display: "flex", gap: 10 }}>

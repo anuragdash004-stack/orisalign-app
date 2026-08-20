@@ -153,6 +153,9 @@ export default function OnlineReportDetailPage() {
             .join(", ") || "None reported"}
         </p>
 
+        <h4 style={{ margin: "14px 0 6px", fontSize: 12, fontWeight: 700, color: "#6b7280", textTransform: "uppercase" }}>Chief Complaint</h4>
+        <p style={{ fontSize: 13, color: "#374151", margin: 0 }}>{report.chief_complaint || "—"}</p>
+
         <h4 style={{ margin: "14px 0 6px", fontSize: 12, fontWeight: 700, color: "#6b7280", textTransform: "uppercase" }}>Dental Self-Assessment</h4>
         <p style={{ fontSize: 13, color: "#374151", margin: "0 0 4px" }}><strong>Known cavities:</strong> {report.known_cavities || "—"}</p>
         <p style={{ fontSize: 13, color: "#374151", margin: "0 0 4px" }}><strong>Food lodgement:</strong> {report.food_lodgement || "—"}</p>

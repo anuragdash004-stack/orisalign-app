@@ -26,7 +26,7 @@ export async function GET(req: Request) {
 
   const { data, error } = await supabase
     .from("online_reports")
-    .select("id, full_name, sex, age, conditions, known_cavities, food_lodgement, tooth_mobility, pain, other_concerns")
+    .select("id, full_name, sex, age, chief_complaint, conditions, known_cavities, food_lodgement, tooth_mobility, pain, other_concerns")
     .eq("patient_phone", phone)
     .eq("payment_status", "pending")
     .eq("status", "new_submission")

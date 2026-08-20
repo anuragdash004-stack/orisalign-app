@@ -23,6 +23,7 @@ type ReportFormData = {
   patientPhone?: string | null
   patientEmail?: string | null
   conditions: Record<string, unknown>
+  chiefComplaint?: string | null
   knownCavities?: string | null
   foodLodgement?: string | null
   toothMobility?: string | null
@@ -87,6 +88,7 @@ export async function POST(req: Request) {
         sex: fd.sex ?? null,
         patient_phone: fd.patientPhone ?? null,
         patient_email: fd.patientEmail ?? null,
+        chief_complaint: fd.chiefComplaint ?? null,
         conditions: fd.conditions || {},
         known_cavities: fd.knownCavities ?? null,
         food_lodgement: fd.foodLodgement ?? null,

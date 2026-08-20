@@ -25,6 +25,7 @@ export type ReportFormData = {
   patientPhone?: string | null
   patientEmail?: string | null
   conditions: Record<string, unknown>
+  chiefComplaint?: string | null
   knownCavities?: string | null
   foodLodgement?: string | null
   toothMobility?: string | null
