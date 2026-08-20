@@ -47,13 +47,15 @@ function ReferenceImage({ photoKey }: { photoKey: PhotoKey }) {
     )
   }
   return (
-    // eslint-disable-next-line @next/next/no-img-element -- reference photo shown as a fixed-size thumbnail, next/image is overkill here
-    <img
-      src={`/smile-report/${photoKey}.jpg`}
-      alt=""
-      style={{ width: REFERENCE_IMAGE_SIZE, height: REFERENCE_IMAGE_SIZE, flexShrink: 0, objectFit: "cover", borderRadius: 10, display: "block" }}
-      onError={() => setFailed(true)}
-    />
+    <div style={{ width: REFERENCE_IMAGE_SIZE, height: REFERENCE_IMAGE_SIZE, flexShrink: 0, background: "#fafafa", borderRadius: 10, overflow: "hidden" }}>
+      {/* eslint-disable-next-line @next/next/no-img-element -- reference photo shown as a fixed-size thumbnail, next/image is overkill here */}
+      <img
+        src={`/smile-report/${photoKey}.jpg`}
+        alt=""
+        style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
+        onError={() => setFailed(true)}
+      />
+    </div>
   )
 }
 
@@ -72,12 +74,10 @@ function UploadedPreview({ file }: { file: File }) {
   }, [file])
   if (!url) return null
   return (
-    // eslint-disable-next-line @next/next/no-img-element -- local object URL preview, next/image doesn't support blob: sources
-    <img
-      src={url}
-      alt="Your photo"
-      style={{ width: REFERENCE_IMAGE_SIZE, height: REFERENCE_IMAGE_SIZE, flexShrink: 0, objectFit: "cover", borderRadius: 10, display: "block", marginTop: 8 }}
-    />
+    <div style={{ width: REFERENCE_IMAGE_SIZE, height: REFERENCE_IMAGE_SIZE, flexShrink: 0, background: "#fafafa", borderRadius: 10, overflow: "hidden", marginTop: 8 }}>
+      {/* eslint-disable-next-line @next/next/no-img-element -- local object URL preview, next/image doesn't support blob: sources */}
+      <img src={url} alt="Your photo" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
+    </div>
   )
 }
 
@@ -398,10 +398,28 @@ export default function UploadStepPage() {
     }
     setSavingLead(true)
     try {
+      // Re-resolve the correct id right before saving, rather than trusting
+      // reportId state — the onBlur draft lookup (checkForDraft) is async
+      // and can still be in flight if Continue is clicked right after
+      // typing the phone number, which previously raced this save and
+      // created a duplicate row under a fresh id instead of reusing the
+      // patient's existing draft.
+      let idToUse = reportId
+      try {
+        const draftRes = await fetch(`/api/online-report/find-draft?phone=${encodeURIComponent(phone.trim())}`)
+        const draftData = await draftRes.json()
+        if (draftData.found) {
+          idToUse = draftData.draft.id
+          if (idToUse !== reportId) setReportId(idToUse)
+        }
+      } catch {
+        // Fall back to the current reportId — worst case a fresh row.
+      }
+
       const res = await fetch("/api/online-report/lead", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reportId, fullName: fullName.trim(), phone: phone.trim(), sex, age: Number(age) }),
+        body: JSON.stringify({ reportId: idToUse, fullName: fullName.trim(), phone: phone.trim(), sex, age: Number(age) }),
       })
       const data = await res.json()
       if (!res.ok || !data.success) {
