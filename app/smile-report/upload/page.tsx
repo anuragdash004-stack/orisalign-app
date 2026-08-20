@@ -366,11 +366,21 @@ export default function UploadStepPage() {
       setConditionOtherText("")
     }
 
-    setCavityLocations(parseLocations(draft.known_cavities))
-    setFoodLodgementLocations(parseLocations(draft.food_lodgement))
-    setToothMobilityLocations(parseLocations(draft.tooth_mobility))
-    setPainLocations(parseLocations(draft.pain))
-    setOtherConcerns(draft.other_concerns || "")
+    const cavities = parseLocations(draft.known_cavities)
+    const food = parseLocations(draft.food_lodgement)
+    const mobility = parseLocations(draft.tooth_mobility)
+    const pain = parseLocations(draft.pain)
+    const otherText = draft.other_concerns || ""
+    setCavityLocations(cavities)
+    setFoodLodgementLocations(food)
+    setToothMobilityLocations(mobility)
+    setPainLocations(pain)
+    setOtherConcerns(otherText)
+
+    // The DB doesn't store a separate "dental None" flag — infer it from
+    // the data itself, so the checkbox reflects the old draft's state
+    // instead of appearing unchecked even though nothing was filled.
+    setDentalNone(!cavities.length && !food.length && !mobility.length && !pain.length && !otherText.trim())
   }
 
   /**
