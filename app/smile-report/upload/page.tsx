@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { getSupabaseClient } from "@/lib/supabaseClient"
 import { startOnlineReportCheckout, type ReportFormData } from "@/lib/onlineReportCheckout"
@@ -83,6 +83,12 @@ function serializeLocations(selected: string[]): string {
   return selected.length ? selected.join(", ") : "Not available"
 }
 
+/** Inverse of serializeLocations — for restoring a resumed draft's picks. */
+function parseLocations(value: string | null | undefined): string[] {
+  if (!value || value === "Not available") return []
+  return value.split(",").map((s) => s.trim()).filter(Boolean)
+}
+
 /**
  * Collapsed by default — just the label and an "+ Add" button. Clicking Add
  * reveals the 8 tooth-location options for this field. Stays expanded once
@@ -101,6 +107,12 @@ function ToothLocationPicker({
   disabled?: boolean
 }) {
   const [expanded, setExpanded] = useState(selected.length > 0)
+  // Auto-expand if selections arrive after mount — e.g. a resumed draft's
+  // locations load asynchronously, after this component already rendered
+  // collapsed with an empty `selected`.
+  useEffect(() => {
+    if (selected.length > 0) setExpanded(true)
+  }, [selected.length])
 
   const toggle = (loc: string) => {
     onChange(selected.includes(loc) ? selected.filter((l) => l !== loc) : [...selected, loc])
@@ -210,13 +222,17 @@ export default function UploadStepPage() {
   const router = useRouter()
 
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
-  const [reportId] = useState(() => crypto.randomUUID())
+  // Not const — swapped out for an existing draft's id if the phone number
+  // entered at Step 1 matches an incomplete submission (see checkForDraft).
+  const [reportId, setReportId] = useState(() => crypto.randomUUID())
 
   // Step 1 — basic info
   const [fullName, setFullName] = useState("")
   const [phone, setPhone] = useState("")
   const [sex, setSex] = useState("")
   const [age, setAge] = useState("")
+  const [checkingDraft, setCheckingDraft] = useState(false)
+  const [resumedDraft, setResumedDraft] = useState(false)
 
   // Step 2 — conditions + dental self-assessment
   const [conditions, setConditions] = useState<Record<string, boolean>>({})
@@ -273,6 +289,49 @@ export default function UploadStepPage() {
   const setOtherConcernsChecked = (val: string) => {
     setOtherConcerns(val)
     if (val.trim()) setDentalNone(false)
+  }
+
+  /**
+   * Fired when the patient leaves the phone field at Step 1. If this number
+   * matches an incomplete (unpaid) draft, restores everything they'd
+   * already filled in — including Step 2 — so they don't have to redo it
+   * after dropping off mid-flow.
+   */
+  const checkForDraft = async () => {
+    const trimmed = phone.trim()
+    if (!trimmed) return
+    setCheckingDraft(true)
+    try {
+      const res = await fetch(`/api/online-report/find-draft?phone=${encodeURIComponent(trimmed)}`)
+      const data = await res.json()
+      if (!data.found) return
+
+      const draft = data.draft
+      setReportId(draft.id)
+      if (draft.full_name) setFullName(draft.full_name)
+      if (draft.sex) setSex(draft.sex)
+      if (draft.age != null) setAge(String(draft.age))
+
+      const cond = draft.conditions || {}
+      const { other, ...boolFlags } = cond
+      setConditions(boolFlags)
+      if (typeof other === "string" && other.trim()) {
+        setConditionOtherChecked(true)
+        setConditionOtherText(other)
+      }
+
+      setCavityLocations(parseLocations(draft.known_cavities))
+      setFoodLodgementLocations(parseLocations(draft.food_lodgement))
+      setToothMobilityLocations(parseLocations(draft.tooth_mobility))
+      setOtherConcerns(draft.other_concerns || "")
+
+      setResumedDraft(true)
+    } catch {
+      // Silent — this is a convenience lookup, not a required step. Worst
+      // case the patient just fills the form fresh, same as before.
+    } finally {
+      setCheckingDraft(false)
+    }
   }
 
   // Step 3 — photos
@@ -491,9 +550,16 @@ export default function UploadStepPage() {
             <h1 style={{ fontSize: 24, fontWeight: 900, color: NAVY, margin: "20px 0 4px" }}>Your Information</h1>
             <p style={{ fontSize: 13, color: "#6b7280", margin: "0 0 24px" }}>Step 1 of 4 — a few basic details to get started.</p>
 
+            {resumedDraft && (
+              <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#15803d", borderRadius: 10, padding: 12, fontSize: 13, marginBottom: 16 }}>
+                Welcome back! We've restored your previous progress — pick up where you left off.
+              </div>
+            )}
+
             <Section>
               <Input label="Full Name" value={fullName} onChange={setFullName} />
-              <Input label="Phone Number" value={phone} onChange={setPhone} type="tel" />
+              <Input label="Phone Number" value={phone} onChange={setPhone} onBlur={checkForDraft} type="tel" />
+              {checkingDraft && <p style={{ margin: "-6px 0 10px", fontSize: 11, color: "#9ca3af" }}>Checking for a previous submission…</p>}
               <div style={{ marginBottom: 10 }}>
                 <select value={sex} onChange={(e) => setSex(e.target.value)} style={{ ...inputStyle, color: sex ? "#111827" : "#9ca3af" }}>
                   <option value="" disabled>Gender</option>
@@ -697,10 +763,10 @@ function Section({ title, children }: { title?: string; children: React.ReactNod
   )
 }
 
-function Input({ label, value, onChange, type = "text" }: { label: string; value: string; onChange: (v: string) => void; type?: string }) {
+function Input({ label, value, onChange, type = "text", onBlur }: { label: string; value: string; onChange: (v: string) => void; type?: string; onBlur?: () => void }) {
   return (
     <div style={{ marginBottom: 10 }}>
-      <input placeholder={label} value={value} onChange={(e) => onChange(e.target.value)} type={type} style={inputStyle} />
+      <input placeholder={label} value={value} onChange={(e) => onChange(e.target.value)} onBlur={onBlur} type={type} style={inputStyle} />
     </div>
   )
 }
