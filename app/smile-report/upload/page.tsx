@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { getSupabaseClient } from "@/lib/supabaseClient"
 import { startOnlineReportCheckout, type ReportFormData } from "@/lib/onlineReportCheckout"
@@ -262,6 +262,12 @@ export default function UploadStepPage() {
   // Not const — swapped out for an existing draft's id if the phone number
   // entered at Step 1 matches an incomplete submission (see checkForDraft).
   const [reportId, setReportId] = useState(() => crypto.randomUUID())
+  // Which draft id's Step 2 fields we've already pulled into local state —
+  // guards against re-clicking Continue on Step 1 (e.g. after Back-ing up
+  // to fix something) re-fetching the old database version and clobbering
+  // edits the patient already made this session but hasn't saved forward
+  // via goToStep3 yet.
+  const appliedDraftIdRef = useRef<string | null>(null)
 
   // Step 1 — basic info
   const [fullName, setFullName] = useState("")
@@ -455,8 +461,11 @@ export default function UploadStepPage() {
         if (draftData.found) {
           idToUse = draftData.draft.id
           if (idToUse !== reportId) setReportId(idToUse)
-          applyDraftStep2Fields(draftData.draft)
-          setResumedDraft(true)
+          if (appliedDraftIdRef.current !== idToUse) {
+            applyDraftStep2Fields(draftData.draft)
+            appliedDraftIdRef.current = idToUse
+            setResumedDraft(true)
+          }
         }
       } catch {
         // Fall back to the current reportId — worst case a fresh row.
@@ -703,12 +712,6 @@ export default function UploadStepPage() {
             <h1 style={{ fontSize: 24, fontWeight: 900, color: NAVY, margin: "20px 0 4px" }}>Your Information</h1>
             <p style={{ fontSize: 13, color: "#6b7280", margin: "0 0 24px" }}>Step 1 of 4 — a few basic details to get started.</p>
 
-            {resumedDraft && (
-              <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#15803d", borderRadius: 10, padding: 12, fontSize: 13, marginBottom: 16 }}>
-                Welcome back! We've restored your previous progress — pick up where you left off.
-              </div>
-            )}
-
             <Section>
               <Input label="Full Name" value={fullName} onChange={setFullName} />
               <Input label="Phone Number" value={phone} onChange={setPhone} onBlur={checkForDraft} type="tel" />
@@ -723,6 +726,12 @@ export default function UploadStepPage() {
               </div>
               <Input label="Age" value={age} onChange={setAge} type="number" />
             </Section>
+
+            {resumedDraft && (
+              <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#15803d", borderRadius: 10, padding: 12, fontSize: 13, marginBottom: 16 }}>
+                Welcome back! We've restored your previous progress — pick up where you left off.
+              </div>
+            )}
 
             <button onClick={goToStep2} disabled={savingLead} style={{ ...primaryBtn, opacity: savingLead ? 0.7 : 1, cursor: savingLead ? "wait" : "pointer" }}>
               {savingLead ? "Saving…" : "Continue"}
@@ -834,6 +843,21 @@ export default function UploadStepPage() {
                       <div>
                         <ReferenceImage photoKey={slot.key} />
                         {file ? <UploadedPreview file={file} /> : uploadedUrl ? <RemotePreview url={uploadedUrl} /> : null}
+                        {uploadedUrl && !isUploading && !uploadError && (
+                          <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
+                            <label style={{ fontSize: 12, color: GOLD, fontWeight: 700, cursor: "pointer" }}>
+                              Replace
+                              <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => handlePhoto(slot.key, e.target.files?.[0] || null)} />
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => handleCancelPhoto(slot.key)}
+                              style={{ fontSize: 12, color: "#dc2626", fontWeight: 700, cursor: "pointer", background: "none", border: "none", padding: 0 }}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        )}
                       </div>
                       <div style={{ minWidth: 0 }}>
                         <p style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 800, color: NAVY }}>{slot.label}</p>
@@ -852,22 +876,7 @@ export default function UploadStepPage() {
                           </label>
                         </div>
                       ) : uploadedUrl ? (
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-                          <p style={{ margin: 0, fontSize: 12, color: "#16a34a", wordBreak: "break-all" }}>✓ Uploaded</p>
-                          <div style={{ display: "flex", gap: 12, flexShrink: 0 }}>
-                            <label style={{ fontSize: 12, color: GOLD, fontWeight: 700, cursor: "pointer" }}>
-                              Replace
-                              <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => handlePhoto(slot.key, e.target.files?.[0] || null)} />
-                            </label>
-                            <button
-                              type="button"
-                              onClick={() => handleCancelPhoto(slot.key)}
-                              style={{ fontSize: 12, color: "#dc2626", fontWeight: 700, cursor: "pointer", background: "none", border: "none", padding: 0 }}
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
+                        <p style={{ margin: 0, fontSize: 12, color: "#16a34a" }}>✓ Uploaded</p>
                       ) : (
                         <label style={{ display: "inline-block", fontSize: 13, color: "white", fontWeight: 700, cursor: "pointer", background: GOLD, padding: "10px 18px", borderRadius: 8 }}>
                           Upload Photo
@@ -879,9 +888,6 @@ export default function UploadStepPage() {
                 )
               })}
             </div>
-            <p style={{ fontSize: 11, color: "#9ca3af", margin: "10px 0 20px" }}>
-              Reference photos are pulled from /public/smile-report/{"{"}slot{"}"}.jpg — until added, a placeholder diagram shows instead. Your photos are uploaded and saved as soon as you choose them.
-            </p>
 
             <button onClick={goToStep4} disabled={anyPhotoUploading} style={{ ...primaryBtn, opacity: anyPhotoUploading ? 0.7 : 1, cursor: anyPhotoUploading ? "wait" : "pointer" }}>
               {anyPhotoUploading ? "Uploading…" : "Continue"}
