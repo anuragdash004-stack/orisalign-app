@@ -415,7 +415,7 @@ export default function UploadStepPage() {
   const [photoUploadError, setPhotoUploadError] = useState<Partial<Record<PhotoKey, string>>>({})
 
   // Step 4 — consent, coupon, payment
-  const [consent, setConsent] = useState(false)
+  const [consent, setConsent] = useState(true)
   const [couponInput, setCouponInput] = useState("")
   const [couponApplied, setCouponApplied] = useState<{ code: string; discountedAmount: number } | null>(null)
   const [couponChecking, setCouponChecking] = useState(false)
@@ -919,18 +919,10 @@ export default function UploadStepPage() {
             <Section title="Please Read & Accept">
               <div style={{ background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: 10, padding: 14, fontSize: 12, color: "#4b5563", lineHeight: 1.7 }}>
                 <p style={{ margin: "0 0 8px" }}>
-                  This is a provisional/estimated assessment, not a final diagnosis. Final diagnosis requires an
-                  in-person intraoral scan and impression by a registered dentist.
-                </p>
-                <p style={{ margin: "0 0 8px" }}>
                   We implement industry-standard security safeguards to protect your data in accordance with the DPDP
                   Act, 2023.
                 </p>
-                <p style={{ margin: "0 0 8px" }}>₹399 is non-refundable.</p>
-                <p style={{ margin: 0 }}>
-                  The reviewing doctor's name, qualification, and registration number will be shown once the report is
-                  delivered.
-                </p>
+                <p style={{ margin: 0 }}>₹399 is non-refundable.</p>
               </div>
               <label style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 13, marginTop: 10, cursor: "pointer" }}>
                 <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} style={{ marginTop: 2 }} />
@@ -984,13 +976,14 @@ function BackLink({ onClick, disabled }: { onClick: () => void; disabled?: boole
         display: "inline-flex",
         alignItems: "center",
         gap: 6,
-        background: "none",
+        background: NAVY,
         border: "none",
-        padding: 0,
+        borderRadius: 8,
+        padding: "8px 16px",
         margin: "20px 0 0",
         fontSize: 13,
         fontWeight: 700,
-        color: NAVY,
+        color: "#fff",
         cursor: disabled ? "not-allowed" : "pointer",
         opacity: disabled ? 0.5 : 1,
       }}
