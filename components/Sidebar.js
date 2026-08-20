@@ -68,6 +68,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
     audit:        userRole === "admin",
     lmc:          userRole === "admin",
     onlineReports: userRole === "admin" || userRole === "dentist" || userRole === "orthodontist",
+    doctors:      userRole === "admin",
   };
 
   const expanded = !collapsed || isMobile && !collapsed;
@@ -269,6 +270,14 @@ export default function Sidebar({ collapsed, setCollapsed }) {
               ...(path.startsWith("/online-reports") ? { background: "#ffffff90" } : {}),
             }}>
               {showContent ? "SMILE REPORTS" : ""}
+            </Link>
+          )}
+          {show.doctors && (
+            <Link href="/doctors" style={{
+              ...linkStyle("/doctors"),
+              ...(path.startsWith("/doctors") ? { background: "#ffffff90" } : {}),
+            }}>
+              {showContent ? "DOCTORS" : ""}
             </Link>
           )}
           {show.campaigns && (

@@ -33,13 +33,13 @@ export default function OnlineReportDetailPage() {
   const { id } = useParams();
 
   const [report, setReport] = useState(null);
-  const [reviewers, setReviewers] = useState([]);
+  const [doctors, setDoctors] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const [estimatedDuration, setEstimatedDuration] = useState("");
   const [reviewerNotes, setReviewerNotes] = useState("");
   const [simulatedPlanUrl, setSimulatedPlanUrl] = useState("");
-  const [reviewerId, setReviewerId] = useState("");
+  const [doctorId, setDoctorId] = useState("");
   const [additionalPhotos, setAdditionalPhotos] = useState([]);
   const [addingPhoto, setAddingPhoto] = useState(false);
 
@@ -54,11 +54,11 @@ export default function OnlineReportDetailPage() {
       setEstimatedDuration(data.estimated_duration || "");
       setReviewerNotes(data.reviewer_notes || "");
       setSimulatedPlanUrl(data.simulated_plan_url || "");
-      setReviewerId(data.reviewer_id || "");
+      setDoctorId(data.doctor_id || "");
       setAdditionalPhotos(data.additional_photo_urls || []);
     }
-    const { data: revs } = await supabase.from("report_reviewers").select("*").eq("active", true);
-    setReviewers(revs || []);
+    const { data: docs } = await supabase.from("doctors").select("*").eq("active", true).order("name");
+    setDoctors(docs || []);
     setLoading(false);
   };
 
@@ -76,7 +76,7 @@ export default function OnlineReportDetailPage() {
   };
 
   const submitReport = async () => {
-    if (!reviewerId) { alert("Please select the reviewer before submitting."); return; }
+    if (!doctorId) { alert("Please select the reviewing doctor before submitting."); return; }
     setSubmitting(true);
     setNotice(null);
     try {
@@ -87,7 +87,7 @@ export default function OnlineReportDetailPage() {
           estimated_duration: estimatedDuration || null,
           reviewer_notes: reviewerNotes || null,
           simulated_plan_url: simulatedPlanUrl || null,
-          reviewer_id: reviewerId,
+          doctor_id: doctorId,
           additional_photo_urls: additionalPhotos,
           reviewed_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
@@ -217,13 +217,16 @@ export default function OnlineReportDetailPage() {
         </div>
 
         <div style={{ marginBottom: 16 }}>
-          <span style={label}>Reviewer</span>
-          <select style={input} value={reviewerId} onChange={(e) => setReviewerId(e.target.value)}>
-            <option value="">Select reviewer…</option>
-            {reviewers.map((r) => (
-              <option key={r.id} value={r.id}>{r.name} — {r.designation}</option>
+          <span style={label}>Reviewing Doctor</span>
+          <select style={input} value={doctorId} onChange={(e) => setDoctorId(e.target.value)}>
+            <option value="">Select doctor…</option>
+            {doctors.map((d) => (
+              <option key={d.id} value={d.id}>{d.name} — {d.designation}{d.location ? ` (${d.location})` : ""}</option>
             ))}
           </select>
+          <p style={{ margin: "6px 0 0", fontSize: 11, color: "#9ca3af" }}>
+            Manage doctors (name, designation, registration number, location) in the Doctors section.
+          </p>
         </div>
 
         <button

@@ -21,18 +21,18 @@ type OnlineReport = {
   estimated_duration: string | null
   reviewer_notes: string | null
   simulated_plan_url: string | null
-  reviewer_id: string | null
+  doctor_id: string | null
   plan_choice: string | null
 }
 
-type Reviewer = { id: string; name: string; designation: string; registration_number: string | null }
+type Doctor = { id: string; name: string; designation: string; registration_number: string | null; location: string | null }
 
 export default function ReportDashboardPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
 
   const [report, setReport] = useState<OnlineReport | null>(null)
-  const [reviewer, setReviewer] = useState<Reviewer | null>(null)
+  const [doctor, setDoctor] = useState<Doctor | null>(null)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -40,9 +40,9 @@ export default function ReportDashboardPage() {
   const load = async () => {
     const { data } = await supabase!.from("online_reports").select("*").eq("id", id).single()
     setReport(data)
-    if (data?.reviewer_id) {
-      const { data: rev } = await supabase!.from("report_reviewers").select("*").eq("id", data.reviewer_id).single()
-      setReviewer(rev)
+    if (data?.doctor_id) {
+      const { data: doc } = await supabase!.from("doctors").select("*").eq("id", data.doctor_id).single()
+      setDoctor(doc)
     }
     setLoading(false)
   }
@@ -146,12 +146,14 @@ export default function ReportDashboardPage() {
         {report.status !== "new_submission" && (
           <>
             <Card title="Your Report">
-              {reviewer && (
+              {doctor && (
                 <div style={{ marginBottom: 14, padding: 12, background: "#f9fafb", borderRadius: 10 }}>
-                  <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: NAVY }}>{reviewer.name}</p>
-                  <p style={{ margin: "2px 0 0", fontSize: 12, color: "#6b7280" }}>{reviewer.designation}</p>
-                  {reviewer.registration_number && (
-                    <p style={{ margin: "2px 0 0", fontSize: 11, color: "#9ca3af" }}>Reg. No: {reviewer.registration_number}</p>
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: NAVY }}>{doctor.name}</p>
+                  <p style={{ margin: "2px 0 0", fontSize: 12, color: "#6b7280" }}>
+                    {doctor.designation}{doctor.location ? ` · ${doctor.location}` : ""}
+                  </p>
+                  {doctor.registration_number && (
+                    <p style={{ margin: "2px 0 0", fontSize: 11, color: "#9ca3af" }}>Reg. No: {doctor.registration_number}</p>
                   )}
                 </div>
               )}
