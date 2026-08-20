@@ -322,10 +322,44 @@ export default function UploadStepPage() {
   }
 
   /**
-   * Fired when the patient leaves the phone field at Step 1. If this number
-   * matches an incomplete (unpaid) draft, restores everything they'd
-   * already filled in — including Step 2 — so they don't have to redo it
-   * after dropping off mid-flow.
+   * Restores everything from Step 2 onward (conditions + dental
+   * self-assessment) that a matched draft already had saved. Deliberately
+   * does NOT touch fullName/sex/age — those should always reflect whatever
+   * the patient typed just now, even if it differs from what's on the old
+   * draft, and get saved as the latest Step 1 info for that same record.
+   */
+  const applyDraftStep2Fields = (draft: {
+    conditions?: Record<string, unknown> | null
+    known_cavities?: string | null
+    food_lodgement?: string | null
+    tooth_mobility?: string | null
+    pain?: string | null
+    other_concerns?: string | null
+  }) => {
+    const cond = draft.conditions || {}
+    const { other, ...boolFlags } = cond
+    setConditions(boolFlags as Record<string, boolean>)
+    if (typeof other === "string" && other.trim()) {
+      setConditionOtherChecked(true)
+      setConditionOtherText(other)
+    } else {
+      setConditionOtherChecked(false)
+      setConditionOtherText("")
+    }
+
+    setCavityLocations(parseLocations(draft.known_cavities))
+    setFoodLodgementLocations(parseLocations(draft.food_lodgement))
+    setToothMobilityLocations(parseLocations(draft.tooth_mobility))
+    setPainLocations(parseLocations(draft.pain))
+    setOtherConcerns(draft.other_concerns || "")
+  }
+
+  /**
+   * Fired when the patient leaves the phone field at Step 1 — purely
+   * informational (shows the "welcome back" banner). The authoritative
+   * lookup that actually resolves the draft id and restores Step 2 data
+   * happens in goToStep2 itself, right before saving, so it can never race
+   * with — or be skipped ahead of — the Continue click.
    */
   const checkForDraft = async () => {
     const trimmed = phone.trim()
@@ -334,32 +368,9 @@ export default function UploadStepPage() {
     try {
       const res = await fetch(`/api/online-report/find-draft?phone=${encodeURIComponent(trimmed)}`)
       const data = await res.json()
-      if (!data.found) return
-
-      const draft = data.draft
-      setReportId(draft.id)
-      if (draft.full_name) setFullName(draft.full_name)
-      if (draft.sex) setSex(draft.sex)
-      if (draft.age != null) setAge(String(draft.age))
-
-      const cond = draft.conditions || {}
-      const { other, ...boolFlags } = cond
-      setConditions(boolFlags)
-      if (typeof other === "string" && other.trim()) {
-        setConditionOtherChecked(true)
-        setConditionOtherText(other)
-      }
-
-      setCavityLocations(parseLocations(draft.known_cavities))
-      setFoodLodgementLocations(parseLocations(draft.food_lodgement))
-      setToothMobilityLocations(parseLocations(draft.tooth_mobility))
-      setPainLocations(parseLocations(draft.pain))
-      setOtherConcerns(draft.other_concerns || "")
-
-      setResumedDraft(true)
+      if (data.found) setResumedDraft(true)
     } catch {
-      // Silent — this is a convenience lookup, not a required step. Worst
-      // case the patient just fills the form fresh, same as before.
+      // Silent — this is a convenience preview, not a required step.
     } finally {
       setCheckingDraft(false)
     }
@@ -403,7 +414,10 @@ export default function UploadStepPage() {
       // and can still be in flight if Continue is clicked right after
       // typing the phone number, which previously raced this save and
       // created a duplicate row under a fresh id instead of reusing the
-      // patient's existing draft.
+      // patient's existing draft. When a draft is found, also pull its
+      // Step 2 answers into local state right now — otherwise, if the
+      // patient proceeds straight through Step 2 without editing anything,
+      // Step 4 would submit empty values and blank out their old answers.
       let idToUse = reportId
       try {
         const draftRes = await fetch(`/api/online-report/find-draft?phone=${encodeURIComponent(phone.trim())}`)
@@ -411,6 +425,8 @@ export default function UploadStepPage() {
         if (draftData.found) {
           idToUse = draftData.draft.id
           if (idToUse !== reportId) setReportId(idToUse)
+          applyDraftStep2Fields(draftData.draft)
+          setResumedDraft(true)
         }
       } catch {
         // Fall back to the current reportId — worst case a fresh row.
