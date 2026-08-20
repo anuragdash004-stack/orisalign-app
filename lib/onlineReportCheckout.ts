@@ -31,7 +31,8 @@ export type ReportFormData = {
   toothMobility?: string | null
   pain?: string | null
   otherConcerns?: string | null
-  photoUrls: string[]
+  /** Keyed by photo slot (e.g. "front_bite"), not a positional array — see app/api/online-report/save-photo. */
+  photoUrls: Record<string, string>
 }
 
 export type CheckoutResult =

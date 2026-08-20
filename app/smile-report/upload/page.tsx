@@ -81,6 +81,19 @@ function UploadedPreview({ file }: { file: File }) {
   )
 }
 
+/**
+ * Preview for a photo restored from a resumed draft — there's no local
+ * File to build an object URL from, only the already-uploaded public URL.
+ */
+function RemotePreview({ url }: { url: string }) {
+  return (
+    <div style={{ width: REFERENCE_IMAGE_SIZE, height: REFERENCE_IMAGE_SIZE, flexShrink: 0, background: "#fafafa", borderRadius: 10, overflow: "hidden", marginTop: 8 }}>
+      {/* eslint-disable-next-line @next/next/no-img-element -- remote Storage URL, next/image config for this host isn't set up */}
+      <img src={url} alt="Your photo" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
+    </div>
+  )
+}
+
 const CONDITION_FIELDS = [
   { key: "blood_pressure", label: "Blood pressure" },
   { key: "sugar_diabetes", label: "Sugar / Diabetes" },
@@ -337,8 +350,10 @@ export default function UploadStepPage() {
     tooth_mobility?: string | null
     pain?: string | null
     other_concerns?: string | null
+    photo_urls?: Record<string, string> | null
   }) => {
     setChiefComplaint(draft.chief_complaint || "")
+    if (draft.photo_urls) setPhotoUrls(draft.photo_urls)
 
     const cond = draft.conditions || {}
     const { other, ...boolFlags } = cond
@@ -494,11 +509,31 @@ export default function UploadStepPage() {
       if (uploadError) throw new Error(`Failed to upload ${slot.label}: ${uploadError.message}`)
       const { data } = supabase!.storage.from("online-report-photos").getPublicUrl(path)
       setPhotoUrls((p) => ({ ...p, [key]: data.publicUrl }))
+
+      // Persist onto the draft row right away — not deferred to Step 4 — so
+      // a patient who drops off after this point can still resume with this
+      // photo already showing next time, since the file itself is already
+      // sitting in Storage but the row wouldn't otherwise reference it.
+      fetch("/api/online-report/save-photo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reportId, slotKey: key, url: data.publicUrl }),
+      }).catch(() => {
+        // Non-fatal — the photo is uploaded and usable this session either
+        // way; worst case is just that resuming later won't show it.
+      })
     } catch (err: unknown) {
       setPhotoUploadError((p) => ({ ...p, [key]: err instanceof Error ? err.message : "Upload failed" }))
     } finally {
       setPhotoUploading((p) => ({ ...p, [key]: false }))
     }
+  }
+
+  /** Clears a photo (freshly uploaded or restored from a resumed draft) so the patient can pick a different one. */
+  const handleCancelPhoto = (key: PhotoKey) => {
+    setPhotos((p) => ({ ...p, [key]: undefined }))
+    setPhotoUrls((p) => ({ ...p, [key]: undefined }))
+    setPhotoUploadError((p) => ({ ...p, [key]: undefined }))
   }
 
   const applyCoupon = async () => {
@@ -552,7 +587,7 @@ export default function UploadStepPage() {
         toothMobility: serializeLocations(toothMobilityLocations),
         pain: serializeLocations(painLocations),
         otherConcerns: otherConcerns.trim() || null,
-        photoUrls: PHOTO_SLOTS.map((s) => photoUrls[s.key]!),
+        photoUrls: photoUrls as Record<string, string>,
       }
 
       if (couponApplied && couponApplied.discountedAmount === 0) {
@@ -759,7 +794,7 @@ export default function UploadStepPage() {
                     <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
                       <div>
                         <ReferenceImage photoKey={slot.key} />
-                        {file && <UploadedPreview file={file} />}
+                        {file ? <UploadedPreview file={file} /> : uploadedUrl ? <RemotePreview url={uploadedUrl} /> : null}
                       </div>
                       <div style={{ minWidth: 0 }}>
                         <p style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 800, color: NAVY }}>{slot.label}</p>
@@ -778,12 +813,21 @@ export default function UploadStepPage() {
                           </label>
                         </div>
                       ) : uploadedUrl ? (
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
                           <p style={{ margin: 0, fontSize: 12, color: "#16a34a", wordBreak: "break-all" }}>✓ Uploaded</p>
-                          <label style={{ fontSize: 12, color: GOLD, fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>
-                            Replace
-                            <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => handlePhoto(slot.key, e.target.files?.[0] || null)} />
-                          </label>
+                          <div style={{ display: "flex", gap: 12, flexShrink: 0 }}>
+                            <label style={{ fontSize: 12, color: GOLD, fontWeight: 700, cursor: "pointer" }}>
+                              Replace
+                              <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => handlePhoto(slot.key, e.target.files?.[0] || null)} />
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => handleCancelPhoto(slot.key)}
+                              style={{ fontSize: 12, color: "#dc2626", fontWeight: 700, cursor: "pointer", background: "none", border: "none", padding: 0 }}
+                            >
+                              Cancel
+                            </button>
+                          </div>
                         </div>
                       ) : (
                         <label style={{ display: "inline-block", fontSize: 13, color: "white", fontWeight: 700, cursor: "pointer", background: GOLD, padding: "10px 18px", borderRadius: 8 }}>

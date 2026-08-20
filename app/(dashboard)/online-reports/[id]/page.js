@@ -6,6 +6,14 @@ import { getSupabaseClient } from "@/lib/supabaseClient";
 
 const supabase = getSupabaseClient();
 
+const PHOTO_SLOT_LABELS = {
+  front_bite: "Front Bite",
+  upper_arch: "Upper Arch",
+  lower_arch: "Lower Arch",
+  left_buccal: "Left Side Bite",
+  right_buccal: "Right Side Bite",
+};
+
 const CONDITION_LABELS = {
   none: "None",
   blood_pressure: "Blood pressure",
@@ -167,12 +175,13 @@ export default function OnlineReportDetailPage() {
       <div style={cardStyle}>
         <h3 style={{ margin: "0 0 12px", fontSize: 14, fontWeight: 800, color: "#111827" }}>Uploaded Photos</h3>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 10 }}>
-          {(report.photo_urls || []).map((url, i) => (
-            <a key={i} href={url} target="_blank" rel="noopener noreferrer">
-              <img src={url} alt={`Photo ${i + 1}`} style={{ width: "100%", height: 120, objectFit: "cover", borderRadius: 8, border: "1px solid #e5e7eb" }} />
+          {Object.entries(report.photo_urls || {}).map(([slotKey, url]) => (
+            <a key={slotKey} href={url} target="_blank" rel="noopener noreferrer" title={PHOTO_SLOT_LABELS[slotKey] || slotKey}>
+              <img src={url} alt={PHOTO_SLOT_LABELS[slotKey] || slotKey} style={{ width: "100%", height: 120, objectFit: "contain", background: "#fafafa", borderRadius: 8, border: "1px solid #e5e7eb" }} />
+              <p style={{ margin: "4px 0 0", fontSize: 11, color: "#6b7280", textAlign: "center" }}>{PHOTO_SLOT_LABELS[slotKey] || slotKey}</p>
             </a>
           ))}
-          {(report.photo_urls || []).length === 0 && <p style={{ fontSize: 13, color: "#9ca3af" }}>No photos.</p>}
+          {Object.keys(report.photo_urls || {}).length === 0 && <p style={{ fontSize: 13, color: "#9ca3af" }}>No photos.</p>}
         </div>
       </div>
 

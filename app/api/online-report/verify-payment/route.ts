@@ -29,7 +29,7 @@ type ReportFormData = {
   toothMobility?: string | null
   pain?: string | null
   otherConcerns?: string | null
-  photoUrls: string[]
+  photoUrls: Record<string, string>
 }
 
 /**
@@ -95,7 +95,7 @@ export async function POST(req: Request) {
         tooth_mobility: fd.toothMobility ?? null,
         pain: fd.pain ?? null,
         other_concerns: fd.otherConcerns ?? null,
-        photo_urls: fd.photoUrls || [],
+        photo_urls: fd.photoUrls || {},
         payment_amount: amountPaidRupees,
         payment_status: "paid",
         razorpay_order_id,

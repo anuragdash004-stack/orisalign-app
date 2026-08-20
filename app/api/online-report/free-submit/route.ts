@@ -50,7 +50,7 @@ export async function POST(req: Request) {
       tooth_mobility: formData.toothMobility ?? null,
       pain: formData.pain ?? null,
       other_concerns: formData.otherConcerns ?? null,
-      photo_urls: formData.photoUrls || [],
+      photo_urls: formData.photoUrls || {},
       coupon_code: couponCode.trim().toUpperCase(),
       payment_amount: 0,
       payment_status: "free_coupon",
