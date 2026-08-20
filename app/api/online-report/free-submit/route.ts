@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { validateAndApplyCoupon, incrementCouponUsage } from "@/lib/onlineReportPricing"
 import { sendEmail } from "@/lib/notifications/resend"
+import { markAppointmentLeadPaid } from "@/lib/onlineReportLeadSync"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -63,6 +64,7 @@ export async function POST(req: Request) {
     }
 
     await incrementCouponUsage(supabase, result.coupon.id).catch(() => {})
+    markAppointmentLeadPaid(supabase, reportId).catch((err) => console.error("[online-report free-submit] tracker sync failed", err))
 
     if (ADMIN_EMAIL) {
       await sendEmail({

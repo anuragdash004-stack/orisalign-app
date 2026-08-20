@@ -5,6 +5,7 @@ import { createClient } from "@supabase/supabase-js"
 import { incrementCouponUsage, type AmountType } from "@/lib/onlineReportPricing"
 import { sendEmail } from "@/lib/notifications/resend"
 import { notifyImpressionPaid, notifyPlanPaid } from "@/lib/notifications/notify"
+import { markAppointmentLeadPaid } from "@/lib/onlineReportLeadSync"
 
 // NOTE: this currently uses the LIVE Razorpay key already configured in this
 // project — see app/api/online-report/create-order/route.ts for details.
@@ -109,6 +110,7 @@ export async function POST(req: Request) {
       }
 
       if (couponId) await incrementCouponUsage(supabase, couponId).catch(() => {})
+      markAppointmentLeadPaid(supabase, reportId).catch((err) => console.error("[online-report verify-payment] tracker sync failed", err))
 
       if (ADMIN_EMAIL) {
         await sendEmail({

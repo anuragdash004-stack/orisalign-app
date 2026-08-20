@@ -276,6 +276,8 @@ export default function UploadStepPage() {
   const [age, setAge] = useState("")
   const [checkingDraft, setCheckingDraft] = useState(false)
   const [resumedDraft, setResumedDraft] = useState(false)
+  /** Set when this phone number already has a completed (paid) report — blocks re-submission below. */
+  const [existingMemberReportId, setExistingMemberReportId] = useState<string | null>(null)
 
   // Step 2 — chief complaint + conditions + dental self-assessment
   const [chiefComplaint, setChiefComplaint] = useState("")
@@ -401,9 +403,17 @@ export default function UploadStepPage() {
     if (!trimmed) return
     setCheckingDraft(true)
     try {
-      const res = await fetch(`/api/online-report/find-draft?phone=${encodeURIComponent(trimmed)}`)
-      const data = await res.json()
-      if (data.found) setResumedDraft(true)
+      const [draftRes, memberRes] = await Promise.all([
+        fetch(`/api/online-report/find-draft?phone=${encodeURIComponent(trimmed)}`),
+        fetch(`/api/online-report/check-member?phone=${encodeURIComponent(trimmed)}`),
+      ])
+      const [draftData, memberData] = await Promise.all([draftRes.json(), memberRes.json()])
+      if (memberData.isMember) {
+        setExistingMemberReportId(memberData.reportId)
+      } else {
+        setExistingMemberReportId(null)
+        if (draftData.found) setResumedDraft(true)
+      }
     } catch {
       // Silent — this is a convenience preview, not a required step.
     } finally {
@@ -439,12 +449,22 @@ export default function UploadStepPage() {
 
   const goToStep2 = async () => {
     setError(null)
+    setExistingMemberReportId(null)
     if (!fullName.trim() || !phone.trim() || !sex || !age) {
       setError("Please fill in your full name, phone number, gender and age.")
       return
     }
     setSavingLead(true)
     try {
+      // Authoritative check, not just the onBlur preview — a phone number
+      // with a completed (paid) report doesn't get a new submission at all.
+      const memberRes = await fetch(`/api/online-report/check-member?phone=${encodeURIComponent(phone.trim())}`)
+      const memberData = await memberRes.json()
+      if (memberData.isMember) {
+        setExistingMemberReportId(memberData.reportId)
+        return
+      }
+
       // Re-resolve the correct id right before saving, rather than trusting
       // reportId state — the onBlur draft lookup (checkForDraft) is async
       // and can still be in flight if Continue is clicked right after
@@ -714,7 +734,7 @@ export default function UploadStepPage() {
 
             <Section>
               <Input label="Full Name" value={fullName} onChange={setFullName} />
-              <Input label="Phone Number" value={phone} onChange={setPhone} onBlur={checkForDraft} type="tel" />
+              <Input label="Phone Number" value={phone} onChange={(v) => { setPhone(v); setExistingMemberReportId(null) }} onBlur={checkForDraft} type="tel" />
               {checkingDraft && <p style={{ margin: "-6px 0 10px", fontSize: 11, color: "#9ca3af" }}>Checking for a previous submission…</p>}
               <div style={{ marginBottom: 10 }}>
                 <select value={sex} onChange={(e) => setSex(e.target.value)} style={{ ...inputStyle, color: sex ? "#111827" : "#9ca3af" }}>
@@ -736,6 +756,18 @@ export default function UploadStepPage() {
             <button onClick={goToStep2} disabled={savingLead} style={{ ...primaryBtn, opacity: savingLead ? 0.7 : 1, cursor: savingLead ? "wait" : "pointer" }}>
               {savingLead ? "Saving…" : "Continue"}
             </button>
+
+            {existingMemberReportId && (
+              <div style={{ background: "#fffbeb", border: "1px solid #fde68a", color: "#92400e", borderRadius: 10, padding: 14, fontSize: 13, marginTop: 14, textAlign: "center" }}>
+                <p style={{ margin: "0 0 10px", fontWeight: 700 }}>Already a member. Login instead.</p>
+                <button
+                  onClick={() => router.push(`/report/${existingMemberReportId}`)}
+                  style={{ background: NAVY, color: "white", border: "none", borderRadius: 8, padding: "10px 20px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
+                >
+                  Go to Your Report
+                </button>
+              </div>
+            )}
           </>
         )}
 

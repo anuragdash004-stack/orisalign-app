@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { sendEmail } from "@/lib/notifications/resend"
+import { syncUnpaidAppointmentLead } from "@/lib/onlineReportLeadSync"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -43,6 +44,12 @@ export async function POST(req: Request) {
       console.error("[online-report lead] upsert failed", upsertError)
       return NextResponse.json({ error: "Failed to save your details" }, { status: 500 })
     }
+
+    // Mirrors this lead into the Lead Tracker (Online Smile Report Leads
+    // section) — never blocks the patient-facing save if it fails.
+    syncUnpaidAppointmentLead(supabase, { reportId, fullName, phone, sex, age }).catch((err) => {
+      console.error("[online-report lead] tracker sync failed", err)
+    })
 
     if (ADMIN_EMAIL) {
       await sendEmail({
