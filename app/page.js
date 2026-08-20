@@ -346,7 +346,7 @@ export default function LandingPage() {
                 <span className="text-base sm:text-lg font-semibold" style={{ color: INK2, textDecoration: 'line-through' }}>₹999</span>
               </div>
               <p className="text-sm mb-5" style={{ color: INK2 }}>
-                Upload teeth photographs and get your personalised provisional plan from our smile expert.
+                Upload teeth images and get your personalised provisional plan from our smile expert within 24 hours.
               </p>
               <span className="inline-flex items-center justify-center gap-2 text-sm font-bold px-6 py-2.5 rounded-full transition-colors" style={{ background: GOLD, color: '#fff' }}>
                 Book now

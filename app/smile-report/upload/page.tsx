@@ -601,7 +601,7 @@ export default function UploadStepPage() {
         <div style={{ maxWidth: 480, background: "white", borderRadius: 20, padding: "40px 32px", textAlign: "center", boxShadow: "0 20px 60px rgba(0,0,0,0.08)" }}>
           <h1 style={{ color: NAVY, fontSize: 22, margin: "0 0 12px" }}>Thank you for your payment.</h1>
           <p style={{ color: "#374151", fontSize: 14, lineHeight: 1.7, margin: "0 0 20px" }}>
-            Your online report will be generated in 24–48 hours. We'll notify you by email/WhatsApp when it's ready.
+            Soon a smile expert shall be assigned and your personalised smile report will be generated within 24 hours.
           </p>
           <button
             onClick={() => router.push(`/report/${reportId}`)}
