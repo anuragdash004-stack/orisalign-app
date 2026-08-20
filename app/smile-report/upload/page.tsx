@@ -423,6 +423,7 @@ export default function UploadStepPage() {
 
   const [submitting, setSubmitting] = useState(false)
   const [savingLead, setSavingLead] = useState(false)
+  const [savingStep2, setSavingStep2] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState(false)
 
@@ -480,10 +481,36 @@ export default function UploadStepPage() {
     }
   }
 
-  const goToStep3 = () => {
+  const goToStep3 = async () => {
     setError(null)
-    setStep(3)
-    window.scrollTo({ top: 0, behavior: "smooth" })
+    setSavingStep2(true)
+    try {
+      const res = await fetch("/api/online-report/save-step2", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reportId,
+          chiefComplaint: chiefComplaint.trim() || null,
+          conditions: { ...conditions, other: conditionOtherChecked ? conditionOtherText.trim() : "" },
+          knownCavities: serializeLocations(cavityLocations),
+          foodLodgement: serializeLocations(foodLodgementLocations),
+          toothMobility: serializeLocations(toothMobilityLocations),
+          pain: serializeLocations(painLocations),
+          otherConcerns: otherConcerns.trim() || null,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.success) {
+        setError(data.error || "Couldn't save — please try again.")
+        return
+      }
+      setStep(3)
+      window.scrollTo({ top: 0, behavior: "smooth" })
+    } catch {
+      setError("Couldn't reach the server — please check your connection and try again.")
+    } finally {
+      setSavingStep2(false)
+    }
   }
 
   const goToStep4 = () => {
@@ -781,7 +808,9 @@ export default function UploadStepPage() {
               )}
             </Section>
 
-            <button onClick={goToStep3} style={primaryBtn}>Continue</button>
+            <button onClick={goToStep3} disabled={savingStep2} style={{ ...primaryBtn, opacity: savingStep2 ? 0.7 : 1, cursor: savingStep2 ? "wait" : "pointer" }}>
+              {savingStep2 ? "Saving…" : "Continue"}
+            </button>
           </>
         )}
 
