@@ -28,6 +28,24 @@ const STATUS_COLORS = {
   treatment_started: { bg: "#052e16", color: "#bbf7d0" },
 };
 
+// Three sections:
+//  - Unpaid Leads: Step 1 completed (or in progress) but payment never went through.
+//  - Paid Leads: payment received, waiting on the reviewer to submit a report.
+//  - Completed: report has been reviewed and delivered — status has moved
+//    past "new_submission", whatever stage it's advanced to since (impression,
+//    plan, treatment...) still counts as "report dispatched" for this grouping.
+function categorize(report) {
+  if (report.status !== "new_submission") return "completed";
+  if (report.payment_status === "paid" || report.payment_status === "free_coupon") return "paid";
+  return "unpaid";
+}
+
+const SECTIONS = [
+  { key: "unpaid", label: "Unpaid Leads", empty: "No unpaid leads." },
+  { key: "paid", label: "Paid Leads", empty: "No paid leads awaiting a report." },
+  { key: "completed", label: "Completed (Report Dispatched)", empty: "No completed reports yet." },
+];
+
 export default function OnlineReportsListPage() {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -36,7 +54,7 @@ export default function OnlineReportsListPage() {
     const load = async () => {
       const { data, error } = await supabase
         .from("online_reports")
-        .select("id, full_name, patient_phone, status, created_at, payment_amount")
+        .select("id, full_name, patient_phone, status, payment_status, created_at, payment_amount")
         .order("created_at", { ascending: false });
       if (error) console.error("Error loading online reports:", error);
       setReports(data || []);
@@ -47,44 +65,61 @@ export default function OnlineReportsListPage() {
 
   if (loading) return <div style={{ padding: 40, textAlign: "center", color: "#6b7280" }}>Loading…</div>;
 
+  const grouped = { unpaid: [], paid: [], completed: [] };
+  for (const r of reports) grouped[categorize(r)].push(r);
+
   return (
     <div style={{ padding: 24, maxWidth: 900 }}>
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ fontSize: 28, fontWeight: 700, color: "#111827", margin: 0 }}>Online Smile Reports</h1>
         <p style={{ fontSize: 14, color: "#6b7280", margin: "4px 0 0" }}>
-          {reports.length} submission{reports.length === 1 ? "" : "s"}, newest first.
+          {reports.length} submission{reports.length === 1 ? "" : "s"} total.
         </p>
       </div>
 
-      {reports.length === 0 ? (
-        <div style={{ padding: "40px 24px", background: "white", borderRadius: 12, border: "1px solid #e5e7eb", textAlign: "center", color: "#9ca3af" }}>
-          No submissions yet.
-        </div>
-      ) : (
-        <div style={{ display: "grid", gap: 10 }}>
-          {reports.map((r) => {
-            const c = STATUS_COLORS[r.status] || { bg: "#f3f4f6", color: "#6b7280" };
-            return (
-              <Link
-                key={r.id}
-                href={`/online-reports/${r.id}`}
-                style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", background: "white", border: "1px solid #e5e7eb", borderRadius: 12, padding: "14px 18px", textDecoration: "none", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}
-              >
-                <div style={{ flex: 1, minWidth: 160 }}>
-                  <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#111827" }}>{r.full_name}</p>
-                  <p style={{ margin: "2px 0 0", fontSize: 12, color: "#6b7280" }}>{r.patient_phone || "—"} · ₹{r.payment_amount ?? 0}</p>
+      <div style={{ display: "grid", gap: 24 }}>
+        {SECTIONS.map((s) => {
+          const rows = grouped[s.key];
+          return (
+            <div key={s.key}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "#111827" }}>{s.label}</h2>
+                <span style={{ fontSize: 12, fontWeight: 700, color: "#6b7280", background: "#f3f4f6", borderRadius: 99, padding: "2px 10px" }}>{rows.length}</span>
+                <div style={{ flex: 1, height: 1, background: "#eee" }} />
+              </div>
+              {rows.length === 0 ? (
+                <div style={{ padding: 14, background: "white", border: "1px dashed #e5e7eb", borderRadius: 12, textAlign: "center", color: "#9ca3af", fontSize: 13 }}>
+                  {s.empty}
                 </div>
-                <span style={{ padding: "4px 12px", borderRadius: 99, background: c.bg, color: c.color, fontSize: 11, fontWeight: 700 }}>
-                  {STATUS_LABELS[r.status] || r.status}
-                </span>
-                <span style={{ fontSize: 11, color: "#9ca3af" }}>
-                  {new Date(r.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-                </span>
-              </Link>
-            );
-          })}
-        </div>
-      )}
+              ) : (
+                <div style={{ display: "grid", gap: 10 }}>
+                  {rows.map((r) => {
+                    const c = STATUS_COLORS[r.status] || { bg: "#f3f4f6", color: "#6b7280" };
+                    return (
+                      <Link
+                        key={r.id}
+                        href={`/online-reports/${r.id}`}
+                        style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", background: "white", border: "1px solid #e5e7eb", borderRadius: 12, padding: "14px 18px", textDecoration: "none", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}
+                      >
+                        <div style={{ flex: 1, minWidth: 160 }}>
+                          <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#111827" }}>{r.full_name}</p>
+                          <p style={{ margin: "2px 0 0", fontSize: 12, color: "#6b7280" }}>{r.patient_phone || "—"} · ₹{r.payment_amount ?? 0}</p>
+                        </div>
+                        <span style={{ padding: "4px 12px", borderRadius: 99, background: c.bg, color: c.color, fontSize: 11, fontWeight: 700 }}>
+                          {STATUS_LABELS[r.status] || r.status}
+                        </span>
+                        <span style={{ fontSize: 11, color: "#9ca3af" }}>
+                          {new Date(r.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                        </span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
