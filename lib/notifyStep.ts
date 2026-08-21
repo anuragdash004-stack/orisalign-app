@@ -313,8 +313,8 @@ export async function sendStepNotification(params: SendStepNotificationParams): 
   }
 
   const recipientEmail = appt.email || emailOverride || null
-  if (!recipientEmail) {
-    return { success: false, skipped: true, reason: "No email on record" }
+  if (!recipientEmail && !appt.phone) {
+    return { success: false, skipped: true, reason: "No email or phone on record" }
   }
 
   // Admin-editable template (Message Templates page) overrides the built-in
@@ -378,19 +378,21 @@ export async function sendStepNotification(params: SendStepNotificationParams): 
 
   const html = buildEmailHtml({ name: appt.name || "Patient", shortId, journeyUrl, content: mergedContent, detailsBlock })
 
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-    },
-    body: JSON.stringify({
-      from: "OrisAlign <no-reply@orisalign.com>",
-      to: [recipientEmail],
-      subject: mergedContent.subject,
-      html,
-    }),
-  })
+  const res = recipientEmail
+    ? await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+        },
+        body: JSON.stringify({
+          from: "OrisAlign <no-reply@orisalign.com>",
+          to: [recipientEmail],
+          subject: mergedContent.subject,
+          html,
+        }),
+      })
+    : null
 
   // WhatsApp fires alongside email, best-effort — a failure here (missing
   // phone, template not yet approved, AiSensy error) never blocks the email
@@ -428,7 +430,7 @@ export async function sendStepNotification(params: SendStepNotificationParams): 
       .catch(() => {})
   }
 
-  if (!res.ok) {
+  if (res && !res.ok) {
     const errText = await res.text()
     return { success: false, error: "Resend error: " + errText }
   }
