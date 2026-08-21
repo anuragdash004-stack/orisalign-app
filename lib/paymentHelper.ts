@@ -345,17 +345,25 @@ export async function recordPaymentReceived(params: RecordPaymentParams): Promis
     userAgent,
   });
 
-  // Fire-and-forget — a flaky email send should never fail the payment
-  // itself, since amount_paid has already been committed above.
-  sendPaymentReceivedEmail({
-    name: (appt as { name?: string }).name || "Patient",
-    appointmentId,
-    amountPaid,
-    paymentMethod,
-    newTotalPaid,
-    newAmountToPay,
-    paymentStatus,
-  }).catch(() => {});
+  // Awaited deliberately, not fire-and-forget: on Vercel an un-awaited
+  // promise can get killed the instant the response is sent, since the
+  // serverless execution context isn't guaranteed to survive past that
+  // point. Wrapped in try/catch (on top of sendEmail/sendWhatsApp's own
+  // never-throws contracts) so a flaky send still never fails the payment
+  // itself — amount_paid has already been committed above.
+  try {
+    await sendPaymentReceivedEmail({
+      name: (appt as { name?: string }).name || "Patient",
+      appointmentId,
+      amountPaid,
+      paymentMethod,
+      newTotalPaid,
+      newAmountToPay,
+      paymentStatus,
+    });
+  } catch {
+    // best-effort only
+  }
 
   // WhatsApp receipt to the patient — staff already gets the email above;
   // this is the patient-facing confirmation, which previously didn't exist
@@ -375,38 +383,42 @@ export async function recordPaymentReceived(params: RecordPaymentParams): Promis
   // skipped — email above is their only patient-facing receipt.
   const patientPhone = (appt as { phone?: string }).phone;
   if (patientPhone) {
-    if (monthlyPlan) {
-      const couponsTotal = ((pd.applied_coupons as { discount?: number }[]) || [])
-        .reduce((sum, c) => sum + (Number(c.discount) || 0), 0);
-      const crossedMonths = applyCouponDiscount(monthlyPlan, couponsTotal).months.filter(
-        (m) => previouslyPaid < m.discountedCumulative && newTotalPaid >= m.discountedCumulative,
-      );
-      const monthNum = crossedMonths.slice(-1)[0]?.num;
-      if (monthNum) {
-        sendWhatsApp({
-          campaignName: "orisalign_payment_done",
-          destination: patientPhone,
-          userName: (appt as { name?: string }).name || "Patient",
-          templateParams: [String(monthNum)],
-        }).catch(() => {});
+    try {
+      if (monthlyPlan) {
+        const couponsTotal = ((pd.applied_coupons as { discount?: number }[]) || [])
+          .reduce((sum, c) => sum + (Number(c.discount) || 0), 0);
+        const crossedMonths = applyCouponDiscount(monthlyPlan, couponsTotal).months.filter(
+          (m) => previouslyPaid < m.discountedCumulative && newTotalPaid >= m.discountedCumulative,
+        );
+        const monthNum = crossedMonths.slice(-1)[0]?.num;
+        if (monthNum) {
+          await sendWhatsApp({
+            campaignName: "orisalign_payment_done",
+            destination: patientPhone,
+            userName: (appt as { name?: string }).name || "Patient",
+            templateParams: [String(monthNum)],
+          });
+        }
+      } else if (isNewModel) {
+        const choice = pd.provisional_payment_choice as ProvisionalPaymentChoice | undefined;
+        if (choice === "first_month") {
+          await sendWhatsApp({
+            campaignName: "orisalign_payment_done",
+            destination: patientPhone,
+            userName: (appt as { name?: string }).name || "Patient",
+            templateParams: ["1"],
+          });
+        } else {
+          await sendWhatsApp({
+            campaignName: "orisalign_full_plan_payment_done",
+            destination: patientPhone,
+            userName: (appt as { name?: string }).name || "Patient",
+            templateParams: [],
+          });
+        }
       }
-    } else if (isNewModel) {
-      const choice = pd.provisional_payment_choice as ProvisionalPaymentChoice | undefined;
-      if (choice === "first_month") {
-        sendWhatsApp({
-          campaignName: "orisalign_payment_done",
-          destination: patientPhone,
-          userName: (appt as { name?: string }).name || "Patient",
-          templateParams: ["1"],
-        }).catch(() => {});
-      } else {
-        sendWhatsApp({
-          campaignName: "orisalign_full_plan_payment_done",
-          destination: patientPhone,
-          userName: (appt as { name?: string }).name || "Patient",
-          templateParams: [],
-        }).catch(() => {});
-      }
+    } catch {
+      // best-effort only
     }
   }
 

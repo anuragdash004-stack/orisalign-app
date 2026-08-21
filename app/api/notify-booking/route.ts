@@ -205,9 +205,12 @@ export async function POST(req: Request) {
       })
     }
 
-    // WhatsApp confirmation to patient — best-effort, never blocks the response.
+    // WhatsApp confirmation to patient — awaited (not fire-and-forget): on
+    // Vercel an un-awaited promise can be killed the instant the response is
+    // sent, so this must finish before we return. Still best-effort — a
+    // failure here never fails the request, see sendWhatsApp's contract.
     if (phone) {
-      sendWhatsApp({
+      await sendWhatsApp({
         campaignName: WHATSAPP_BOOKING_CAMPAIGN,
         destination: phone,
         userName: name,

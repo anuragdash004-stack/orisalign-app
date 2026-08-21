@@ -54,9 +54,12 @@ export async function POST(req: Request) {
       return Response.json({ error: "Failed to send email" }, { status: 500 })
     }
 
-    // WhatsApp OTP — best-effort, never blocks the email flow that already succeeded.
+    // WhatsApp OTP — awaited so it can't get killed by the serverless
+    // runtime tearing down right after the response is sent (see
+    // lib/notifyStep.ts for the full explanation). Still best-effort — a
+    // failure here never blocks the email flow that already succeeded.
     if (phone) {
-      sendWhatsApp({
+      await sendWhatsApp({
         campaignName: "orisalign_otp",
         destination: phone,
         userName: name,

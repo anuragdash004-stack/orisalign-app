@@ -397,6 +397,11 @@ export async function sendStepNotification(params: SendStepNotificationParams): 
   // WhatsApp fires alongside email, best-effort — a failure here (missing
   // phone, template not yet approved, AiSensy error) never blocks the email
   // channel or the caller. See sendWhatsApp's never-throws contract.
+  //
+  // This is awaited (not fire-and-forget) deliberately: on Vercel, an
+  // un-awaited promise can get killed the instant the response is sent,
+  // since the serverless execution context isn't guaranteed to survive past
+  // that point. A fire-and-forget send here silently never ran at all.
   const campaignName = WHATSAPP_STEP_CAMPAIGNS[stepKey]
   if (campaignName && appt.phone) {
     const followupAt = (appt.journey_steps as Record<string, any> | null)?.followup_appointment_at || null
@@ -404,30 +409,31 @@ export async function sendStepNotification(params: SendStepNotificationParams): 
     const templateParams = paramsBuilder
       ? paramsBuilder({ name: appt.name || "Patient", dentistName, followupAt })
       : [appt.name || "Patient"]
-    sendWhatsApp({
-      campaignName,
-      destination: appt.phone,
-      userName: appt.name || "Patient",
-      templateParams,
-      media: stepKey === "smile_correction" ? WHATSAPP_SMILE_CORRECTION_MEDIA : undefined,
-    })
-      .then((waResult) =>
-        supabase.from("message_history").insert({
-          appointment_id: appointmentId,
-          step_key: stepKey,
-          message_type: "whatsapp",
-          recipient_phone: appt.phone,
-          subject: mergedContent.subject,
-          body: mergedContent.body,
-          is_template: true,
-          delivery_status: waResult.success ? "sent" : "failed",
-          delivery_provider: "aisensy",
-          provider_response: waResult.success ? {} : { error: waResult.error },
-          sent_by: "system",
-          sent_by_role: "system",
-        }),
-      )
-      .catch(() => {})
+    try {
+      const waResult = await sendWhatsApp({
+        campaignName,
+        destination: appt.phone,
+        userName: appt.name || "Patient",
+        templateParams,
+        media: stepKey === "smile_correction" ? WHATSAPP_SMILE_CORRECTION_MEDIA : undefined,
+      })
+      await supabase.from("message_history").insert({
+        appointment_id: appointmentId,
+        step_key: stepKey,
+        message_type: "whatsapp",
+        recipient_phone: appt.phone,
+        subject: mergedContent.subject,
+        body: mergedContent.body,
+        is_template: true,
+        delivery_status: waResult.success ? "sent" : "failed",
+        delivery_provider: "aisensy",
+        provider_response: waResult.success ? {} : { error: waResult.error },
+        sent_by: "system",
+        sent_by_role: "system",
+      })
+    } catch {
+      // best-effort — never let a WhatsApp/logging failure fail the caller
+    }
   }
 
   if (res && !res.ok) {
