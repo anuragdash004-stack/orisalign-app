@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 
 const supabase = getSupabaseClient();
@@ -31,10 +31,13 @@ const cardStyle = { background: "white", border: "1px solid #e5e7eb", borderRadi
 
 export default function OnlineReportDetailPage() {
   const { id } = useParams();
+  const router = useRouter();
 
   const [report, setReport] = useState(null);
   const [doctors, setDoctors] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const [estimatedDuration, setEstimatedDuration] = useState("");
   const [reviewerNotes, setReviewerNotes] = useState("");
@@ -63,6 +66,26 @@ export default function OnlineReportDetailPage() {
   };
 
   useEffect(() => { load(); }, [id]);
+
+  useEffect(() => {
+    const checkRole = async () => {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const user = sessionData?.session?.user;
+      if (!user) return;
+      const { data } = await supabase.from("users").select("role").eq("id", user.id).single();
+      setIsAdmin(data?.role === "admin");
+    };
+    checkRole();
+  }, []);
+
+  const deleteReport = async () => {
+    if (!window.confirm(`Permanently delete ${report.full_name}'s Online Smile Report? This cannot be undone.`)) return;
+    setDeleting(true);
+    const { error } = await supabase.from("online_reports").delete().eq("id", id);
+    setDeleting(false);
+    if (error) { alert("Failed to delete: " + error.message); return; }
+    router.push("/online-reports");
+  };
 
   const uploadAdditionalPhoto = async (file) => {
     if (!file) return;
@@ -135,8 +158,21 @@ export default function OnlineReportDetailPage() {
 
   return (
     <div style={{ padding: 24, maxWidth: 820 }}>
-      <h1 style={{ fontSize: 24, fontWeight: 700, color: "#111827", margin: "0 0 4px" }}>{report.full_name}</h1>
-      <p style={{ fontSize: 13, color: "#6b7280", margin: "0 0 20px" }}>Status: <strong>{report.status}</strong></p>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+        <div>
+          <h1 style={{ fontSize: 24, fontWeight: 700, color: "#111827", margin: "0 0 4px" }}>{report.full_name}</h1>
+          <p style={{ fontSize: 13, color: "#6b7280", margin: "0 0 20px" }}>Status: <strong>{report.status}</strong></p>
+        </div>
+        {isAdmin && (
+          <button
+            onClick={deleteReport}
+            disabled={deleting}
+            style={{ padding: "9px 16px", borderRadius: 10, border: "1px solid #fecaca", background: "#fef2f2", color: "#dc2626", fontWeight: 700, fontSize: 13, cursor: deleting ? "wait" : "pointer", whiteSpace: "nowrap" }}
+          >
+            {deleting ? "Deleting…" : "Delete Report"}
+          </button>
+        )}
+      </div>
 
       {notice && (
         <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#15803d", borderRadius: 10, padding: 12, fontSize: 13, marginBottom: 16 }}>{notice}</div>
