@@ -136,9 +136,10 @@ export default function ReportDashboardPage() {
 
         {report.status === "new_submission" && (
           <Card>
+            <p style={{ color: NAVY, fontSize: 16, fontWeight: 800, margin: "0 0 8px" }}>Your report is getting ready.</p>
             <p style={{ color: "#374151", fontSize: 14, lineHeight: 1.7, margin: 0 }}>
-              Your Online Smile Report is being reviewed by our dental team. You'll be notified by email/WhatsApp
-              within 24–48 hours once it's ready.
+              A smile expert is being assigned and your personalised smile report will be generated within 24 hours.
+              You will be notified soon by email/WhatsApp.
             </p>
           </Card>
         )}

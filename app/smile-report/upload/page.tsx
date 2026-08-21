@@ -441,7 +441,6 @@ export default function UploadStepPage() {
   const [savingLead, setSavingLead] = useState(false)
   const [savingStep2, setSavingStep2] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [done, setDone] = useState(false)
 
   const allPhotosUploaded = PHOTO_SLOTS.every((s) => photoUrls[s.key])
   const anyPhotoUploading = PHOTO_SLOTS.some((s) => photoUploading[s.key])
@@ -668,8 +667,7 @@ export default function UploadStepPage() {
           setSubmitting(false)
           return
         }
-        setDone(true)
-        setSubmitting(false)
+        router.push(`/report/${reportId}`)
         return
       }
 
@@ -688,31 +686,13 @@ export default function UploadStepPage() {
         return
       }
 
-      setDone(true)
+      router.push(`/report/${reportId}`)
+      return
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Something went wrong — please try again.")
     } finally {
       setSubmitting(false)
     }
-  }
-
-  if (done) {
-    return (
-      <div style={{ minHeight: "100vh", background: "#faf7f2", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-        <div style={{ maxWidth: 480, background: "white", borderRadius: 20, padding: "40px 32px", textAlign: "center", boxShadow: "0 20px 60px rgba(0,0,0,0.08)" }}>
-          <h1 style={{ color: NAVY, fontSize: 22, margin: "0 0 12px" }}>Thank you for your payment.</h1>
-          <p style={{ color: "#374151", fontSize: 14, lineHeight: 1.7, margin: "0 0 20px" }}>
-            Soon a smile expert shall be assigned and your personalised smile report will be generated within 24 hours.
-          </p>
-          <button
-            onClick={() => router.push(`/report/${reportId}`)}
-            style={{ background: NAVY, color: "white", border: "none", borderRadius: 10, padding: "12px 24px", fontWeight: 700, cursor: "pointer" }}
-          >
-            View Your Dashboard
-          </button>
-        </div>
-      </div>
-    )
   }
 
   return (

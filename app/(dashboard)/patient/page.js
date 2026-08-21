@@ -25,6 +25,24 @@ export default function PatientLoginPage() {
     setLoading(true);
     setError("");
 
+    // Online Smile Report patients aren't in appointments_booking the same
+    // way (no email, no OTP) — check that flow first by phone number, and
+    // if it's a paid report, skip straight there instead of falling through
+    // to the appointments_booking + email OTP flow below, which doesn't
+    // apply to them.
+    if (!identifier.includes("@")) {
+      try {
+        const res = await fetch(`/api/online-report/check-member?phone=${encodeURIComponent(identifier.trim())}`);
+        const data = await res.json();
+        if (data.isMember && data.reportId) {
+          router.push(`/report/${data.reportId}`);
+          return;
+        }
+      } catch {
+        // Fall through to the regular appointments_booking lookup below.
+      }
+    }
+
     const query = identifier.includes("@")
       ? supabase.from("appointments_booking").select("id, name, email, phone").eq("email", identifier.trim()).neq("status", "cancelled").order("created_at", { ascending: false }).limit(1)
       : supabase.from("appointments_booking").select("id, name, email, phone").eq("phone", identifier.trim()).neq("status", "cancelled").order("created_at", { ascending: false }).limit(1);
