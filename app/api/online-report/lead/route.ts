@@ -29,6 +29,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "reportId, fullName and phone are required" }, { status: 400 })
     }
 
+    // This route is called every time Step 1's Continue is clicked — including
+    // repeat visits to an already-existing draft (same phone number, resumed
+    // or just going Back and forward again) — so only email the team the
+    // first time this row is actually created, not on every subsequent
+    // update. The separate "became paid" email already fires on its own from
+    // verify-payment/free-submit and isn't affected by this.
+    const { data: existing } = await supabase.from("online_reports").select("id").eq("id", reportId).maybeSingle()
+    const isNewLead = !existing
+
     const { error: upsertError } = await supabase.from("online_reports").upsert(
       [{
         id: reportId,
@@ -51,7 +60,7 @@ export async function POST(req: Request) {
       console.error("[online-report lead] tracker sync failed", err)
     })
 
-    if (ADMIN_EMAIL) {
+    if (isNewLead && ADMIN_EMAIL) {
       await sendEmail({
         to: ADMIN_EMAIL,
         subject: `New Smile Report Lead: ${fullName}`,
