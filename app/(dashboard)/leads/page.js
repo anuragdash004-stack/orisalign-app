@@ -21,7 +21,6 @@ const STAGES = [
 // only ever shows patients due for an aligner set-change call.
 const SECTIONS = [
   { key: "fresh",     label: "Fresh Leads" },
-  { key: "osr",       label: "Online Smile Report Leads" },
   { key: "old",       label: "Old Leads" },
   { key: "followups", label: "Follow-ups" },
   { key: "callback",  label: "Call Back" },
@@ -294,13 +293,11 @@ export default function LeadTrackerPage() {
   // original Fresh occurrence stays visible here (frozen green once it's
   // moved on) instead of disappearing when its stage changes.
   const freshRows = bucketRows("fresh");
-  const osrUnpaidRows = bucketRows("osr_unpaid");
-  const osrPaidRows = bucketRows("osr_paid");
   const callbackRows = bucketRows("callback");
   const bookedRows = bucketRows("booked");
   const deniedRows = bucketRows("denied");
   const oldRows = bucketRows("old");
-  const totalVisible = freshRows.length + osrUnpaidRows.length + osrPaidRows.length + callbackRows.length + bookedRows.length + deniedRows.length + oldRows.length;
+  const totalVisible = freshRows.length + callbackRows.length + bookedRows.length + deniedRows.length + oldRows.length;
 
   const patientFollowups = getPatientFollowups(patients, selectedDate);
 
@@ -510,53 +507,6 @@ export default function LeadTrackerPage() {
                   <div style={{ padding: "14px", background: "white", border: "1px dashed #e5e7eb", borderRadius: "12px", textAlign: "center", color: "#9ca3af", fontSize: "13px" }}>No leads</div>
                 ) : (
                   <LeadTable rows={freshRows} sectionKey={s.key} campaigns={campaigns} isAdmin={isAdmin} onEdit={(lead, entry) => setEditing({ mode: "normal", lead, entry })} onDelete={deleteLead} />
-                )}
-              </div>
-            );
-          }
-
-          // Online Smile Report Leads — driven by the same stage_log
-          // bucket mechanism as Fresh/Callback/Booked/Denied, but on a
-          // linked appointments_booking row (see lib/onlineReportLeadSync).
-          // Two sub-groups instead of one flat list: a lead's original
-          // "osr_unpaid" entry stays visible under Unpaid even after they
-          // pay (an "osr_paid" entry gets added, not swapped in), so the
-          // date each transition happened is preserved as history, same as
-          // every other section on this page.
-          if (s.key === "osr") {
-            const osrTotal = osrUnpaidRows.length + osrPaidRows.length;
-            return (
-              <div key={s.key} style={{ minWidth: 0 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" }}>
-                  <h2 style={{ margin: 0, fontSize: "16px", fontWeight: "800", color: "#111827" }}>{s.label}</h2>
-                  <span style={{ fontSize: "12px", fontWeight: "700", color: "#6b7280", background: "#f3f4f6", borderRadius: "99px", padding: "2px 10px" }}>{osrTotal}</span>
-                  <div style={{ flex: 1, height: "1px", background: "#eee" }} />
-                </div>
-                {osrTotal === 0 ? (
-                  <div style={{ padding: "14px", background: "white", border: "1px dashed #e5e7eb", borderRadius: "12px", textAlign: "center", color: "#9ca3af", fontSize: "13px" }}>No leads</div>
-                ) : (
-                  <div style={{ display: "grid", gap: "14px" }}>
-                    <div>
-                      <p style={{ fontSize: "11px", fontWeight: "800", color: "#92400e", margin: "0 0 6px", textTransform: "uppercase", letterSpacing: "0.4px" }}>
-                        Unpaid ({osrUnpaidRows.length})
-                      </p>
-                      {osrUnpaidRows.length === 0 ? (
-                        <div style={{ padding: "12px", background: "white", border: "1px dashed #e5e7eb", borderRadius: "10px", textAlign: "center", color: "#9ca3af", fontSize: "13px" }}>None</div>
-                      ) : (
-                        <OSRLeadTable rows={osrUnpaidRows} status="unpaid" />
-                      )}
-                    </div>
-                    <div>
-                      <p style={{ fontSize: "11px", fontWeight: "800", color: "#16a34a", margin: "0 0 6px", textTransform: "uppercase", letterSpacing: "0.4px" }}>
-                        Paid ({osrPaidRows.length})
-                      </p>
-                      {osrPaidRows.length === 0 ? (
-                        <div style={{ padding: "12px", background: "white", border: "1px dashed #e5e7eb", borderRadius: "10px", textAlign: "center", color: "#9ca3af", fontSize: "13px" }}>None</div>
-                      ) : (
-                        <OSRLeadTable rows={osrPaidRows} status="paid" />
-                      )}
-                    </div>
-                  </div>
                 )}
               </div>
             );
@@ -878,35 +828,6 @@ function LeadCard({ lead, onStage, onEdit, cold, onPromote, onDelete }) {
 
 function pill(bg, color) {
   return { display: "inline-block", padding: "3px 9px", borderRadius: "99px", background: bg, color, fontSize: "11px", fontWeight: "700", whiteSpace: "nowrap" };
-}
-
-// Online Smile Report Leads rows — deliberately not the generic
-// LeadTable/LeadRow/LeadForm machinery, since these leads aren't manually
-// stage-managed (no address/campaign/consult-slot fields apply here) —
-// full detail and review lives at /online-reports/[id], this is just a
-// visibility link into that existing admin page.
-function OSRLeadTable({ rows, status }) {
-  return (
-    <div style={{ border: "1px solid #e5e7eb", borderRadius: "12px", background: "white", overflow: "hidden" }}>
-      {rows.map(({ lead, entry }, i) => (
-        <a
-          key={`${lead.id}-${entry.loggedAt}`}
-          href={lead.online_report_id ? `/online-reports/${lead.online_report_id}` : "#"}
-          style={{
-            display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", padding: "12px 14px",
-            textDecoration: "none", borderBottom: i === rows.length - 1 ? "none" : "1px solid #f3f4f6",
-          }}
-        >
-          <span style={{ fontSize: "14px", fontWeight: "700", color: "#111827" }}>{lead.name || "Unnamed"}</span>
-          <span style={{ fontSize: "13px", color: "#6b7280" }}>{lead.phone || "—"}</span>
-          <span style={pill(status === "paid" ? "#dcfce7" : "#fef3c7", status === "paid" ? "#16a34a" : "#92400e")}>
-            {status === "paid" ? "✓ Paid" : "Unpaid"} · {formatDate(entry.date)}
-          </span>
-          <span style={{ marginLeft: "auto", fontSize: "12px", color: "#b8905a", fontWeight: "700" }}>View Report →</span>
-        </a>
-      ))}
-    </div>
-  );
 }
 
 // Collapsed-by-default accordion list of leads — each row shows just the
