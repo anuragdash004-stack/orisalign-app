@@ -1446,6 +1446,23 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
     setInvestigationTypesSaved(true);
     setTimeout(() => setInvestigationTypesSaved(false), 3000);
     setPlanChoiceTick((t) => t + 1);
+
+    // Only notify when the orthodontist actually requested something —
+    // saving "None" isn't an investigation being added.
+    const hasRealInvestigation = investigationTypesSelection.length > 0 && !investigationTypesSelection.includes("NONE");
+    if (hasRealInvestigation && stepMessages.investigation_required && sendNotifyOnUpdate.investigation_required !== false) {
+      fetch("/api/notify-step", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          appointmentId,
+          stepKey: "investigation_required",
+          email: appt.email || null,
+          customSubject: stepMessages.investigation_required.subject,
+          customBody: stepMessages.investigation_required.body,
+        }),
+      }).catch(() => {});
+    }
   };
   const viewInvestigationFileAdmin = async (path) => {
     const { data, error } = await supabase.storage.from("case-files").createSignedUrl(path, 3600);

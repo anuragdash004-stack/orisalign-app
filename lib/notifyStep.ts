@@ -37,6 +37,7 @@ const WHATSAPP_STEP_CAMPAIGNS: Record<string, string> = {
   provisional_full_plan_payment: "orisalign_full_plan_payment_done",
   // provisional_planning intentionally has no WhatsApp campaign yet — no
   // approved AiSensy template for "your estimate is ready" exists.
+  investigation_required: "orisalign_investigation",
 }
 
 // Per-step override for templateParams, for steps whose approved AiSensy
@@ -64,6 +65,8 @@ const WHATSAPP_STEP_PARAMS: Partial<
   smile_correction: () => [],
   // "Your ₹2,499 provisional planning fee has been received..." — static.
   provisional_full_plan_payment: () => [],
+  // No variable supplied for this template — plain text.
+  investigation_required: () => [],
 }
 
 // Aligner Care Instructions PDF, sent as the document header on the
@@ -147,6 +150,13 @@ function getStepContent(stepKey: string): StepContent | null {
       headline: "Payment Received!",
       body: "Your ₹2,499 provisional planning fee has been received. Our orthodontic team will now prepare your full 3D treatment plan and keep you updated at every step.",
       nextStep: "Full Plan Review",
+    },
+    investigation_required: {
+      emoji: "🔬",
+      subject: "Investigation Required — OrisAlign",
+      headline: "Investigation Required",
+      body: "Before your plan can be approved, our orthodontist has requested a quick investigation (like an IOPA, OPG, Lateral Ceph, or blood test). Please visit your journey page to see what's needed and upload the relevant image or report.",
+      nextStep: "Upload Investigation",
     },
     planning_done: {
       emoji: "📋",
