@@ -1338,7 +1338,7 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
     // text field at all (Scanning is scan-only there) — never touch it from
     // that panel so nothing gets silently overwritten with an empty value.
     const updatePayload = isNewModelAppt
-      ? { provisional_min_months: min, provisional_max_months: max, journey_steps: { ...(appt.journey_steps || {}), provisional_estimate_plan: estimatePlan } }
+      ? { provisional_min_months: min, provisional_max_months: max, journey_steps: { ...(appt.journey_steps || {}), provisional_estimate_plan: estimatePlan, provisional_estimate_at: new Date().toISOString() } }
       : { provisional_plan: scanProvisionalPlan, provisional_min_months: min, provisional_max_months: max };
     const { error } = await supabase
       .from("appointments_booking")
@@ -1394,6 +1394,7 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
     const planKey = appt.payment_data?.plan === "ORISPLUS" ? "ORISPLUS" : "ORISPRO";
     const choice = appt.payment_data?.provisional_payment_choice === "first_month" ? "first_month" : "full_plan";
     const plan = buildMonthlyPlan(upper, lower, planKey, choice);
+    const finalPlanReviewAt = new Date().toISOString();
     setSavingFinalReview(true);
     const { error } = await supabase
       .from("appointments_booking")
@@ -1401,7 +1402,7 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
         final_upper_sets: upper,
         final_lower_sets: lower,
         monthly_plan: plan,
-        journey_steps: { ...(appt.journey_steps || {}), final_plan_review: true },
+        journey_steps: { ...(appt.journey_steps || {}), final_plan_review: true, final_plan_review_at: finalPlanReviewAt },
       })
       .eq("id", appointmentId);
     setSavingFinalReview(false);
@@ -1410,7 +1411,7 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
     appt.final_upper_sets = upper;
     appt.final_lower_sets = lower;
     appt.monthly_plan = plan;
-    appt.journey_steps = { ...(appt.journey_steps || {}), final_plan_review: true };
+    appt.journey_steps = { ...(appt.journey_steps || {}), final_plan_review: true, final_plan_review_at: finalPlanReviewAt };
     setMonthlyPlanState(plan);
     setPlanChoiceTick((t) => t + 1);
     // Patient may have already pre-paid "first month" before this schedule
@@ -1436,7 +1437,7 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
   };
   const saveInvestigationTypes = async () => {
     setSavingInvestigationTypes(true);
-    const newJourneySteps = { ...(appt.journey_steps || {}), investigation_types: investigationTypesSelection };
+    const newJourneySteps = { ...(appt.journey_steps || {}), investigation_types: investigationTypesSelection, investigation_types_at: new Date().toISOString() };
     const { error } = await supabase.from("appointments_booking").update({ journey_steps: newJourneySteps }).eq("id", appointmentId);
     setSavingInvestigationTypes(false);
     if (error) { alert("Failed to save: " + error.message); return; }
@@ -2650,6 +2651,12 @@ function ReportTab({ appointmentId, appt }) {
 
   const steps = deriveSteps(appt);
   const js = appt.journey_steps || {};
+  // The new per-arch model has an entirely different set of milestones
+  // (Provisional Planning + payment choice, Full Plan content, Investigation
+  // Required, per-month Aligner Sets) in place of the legacy Plan & Payment /
+  // Planning Done / Manufacturing Started-Completed / Dispatched-Received
+  // sequence — both are built below, gated on this flag.
+  const isNewModel = !!appt.monthly_plan || appt.provisional_min_months != null || appt.provisional_max_months != null;
   const pd = { ...EMPTY_PAYMENT, ...(appt.payment_data || {}) };
   const fullAmt = parseFloat(pd.full_amount) || 0;
   const disc = parseFloat(pd.discount) || 0;
@@ -2747,47 +2754,109 @@ function ReportTab({ appointmentId, appt }) {
     ].filter(Boolean),
   });
 
-  // 5. Payment — also an automatic/derived step (never goes through the
-  // generic "Step Marked Done" toggle — legacy logs it as "Plan & Amount
-  // Saved", the new per-package model never logs a matching action at all),
-  // so first_payment_date (set precisely by recordPaymentReceived on the
-  // first payment) is the reliable timestamp source here, not the log search.
-  const payLog = logs.find((l) => l.action === "Plan & Amount Saved") || findDoneLog("Plan and Payment");
-  events.push({
-    done: !!steps.payment_done,
-    title: "Plan and Payment",
-    by: payLog?.actor_email ? `counsellor / admin (${payLog.actor_email})` : "OrisAlign team",
-    at: appt.first_payment_date || payLog?.created_at || null,
-    detail: [
-      fullAmt > 0 ? `Full treatment cost quoted at ${inr(pd.full_amount)}.` : null,
-      disc > 0 ? `A discount of ${inr(pd.discount)} was applied.` : null,
-      (pd.coupon_code || couponDisc > 0) ? `Coupon${pd.coupon_code ? ` "${pd.coupon_code}"` : ""} applied: ${inr(pd.coupon_discount)} off.` : null,
-      finalAmt > 0 ? `Final payable amount after discounts: ${inr(finalAmt)}.` : null,
-      pd.down_payment > 0 ? `Down payment of ${inr(pd.down_payment)} collected via ${pd.down_payment_mode}${pd.down_payment_mode === "Finance" ? ` (${pd.finance_provider})` : ""}.` : null,
-      pendingAmt > 0 ? `Pending balance of ${inr(pendingAmt)} to be paid via ${pd.pending_mode}${pd.pending_mode === "Finance" ? ` (${pd.finance_provider})` : ""}.` : null,
-      ...((pd.pending_mode === "Installment" && pd.installment_plan?.installments?.length > 0)
-        ? pd.installment_plan.installments.map((inst) =>
-            `  • Instalment ${inst.num}: ${inr(inst.amount)} — ${inst.paid ? `paid${inst.paid_date ? ` on ${inst.paid_date}` : ""}` : "pending"}.`
-          )
-        : []),
-    ].filter(Boolean),
-  });
+  if (!isNewModel) {
+    // 5. Payment — also an automatic/derived step (never goes through the
+    // generic "Step Marked Done" toggle — legacy logs it as "Plan & Amount
+    // Saved"), so first_payment_date (set precisely by recordPaymentReceived
+    // on the first payment) is the reliable timestamp source here, not the
+    // log search.
+    const payLog = logs.find((l) => l.action === "Plan & Amount Saved") || findDoneLog("Plan and Payment");
+    events.push({
+      done: !!steps.payment_done,
+      title: "Plan and Payment",
+      by: payLog?.actor_email ? `counsellor / admin (${payLog.actor_email})` : "OrisAlign team",
+      at: appt.first_payment_date || payLog?.created_at || null,
+      detail: [
+        fullAmt > 0 ? `Full treatment cost quoted at ${inr(pd.full_amount)}.` : null,
+        disc > 0 ? `A discount of ${inr(pd.discount)} was applied.` : null,
+        (pd.coupon_code || couponDisc > 0) ? `Coupon${pd.coupon_code ? ` "${pd.coupon_code}"` : ""} applied: ${inr(pd.coupon_discount)} off.` : null,
+        finalAmt > 0 ? `Final payable amount after discounts: ${inr(finalAmt)}.` : null,
+        pd.down_payment > 0 ? `Down payment of ${inr(pd.down_payment)} collected via ${pd.down_payment_mode}${pd.down_payment_mode === "Finance" ? ` (${pd.finance_provider})` : ""}.` : null,
+        pendingAmt > 0 ? `Pending balance of ${inr(pendingAmt)} to be paid via ${pd.pending_mode}${pd.pending_mode === "Finance" ? ` (${pd.finance_provider})` : ""}.` : null,
+        ...((pd.pending_mode === "Installment" && pd.installment_plan?.installments?.length > 0)
+          ? pd.installment_plan.installments.map((inst) =>
+              `  • Instalment ${inst.num}: ${inr(inst.amount)} — ${inst.paid ? `paid${inst.paid_date ? ` on ${inst.paid_date}` : ""}` : "pending"}.`
+            )
+          : []),
+      ].filter(Boolean),
+    });
 
-  // 6. Planning done
-  const planLog = findDoneLog("Full Plan");
-  events.push({
-    done: !!steps.planning_done,
-    title: "Treatment Planning Done",
-    by: planLog?.actor_email ? `admin / orthodontist (${planLog.actor_email})` : "OrisAlign team",
-    at: js.planning_done_at || planLog?.created_at || null,
-    detail: [
-      appt.aligner_total_sets ? `Treatment plan consists of ${appt.aligner_total_sets} aligner set${appt.aligner_total_sets !== 1 ? "s" : ""}${appt.aligner_days_per_set ? `, worn ${appt.aligner_days_per_set} days per set` : ""}.` : null,
-      appt.aligner_total_sets && appt.aligner_days_per_set
-        ? `Total estimated treatment duration: ${appt.aligner_total_sets * appt.aligner_days_per_set} days (approximately ${Math.round((appt.aligner_total_sets * appt.aligner_days_per_set) / 30)} months).`
-        : null,
-      appt.review_link ? `3D treatment plan review link shared with patient.` : null,
-    ].filter(Boolean),
-  });
+    // 6. Planning done
+    const planLog = findDoneLog("Full Plan");
+    events.push({
+      done: !!steps.planning_done,
+      title: "Treatment Planning Done",
+      by: planLog?.actor_email ? `admin / orthodontist (${planLog.actor_email})` : "OrisAlign team",
+      at: js.planning_done_at || planLog?.created_at || null,
+      detail: [
+        appt.aligner_total_sets ? `Treatment plan consists of ${appt.aligner_total_sets} aligner set${appt.aligner_total_sets !== 1 ? "s" : ""}${appt.aligner_days_per_set ? `, worn ${appt.aligner_days_per_set} days per set` : ""}.` : null,
+        appt.aligner_total_sets && appt.aligner_days_per_set
+          ? `Total estimated treatment duration: ${appt.aligner_total_sets * appt.aligner_days_per_set} days (approximately ${Math.round((appt.aligner_total_sets * appt.aligner_days_per_set) / 30)} months).`
+          : null,
+        appt.review_link ? `3D treatment plan review link shared with patient.` : null,
+      ].filter(Boolean),
+    });
+  } else {
+    // New per-arch model — Provisional Planning (plan choice + payment),
+    // Full Plan (final plan content + schedule generation), and
+    // Investigation Required replace the legacy Payment/Planning-Done pair.
+
+    // 5. Provisional Planning — plan chosen, estimate given, payment made.
+    // first_payment_date is this patient's very first payment under the new
+    // model (the provisional fee or first month), so it's the reliable
+    // completion timestamp; provisional_estimate_at (stamped by the admin's
+    // "Save Estimate" button) is the fallback for a not-yet-paid patient.
+    const planCfgLabel = PLAN_CONFIGS[pd.plan]?.label || pd.plan || null;
+    const choiceLabel = pd.provisional_payment_choice === "first_month" ? "Pay First Month" : pd.provisional_payment_choice === "full_plan" ? "Pay for Full Plan" : null;
+    events.push({
+      done: !!steps.provisional_planning,
+      title: "Provisional Planning",
+      by: "OrisAlign admin + patient",
+      at: appt.first_payment_date || js.provisional_estimate_at || null,
+      detail: [
+        (appt.provisional_min_months && appt.provisional_max_months) ? `Estimated duration given: ${appt.provisional_min_months}–${appt.provisional_max_months} months.` : null,
+        planCfgLabel ? `Patient selected plan: ${planCfgLabel}.` : null,
+        choiceLabel ? `Payment option chosen: ${choiceLabel}.` : null,
+        appt.amount_paid > 0 ? `Amount paid: ${inr(appt.amount_paid)}.` : null,
+      ].filter(Boolean),
+    });
+
+    // 6. Full Plan — final plan text + upper/lower sets + schedule generated.
+    events.push({
+      done: !!steps.payment_done,
+      title: "Full Plan",
+      by: "admin / orthodontist",
+      at: js.final_plan_review_at || null,
+      detail: [
+        appt.final_upper_sets ? `Upper arch sets: ${appt.final_upper_sets}.` : null,
+        appt.final_lower_sets ? `Lower arch sets: ${appt.final_lower_sets}.` : null,
+        appt.monthly_plan?.totalMonths ? `Total treatment duration: ${appt.monthly_plan.totalMonths} month${appt.monthly_plan.totalMonths !== 1 ? "s" : ""}.` : null,
+        appt.review_link ? `3D treatment plan review link shared with patient.` : null,
+      ].filter(Boolean),
+    });
+
+    // 6b. Investigation Required — admin's chosen type(s) (or None), and
+    // whichever files the patient has uploaded so far.
+    const investigationTypes = js.investigation_types || [];
+    const investigationFiles = js.investigation_files || {};
+    const uploadTimestamps = Object.values(investigationFiles).map((f) => f?.uploadedAt).filter(Boolean);
+    const investigationAt = investigationTypes.includes("NONE")
+      ? js.investigation_types_at || null
+      : (uploadTimestamps.length > 0 ? uploadTimestamps.slice().sort().slice(-1)[0] : null);
+    events.push({
+      done: !!steps.investigation_required,
+      title: "Investigation Required",
+      by: "admin / patient",
+      at: investigationAt,
+      detail: investigationTypes.includes("NONE")
+        ? ["No investigation required — marked by admin."]
+        : investigationTypes.map((t) => {
+            const label = INVESTIGATION_TYPES.find((it) => it.key === t)?.label || t;
+            const file = investigationFiles[t];
+            return file?.path ? `${label}: uploaded "${file.name}"${file.uploadedAt ? ` on ${fmt(file.uploadedAt)}` : ""}.` : `${label}: awaiting patient upload.`;
+          }),
+    });
+  }
 
   // 7. Plan approved
   const planApprovedAt = js.plan_approved_at || appt.plan_approved_at;
@@ -2802,56 +2871,74 @@ function ReportTab({ appointmentId, appt }) {
     ].filter(Boolean),
   });
 
-  // 8. Manufacturing started
-  const mfgStartLog = findDoneLog("Manufacturing Started");
-  events.push({
-    done: !!steps.manufacturing_started,
-    title: "Manufacturing Started",
-    by: mfgStartLog?.actor_email ? `admin (${mfgStartLog.actor_email})` : "OrisAlign team",
-    at: asDateTime(js.manufacturing_started_at) || mfgStartLog?.created_at || null,
-    detail: manufacturingBatches.length > 0
-      ? manufacturingBatches.map((b) =>
-          `Package ${b.num} (${b.slot_label || (b.upper_aligners || b.lower_aligners ? `Upper ${b.upper_aligners || "—"}, Lower ${b.lower_aligners || "—"}` : `Aligners ${b.start}–${b.end}`)}): started ${b.mfg_started || "date not recorded"}${b.mfg_done ? `, completed ${b.mfg_done}` : ""}.`
-        )
-      : [],
-  });
+  if (!isNewModel) {
+    // 8. Manufacturing started
+    const mfgStartLog = findDoneLog("Manufacturing Started");
+    events.push({
+      done: !!steps.manufacturing_started,
+      title: "Manufacturing Started",
+      by: mfgStartLog?.actor_email ? `admin (${mfgStartLog.actor_email})` : "OrisAlign team",
+      at: asDateTime(js.manufacturing_started_at) || mfgStartLog?.created_at || null,
+      detail: manufacturingBatches.length > 0
+        ? manufacturingBatches.map((b) =>
+            `Package ${b.num} (${b.slot_label || (b.upper_aligners || b.lower_aligners ? `Upper ${b.upper_aligners || "—"}, Lower ${b.lower_aligners || "—"}` : `Aligners ${b.start}–${b.end}`)}): started ${b.mfg_started || "date not recorded"}${b.mfg_done ? `, completed ${b.mfg_done}` : ""}.`
+          )
+        : [],
+    });
 
-  // 9. Manufacturing completed
-  const mfgDoneLog = findDoneLog("Manufacturing Completed");
-  events.push({
-    done: !!steps.manufacturing_completed,
-    title: "Manufacturing Completed",
-    by: mfgDoneLog?.actor_email ? `admin (${mfgDoneLog.actor_email})` : "OrisAlign team",
-    at: asDateTime(js.manufacturing_completed_at) || mfgDoneLog?.created_at || null,
-    detail: [
-      manufacturingData.aligner_delivered ? `All aligners delivered to the OrisAlign clinic on ${manufacturingData.aligner_delivered}.` : null,
-    ].filter(Boolean),
-  });
+    // 9. Manufacturing completed
+    const mfgDoneLog = findDoneLog("Manufacturing Completed");
+    events.push({
+      done: !!steps.manufacturing_completed,
+      title: "Manufacturing Completed",
+      by: mfgDoneLog?.actor_email ? `admin (${mfgDoneLog.actor_email})` : "OrisAlign team",
+      at: asDateTime(js.manufacturing_completed_at) || mfgDoneLog?.created_at || null,
+      detail: [
+        manufacturingData.aligner_delivered ? `All aligners delivered to the OrisAlign clinic on ${manufacturingData.aligner_delivered}.` : null,
+      ].filter(Boolean),
+    });
 
-  // 10. Aligners dispatched
-  const dispatchLog = findDoneLog("Aligners Dispatched");
-  events.push({
-    done: !!steps.aligners_dispatched,
-    title: "Aligners Dispatched to Patient",
-    by: dispatchLog?.actor_email ? `admin (${dispatchLog.actor_email})` : "OrisAlign team",
-    at: js.aligners_dispatched_at || dispatchLog?.created_at || null,
-    detail: logisticsBatches.length > 0
-      ? logisticsBatches.map((b) => {
-          const partner = b.delivery_partner === "Other" ? (b.delivery_partner_other || "courier") : b.delivery_partner;
-          return `Batch ${b.num} dispatched via ${partner || "courier"}${b.shipment_id ? ` (Shipment ID: ${b.shipment_id})` : ""}${b.aligner_received ? `; received by patient on ${b.aligner_received}` : ""}.`;
-        })
-      : [],
-  });
+    // 10. Aligners dispatched
+    const dispatchLog = findDoneLog("Aligners Dispatched");
+    events.push({
+      done: !!steps.aligners_dispatched,
+      title: "Aligners Dispatched to Patient",
+      by: dispatchLog?.actor_email ? `admin (${dispatchLog.actor_email})` : "OrisAlign team",
+      at: js.aligners_dispatched_at || dispatchLog?.created_at || null,
+      detail: logisticsBatches.length > 0
+        ? logisticsBatches.map((b) => {
+            const partner = b.delivery_partner === "Other" ? (b.delivery_partner_other || "courier") : b.delivery_partner;
+            return `Batch ${b.num} dispatched via ${partner || "courier"}${b.shipment_id ? ` (Shipment ID: ${b.shipment_id})` : ""}${b.aligner_received ? `; received by patient on ${b.aligner_received}` : ""}.`;
+          })
+        : [],
+    });
 
-  // 11. Aligners received (by delivery partner)
-  const rcvLog = findDoneLog("Aligners Received");
-  events.push({
-    done: !!steps.aligners_received,
-    title: "Aligners Received by Local Delivery Partner",
-    by: rcvLog?.actor_email ? `admin (${rcvLog.actor_email})` : "OrisAlign team",
-    at: js.aligners_received_at || rcvLog?.created_at || null,
-    detail: ["Aligners passed to the local delivery partner for last-mile delivery to the patient."],
-  });
+    // 11. Aligners received (by delivery partner)
+    const rcvLog = findDoneLog("Aligners Received");
+    events.push({
+      done: !!steps.aligners_received,
+      title: "Aligners Received by Local Delivery Partner",
+      by: rcvLog?.actor_email ? `admin (${rcvLog.actor_email})` : "OrisAlign team",
+      at: js.aligners_received_at || rcvLog?.created_at || null,
+      detail: ["Aligners passed to the local delivery partner for last-mile delivery to the patient."],
+    });
+  } else {
+    // 8-11 (new model). Manufacturing/Dispatch/Received collapse into one
+    // per-month "Aligner Sets" step — each package's own mfg_started/mfg_done
+    // dates are stamped by autoCreatePaidBatches the moment its payment
+    // threshold is crossed (see lib/paymentHelper.ts).
+    events.push({
+      done: !!steps.aligner_sets,
+      title: "Aligner Sets",
+      by: "OrisAlign team",
+      at: asDateTime(manufacturingBatches[0]?.mfg_started) || null,
+      detail: manufacturingBatches.length > 0
+        ? manufacturingBatches.map((b) =>
+            `Package ${b.num} (${b.slot_label || `Upper ${b.upper_aligners || "—"}, Lower ${b.lower_aligners || "—"}`}): production started ${b.mfg_started || "date not recorded"}${b.mfg_done ? `, completed ${b.mfg_done}` : ""}${b.shipment_link ? `, tracking shared with patient` : ""}.`
+          )
+        : [],
+    });
+  }
 
   // 12. Follow-up appointment
   const followLog = findDoneLog("Appointment Book");
