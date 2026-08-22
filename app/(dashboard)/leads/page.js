@@ -1126,14 +1126,10 @@ function LeadForm({ lead, entry, actor, onClose, onSaved, onDuplicateFound, mode
         if (error) throw error;
         leadId = data?.id;
       }
-      // On first confirmation, issue the Patient ID via the welcome email.
-      if (confirm && !lead?.booking_confirmed && form.email && leadId) {
-        fetch("/api/send-welcome-email", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: form.email, name: form.name || "Patient", patientId: leadId }),
-        }).catch(() => {});
-      }
+      // No patient-facing email/WhatsApp fires here — booking a lead is not
+      // yet a confirmed appointment. The patient only hears from us once
+      // staff actually confirms the appointment (app/(dashboard)/appointment/
+      // page.js's Confirm action, stepKey "confirmed").
       onSaved();
     } catch (err) {
       alert("Failed to save: " + (err.message || err));

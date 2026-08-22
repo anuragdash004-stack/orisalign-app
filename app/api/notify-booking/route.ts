@@ -1,15 +1,10 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
-import { sendWhatsApp } from "@/lib/notifications/aisensy"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
-
-// Body: "Hi {{1}}, your OrisAlign appointment is booked for {{2}} at {{3}}.
-// Your Patient ID is {{4}} — save it to track your treatment journey."
-const WHATSAPP_BOOKING_CAMPAIGN = "orisalign_booking_confirmation"
 
 // Date-only key in IST, regardless of the server's own timezone — matches
 // dateKey() in the Lead Tracker (app/(dashboard)/leads/page.js), which is
@@ -152,71 +147,12 @@ export async function POST(req: Request) {
       }),
     })
 
-    // Confirmation email to patient
-    if (email) {
-      await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.RESEND_API_KEY}` },
-        body: JSON.stringify({
-          from: "OrisAlign <no-reply@orisalign.com>",
-          to: [email],
-          subject: `✅ Booking Confirmed — OrisAlign | ${date} at ${time}`,
-          html: `
-            <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;background:#faf7f2;padding:20px;border-radius:12px;">
-              <div style="background:linear-gradient(135deg,#1B2A4A,#0f2027);padding:28px 24px;border-radius:8px;text-align:center;margin-bottom:20px;border-bottom:3px solid #C9A84C;">
-                <img src="https://orisalign.com/logo.png" alt="OrisAlign" style="height:40px;margin-bottom:14px;display:block;margin-left:auto;margin-right:auto;" />
-                <h1 style="color:#C9A84C;margin:0 0 6px;font-size:22px;font-weight:900;">Booking Confirmed!</h1>
-                <p style="color:#94a3b8;margin:0;font-size:14px;">Your Smile Journey Begins with OrisAlign</p>
-              </div>
-              <p style="color:#374151;font-size:15px;">Dear <strong>${name}</strong>,</p>
-              <p style="color:#374151;font-size:14px;line-height:1.7;">Thank you for booking with OrisAlign. Your appointment has been confirmed. Please save your Patient ID below — you will need it to track your treatment journey.</p>
-              <p style="color:#374151;font-size:14px;line-height:1.7;">Please visit your journey page to fill in your other details before your appointment.</p>
-              <div style="background:white;border-radius:12px;padding:20px;margin:20px 0;text-align:center;border:2px solid #C9A84C;">
-                <p style="margin:0 0 4px;font-size:11px;color:#9ca3af;font-weight:700;letter-spacing:1px;text-transform:uppercase;">YOUR PATIENT ID</p>
-                <p style="margin:0;font-size:28px;font-weight:900;color:#1B2A4A;letter-spacing:4px;">${shortId}</p>
-              </div>
-              <div style="text-align:center;margin:0 0 16px;">
-                <a href="${patientUrl}" style="display:inline-block;background:#1B2A4A;color:#C9A84C;font-weight:700;font-size:14px;padding:12px 28px;border-radius:8px;text-decoration:none;letter-spacing:0.5px;">
-                  Track Your Progress →
-                </a>
-              </div>
-              <div style="background:white;border-radius:8px;padding:16px;margin-bottom:16px;">
-                <table style="width:100%;font-size:14px;border-collapse:collapse;">
-                  <tr><td style="padding:6px 0;color:#6b7280;width:130px;">Date</td><td style="padding:6px 0;font-weight:bold;color:#111;">${date}</td></tr>
-                  <tr><td style="padding:6px 0;color:#6b7280;">Time</td><td style="padding:6px 0;font-weight:bold;color:#111;">${time}</td></tr>
-                  <tr><td style="padding:6px 0;color:#6b7280;">Booked on</td><td style="padding:6px 0;color:#111;">${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</td></tr>
-                </table>
-              </div>
-              ${clinicInfo ? `
-              <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:16px;margin-bottom:16px;">
-                <p style="margin:0 0 4px;font-size:11px;color:#92400e;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;">Your Appointment Is At</p>
-                <p style="margin:0 0 6px;font-size:16px;font-weight:900;color:#1B2A4A;">${clinicInfo.name}</p>
-                <p style="margin:0 0 12px;font-size:13px;color:#374151;line-height:1.6;">${clinicInfo.address}</p>
-                <a href="${clinicInfo.mapsLink}" style="display:inline-block;background:#1B2A4A;color:#C9A84C;font-weight:700;font-size:13px;padding:9px 18px;border-radius:6px;text-decoration:none;">
-                  📍 Get Directions →
-                </a>
-              </div>
-              ` : ""}
-              <p style="color:#6b7280;font-size:13px;line-height:1.7;">Our team will contact you shortly to confirm. For queries, reach us at <a href="mailto:hello@orisalign.com" style="color:#C9A84C;">hello@orisalign.com</a>.</p>
-              <p style="text-align:center;color:#9ca3af;font-size:12px;margin-top:20px;">OrisAlign · Bhubaneswar – 751016, Odisha</p>
-            </div>
-          `,
-        }),
-      })
-    }
-
-    // WhatsApp confirmation to patient — awaited (not fire-and-forget): on
-    // Vercel an un-awaited promise can be killed the instant the response is
-    // sent, so this must finish before we return. Still best-effort — a
-    // failure here never fails the request, see sendWhatsApp's contract.
-    if (phone) {
-      await sendWhatsApp({
-        campaignName: WHATSAPP_BOOKING_CAMPAIGN,
-        destination: phone,
-        userName: name,
-        templateParams: [name, date, time, shortId],
-      }).catch(() => {})
-    }
+    // No patient-facing email/WhatsApp here — booking is a lead action, not
+    // a confirmed appointment yet. The patient only hears from us once staff
+    // actually confirms the appointment (app/(dashboard)/appointment/page.js,
+    // stepKey "confirmed"), which sends its own email + WhatsApp
+    // (orisalign_appointment_confirmed). This route stays for the internal
+    // staff alert above only.
 
     return NextResponse.json({ success: true })
   } catch (err) {
