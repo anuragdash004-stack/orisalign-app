@@ -1248,6 +1248,9 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
   const [followupDate, setFollowupDate] = useState(appt.journey_steps?.followup_appointment_at || "");
   const [stepMessages, setStepMessages] = useState(() => JSON.parse(JSON.stringify(DEFAULT_STEP_MESSAGES)));
   const [openEmail, setOpenEmail] = useState({}); // which steps have their email editor expanded
+  // Whether to actually send the email/WhatsApp notification when a step is
+  // updated — checked (send) by default; missing entries count as checked.
+  const [sendNotifyOnUpdate, setSendNotifyOnUpdate] = useState({});
 
   // Direct link to the patient's own journey-tracking page — for sharing
   // (WhatsApp, SMS, email) so the patient can open it straight in their browser.
@@ -1722,7 +1725,7 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
     if (key === "feedback_submitted") {
       logAudit({ appointmentId, actor, action: newVal ? "Feedback Submitted" : "Feedback Marked Undone", entity: "feedback_submitted", newData: { [key]: newVal } });
     }
-    if (newVal && stepMessages[key]) {
+    if (newVal && stepMessages[key] && sendNotifyOnUpdate[key] !== false) {
       fetch("/api/notify-step", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1759,7 +1762,7 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
       return;
     }
     logAudit({ appointmentId, actor, action: newVal ? "Follow-Up Appointment Date Confirmed" : "Follow-Up Appointment Marked Undone", entity: "followup_appointment", newData: { followup_appointment: newVal, followup_appointment_at: newJs.followup_appointment_at } });
-    if (newVal && stepMessages.followup_appointment) {
+    if (newVal && stepMessages.followup_appointment && sendNotifyOnUpdate.followup_appointment !== false) {
       fetch("/api/notify-step", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1848,7 +1851,7 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                       opacity: isSaving ? 0.6 : 1,
                     }}
                   >
-                    {isSaving ? "..." : done ? "Undo" : "Mark Done"}
+                    {isSaving ? "..." : done ? "Undo" : "Update"}
                   </button>
                 )}
                 {isAdmin && step.key === "plan_approved" && isNewModelAppt && (
@@ -1895,7 +1898,7 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                         opacity: saving === "followup_appointment" ? 0.6 : 1,
                       }}
                     >
-                      {saving === "followup_appointment" ? "..." : done ? "Undo" : "Mark Done"}
+                      {saving === "followup_appointment" ? "..." : done ? "Undo" : "Update"}
                     </button>
                   </>
                 )}
@@ -2548,15 +2551,28 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                 );
               })()}
 
-              {/* Email message — collapsed behind a button; expands to edit */}
+              {/* Email/WhatsApp message — collapsed behind a button; expands to edit.
+                  The checkbox controls whether it actually sends on Update —
+                  checked by default, so unchecking it is an explicit opt-out. */}
               {isAdmin && !done && stepMessages[step.key] && step.key !== "plan_approved" && (
                 <div style={{ marginTop: "8px" }}>
-                  <button
-                    onClick={() => setOpenEmail((prev) => ({ ...prev, [step.key]: !prev[step.key] }))}
-                    style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 14px", borderRadius: "8px", border: "1px solid #dbeafe", background: "#f0f7ff", color: "#1e40af", fontWeight: "700", fontSize: "12px", cursor: "pointer", letterSpacing: "0.3px" }}
-                  >
-                    ✉ Email to patient (sent on Mark Done) <span style={{ marginLeft: "auto" }}>{openEmail[step.key] ? "▲" : "▼"}</span>
-                  </button>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                    <button
+                      onClick={() => setOpenEmail((prev) => ({ ...prev, [step.key]: !prev[step.key] }))}
+                      style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 14px", borderRadius: "8px", border: "1px solid #dbeafe", background: "#f0f7ff", color: "#1e40af", fontWeight: "700", fontSize: "12px", cursor: "pointer", letterSpacing: "0.3px" }}
+                    >
+                      ✉ Email/WhatsApp to patient (sent on Update) <span style={{ marginLeft: "auto" }}>{openEmail[step.key] ? "▲" : "▼"}</span>
+                    </button>
+                    <label style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "#374151", cursor: "pointer" }}>
+                      <input
+                        type="checkbox"
+                        checked={sendNotifyOnUpdate[step.key] !== false}
+                        onChange={(e) => setSendNotifyOnUpdate((prev) => ({ ...prev, [step.key]: e.target.checked }))}
+                        style={{ width: "15px", height: "15px", accentColor: "#b8905a", cursor: "pointer" }}
+                      />
+                      Send email/WhatsApp
+                    </label>
+                  </div>
                   {openEmail[step.key] && (
                     <div style={{ ...subBox, border: "1px solid #dbeafe", background: "#f0f7ff", marginTop: "6px" }}>
                       <input
