@@ -69,7 +69,7 @@ export async function POST(req: Request) {
         campaignName: "orisalign_osr_new",
         destination: phone,
         userName: fullName,
-        templateParams: [fullName],
+        templateParams: [],
       }).catch(() => {})
     }
 

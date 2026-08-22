@@ -31,11 +31,9 @@ const WHATSAPP_STEP_CAMPAIGNS: Record<string, string> = {
   smile_correction: "orisalign_smile_correction",
   treatment_completed: "orisalign_treatment_completed",
   feedback_submitted: "orisalign_feedback_submitted",
-  // Same two campaigns lib/paymentHelper.ts used to fire directly for these
-  // two provisional-payment outcomes — now routed through here instead, so
-  // one sendStepNotification call sends both the email and the WhatsApp
-  // receipt together instead of two separate call sites doing it piecemeal.
-  provisional_first_month_payment: "orisalign_payment_done",
+  // provisional_first_month_payment intentionally has no WhatsApp campaign —
+  // it used to fire orisalign_payment_done, which was deleted from AiSensy;
+  // email-only until a replacement template is approved.
   provisional_full_plan_payment: "orisalign_full_plan_payment_done",
   // provisional_planning intentionally has no WhatsApp campaign yet — no
   // approved AiSensy template for "your estimate is ready" exists.
@@ -64,9 +62,6 @@ const WHATSAPP_STEP_PARAMS: Partial<
   // the header media (see WHATSAPP_SMILE_CORRECTION_MEDIA below), no body
   // variables.
   smile_correction: () => [],
-  // "Hi your month {{1}} Payment has been received. Welcome to OrisAlign" —
-  // the provisional "first month" choice always means Month 1.
-  provisional_first_month_payment: () => ["1"],
   // "Your ₹2,499 provisional planning fee has been received..." — static.
   provisional_full_plan_payment: () => [],
 }

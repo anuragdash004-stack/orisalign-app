@@ -388,16 +388,16 @@ export async function recordPaymentReceived(params: RecordPaymentParams): Promis
   // this is the patient-facing confirmation, which previously didn't exist
   // on this path at all.
   //
-  // Two templates, depending on what was actually paid for:
   //   - orisalign_full_plan_payment_done: the ₹2,499 provisional-planning fee
   //     (pd.provisional_payment_choice === "full_plan") — pays for the 3D
   //     plan only, no aligners yet. Static text, no variables.
-  //   - orisalign_payment_done ("Hi your month {{1}} Payment has been
-  //     received. Welcome to OrisAlign"): fires for the ₹4,999 "first_month"
-  //     provisional choice (which bundles the plan + Month 1's aligners, so
-  //     {{1}} = "1"), and for every later monthly_plan installment once a
-  //     schedule exists — {{1}} = the highest month number this payment
+  //   - orisalign_production: fires for every monthly_plan installment
+  //     (including the ₹4,999 "first_month" choice, which bundles the plan +
+  //     Month 1's aligners) — {{1}} = the highest month number this payment
   //     newly crossed the cumulative threshold for.
+  // (orisalign_payment_done used to also fire here for the same event; that
+  // template was deleted from AiSensy, so the call was removed rather than
+  // left to fail silently.)
   // Legacy (pre-monthly-plan) appointments have no matching template and are
   // skipped — email above is their only patient-facing receipt.
   try {
@@ -409,12 +409,6 @@ export async function recordPaymentReceived(params: RecordPaymentParams): Promis
       );
       const monthNum = crossedMonths.slice(-1)[0]?.num;
       if (monthNum) {
-        await sendWhatsApp({
-          campaignName: "orisalign_payment_done",
-          destination: patientPhone,
-          userName: (appt as { name?: string }).name || "Patient",
-          templateParams: [String(monthNum)],
-        });
         // Fires the moment a month's batch is auto-created (see
         // autoCreatePaidBatches above, called just before this block) —
         // manufacturing starts immediately on payment, so this notification

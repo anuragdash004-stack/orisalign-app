@@ -126,7 +126,7 @@ export async function POST(req: Request) {
           campaignName: "orisalign_osr",
           destination: fd.patientPhone,
           userName: fd.fullName,
-          templateParams: [fd.fullName],
+          templateParams: [],
         }).catch(() => {})
       }
 
