@@ -375,6 +375,7 @@ export default function LandingPage() {
                 Book now
                 <svg viewBox="0 0 24 24" className="w-4 h-4 transition-transform group-hover:translate-x-1" {...ic} stroke="#fff"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
               </span>
+              <p className="text-xs mt-3" style={{ color: INK2 }}>Available in selected locations only</p>
             </a>
           </div>
         </div>
