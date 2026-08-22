@@ -225,7 +225,7 @@ const FORM_STEPS = [
   { n: 4, label: "Payment" },
 ] as const
 
-function FormStepTracker({ current }: { current: 1 | 2 | 3 | 4 }) {
+function FormStepTracker({ current }: { current: 0 | 1 | 2 | 3 | 4 }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
       {FORM_STEPS.map((s, i) => (
@@ -258,7 +258,7 @@ function FormStepTracker({ current }: { current: 1 | 2 | 3 | 4 }) {
 export default function UploadStepPage() {
   const router = useRouter()
 
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
+  const [step, setStep] = useState<0 | 1 | 2 | 3 | 4>(0)
   // Not const — swapped out for an existing draft's id if the phone number
   // entered at Step 1 matches an incomplete submission (see checkForDraft).
   const [reportId, setReportId] = useState(() => crypto.randomUUID())
@@ -555,7 +555,7 @@ export default function UploadStepPage() {
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
-  const backTo = (n: 1 | 2 | 3) => {
+  const backTo = (n: 0 | 1 | 2 | 3) => {
     setError(null)
     setStep(n)
     window.scrollTo({ top: 0, behavior: "smooth" })
@@ -698,12 +698,48 @@ export default function UploadStepPage() {
   return (
     <div style={{ minHeight: "100vh", background: "#faf7f2", fontFamily: "Arial, sans-serif" }}>
       <div style={{ maxWidth: 640, margin: "0 auto", padding: "32px 20px 100px" }}>
-        <FormStepTracker current={step} />
+        {step !== 0 && <FormStepTracker current={step} />}
 
         {error && (
           <div style={{ background: "#fef2f2", border: "1px solid #fecaca", color: "#dc2626", borderRadius: 10, padding: 12, fontSize: 13, margin: "20px 0 0" }}>
             {error}
           </div>
+        )}
+
+        {/* ── STEP 0 — What's Included ── */}
+        {step === 0 && (
+          <>
+            <h1 style={{ fontSize: 24, fontWeight: 900, color: NAVY, margin: "20px 0 4px" }}>Your Online Smile Report</h1>
+            <p style={{ fontSize: 13, color: "#6b7280", margin: "0 0 24px" }}>Here's what you get for ₹399.</p>
+
+            <Section title="Your Online Smile Report Includes:">
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {[
+                  { title: "Treatment Objective", desc: "a clear picture of what your treatment aims to achieve" },
+                  { title: "Treatment Planning with Reasoning", desc: "our expert's provisional plan, along with the thinking behind it" },
+                  { title: "3D Simulated Plan (for educational purposes only)", desc: "a visual preview of how your smile transformation may look" },
+                  { title: "1-on-1 Video Consultation with a Smile Expert", desc: "get your questions answered directly, face to face" },
+                ].map((item) => (
+                  <div key={item.title} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                    <span style={{ flexShrink: 0, color: GOLD, fontWeight: 800, fontSize: 14, lineHeight: "20px" }}>✓</span>
+                    <p style={{ margin: 0, fontSize: 13, color: "#374151", lineHeight: 1.6 }}>
+                      <span style={{ fontWeight: 700, color: NAVY }}>{item.title}</span> — {item.desc}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </Section>
+
+            <button
+              onClick={() => {
+                setStep(1)
+                window.scrollTo({ top: 0, behavior: "smooth" })
+              }}
+              style={primaryBtn}
+            >
+              Proceed
+            </button>
+          </>
         )}
 
         {/* ── STEP 1 — Basic Info ── */}
@@ -915,24 +951,6 @@ export default function UploadStepPage() {
             <p style={{ fontSize: 13, color: "#6b7280", margin: "0 0 24px" }}>
               Step 4 of 4 — ₹399 <span style={{ textDecoration: "line-through", color: "#9ca3af" }}>₹999</span>
             </p>
-
-            <Section title="Your Online Smile Report Includes:">
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {[
-                  { title: "Treatment Objective", desc: "a clear picture of what your treatment aims to achieve" },
-                  { title: "Treatment Planning with Reasoning", desc: "our expert's provisional plan, along with the thinking behind it" },
-                  { title: "3D Simulated Plan (for educational purposes only)", desc: "a visual preview of how your smile transformation may look" },
-                  { title: "1-on-1 Video Consultation with a Smile Expert", desc: "get your questions answered directly, face to face" },
-                ].map((item) => (
-                  <div key={item.title} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                    <span style={{ flexShrink: 0, color: GOLD, fontWeight: 800, fontSize: 14, lineHeight: "20px" }}>✓</span>
-                    <p style={{ margin: 0, fontSize: 13, color: "#374151", lineHeight: 1.6 }}>
-                      <span style={{ fontWeight: 700, color: NAVY }}>{item.title}</span> — {item.desc}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </Section>
 
             <Section title="Please Read & Accept">
               <div style={{ background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: 10, padding: 14, fontSize: 12, color: "#4b5563", lineHeight: 1.7 }}>

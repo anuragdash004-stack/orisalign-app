@@ -366,7 +366,7 @@ export default function LandingPage() {
                 Upload teeth images and get your personalised provisional plan from our smile expert within 24 hours.
               </p>
               <span className="inline-flex items-center justify-center gap-2 text-sm font-bold px-6 py-2.5 rounded-full transition-colors" style={{ background: GOLD, color: '#fff' }}>
-                Book now
+                Proceed
                 <svg viewBox="0 0 24 24" className="w-4 h-4 transition-transform group-hover:translate-x-1" {...ic} stroke="#fff"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
               </span>
             </a>
