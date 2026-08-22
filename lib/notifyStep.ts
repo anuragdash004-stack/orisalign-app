@@ -22,7 +22,7 @@ const supabase = createClient(
 // month) fire from lib/paymentHelper.ts's recordPaymentReceived instead,
 // not from this generic step-completed path.
 const WHATSAPP_STEP_CAMPAIGNS: Record<string, string> = {
-  confirmed: "orisalign_appointment_confirmed",
+  confirmed: "orisalign_appointment_confirmation",
   scanning_done: "orisalign_scanning_done",
   planning_done: "orisalign_planning_done",
   plan_approved: "orisalign_plan_approved",
@@ -45,7 +45,7 @@ const WHATSAPP_STEP_CAMPAIGNS: Record<string, string> = {
 // fallback in sendStepNotification below). Add an entry here whenever a
 // template gets approved with a different variable count/order than drafted.
 const WHATSAPP_STEP_PARAMS: Partial<
-  Record<string, (ctx: { name: string; dentistName: string | null; followupAt: string | null }) => string[]>
+  Record<string, (ctx: { name: string; dentistName: string | null; followupAt: string | null; consultationTypeLabel: string; date: string; time: string }) => string[]>
 > = {
   // Approved as fully static text — zero body variables.
   scanning_done: () => [],
@@ -55,7 +55,11 @@ const WHATSAPP_STEP_PARAMS: Partial<
   // "Thank you for approving your treatment plan, your case has been moved
   // to production." — static, no variables.
   plan_approved: () => [],
-  confirmed: ({ name, dentistName }) => [name, dentistName || "our team"],
+  // {{1}} name, {{2}} consultation type ("Video Consultation" / "Clinic
+  // Consultation" / "Home Consultation"), {{3}} date (e.g. "11 Aug"),
+  // {{4}} time (e.g. "11 am") — date/time are already stored on the
+  // appointment in this display-ready form (see app/api/notify-booking).
+  confirmed: ({ name, consultationTypeLabel, date, time }) => [name, consultationTypeLabel, date, time],
   // "Hi, your appointment with has been scheduled on {{1}}." — {{1}} = the
   // follow-up date entered by staff (journey_steps.followup_appointment_at).
   followup_appointment: ({ followupAt }) => [followupAt || "the scheduled date"],
@@ -383,11 +387,17 @@ export async function sendStepNotification(params: SendStepNotificationParams): 
   // already on file at confirmation time.
   let detailsBlock: string | undefined
   let dentistName: string | null = null
+  let consultationTypeLabel = "Consultation"
   if (stepKey === "confirmed") {
     const clinic = appt.clinic_location ? CLINIC_INFO[appt.clinic_location] : null
     // Consultation type is stored as a "[TYPE] complaint" prefix on `problem`
     // (see parseProblem in the Lead Tracker / booking form).
     const consultationType = appt.problem?.match(/^\[(\w+)\]/)?.[1]?.toLowerCase()
+    consultationTypeLabel =
+      consultationType === "online" ? "Video Consultation" :
+      consultationType === "clinic" ? "Clinic Consultation" :
+      consultationType === "home" ? "Home Consultation" :
+      "Consultation"
     if (appt.assigned_dentist) {
       const { data: dentist } = await supabase
         .from("users")
@@ -452,7 +462,7 @@ export async function sendStepNotification(params: SendStepNotificationParams): 
     const followupAt = (appt.journey_steps as Record<string, any> | null)?.followup_appointment_at || null
     const paramsBuilder = WHATSAPP_STEP_PARAMS[stepKey]
     const templateParams = paramsBuilder
-      ? paramsBuilder({ name: appt.name || "Patient", dentistName, followupAt })
+      ? paramsBuilder({ name: appt.name || "Patient", dentistName, followupAt, consultationTypeLabel, date: appt.date || "", time: appt.time || "" })
       : [appt.name || "Patient"]
     try {
       const waResult = await sendWhatsApp({
