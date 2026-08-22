@@ -366,6 +366,24 @@ export async function recordPaymentReceived(params: RecordPaymentParams): Promis
     // best-effort only
   }
 
+  // Generic "payment received" receipt — fires for every payment on this
+  // funnel regardless of what it was for, alongside whichever more specific
+  // template fires below. {{1}} = the amount just paid, with ₹ symbol
+  // (e.g. "₹2499"), never the running total.
+  const patientPhone = (appt as { phone?: string }).phone;
+  if (patientPhone) {
+    try {
+      await sendWhatsApp({
+        campaignName: "orisalign_payment_received",
+        destination: patientPhone,
+        userName: (appt as { name?: string }).name || "Patient",
+        templateParams: [`₹${amountPaid}`],
+      });
+    } catch {
+      // best-effort only
+    }
+  }
+
   // WhatsApp receipt to the patient — staff already gets the email above;
   // this is the patient-facing confirmation, which previously didn't exist
   // on this path at all.
@@ -382,7 +400,6 @@ export async function recordPaymentReceived(params: RecordPaymentParams): Promis
   //     newly crossed the cumulative threshold for.
   // Legacy (pre-monthly-plan) appointments have no matching template and are
   // skipped — email above is their only patient-facing receipt.
-  const patientPhone = (appt as { phone?: string }).phone;
   try {
     if (monthlyPlan && patientPhone) {
       const couponsTotal = ((pd.applied_coupons as { discount?: number }[]) || [])
@@ -394,6 +411,16 @@ export async function recordPaymentReceived(params: RecordPaymentParams): Promis
       if (monthNum) {
         await sendWhatsApp({
           campaignName: "orisalign_payment_done",
+          destination: patientPhone,
+          userName: (appt as { name?: string }).name || "Patient",
+          templateParams: [String(monthNum)],
+        });
+        // Fires the moment a month's batch is auto-created (see
+        // autoCreatePaidBatches above, called just before this block) —
+        // manufacturing starts immediately on payment, so this notification
+        // and the "push to production" state change happen together.
+        await sendWhatsApp({
+          campaignName: "orisalign_production",
           destination: patientPhone,
           userName: (appt as { name?: string }).name || "Patient",
           templateParams: [String(monthNum)],

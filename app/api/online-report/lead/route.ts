@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { sendEmail } from "@/lib/notifications/resend"
+import { sendWhatsApp } from "@/lib/notifications/aisensy"
 import { syncUnpaidAppointmentLead } from "@/lib/onlineReportLeadSync"
 
 const supabase = createClient(
@@ -59,6 +60,18 @@ export async function POST(req: Request) {
     syncUnpaidAppointmentLead(supabase, { reportId, fullName, phone, sex, age }).catch((err) => {
       console.error("[online-report lead] tracker sync failed", err)
     })
+
+    // Patient-facing "we've received your submission" WhatsApp — only on the
+    // first time this lead is created, same as the admin email below (a
+    // repeat Step 1 visit to an already-existing draft shouldn't re-fire it).
+    if (isNewLead && phone) {
+      sendWhatsApp({
+        campaignName: "orisalign_osr_new",
+        destination: phone,
+        userName: fullName,
+        templateParams: [fullName],
+      }).catch(() => {})
+    }
 
     if (isNewLead && ADMIN_EMAIL) {
       await sendEmail({

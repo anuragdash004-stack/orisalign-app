@@ -4,6 +4,7 @@ import Razorpay from "razorpay"
 import { createClient } from "@supabase/supabase-js"
 import { incrementCouponUsage, type AmountType } from "@/lib/onlineReportPricing"
 import { sendEmail } from "@/lib/notifications/resend"
+import { sendWhatsApp } from "@/lib/notifications/aisensy"
 import { notifyImpressionPaid, notifyPlanPaid } from "@/lib/notifications/notify"
 import { markAppointmentLeadPaid } from "@/lib/onlineReportLeadSync"
 
@@ -112,6 +113,23 @@ export async function POST(req: Request) {
       if (couponId) await incrementCouponUsage(supabase, couponId).catch(() => {})
       markAppointmentLeadPaid(supabase, reportId).catch((err) => console.error("[online-report verify-payment] tracker sync failed", err))
 
+      // Generic payment receipt (every payment on this flow gets one) plus
+      // the Online Smile Report-specific confirmation, both best-effort.
+      if (fd.patientPhone) {
+        sendWhatsApp({
+          campaignName: "orisalign_payment_received",
+          destination: fd.patientPhone,
+          userName: fd.fullName,
+          templateParams: [`₹${Math.round(amountPaidRupees)}`],
+        }).catch(() => {})
+        sendWhatsApp({
+          campaignName: "orisalign_osr",
+          destination: fd.patientPhone,
+          userName: fd.fullName,
+          templateParams: [fd.fullName],
+        }).catch(() => {})
+      }
+
       if (ADMIN_EMAIL) {
         await sendEmail({
           to: ADMIN_EMAIL,
@@ -162,6 +180,14 @@ export async function POST(req: Request) {
 
       if (couponId) await incrementCouponUsage(supabase, couponId).catch(() => {})
       notifyImpressionPaid(patient).catch(() => {})
+      if (report.patient_phone) {
+        sendWhatsApp({
+          campaignName: "orisalign_payment_received",
+          destination: report.patient_phone,
+          userName: report.full_name,
+          templateParams: [`₹${Math.round(amountPaidRupees)}`],
+        }).catch(() => {})
+      }
       if (ADMIN_EMAIL) {
         sendEmail({ to: ADMIN_EMAIL, subject: `Impression payment received — ${report.full_name}`, html: `<p>${report.full_name} paid ₹${amountPaidRupees} for their impression visit.</p>` }).catch(() => {})
       }
@@ -181,6 +207,26 @@ export async function POST(req: Request) {
 
       if (couponId) await incrementCouponUsage(supabase, couponId).catch(() => {})
       notifyPlanPaid(patient, amountType).catch(() => {})
+      if (report.patient_phone) {
+        sendWhatsApp({
+          campaignName: "orisalign_payment_received",
+          destination: report.patient_phone,
+          userName: report.full_name,
+          templateParams: [`₹${Math.round(amountPaidRupees)}`],
+        }).catch(() => {})
+        // Full Plan Only (₹2,499) reuses the same static, zero-variable
+        // template already approved for the classic appointment flow's
+        // matching ₹2,499 provisional-planning fee — not fired for
+        // plan_treatment (₹4,999), which is a different payment.
+        if (amountType === "plan_only") {
+          sendWhatsApp({
+            campaignName: "orisalign_full_plan_payment_done",
+            destination: report.patient_phone,
+            userName: report.full_name,
+            templateParams: [],
+          }).catch(() => {})
+        }
+      }
       if (ADMIN_EMAIL) {
         sendEmail({ to: ADMIN_EMAIL, subject: `Plan payment received — ${report.full_name}`, html: `<p>${report.full_name} paid ₹${amountPaidRupees} for "${amountType}".</p>` }).catch(() => {})
       }
