@@ -19,6 +19,7 @@ const LEGACY_ALL_STEPS = [
   { key: "confirmed",               label: "Appointment Confirmed" },
   { key: "scanning_done",           label: "Scanning and Provisional Planning" },
   { key: "payment_done",            label: "Plan and Payment" },
+  { key: "prealigner_treatment",    label: "Prealigner Treatment" },
   { key: "planning_done",           label: "Full Plan" },
   { key: "plan_approved",           label: "Plan Approved" },
   { key: "manufacturing_started",   label: "Manufacturing Started" },
@@ -46,6 +47,7 @@ const NEW_ALL_STEPS = [
   { key: "payment_done",            label: "Full Plan" },
   { key: "investigation_required",  label: "Investigation Required" },
   { key: "plan_approved",           label: "Plan Approved" },
+  { key: "prealigner_treatment",    label: "Prealigner Treatment" },
   { key: "aligner_sets",            label: "Aligner Sets" },
   { key: "followup_appointment",    label: "Appointment Book" },
   { key: "aligners_delivered",      label: "Aligners Delivered" },
@@ -1163,11 +1165,18 @@ function deriveSteps(appt) {
   // deriveSteps for the same reasoning.
   const isNewModel = hasMonthlyPlan || appt.provisional_min_months != null || appt.provisional_max_months != null;
   const amountPaid = Number(appt.amount_paid) || 0;
+  // Same computation as the patient page's prealignerProcedures() — kept
+  // inline here since this is the only other place it's needed.
+  const pfd = appt.patient_form_data || {};
+  const procs = [...(pfd.pre_orthodontic_procedures || [])].map((p) => (p === "Others" && pfd.pre_orthodontic_others ? `Others: ${pfd.pre_orthodontic_others}` : p));
+  const prealignerDone = js.prealigner_done || {};
 
   const base = {
     booked:                  true,
     confirmed:               appt.status === "confirmed" || appt.status === "completed",
     scanning_done:           js.scanning_done        !== undefined ? !!js.scanning_done        : !!appt.stl_submitted,
+    // No pre-aligner procedures selected → nothing to wait on, counts as done.
+    prealigner_treatment:    procs.length === 0 ? true : procs.every((p) => !!prealignerDone[p]),
     provisional_planning:    isNewModel
       ? (() => {
           const planCfg = PLAN_CONFIGS[appt.payment_data?.plan] || PLAN_CONFIGS.ORISPRO;
@@ -1873,7 +1882,7 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                 <p style={{ margin: 0, flex: 1, fontSize: "14px", fontWeight: done ? "700" : "500", color: done ? "#15803d" : "#374151" }}>
                   {step.label}
                 </p>
-                {isAdmin && step.key !== "plan_approved" && step.key !== "booked" && step.key !== "confirmed" && step.key !== "payment_done" && step.key !== "followup_appointment" && step.key !== "final_plan_review" && step.key !== "aligner_sets" && step.key !== "provisional_planning" && step.key !== "investigation_required" && (
+                {isAdmin && step.key !== "plan_approved" && step.key !== "booked" && step.key !== "confirmed" && step.key !== "payment_done" && step.key !== "followup_appointment" && step.key !== "final_plan_review" && step.key !== "aligner_sets" && step.key !== "provisional_planning" && step.key !== "investigation_required" && step.key !== "prealigner_treatment" && (
                   <button
                     onClick={() => toggle(step.key)}
                     disabled={isSaving}
@@ -2872,6 +2881,23 @@ function ReportTab({ appointmentId, appt }) {
             const file = investigationFiles[t];
             return file?.path ? `${label}: uploaded "${file.name}"${file.uploadedAt ? ` on ${fmt(file.uploadedAt)}` : ""}.` : `${label}: awaiting patient upload.`;
           }),
+    });
+  }
+
+  // 6c. Prealigner Treatment — dentist-flagged pre-orthodontic procedures
+  // (e.g. Scaling), tracked the same way for both models. No entry at all
+  // if the dentist never flagged any.
+  const prealignerProcs = [...(appt.patient_form_data?.pre_orthodontic_procedures || [])]
+    .map((p) => (p === "Others" && appt.patient_form_data?.pre_orthodontic_others ? `Others: ${appt.patient_form_data.pre_orthodontic_others}` : p));
+  if (prealignerProcs.length > 0) {
+    const prealignerDoneMap = js.prealigner_done || {};
+    const doneTimestamps = prealignerProcs.map((p) => prealignerDoneMap[p]).filter(Boolean);
+    events.push({
+      done: !!steps.prealigner_treatment,
+      title: "Prealigner Treatment",
+      by: "admin",
+      at: doneTimestamps.length > 0 ? doneTimestamps.slice().sort().slice(-1)[0] : null,
+      detail: prealignerProcs.map((p) => prealignerDoneMap[p] ? `${p}: done on ${fmt(prealignerDoneMap[p])}.` : `${p}: pending.`),
     });
   }
 
