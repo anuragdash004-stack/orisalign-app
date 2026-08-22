@@ -31,6 +31,14 @@ const WHATSAPP_STEP_CAMPAIGNS: Record<string, string> = {
   smile_correction: "orisalign_smile_correction",
   treatment_completed: "orisalign_treatment_completed",
   feedback_submitted: "orisalign_feedback_submitted",
+  // Same two campaigns lib/paymentHelper.ts used to fire directly for these
+  // two provisional-payment outcomes — now routed through here instead, so
+  // one sendStepNotification call sends both the email and the WhatsApp
+  // receipt together instead of two separate call sites doing it piecemeal.
+  provisional_first_month_payment: "orisalign_payment_done",
+  provisional_full_plan_payment: "orisalign_full_plan_payment_done",
+  // provisional_planning intentionally has no WhatsApp campaign yet — no
+  // approved AiSensy template for "your estimate is ready" exists.
 }
 
 // Per-step override for templateParams, for steps whose approved AiSensy
@@ -56,6 +64,11 @@ const WHATSAPP_STEP_PARAMS: Partial<
   // the header media (see WHATSAPP_SMILE_CORRECTION_MEDIA below), no body
   // variables.
   smile_correction: () => [],
+  // "Hi your month {{1}} Payment has been received. Welcome to OrisAlign" —
+  // the provisional "first month" choice always means Month 1.
+  provisional_first_month_payment: () => ["1"],
+  // "Your ₹2,499 provisional planning fee has been received..." — static.
+  provisional_full_plan_payment: () => [],
 }
 
 // Aligner Care Instructions PDF, sent as the document header on the
@@ -112,6 +125,33 @@ function getStepContent(stepKey: string): StepContent | null {
       headline: "Payment Received!",
       body: "Your ₹999 Final Planning Payment has been received. Thank you for your trust in OrisAlign. Our orthodontic team will now prepare your full treatment plan and keep you updated at every step.",
       nextStep: "Treatment Planning",
+    },
+    // New per-arch model — three distinct Provisional Planning notifications,
+    // one for the estimate itself and one for each of the two payment
+    // choices, so a patient never sees the same generic message regardless
+    // of what actually happened (see lib/paymentHelper.ts for the payment
+    // ones, and saveScanProvisionalPlan in the admin Journey tab for this
+    // one, both of which call sendStepNotification with these keys).
+    provisional_planning: {
+      emoji: "📝",
+      subject: "Your Treatment Estimate is Ready — OrisAlign",
+      headline: "Provisional Plan Ready!",
+      body: "Your orthodontist has prepared your provisional treatment estimate. Please visit your journey page to review the estimated duration for OrisPro and OrisPro Plus, choose your plan, and proceed with payment.",
+      nextStep: "Choose Your Plan & Pay",
+    },
+    provisional_first_month_payment: {
+      emoji: "💳",
+      subject: "Payment Received — Welcome to OrisAlign!",
+      headline: "Payment Received!",
+      body: "Your first month's payment has been received — welcome to OrisAlign! Your treatment plan preparation is underway and your first month's aligners have moved into production.",
+      nextStep: "Full Plan Review",
+    },
+    provisional_full_plan_payment: {
+      emoji: "💳",
+      subject: "Payment Received — Treatment Plan Fee — OrisAlign",
+      headline: "Payment Received!",
+      body: "Your ₹2,499 provisional planning fee has been received. Our orthodontic team will now prepare your full 3D treatment plan and keep you updated at every step.",
+      nextStep: "Full Plan Review",
     },
     planning_done: {
       emoji: "📋",

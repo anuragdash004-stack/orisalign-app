@@ -1350,6 +1350,22 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
     Object.assign(appt, updatePayload);
     setScanPlanSaved(true);
     setTimeout(() => setScanPlanSaved(false), 3000);
+    // New per-arch model only — every time the estimate is saved, the
+    // patient should hear their plan is ready, not just once. Respects the
+    // same send email/WhatsApp checkbox as every other step.
+    if (isNewModelAppt && stepMessages.provisional_planning && sendNotifyOnUpdate.provisional_planning !== false) {
+      fetch("/api/notify-step", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          appointmentId,
+          stepKey: "provisional_planning",
+          email: appt.email || null,
+          customSubject: stepMessages.provisional_planning.subject,
+          customBody: stepMessages.provisional_planning.body,
+        }),
+      }).catch(() => {});
+    }
   };
 
   // Full Plan (new per-arch model) — final plan text + upper/lower sets.

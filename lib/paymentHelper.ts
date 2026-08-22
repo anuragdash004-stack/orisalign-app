@@ -6,6 +6,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { logAuditEntry } from "./auditLog";
 import { sendWhatsApp } from "./notifications/aisensy";
+import { sendStepNotification } from "./notifyStep";
 import { applyCouponDiscount, alignerRangeLabel, monthSlotLabels, FINAL_PLAN_FEE, PROVISIONAL_PLAN_FEE, provisionalPaymentBaseline, PLAN_CONFIGS, type MonthlyPlan, type PlanKey, type ProvisionalPaymentChoice } from "./monthlyPlan";
 
 export type PaymentType = "down_payment" | "pending" | "full" | "others";
@@ -382,44 +383,37 @@ export async function recordPaymentReceived(params: RecordPaymentParams): Promis
   // Legacy (pre-monthly-plan) appointments have no matching template and are
   // skipped — email above is their only patient-facing receipt.
   const patientPhone = (appt as { phone?: string }).phone;
-  if (patientPhone) {
-    try {
-      if (monthlyPlan) {
-        const couponsTotal = ((pd.applied_coupons as { discount?: number }[]) || [])
-          .reduce((sum, c) => sum + (Number(c.discount) || 0), 0);
-        const crossedMonths = applyCouponDiscount(monthlyPlan, couponsTotal).months.filter(
-          (m) => previouslyPaid < m.discountedCumulative && newTotalPaid >= m.discountedCumulative,
-        );
-        const monthNum = crossedMonths.slice(-1)[0]?.num;
-        if (monthNum) {
-          await sendWhatsApp({
-            campaignName: "orisalign_payment_done",
-            destination: patientPhone,
-            userName: (appt as { name?: string }).name || "Patient",
-            templateParams: [String(monthNum)],
-          });
-        }
-      } else if (isNewModel) {
-        const choice = pd.provisional_payment_choice as ProvisionalPaymentChoice | undefined;
-        if (choice === "first_month") {
-          await sendWhatsApp({
-            campaignName: "orisalign_payment_done",
-            destination: patientPhone,
-            userName: (appt as { name?: string }).name || "Patient",
-            templateParams: ["1"],
-          });
-        } else {
-          await sendWhatsApp({
-            campaignName: "orisalign_full_plan_payment_done",
-            destination: patientPhone,
-            userName: (appt as { name?: string }).name || "Patient",
-            templateParams: [],
-          });
-        }
+  try {
+    if (monthlyPlan && patientPhone) {
+      const couponsTotal = ((pd.applied_coupons as { discount?: number }[]) || [])
+        .reduce((sum, c) => sum + (Number(c.discount) || 0), 0);
+      const crossedMonths = applyCouponDiscount(monthlyPlan, couponsTotal).months.filter(
+        (m) => previouslyPaid < m.discountedCumulative && newTotalPaid >= m.discountedCumulative,
+      );
+      const monthNum = crossedMonths.slice(-1)[0]?.num;
+      if (monthNum) {
+        await sendWhatsApp({
+          campaignName: "orisalign_payment_done",
+          destination: patientPhone,
+          userName: (appt as { name?: string }).name || "Patient",
+          templateParams: [String(monthNum)],
+        });
       }
-    } catch {
-      // best-effort only
+    } else if (!monthlyPlan && isNewModel) {
+      // Two distinct patient-facing notifications (email + WhatsApp
+      // together, via sendStepNotification) depending on what was actually
+      // paid for — never the same generic message regardless of choice.
+      // Not gated on patientPhone (unlike the branch above): the email
+      // should still go out even if the patient never gave a phone number.
+      // See lib/notifyStep.ts's getStepContent for the copy.
+      const choice = pd.provisional_payment_choice as ProvisionalPaymentChoice | undefined;
+      await sendStepNotification({
+        appointmentId,
+        stepKey: choice === "first_month" ? "provisional_first_month_payment" : "provisional_full_plan_payment",
+      });
     }
+  } catch {
+    // best-effort only
   }
 
   return {
