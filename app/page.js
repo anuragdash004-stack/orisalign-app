@@ -35,6 +35,15 @@ const COMPARISON = [
   { feature: 'Waiting period', orisalign: '15 days', braces: '15 days', invisalign: '1.5–2 months' },
 ]
 
+// Serviceable pincodes — Bhubaneswar (751xxx) and Cuttack city (753xxx) only
+const SERVICEABLE_PINCODES = new Set([
+  '751001', '751002', '751003', '751004', '751005', '751006', '751007', '751008', '751009', '751010',
+  '751011', '751012', '751013', '751014', '751015', '751016', '751017', '751018', '751019', '751020',
+  '751021', '751022', '751023', '751024', '751025', '751030',
+  '753001', '753002', '753003', '753004', '753006', '753007', '753008', '753009', '753010',
+  '753011', '753012', '753013', '753014', '753015',
+])
+
 const STEPS = [
   { icon: '🦷', title: 'Consultation', desc: 'Visit our clinic or book a home consultation. Our expert dentist reviews your teeth — at just ₹199 (regular price ₹599).' },
   { icon: '📡', title: '3D Scan', desc: 'A quick, painless 3D scan of your teeth. No moulds. Done in minutes.' },
@@ -135,6 +144,14 @@ export default function LandingPage() {
   const [callbackForm, setCallbackForm] = useState({ name: '', phone: '' })
   const [callbackSubmitted, setCallbackSubmitted] = useState(false)
   const [callbackLoading, setCallbackLoading] = useState(false)
+  const [pincode, setPincode] = useState('')
+  const [pincodeResult, setPincodeResult] = useState(null) // null | 'available' | 'unavailable'
+
+  const handlePincodeCheck = (e) => {
+    e.preventDefault()
+    if (!/^\d{6}$/.test(pincode)) return
+    setPincodeResult(SERVICEABLE_PINCODES.has(pincode) ? 'available' : 'unavailable')
+  }
 
   const handleCallbackSubmit = async (e) => {
     e.preventDefault()
@@ -354,9 +371,8 @@ export default function LandingPage() {
               </span>
             </a>
 
-            <a
-              href="/book"
-              className="group block rounded-2xl px-6 sm:px-7 py-7 sm:py-8 text-center transition-transform hover:scale-[1.015]"
+            <div
+              className="rounded-2xl px-6 sm:px-7 py-7 sm:py-8 text-center"
               style={{ background: '#fff', border: `2px solid ${GOLD}`, boxShadow: '0 24px 50px -30px rgba(184,144,90,.55)' }}
             >
               <div className="inline-flex items-center justify-center rounded-xl px-4 py-3 mb-3" style={{ background: INK }}>
@@ -371,12 +387,47 @@ export default function LandingPage() {
               <p className="text-sm mb-5" style={{ color: INK2 }}>
                 At home or in-clinic consultation available.
               </p>
-              <span className="inline-flex items-center justify-center gap-2 text-sm font-bold px-6 py-2.5 rounded-full transition-colors" style={{ background: GOLD, color: '#fff' }}>
+              <a href="/book" className="group inline-flex items-center justify-center gap-2 text-sm font-bold px-6 py-2.5 rounded-full transition-colors" style={{ background: GOLD, color: '#fff' }}>
                 Book now
                 <svg viewBox="0 0 24 24" className="w-4 h-4 transition-transform group-hover:translate-x-1" {...ic} stroke="#fff"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-              </span>
+              </a>
               <p className="text-xs mt-3" style={{ color: INK2 }}>Available in selected locations only</p>
-            </a>
+
+              <form onSubmit={handlePincodeCheck} className="mt-4 flex items-stretch gap-2 max-w-xs mx-auto">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="\d{6}"
+                  maxLength={6}
+                  placeholder="Enter your PIN code"
+                  value={pincode}
+                  onChange={e => { setPincode(e.target.value.replace(/\D/g, '').slice(0, 6)); setPincodeResult(null) }}
+                  className="flex-1 min-w-0 text-sm px-3.5 py-2.5 rounded-lg outline-none"
+                  style={{ border: `1px solid ${LINE}`, color: INK }}
+                  aria-label="PIN code"
+                />
+                <button
+                  type="submit"
+                  disabled={pincode.length !== 6}
+                  className="text-xs font-bold px-4 py-2.5 rounded-lg flex-shrink-0 disabled:opacity-40"
+                  style={{ background: INK, color: '#fff' }}
+                >
+                  Check
+                </button>
+              </form>
+
+              {pincodeResult === 'available' && (
+                <p className="text-xs font-semibold mt-2.5 flex items-center justify-center gap-1.5" style={{ color: MINTD }}>
+                  <Check className="w-3.5 h-3.5" /> Available at your location
+                </p>
+              )}
+              {pincodeResult === 'unavailable' && (
+                <p className="text-xs font-semibold mt-2.5" style={{ color: INK2 }}>
+                  3D scan is yet to start at your location — proceed with{' '}
+                  <a href="/smile-report/upload" style={{ color: GOLD, textDecoration: 'underline' }}>Online Smile Report</a>
+                </p>
+              )}
+            </div>
           </div>
         </div>
       </section>
