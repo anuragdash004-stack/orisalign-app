@@ -81,10 +81,20 @@ export default function OnlineReportDetailPage() {
   const deleteReport = async () => {
     if (!window.confirm(`Permanently delete ${report.full_name}'s Online Smile Report? This cannot be undone.`)) return;
     setDeleting(true);
-    const { error } = await supabase.from("online_reports").delete().eq("id", id);
-    setDeleting(false);
-    if (error) { alert("Failed to delete: " + error.message); return; }
-    router.push("/online-reports");
+    try {
+      const res = await fetch("/api/online-report/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      const json = await res.json();
+      setDeleting(false);
+      if (!json.success) { alert("Failed to delete: " + (json.error || "Unknown error")); return; }
+      router.push("/online-reports");
+    } catch {
+      setDeleting(false);
+      alert("Network error. Please try again.");
+    }
   };
 
   const uploadAdditionalPhoto = async (file) => {
