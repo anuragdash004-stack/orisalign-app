@@ -39,6 +39,9 @@ export default function OnlineReportDetailPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  const [caseSeverity, setCaseSeverity] = useState("");
+  const [dentalConcernsText, setDentalConcernsText] = useState("");
+  const [objectivesText, setObjectivesText] = useState("");
   const [estimatedDuration, setEstimatedDuration] = useState("");
   const [reviewerNotes, setReviewerNotes] = useState("");
   const [simulatedPlanUrl, setSimulatedPlanUrl] = useState("");
@@ -50,10 +53,22 @@ export default function OnlineReportDetailPage() {
   const [statusBusy, setStatusBusy] = useState(false);
   const [notice, setNotice] = useState(null);
 
+  // Per-photo review UI
+  const [reviewingSlot, setReviewingSlot] = useState(null);
+  const [rejectingSlot, setRejectingSlot] = useState(null);
+  const [rejectReason, setRejectReason] = useState("");
+
+  // Request More Info
+  const [infoQuestion, setInfoQuestion] = useState("");
+  const [sendingInfo, setSendingInfo] = useState(false);
+
   const load = async () => {
     const { data } = await supabase.from("online_reports").select("*").eq("id", id).single();
     setReport(data);
     if (data) {
+      setCaseSeverity(data.case_severity || "");
+      setDentalConcernsText((data.dental_concerns || []).join("\n"));
+      setObjectivesText((data.objectives || []).join("\n"));
       setEstimatedDuration(data.estimated_duration || "");
       setReviewerNotes(data.reviewer_notes || "");
       setSimulatedPlanUrl(data.simulated_plan_url || "");
@@ -108,8 +123,55 @@ export default function OnlineReportDetailPage() {
     setAddingPhoto(false);
   };
 
+  const reviewPhoto = async (slotKey, status, reason) => {
+    setReviewingSlot(slotKey);
+    try {
+      const res = await fetch("/api/online-report/review-photo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reportId: id, slotKey, status, reason }),
+      });
+      const data = await res.json();
+      if (!res.ok) { alert("Failed to save review: " + (data.error || "unknown error")); return; }
+      setRejectingSlot(null);
+      setRejectReason("");
+      await load();
+    } finally {
+      setReviewingSlot(null);
+    }
+  };
+
+  const sendInfoRequest = async () => {
+    if (!infoQuestion.trim()) { alert("Write the question first."); return; }
+    setSendingInfo(true);
+    try {
+      const res = await fetch("/api/online-report/request-info", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reportId: id, question: infoQuestion.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) { alert("Failed to send: " + (data.error || "unknown error")); return; }
+      setInfoQuestion("");
+      await load();
+    } finally {
+      setSendingInfo(false);
+    }
+  };
+
+  const unresolvedRejectedPhotos = Object.entries(report?.photo_review || {}).filter(([, r]) => r?.status === "rejected");
+  const hasOpenQuestion = report?.reviewer_question && !report?.patient_answer;
+
   const submitReport = async () => {
     if (!doctorId) { alert("Please select the reviewing doctor before submitting."); return; }
+    if (unresolvedRejectedPhotos.length > 0) {
+      alert("Some photos are still rejected and awaiting patient reupload. Resolve those before submitting.");
+      return;
+    }
+    if (hasOpenQuestion) {
+      alert("The patient hasn't answered your question yet. Wait for their response before submitting.");
+      return;
+    }
     setSubmitting(true);
     setNotice(null);
     try {
@@ -117,6 +179,9 @@ export default function OnlineReportDetailPage() {
         .from("online_reports")
         .update({
           status: "report_ready",
+          case_severity: caseSeverity || null,
+          dental_concerns: dentalConcernsText.split("\n").map((s) => s.trim()).filter(Boolean),
+          objectives: objectivesText.split("\n").map((s) => s.trim()).filter(Boolean),
           estimated_duration: estimatedDuration || null,
           reviewer_notes: reviewerNotes || null,
           simulated_plan_url: simulatedPlanUrl || null,
@@ -188,6 +253,17 @@ export default function OnlineReportDetailPage() {
         <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#15803d", borderRadius: 10, padding: 12, fontSize: 13, marginBottom: 16 }}>{notice}</div>
       )}
 
+      {report.edit_requested_at && (
+        <div style={{ background: "#fffbeb", border: "1px solid #fde68a", color: "#92400e", borderRadius: 10, padding: 12, fontSize: 13, marginBottom: 16 }}>
+          Patient requested to edit their submitted information (requested {new Date(report.edit_requested_at).toLocaleString("en-IN")}). Please contact them.
+        </div>
+      )}
+      {report.callback_requested_at && (
+        <div style={{ background: "#fffbeb", border: "1px solid #fde68a", color: "#92400e", borderRadius: 10, padding: 12, fontSize: 13, marginBottom: 16 }}>
+          Patient requested a callback ({new Date(report.callback_requested_at).toLocaleString("en-IN")}).
+        </div>
+      )}
+
       <div style={cardStyle}>
         <h3 style={{ margin: "0 0 12px", fontSize: 14, fontWeight: 800, color: "#111827" }}>Patient Info</h3>
         <p style={{ fontSize: 13, color: "#374151", margin: "0 0 4px" }}><strong>Age:</strong> {report.age ?? "—"}</p>
@@ -220,28 +296,152 @@ export default function OnlineReportDetailPage() {
 
       <div style={cardStyle}>
         <h3 style={{ margin: "0 0 12px", fontSize: 14, fontWeight: 800, color: "#111827" }}>Uploaded Photos</h3>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 10 }}>
-          {Object.entries(report.photo_urls || {}).map(([slotKey, url]) => (
-            <a key={slotKey} href={url} target="_blank" rel="noopener noreferrer" title={PHOTO_SLOT_LABELS[slotKey] || slotKey}>
-              <img src={url} alt={PHOTO_SLOT_LABELS[slotKey] || slotKey} style={{ width: "100%", height: 120, objectFit: "contain", background: "#fafafa", borderRadius: 8, border: "1px solid #e5e7eb" }} />
-              <p style={{ margin: "4px 0 0", fontSize: 11, color: "#6b7280", textAlign: "center" }}>{PHOTO_SLOT_LABELS[slotKey] || slotKey}</p>
-            </a>
-          ))}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 12 }}>
+          {Object.entries(report.photo_urls || {}).map(([slotKey, url]) => {
+            const review = (report.photo_review || {})[slotKey];
+            const status = review?.status;
+            const isBusy = reviewingSlot === slotKey;
+            return (
+              <div key={slotKey} style={{ border: `1.5px solid ${status === "approved" ? "#bbf7d0" : status === "rejected" ? "#fecaca" : "#e5e7eb"}`, borderRadius: 10, padding: 10, background: status === "approved" ? "#f0fdf4" : status === "rejected" ? "#fef2f2" : "white" }}>
+                <a href={url} target="_blank" rel="noopener noreferrer">
+                  <img src={url} alt={PHOTO_SLOT_LABELS[slotKey] || slotKey} style={{ width: "100%", height: 120, objectFit: "contain", background: "#fafafa", borderRadius: 8, border: "1px solid #e5e7eb" }} />
+                </a>
+                <p style={{ margin: "6px 0 8px", fontSize: 11, color: "#6b7280", textAlign: "center", fontWeight: 700 }}>{PHOTO_SLOT_LABELS[slotKey] || slotKey}</p>
+
+                {status === "approved" && (
+                  <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "#16a34a", textAlign: "center" }}>✓ Approved</p>
+                )}
+
+                {status === "rejected" && (
+                  <div>
+                    <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#dc2626", textAlign: "center" }}>✕ Rejected — awaiting patient reupload</p>
+                    {review?.reason && <p style={{ margin: 0, fontSize: 11, color: "#7f1d1d", textAlign: "center", fontStyle: "italic" }}>"{review.reason}"</p>}
+                  </div>
+                )}
+
+                {(!status || status === "pending") && rejectingSlot !== slotKey && (
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button onClick={() => reviewPhoto(slotKey, "approved")} disabled={isBusy} style={{ flex: 1, padding: "6px 8px", borderRadius: 8, border: "none", background: "#16a34a", color: "white", fontWeight: 700, fontSize: 11, cursor: isBusy ? "wait" : "pointer" }}>
+                      Approve
+                    </button>
+                    <button onClick={() => setRejectingSlot(slotKey)} disabled={isBusy} style={{ flex: 1, padding: "6px 8px", borderRadius: 8, border: "none", background: "#dc2626", color: "white", fontWeight: 700, fontSize: 11, cursor: isBusy ? "wait" : "pointer" }}>
+                      Reject
+                    </button>
+                  </div>
+                )}
+
+                {(!status || status === "pending") && rejectingSlot === slotKey && (
+                  <div>
+                    <textarea
+                      autoFocus
+                      placeholder="Reason for rejection…"
+                      value={rejectReason}
+                      onChange={(e) => setRejectReason(e.target.value)}
+                      style={{ width: "100%", minHeight: 60, padding: 8, borderRadius: 8, border: "1px solid #e5e7eb", fontSize: 12, boxSizing: "border-box", marginBottom: 6 }}
+                    />
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button
+                        onClick={() => reviewPhoto(slotKey, "rejected", rejectReason.trim())}
+                        disabled={isBusy || !rejectReason.trim()}
+                        style={{ flex: 1, padding: "6px 8px", borderRadius: 8, border: "none", background: "#dc2626", color: "white", fontWeight: 700, fontSize: 11, cursor: isBusy || !rejectReason.trim() ? "not-allowed" : "pointer" }}
+                      >
+                        {isBusy ? "Saving…" : "Submit Rejection"}
+                      </button>
+                      <button
+                        onClick={() => { setRejectingSlot(null); setRejectReason(""); }}
+                        style={{ padding: "6px 10px", borderRadius: 8, border: "1px solid #e5e7eb", background: "white", color: "#6b7280", fontWeight: 700, fontSize: 11, cursor: "pointer" }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
           {Object.keys(report.photo_urls || {}).length === 0 && <p style={{ fontSize: 13, color: "#9ca3af" }}>No photos.</p>}
         </div>
+      </div>
+
+      <div style={cardStyle}>
+        <h3 style={{ margin: "0 0 12px", fontSize: 14, fontWeight: 800, color: "#111827" }}>Request More Info from Patient</h3>
+        {report.reviewer_question ? (
+          <div style={{ marginBottom: 12 }}>
+            <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#6b7280", textTransform: "uppercase" }}>Question sent</p>
+            <p style={{ margin: "0 0 10px", fontSize: 13, color: "#374151" }}>{report.reviewer_question}</p>
+            {report.patient_answer ? (
+              <>
+                <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#16a34a", textTransform: "uppercase" }}>Patient answered</p>
+                <p style={{ margin: 0, fontSize: 13, color: "#374151" }}>{report.patient_answer}</p>
+              </>
+            ) : (
+              <p style={{ margin: 0, fontSize: 12, color: "#b45309", fontWeight: 700 }}>Awaiting patient's answer…</p>
+            )}
+          </div>
+        ) : (
+          <p style={{ margin: "0 0 12px", fontSize: 13, color: "#9ca3af" }}>No question sent yet.</p>
+        )}
+        <textarea
+          placeholder="Write a question for the patient — e.g. clarify a symptom, ask for missing detail…"
+          value={infoQuestion}
+          onChange={(e) => setInfoQuestion(e.target.value)}
+          style={{ ...input, minHeight: 70, marginBottom: 8 }}
+        />
+        <button
+          onClick={sendInfoRequest}
+          disabled={sendingInfo || !infoQuestion.trim()}
+          style={{ padding: "10px 18px", borderRadius: 10, border: "none", background: "#111827", color: "white", fontWeight: 700, fontSize: 13, cursor: sendingInfo || !infoQuestion.trim() ? "not-allowed" : "pointer" }}
+        >
+          {sendingInfo ? "Sending…" : "Send to Patient"}
+        </button>
       </div>
 
       <div style={cardStyle}>
         <h3 style={{ margin: "0 0 12px", fontSize: 14, fontWeight: 800, color: "#111827" }}>Reviewer Form</h3>
 
         <div style={{ marginBottom: 12 }}>
-          <span style={label}>Estimated Treatment Duration</span>
+          <span style={label}>1. Case Severity</span>
+          <select style={input} value={caseSeverity} onChange={(e) => setCaseSeverity(e.target.value)}>
+            <option value="">Select…</option>
+            <option value="mild">Mild</option>
+            <option value="moderate">Moderate</option>
+            <option value="severe">Severe</option>
+          </select>
+        </div>
+
+        <div style={{ marginBottom: 12 }}>
+          <span style={label}>2. Concern — Patient Concern (read-only, from chief complaint)</span>
+          <p style={{ ...input, minHeight: 20, background: "#f9fafb", color: "#374151", margin: 0 }}>{report.chief_complaint || "—"}</p>
+        </div>
+
+        <div style={{ marginBottom: 12 }}>
+          <span style={label}>Dental Concern (one point per line)</span>
+          <textarea
+            style={{ ...input, minHeight: 80 }}
+            placeholder={"e.g.\nCrowding in lower anteriors\nMild bite mismatch"}
+            value={dentalConcernsText}
+            onChange={(e) => setDentalConcernsText(e.target.value)}
+          />
+        </div>
+
+        <div style={{ marginBottom: 12 }}>
+          <span style={label}>3. Objectives (one point per line)</span>
+          <textarea
+            style={{ ...input, minHeight: 80 }}
+            placeholder={"e.g.\nAlign anterior crowding\nCorrect bite mismatch"}
+            value={objectivesText}
+            onChange={(e) => setObjectivesText(e.target.value)}
+          />
+        </div>
+
+        <div style={{ marginBottom: 12 }}>
+          <span style={label}>4. Estimated Treatment Duration (in months)</span>
           <input style={input} placeholder="e.g. 6-9 months" value={estimatedDuration} onChange={(e) => setEstimatedDuration(e.target.value)} />
         </div>
 
         <div style={{ marginBottom: 12 }}>
-          <span style={label}>Notes / Reason for Investigation / Additional Information</span>
-          <textarea style={{ ...input, minHeight: 90 }} value={reviewerNotes} onChange={(e) => setReviewerNotes(e.target.value)} />
+          <span style={label}>Additional Notes (optional)</span>
+          <textarea style={{ ...input, minHeight: 70 }} value={reviewerNotes} onChange={(e) => setReviewerNotes(e.target.value)} />
         </div>
 
         <div style={{ marginBottom: 12 }}>
@@ -274,6 +474,13 @@ export default function OnlineReportDetailPage() {
             Manage doctors (name, designation, registration number, location) in the Doctors section.
           </p>
         </div>
+
+        {(unresolvedRejectedPhotos.length > 0 || hasOpenQuestion) && (
+          <div style={{ background: "#fffbeb", border: "1px solid #fde68a", color: "#92400e", borderRadius: 10, padding: 12, fontSize: 12, marginBottom: 12 }}>
+            {unresolvedRejectedPhotos.length > 0 && <p style={{ margin: "0 0 4px" }}>⚠ {unresolvedRejectedPhotos.length} photo(s) still rejected — waiting on patient reupload.</p>}
+            {hasOpenQuestion && <p style={{ margin: 0 }}>⚠ Waiting on the patient's answer to your question.</p>}
+          </div>
+        )}
 
         <button
           onClick={submitReport}

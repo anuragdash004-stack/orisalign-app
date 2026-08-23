@@ -11,18 +11,58 @@ const supabase = getSupabaseClient()
 
 const NAVY = "#1B2A4A"
 const GOLD = "#C9A84C"
+const WHATSAPP_LINK = "https://wa.me/918280837370?text=Hi%2C+I%27d+like+to+talk+about+my+Online+Smile+Report"
+
+const PHOTO_SLOT_LABELS: Record<string, string> = {
+  front_bite: "Front Bite",
+  upper_arch: "Upper Arch",
+  lower_arch: "Lower Arch",
+  left_buccal: "Left Side Bite",
+  right_buccal: "Right Side Bite",
+}
+
+const CONDITION_LABELS: Record<string, string> = {
+  none: "None",
+  blood_pressure: "Blood pressure",
+  sugar_diabetes: "Sugar / Diabetes",
+  vitamin_deficiency: "Vitamin deficiency",
+  recent_surgery: "Recent surgery (within 6 months to 1 year)",
+  asthma: "Asthma",
+  pregnancy: "Pregnancy",
+  bone_defect: "Any bone defect",
+}
+
+type PhotoReviewEntry = { status?: "approved" | "rejected" | "pending"; reason?: string }
 
 type OnlineReport = {
   id: string
   full_name: string
+  age: number | null
+  sex: string | null
   patient_phone: string | null
   patient_email: string | null
   status: string
+  conditions: Record<string, unknown> | null
+  chief_complaint: string | null
+  known_cavities: string | null
+  food_lodgement: string | null
+  tooth_mobility: string | null
+  pain: string | null
+  other_concerns: string | null
+  photo_urls: Record<string, string> | null
+  photo_review: Record<string, PhotoReviewEntry> | null
+  case_severity: string | null
+  dental_concerns: string[] | null
+  objectives: string[] | null
   estimated_duration: string | null
   reviewer_notes: string | null
   simulated_plan_url: string | null
   doctor_id: string | null
   plan_choice: string | null
+  reviewer_question: string | null
+  patient_answer: string | null
+  edit_requested_at: string | null
+  callback_requested_at: string | null
 }
 
 type Doctor = { id: string; name: string; designation: string; registration_number: string | null; location: string | null }
@@ -36,6 +76,13 @@ export default function ReportDashboardPage() {
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const [requestingEdit, setRequestingEdit] = useState(false)
+  const [requestingCallback, setRequestingCallback] = useState(false)
+  const [callbackDone, setCallbackDone] = useState(false)
+  const [uploadingSlot, setUploadingSlot] = useState<string | null>(null)
+  const [answerText, setAnswerText] = useState("")
+  const [answering, setAnswering] = useState(false)
 
   const load = async () => {
     const { data } = await supabase!.from("online_reports").select("*").eq("id", id).single()
@@ -57,6 +104,80 @@ export default function ReportDashboardPage() {
   const step2Paid = report && ["impression_paid", "impression_taken", "plan_paid", "treatment_started"].includes(report.status)
   const step3Unlocked = report && ["impression_taken"].includes(report.status)
   const step3Done = report && ["plan_paid", "treatment_started"].includes(report.status)
+
+  const requestEdit = async () => {
+    setRequestingEdit(true)
+    try {
+      await fetch("/api/online-report/request-edit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reportId: id }),
+      })
+      await load()
+    } finally {
+      setRequestingEdit(false)
+    }
+  }
+
+  const requestCallback = async () => {
+    setRequestingCallback(true)
+    try {
+      await fetch("/api/online-report/request-callback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reportId: id }),
+      })
+      setCallbackDone(true)
+      await load()
+    } finally {
+      setRequestingCallback(false)
+    }
+  }
+
+  const reuploadPhoto = async (slotKey: string, file: File) => {
+    setUploadingSlot(slotKey)
+    setError(null)
+    try {
+      const path = `${id}/${slotKey}_reupload_${Date.now()}_${file.name}`
+      const { error: uploadError } = await supabase!.storage.from("online-report-photos").upload(path, file, { upsert: true })
+      if (uploadError) throw new Error(uploadError.message)
+      const { data } = supabase!.storage.from("online-report-photos").getPublicUrl(path)
+
+      const res = await fetch("/api/online-report/reupload-photo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reportId: id, slotKey, url: data.publicUrl }),
+      })
+      const resData = await res.json()
+      if (!res.ok || !resData.success) throw new Error(resData.error || "Failed to save photo")
+      await load()
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Something went wrong uploading that photo.")
+    } finally {
+      setUploadingSlot(null)
+    }
+  }
+
+  const submitAnswer = async () => {
+    if (!answerText.trim()) return
+    setAnswering(true)
+    setError(null)
+    try {
+      const res = await fetch("/api/online-report/answer-info", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reportId: id, answer: answerText.trim() }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.success) throw new Error(data.error || "Failed to send your answer.")
+      setAnswerText("")
+      await load()
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Something went wrong.")
+    } finally {
+      setAnswering(false)
+    }
+  }
 
   const registerImpressionInterest = async () => {
     setBusy(true)
@@ -123,6 +244,13 @@ export default function ReportDashboardPage() {
     return <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: "#dc2626" }}>Report not found.</div>
   }
 
+  const conditionsList = Object.entries(report.conditions || {})
+    .filter(([k, v]) => k !== "other" && v)
+    .map(([k]) => CONDITION_LABELS[k] || k)
+    .concat(report.conditions?.other ? [`Other: ${report.conditions.other as string}`] : [])
+
+  const hasOpenQuestion = !!report.reviewer_question && !report.patient_answer
+
   return (
     <div style={{ minHeight: "100vh", background: "#faf7f2", fontFamily: "Arial, sans-serif" }}>
       <div style={{ maxWidth: 720, margin: "0 auto", padding: "32px 20px 100px" }}>
@@ -132,6 +260,94 @@ export default function ReportDashboardPage() {
 
         {error && (
           <div style={{ background: "#fef2f2", border: "1px solid #fecaca", color: "#dc2626", borderRadius: 10, padding: 12, fontSize: 13, margin: "12px 0" }}>{error}</div>
+        )}
+
+        {/* Your Submitted Information — always visible, read-only + Edit request */}
+        <Card title="Your Submitted Information">
+          <Field label="Name" value={report.full_name} />
+          <div style={{ display: "flex", gap: 20 }}>
+            <Field label="Age" value={report.age != null ? String(report.age) : "—"} />
+            <Field label="Gender" value={report.sex || "—"} />
+          </div>
+          <Field label="Chief Complaint" value={report.chief_complaint || "—"} />
+          <Field label="Existing Conditions" value={conditionsList.length > 0 ? conditionsList.join(", ") : "None reported"} />
+          <Field label="Known Cavities" value={report.known_cavities || "—"} />
+          <Field label="Food Lodgement" value={report.food_lodgement || "—"} />
+          <Field label="Tooth Mobility" value={report.tooth_mobility || "—"} />
+          <Field label="Pain" value={report.pain || "—"} />
+          <Field label="Other Concerns" value={report.other_concerns || "—"} />
+
+          {report.edit_requested_at ? (
+            <p style={{ margin: "10px 0 0", fontSize: 13, color: "#b45309", fontWeight: 700 }}>You&apos;ll be contacted soon.</p>
+          ) : (
+            <button onClick={requestEdit} disabled={requestingEdit} style={secondaryBtn}>
+              {requestingEdit ? "Sending…" : "Edit"}
+            </button>
+          )}
+        </Card>
+
+        {/* Your Photos — read-only, rejected slots get a reupload control */}
+        <Card title="Your Photos">
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 12 }}>
+            {Object.entries(report.photo_urls || {}).map(([slotKey, url]) => {
+              const review = (report.photo_review || {})[slotKey]
+              const isRejected = review?.status === "rejected"
+              const isUploading = uploadingSlot === slotKey
+              return (
+                <div key={slotKey} style={{ border: `1.5px solid ${isRejected ? "#fecaca" : "#e5e7eb"}`, borderRadius: 10, padding: 8, background: isRejected ? "#fef2f2" : "white" }}>
+                  <img src={url} alt={PHOTO_SLOT_LABELS[slotKey] || slotKey} style={{ width: "100%", height: 100, objectFit: "contain", background: "#fafafa", borderRadius: 6 }} />
+                  <p style={{ margin: "6px 0 4px", fontSize: 10, color: "#6b7280", textAlign: "center", fontWeight: 700 }}>{PHOTO_SLOT_LABELS[slotKey] || slotKey}</p>
+                  {isRejected ? (
+                    <>
+                      <p style={{ margin: "0 0 6px", fontSize: 10, color: "#dc2626", textAlign: "center", fontWeight: 700 }}>
+                        Rejected{review?.reason ? `: ${review.reason}` : ""} — please reupload
+                      </p>
+                      <label style={{ display: "block", textAlign: "center", fontSize: 11, color: "white", background: GOLD, borderRadius: 6, padding: "6px", cursor: isUploading ? "wait" : "pointer", fontWeight: 700 }}>
+                        {isUploading ? "Uploading…" : "Reupload"}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          style={{ display: "none" }}
+                          disabled={isUploading}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0]
+                            if (file) reuploadPhoto(slotKey, file)
+                          }}
+                        />
+                      </label>
+                    </>
+                  ) : review?.status === "pending" ? (
+                    <p style={{ margin: 0, fontSize: 10, color: "#b45309", textAlign: "center", fontWeight: 700 }}>Submitted — awaiting review</p>
+                  ) : null}
+                </div>
+              )
+            })}
+          </div>
+        </Card>
+
+        {/* Reviewer needs more info */}
+        {report.reviewer_question && (
+          <Card title="Your Smile Expert Needs More Info">
+            <p style={{ margin: "0 0 12px", fontSize: 14, color: "#374151" }}>{report.reviewer_question}</p>
+            {hasOpenQuestion ? (
+              <>
+                <textarea
+                  value={answerText}
+                  onChange={(e) => setAnswerText(e.target.value)}
+                  placeholder="Type your answer…"
+                  style={{ width: "100%", minHeight: 80, padding: 10, borderRadius: 10, border: "1px solid #e5e7eb", fontSize: 14, boxSizing: "border-box", marginBottom: 10 }}
+                />
+                <button onClick={submitAnswer} disabled={answering || !answerText.trim()} style={primaryBtn}>
+                  {answering ? "Sending…" : "Submit Answer"}
+                </button>
+              </>
+            ) : (
+              <>
+                <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#16a34a", textTransform: "uppercase" }}>Your answer</p>
+                <p style={{ margin: 0, fontSize: 14, color: "#374151" }}>{report.patient_answer}</p>
+              </>
+            )}
+          </Card>
         )}
 
         {report.status === "new_submission" && (
@@ -158,10 +374,42 @@ export default function ReportDashboardPage() {
                   )}
                 </div>
               )}
+
+              {report.case_severity && (
+                <div style={{ marginBottom: 14 }}>
+                  <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#9ca3af", textTransform: "uppercase" }}>Case Severity</p>
+                  <span style={{ display: "inline-block", padding: "4px 12px", borderRadius: 99, background: "#fff7ed", color: "#b45309", fontSize: 12, fontWeight: 800, textTransform: "capitalize" }}>
+                    {report.case_severity}
+                  </span>
+                </div>
+              )}
+
+              <div style={{ marginBottom: 14 }}>
+                <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#9ca3af", textTransform: "uppercase" }}>Concern — Patient Concern</p>
+                <p style={{ margin: "0 0 10px", fontSize: 13, color: "#374151" }}>{report.chief_complaint || "—"}</p>
+                {report.dental_concerns && report.dental_concerns.length > 0 && (
+                  <>
+                    <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#9ca3af", textTransform: "uppercase" }}>Dental Concern</p>
+                    <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: "#374151", lineHeight: 1.7 }}>
+                      {report.dental_concerns.map((c, i) => <li key={i}>{c}</li>)}
+                    </ul>
+                  </>
+                )}
+              </div>
+
+              {report.objectives && report.objectives.length > 0 && (
+                <div style={{ marginBottom: 14 }}>
+                  <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#9ca3af", textTransform: "uppercase" }}>Objectives</p>
+                  <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: "#374151", lineHeight: 1.7 }}>
+                    {report.objectives.map((o, i) => <li key={i}>{o}</li>)}
+                  </ul>
+                </div>
+              )}
+
               {report.estimated_duration && (
                 <Field label="Estimated Treatment Duration" value={report.estimated_duration} />
               )}
-              {report.reviewer_notes && <Field label="Notes" value={report.reviewer_notes} />}
+              {report.reviewer_notes && <Field label="Additional Notes" value={report.reviewer_notes} />}
               {report.simulated_plan_url && (
                 <a
                   href={report.simulated_plan_url}
@@ -172,23 +420,43 @@ export default function ReportDashboardPage() {
                   View Your Simulation
                 </a>
               )}
-              <div style={{ marginTop: 10 }}>
-                <button
-                  onClick={() => router.push(`/report/${id}/zoom-call`)}
-                  style={{ background: "white", border: `1.5px solid ${GOLD}`, color: GOLD, borderRadius: 10, padding: "10px 18px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
-                >
-                  Book a Video Call with Our Smile Expert
-                </button>
-              </div>
             </Card>
 
-            <Card title="Step 2 — Impression Interest">
+            {step2Reached && (
+              <Card title="Next Steps">
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <button
+                    onClick={() => router.push(`/report/${id}/zoom-call`)}
+                    style={{ background: "white", border: `1.5px solid ${GOLD}`, color: GOLD, borderRadius: 10, padding: "12px 18px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
+                  >
+                    Book a Video Call with Our Smile Expert
+                  </button>
+                  {callbackDone || report.callback_requested_at ? (
+                    <p style={{ ...mutedText, textAlign: "center" }}>We&apos;ll reach out to you soon.</p>
+                  ) : (
+                    <button onClick={requestCallback} disabled={requestingCallback} style={{ background: "white", border: "1.5px solid #e5e7eb", color: "#374151", borderRadius: 10, padding: "12px 18px", fontWeight: 700, fontSize: 13, cursor: requestingCallback ? "wait" : "pointer" }}>
+                      {requestingCallback ? "Sending…" : "Request a Callback"}
+                    </button>
+                  )}
+                  <a
+                    href={WHATSAPP_LINK}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ display: "block", textAlign: "center", background: "white", border: "1.5px solid #e5e7eb", color: "#374151", borderRadius: 10, padding: "12px 18px", fontWeight: 700, fontSize: 13, textDecoration: "none" }}
+                  >
+                    Chat on WhatsApp
+                  </a>
+                </div>
+              </Card>
+            )}
+
+            <Card title="Step 2 — Dental Impression">
               {step2Reached && (
                 <button onClick={registerImpressionInterest} disabled={busy} style={primaryBtn}>
-                  Book Your Dental Impression Appointment
+                  Book for Dental Impression — ₹999
                 </button>
               )}
-              {step2Waiting && <p style={mutedText}>Thank you for your interest. You will be contacted soon.</p>}
+              {step2Waiting && <p style={mutedText}>You will be reached out very soon.</p>}
               {step2ReadyToPay && (
                 <button onClick={payImpression} disabled={busy} style={primaryBtn}>
                   Pay <span style={{ textDecoration: "line-through", opacity: 0.7, margin: "0 4px" }}>₹1999</span> ₹999 for Impression Visit
@@ -270,6 +538,18 @@ const primaryBtn: React.CSSProperties = {
   fontWeight: 800,
   fontSize: 13,
   cursor: "pointer",
+}
+
+const secondaryBtn: React.CSSProperties = {
+  background: "white",
+  color: "#374151",
+  border: "1.5px solid #e5e7eb",
+  borderRadius: 10,
+  padding: "9px 16px",
+  fontWeight: 700,
+  fontSize: 12,
+  cursor: "pointer",
+  marginTop: 6,
 }
 
 const mutedText: React.CSSProperties = { margin: 0, fontSize: 13, color: "#6b7280" }
