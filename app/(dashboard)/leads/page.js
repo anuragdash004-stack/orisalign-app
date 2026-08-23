@@ -1125,11 +1125,25 @@ function LeadForm({ lead, entry, actor, onClose, onSaved, onDuplicateFound, mode
           .single();
         if (error) throw error;
         leadId = data?.id;
+
+        // WhatsApp "thanks for your interest" — only when this admin action
+        // actually created a new lead (this branch), never on an update to
+        // an existing one. Routed through a server API since this is
+        // client-side code and can't hold the AiSensy key. Best-effort —
+        // never blocks the save if it fails.
+        if (form.phone) {
+          fetch("/api/notify-new-lead", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ phone: form.phone, name: form.name }),
+          }).catch(() => {});
+        }
       }
-      // No patient-facing email/WhatsApp fires here — booking a lead is not
-      // yet a confirmed appointment. The patient only hears from us once
-      // staff actually confirms the appointment (app/(dashboard)/appointment/
-      // page.js's Confirm action, stepKey "confirmed").
+      // No other patient-facing email/WhatsApp fires here — booking a lead
+      // is not yet a confirmed appointment. The patient only hears from us
+      // again once staff actually confirms the appointment
+      // (app/(dashboard)/appointment/page.js's Confirm action, stepKey
+      // "confirmed").
       onSaved();
     } catch (err) {
       alert("Failed to save: " + (err.message || err));

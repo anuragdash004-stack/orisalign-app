@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
+import { sendWhatsApp } from "@/lib/notifications/aisensy"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -50,6 +51,22 @@ export async function POST(req: Request) {
 
       if (insertError) {
         console.error("[notify-booking] callback insert failed", insertError)
+      }
+
+      // WhatsApp "thanks for your interest" — awaited (not fire-and-forget):
+      // on Vercel an unawaited promise can be killed the instant the
+      // response is sent. Best-effort — never blocks the callback request.
+      if (phone) {
+        try {
+          await sendWhatsApp({
+            campaignName: "orisalign_new_lead_thankyou",
+            destination: phone,
+            userName: name,
+            templateParams: [],
+          })
+        } catch {
+          // best-effort only
+        }
       }
 
       await fetch("https://api.resend.com/emails", {

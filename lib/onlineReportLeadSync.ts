@@ -68,6 +68,11 @@ export async function syncUnpaidAppointmentLead(
       online_report_id: reportId,
       stage_log: stageLog,
     }])
+    // No "thanks for your interest" WhatsApp fired from here — the caller
+    // (app/api/online-report/lead/route.ts) already sends its own dedicated
+    // orisalign_osr_new welcome message for this exact event. Firing the
+    // generic orisalign_new_lead_thankyou here too would double-message
+    // every Online Smile Report lead.
     return
   }
 

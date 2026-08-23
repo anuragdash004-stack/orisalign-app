@@ -56,21 +56,30 @@ export async function POST(req: Request) {
     }
 
     // Mirrors this lead into the Lead Tracker (Online Smile Report Leads
-    // section) — never blocks the patient-facing save if it fails.
-    syncUnpaidAppointmentLead(supabase, { reportId, fullName, phone, sex, age }).catch((err) => {
+    // section) — never blocks the patient-facing save if it fails. Awaited
+    // (not fire-and-forget): on Vercel an unawaited promise can be killed
+    // the instant the response is sent, before it ever runs.
+    try {
+      await syncUnpaidAppointmentLead(supabase, { reportId, fullName, phone, sex, age })
+    } catch (err) {
       console.error("[online-report lead] tracker sync failed", err)
-    })
+    }
 
     // Patient-facing "we've received your submission" WhatsApp — only on the
     // first time this lead is created, same as the admin email below (a
     // repeat Step 1 visit to an already-existing draft shouldn't re-fire it).
+    // Awaited for the same reason as above.
     if (isNewLead && phone) {
-      sendWhatsApp({
-        campaignName: "orisalign_osr_new",
-        destination: phone,
-        userName: fullName,
-        templateParams: [],
-      }).catch(() => {})
+      try {
+        await sendWhatsApp({
+          campaignName: "orisalign_osr_new",
+          destination: phone,
+          userName: fullName,
+          templateParams: [],
+        })
+      } catch {
+        // best-effort only
+      }
     }
 
     if (isNewLead && ADMIN_EMAIL) {
