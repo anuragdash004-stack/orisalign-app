@@ -68,6 +68,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
     audit:        userRole === "admin",
     lmc:          userRole === "admin",
     manufacturing: userRole === "admin",
+    dtdReport:    userRole === "admin",
     onlineReports: userRole === "admin" || userRole === "dentist" || userRole === "orthodontist",
     doctors:      userRole === "admin",
   };
@@ -214,6 +215,14 @@ export default function Sidebar({ collapsed, setCollapsed }) {
           {show.dashboard && (
             <Link href="/admin" style={linkStyle("/admin")}>
               {showContent ? "DASHBOARD" : ""}
+            </Link>
+          )}
+          {show.dtdReport && (
+            <Link href="/dtd-report" style={{
+              ...linkStyle("/dtd-report"),
+              ...(path.startsWith("/dtd-report") ? { background: "#ffffff90" } : {}),
+            }}>
+              {showContent ? "DAY-TO-DAY REPORT" : ""}
             </Link>
           )}
           {show.leads && (
