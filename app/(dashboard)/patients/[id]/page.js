@@ -1265,6 +1265,9 @@ const DEFAULT_STEP_MESSAGES = {
 function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
   const [steps, setSteps] = useState(() => deriveSteps(appt));
   const [saving, setSaving] = useState(null);
+  // Accordion — only one step's detail panel open at a time, click the row
+  // to expand/collapse instead of every panel always being visible at once.
+  const [expandedAdminStep, setExpandedAdminStep] = useState(null);
   const [followupDate, setFollowupDate] = useState(appt.journey_steps?.followup_appointment_at || "");
   const [stepMessages, setStepMessages] = useState(() => JSON.parse(JSON.stringify(DEFAULT_STEP_MESSAGES)));
   const [openEmail, setOpenEmail] = useState({}); // which steps have their email editor expanded
@@ -1923,6 +1926,22 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
     }
   };
 
+  // "Appointment Booked" — the original booking date/time, editable from the
+  // Journey tab like every other step instead of being permanently read-only.
+  const [bookingDate, setBookingDate] = useState(appt.date || "");
+  const [bookingTime, setBookingTime] = useState(appt.time || "");
+  const [savingBooking, setSavingBooking] = useState(false);
+  const saveBookingDetails = async () => {
+    setSavingBooking(true);
+    const { error } = await supabase.from("appointments_booking").update({ date: bookingDate || null, time: bookingTime || null }).eq("id", appointmentId);
+    setSavingBooking(false);
+    if (error) { alert("Failed to save: " + error.message); return; }
+    logAudit({ appointmentId, actor, action: "Appointment Booking Date/Time Updated", entity: "appointments_booking", newData: { date: bookingDate, time: bookingTime } });
+    appt.date = bookingDate;
+    appt.time = bookingTime;
+    setPlanChoiceTick((t) => t + 1);
+  };
+
   const isNewModelAppt = isNewModelAppointment(appt);
   const allSteps = isNewModelAppt ? NEW_ALL_STEPS : LEGACY_ALL_STEPS;
   const doneCount = allSteps.filter((s) => !!steps[s.key]).length;
@@ -1965,15 +1984,20 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
         {allSteps.map((step, i) => {
           const done = !!steps[step.key];
           const isSaving = saving === step.key;
+          const isExpanded = expandedAdminStep === step.key;
           return (
             <div key={step.key}>
-              <div style={{
-                display: "flex", alignItems: "center", gap: "12px",
-                borderRadius: "12px", padding: "14px 16px",
-                border: `1px solid ${done ? "#bbf7d0" : "#e5e7eb"}`,
-                background: done ? "linear-gradient(135deg, #f0fdf4, #dcfce7)" : "white",
-                boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
-              }}>
+              <div
+                onClick={() => setExpandedAdminStep((prev) => (prev === step.key ? null : step.key))}
+                style={{
+                  display: "flex", alignItems: "center", gap: "12px",
+                  borderRadius: "12px", padding: "14px 16px",
+                  border: `1px solid ${done ? "#bbf7d0" : "#e5e7eb"}`,
+                  background: done ? "linear-gradient(135deg, #f0fdf4, #dcfce7)" : "white",
+                  boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
+                  cursor: "pointer",
+                }}
+              >
                 <div style={{
                   width: "36px", height: "36px", borderRadius: "8px", flexShrink: 0,
                   background: done ? "linear-gradient(135deg, #22c55e, #16a34a)" : "#f3f4f6",
@@ -1985,6 +2009,7 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                 <p style={{ margin: 0, flex: 1, fontSize: "14px", fontWeight: done ? "700" : "500", color: done ? "#15803d" : "#374151" }}>
                   {step.label}
                 </p>
+                <div onClick={(e) => e.stopPropagation()} style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
                 {isAdmin && step.key !== "plan_approved" && step.key !== "booked" && step.key !== "confirmed" && step.key !== "payment_done" && step.key !== "followup_appointment" && step.key !== "final_plan_review" && step.key !== "aligner_sets" && step.key !== "provisional_planning" && step.key !== "investigation_required" && step.key !== "prealigner_treatment" && (
                   <button
                     onClick={() => toggle(step.key)}
@@ -2068,7 +2093,29 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                     {done ? "APPROVED BY PATIENT" : steps.planning_done ? "AWAITING PATIENT" : "LOCKED"}
                   </span>
                 )}
+                </div>
+                <span style={{ fontSize: "14px", color: "#9ca3af", flexShrink: 0, marginLeft: "4px" }}>{isExpanded ? "▲" : "▼"}</span>
               </div>
+
+              {isExpanded && (
+              <>
+              {/* Appointment Booked — the original booking date/time, editable here */}
+              {isAdmin && step.key === "booked" && (
+                <div style={subBox}>
+                  <span style={label}>APPOINTMENT DATE / TIME</span>
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <input style={{ ...input, flex: 1 }} type="date" value={bookingDate} onChange={(e) => setBookingDate(e.target.value)} />
+                    <input style={{ ...input, flex: 1 }} type="text" placeholder="e.g. 11 AM" value={bookingTime} onChange={(e) => setBookingTime(e.target.value)} />
+                  </div>
+                  <button
+                    style={savingBooking ? { ...btnPrimary, opacity: 0.6 } : btnPrimary}
+                    onClick={saveBookingDetails}
+                    disabled={savingBooking}
+                  >
+                    {savingBooking ? "Saving..." : "Update"}
+                  </button>
+                </div>
+              )}
 
               {/* Part A — Scanning & Provisional Planning video upload */}
               {isAdmin && step.key === "scanning_done" && (
@@ -2975,6 +3022,8 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                     </div>
                   )}
                 </div>
+              )}
+              </>
               )}
             </div>
           );
