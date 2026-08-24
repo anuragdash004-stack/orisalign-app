@@ -45,10 +45,12 @@ export async function POST(req: Request) {
 
     if (updateError) return NextResponse.json({ error: "Failed to save question" }, { status: 500 })
 
+    // Both awaited (not fire-and-forget): on Vercel an unawaited promise can
+    // be killed the instant the response is sent, before it ever runs.
     if (report.patient_phone) {
       // Plain-text approved template — the question itself is only in-app
       // and in the email below, not a WhatsApp variable.
-      sendWhatsApp({
+      await sendWhatsApp({
         campaignName: "osr_more_info",
         destination: report.patient_phone,
         userName: report.full_name,
@@ -57,7 +59,7 @@ export async function POST(req: Request) {
     }
 
     if (report.patient_email) {
-      sendEmail({
+      await sendEmail({
         to: report.patient_email,
         subject: "We need a bit more information — OrisAlign",
         html: `

@@ -101,9 +101,11 @@ export async function POST(req: Request) {
     })
 
     // Notify patient — plan approved. Manufacturing Started fires on its own
-    // 12 hours from now via the cron job, not here.
+    // 12 hours from now via the cron job, not here. Awaited (not
+    // fire-and-forget): on Vercel an unawaited promise can be killed the
+    // instant the response is sent, before it ever runs.
     const baseUrl = `https://${req.headers.get("host") || "orisalign.com"}`
-    sendStepNotification({
+    await sendStepNotification({
       appointmentId: patientId,
       stepKey: "plan_approved",
       emailOverride: existing.email || null,

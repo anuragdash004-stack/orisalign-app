@@ -111,18 +111,21 @@ export async function POST(req: Request) {
       }
 
       if (couponId) await incrementCouponUsage(supabase, couponId).catch(() => {})
-      markAppointmentLeadPaid(supabase, reportId).catch((err) => console.error("[online-report verify-payment] tracker sync failed", err))
+      // Awaited (not fire-and-forget) throughout this route: on Vercel an
+      // unawaited promise can be killed the instant the response is sent,
+      // before it ever runs.
+      await markAppointmentLeadPaid(supabase, reportId).catch((err) => console.error("[online-report verify-payment] tracker sync failed", err))
 
       // Generic payment receipt (every payment on this flow gets one) plus
       // the Online Smile Report-specific confirmation, both best-effort.
       if (fd.patientPhone) {
-        sendWhatsApp({
+        await sendWhatsApp({
           campaignName: "orisalign_payment_received",
           destination: fd.patientPhone,
           userName: fd.fullName,
           templateParams: [`₹${Math.round(amountPaidRupees)}`],
         }).catch(() => {})
-        sendWhatsApp({
+        await sendWhatsApp({
           campaignName: "orisalign_osr",
           destination: fd.patientPhone,
           userName: fd.fullName,
@@ -179,9 +182,9 @@ export async function POST(req: Request) {
       if (updateError) return NextResponse.json({ error: "Failed to record payment" }, { status: 500 })
 
       if (couponId) await incrementCouponUsage(supabase, couponId).catch(() => {})
-      notifyImpressionPaid(patient).catch(() => {})
+      await notifyImpressionPaid(patient).catch(() => {})
       if (report.patient_phone) {
-        sendWhatsApp({
+        await sendWhatsApp({
           campaignName: "orisalign_payment_received",
           destination: report.patient_phone,
           userName: report.full_name,
@@ -189,7 +192,7 @@ export async function POST(req: Request) {
         }).catch(() => {})
       }
       if (ADMIN_EMAIL) {
-        sendEmail({ to: ADMIN_EMAIL, subject: `Impression payment received — ${report.full_name}`, html: `<p>${report.full_name} paid ₹${amountPaidRupees} for their impression visit.</p>` }).catch(() => {})
+        await sendEmail({ to: ADMIN_EMAIL, subject: `Impression payment received — ${report.full_name}`, html: `<p>${report.full_name} paid ₹${amountPaidRupees} for their impression visit.</p>` }).catch(() => {})
       }
     } else if (amountType === "plan_only" || amountType === "plan_treatment") {
       const newStatus = amountType === "plan_treatment" ? "treatment_started" : "plan_paid"
@@ -206,9 +209,9 @@ export async function POST(req: Request) {
       if (updateError) return NextResponse.json({ error: "Failed to record payment" }, { status: 500 })
 
       if (couponId) await incrementCouponUsage(supabase, couponId).catch(() => {})
-      notifyPlanPaid(patient, amountType).catch(() => {})
+      await notifyPlanPaid(patient, amountType).catch(() => {})
       if (report.patient_phone) {
-        sendWhatsApp({
+        await sendWhatsApp({
           campaignName: "orisalign_payment_received",
           destination: report.patient_phone,
           userName: report.full_name,
@@ -219,7 +222,7 @@ export async function POST(req: Request) {
         // matching ₹2,499 provisional-planning fee — not fired for
         // plan_treatment (₹4,999), which is a different payment.
         if (amountType === "plan_only") {
-          sendWhatsApp({
+          await sendWhatsApp({
             campaignName: "orisalign_full_plan_payment_done",
             destination: report.patient_phone,
             userName: report.full_name,
@@ -228,7 +231,7 @@ export async function POST(req: Request) {
         }
       }
       if (ADMIN_EMAIL) {
-        sendEmail({ to: ADMIN_EMAIL, subject: `Plan payment received — ${report.full_name}`, html: `<p>${report.full_name} paid ₹${amountPaidRupees} for "${amountType}".</p>` }).catch(() => {})
+        await sendEmail({ to: ADMIN_EMAIL, subject: `Plan payment received — ${report.full_name}`, html: `<p>${report.full_name} paid ₹${amountPaidRupees} for "${amountType}".</p>` }).catch(() => {})
       }
     } else {
       return NextResponse.json({ error: "Unknown amountType" }, { status: 400 })

@@ -64,7 +64,9 @@ export async function POST(req: Request) {
     }
 
     await incrementCouponUsage(supabase, result.coupon.id).catch(() => {})
-    markAppointmentLeadPaid(supabase, reportId).catch((err) => console.error("[online-report free-submit] tracker sync failed", err))
+    // Awaited (not fire-and-forget): on Vercel an unawaited promise can be
+    // killed the instant the response is sent, before it ever runs.
+    await markAppointmentLeadPaid(supabase, reportId).catch((err) => console.error("[online-report free-submit] tracker sync failed", err))
 
     if (ADMIN_EMAIL) {
       await sendEmail({
