@@ -4,7 +4,7 @@ import { getSupabaseClient } from "@/lib/supabaseClient";
 import { useParams, useRouter } from "next/navigation";
 import { logAudit } from "@/lib/logAudit";
 import { PROVISIONAL_PLAN_FEE, estimateRangeForPlan, formatMonthsDays, applyCouponDiscount, monthSlotLabels, totalCost, recomputeCumulative, buildMonthlyPlan, PLAN_CONFIGS } from "@/lib/monthlyPlan";
-import { INVESTIGATION_TYPES, isInvestigationDone } from "@/lib/investigations";
+import { INVESTIGATION_TYPES, isInvestigationDone, MAX_INVESTIGATION_FILE_SIZE } from "@/lib/investigations";
 import { isNewModelAppointment } from "@/lib/appointmentModel";
 
 const supabase = getSupabaseClient();
@@ -1506,6 +1506,34 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
     if (error || !data?.signedUrl) { alert("Couldn't open the file."); return; }
     window.open(data.signedUrl, "_blank", "noopener,noreferrer");
   };
+  // Admin can also upload/replace an investigation file directly — e.g. a
+  // report that came in over WhatsApp/email/in person rather than through
+  // the patient's own upload, or correcting a bad upload.
+  const [uploadingInvestigationAdmin, setUploadingInvestigationAdmin] = useState(null);
+  const uploadInvestigationFileAdmin = async (typeKey, file) => {
+    if (!file) return;
+    if (file.size > MAX_INVESTIGATION_FILE_SIZE) { alert("That file is too large — please upload an image or PDF under 15MB."); return; }
+    if (!file.type.startsWith("image/") && file.type !== "application/pdf") { alert("Please upload an image or a PDF file."); return; }
+    setUploadingInvestigationAdmin(typeKey);
+    try {
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const path = `${appointmentId}/investigations/${typeKey}_${Date.now()}_${safeName}`;
+      const { error: upErr } = await supabase.storage.from("case-files").upload(path, file, { upsert: true });
+      if (upErr) { alert("Failed to upload: " + upErr.message); return; }
+      const newFiles = { ...(appt.journey_steps?.investigation_files || {}), [typeKey]: { path, name: file.name, uploadedAt: new Date().toISOString() } };
+      const newJourneySteps = { ...(appt.journey_steps || {}), investigation_files: newFiles };
+      const { error } = await supabase.from("appointments_booking").update({ journey_steps: newJourneySteps }).eq("id", appointmentId);
+      if (error) { alert("Failed to save: " + error.message); return; }
+      logAudit({ appointmentId, actor, action: `Investigation File Uploaded by Admin: ${typeKey}`, entity: "journey_steps", newData: { investigation_files: newFiles } });
+      appt.journey_steps = newJourneySteps;
+      setInvestigationSignedUrls((prev) => { const next = { ...prev }; delete next[typeKey]; return next; });
+      setPlanChoiceTick((t) => t + 1);
+    } catch {
+      alert("Network error. Please try again.");
+    } finally {
+      setUploadingInvestigationAdmin(null);
+    }
+  };
 
   // Review note — the orthodontist's written finding after reviewing the
   // uploaded investigation file(s); shown to the patient once submitted.
@@ -2494,6 +2522,25 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                                 <p style={{ margin: "10px 0 0", fontSize: "12px", color: "#9ca3af" }}>Loading preview...</p>
                               )
                             )}
+                            {/* Admin can upload/replace directly — e.g. a report that
+                                came in over WhatsApp/email rather than the patient's
+                                own upload, or fixing a bad one. */}
+                            <label style={{
+                              display: "block", marginTop: "10px", padding: "8px", borderRadius: "8px", textAlign: "center",
+                              background: uploadingInvestigationAdmin === t ? "#e5e7eb" : "white",
+                              color: uploadingInvestigationAdmin === t ? "#9ca3af" : "#374151",
+                              fontWeight: "700", fontSize: "12px", cursor: uploadingInvestigationAdmin === t ? "not-allowed" : "pointer",
+                              border: "1px solid #e5e7eb",
+                            }}>
+                              {uploadingInvestigationAdmin === t ? "Uploading..." : file?.path ? "Replace File" : "Upload File"}
+                              <input
+                                type="file"
+                                accept="image/*,application/pdf"
+                                disabled={uploadingInvestigationAdmin === t}
+                                onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; uploadInvestigationFileAdmin(t, f); }}
+                                style={{ display: "none" }}
+                              />
+                            </label>
                           </div>
                         );
                       })}
