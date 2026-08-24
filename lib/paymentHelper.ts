@@ -305,6 +305,37 @@ export async function recordPaymentReceived(params: RecordPaymentParams): Promis
     return { success: false, error: "Failed to update payment status" };
   }
 
+  // Legacy lump-sum model with an EMI installment schedule: same
+  // cumulative-threshold idea as autoCreatePaidBatches below, just against
+  // payment_data.pending_plan.installments instead of monthly_plan.months —
+  // whichever installment(s) this payment newly crosses get marked paid,
+  // regardless of which gateway (or manual entry) actually recorded it.
+  if (!isNewModel) {
+    const pendingPlan = pd.pending_plan as { installments?: { num: number; amount: number; paid?: boolean; paid_date?: string }[] } | undefined;
+    const installments = pendingPlan?.installments;
+    if (installments && installments.length > 0) {
+      const downPayment = Number(pd.down_payment) || 0;
+      let cumulative = downPayment;
+      let changed = false;
+      const updatedInstallments = [...installments]
+        .sort((a, b) => a.num - b.num)
+        .map((inst) => {
+          cumulative += Number(inst.amount) || 0;
+          if (!inst.paid && previouslyPaid < cumulative && newTotalPaid >= cumulative) {
+            changed = true;
+            return { ...inst, paid: true, paid_date: now.slice(0, 10) };
+          }
+          return inst;
+        });
+      if (changed) {
+        await supabase
+          .from("appointments_booking")
+          .update({ payment_data: { ...pd, pending_plan: { ...pendingPlan, installments: updatedInstallments } } })
+          .eq("id", appointmentId);
+      }
+    }
+  }
+
   // New per-arch, month-by-month billing model: a paid month should
   // immediately show up as a batch for the admin to manufacture, regardless
   // of which payment path fired. See autoCreatePaidBatches below.

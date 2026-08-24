@@ -1238,6 +1238,36 @@ export default function PatientJourney() {
                             })()}
                           </div>
 
+                          {/* Per-installment payment — each unpaid installment gets its own
+                              Pay Now, routing through the existing /checkout page (Razorpay
+                              or Cashfree, patient's choice). Payments apply to the oldest
+                              unpaid installment first, same as any EMI schedule. */}
+                          {pd.pending_plan?.installments?.length > 0 && patient.payment_status !== "paid" && (
+                            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                              {pd.pending_plan.installments.map((inst) => (
+                                <div key={inst.num} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", padding: "10px 12px", background: inst.paid ? "#f0fdf4" : "#f8f7f5", borderRadius: "8px", border: inst.paid ? "1px solid #bbf7d0" : "1px solid #e5e7eb" }}>
+                                  <div>
+                                    <span style={{ fontSize: "13px", fontWeight: "700", color: "#111827" }}>Installment {inst.num} — {fmt(inst.amount)}</span>
+                                    <span style={{ display: "block", fontSize: "11px", color: "#6b7280" }}>
+                                      {inst.paid ? `Paid on ${new Date(inst.paid_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}` : `Due ${new Date(inst.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}`}
+                                    </span>
+                                  </div>
+                                  {inst.paid ? (
+                                    <span style={{ fontSize: "12px", fontWeight: "700", color: "#16a34a" }}>✅ Paid</span>
+                                  ) : (
+                                    <button
+                                      onClick={() => handlePayNow(inst.amount)}
+                                      disabled={payNowLoading}
+                                      style={{ flexShrink: 0, padding: "7px 14px", borderRadius: "8px", border: "none", background: "#b8905a", color: "white", fontWeight: "700", fontSize: "12px", cursor: payNowLoading ? "not-allowed" : "pointer", opacity: payNowLoading ? 0.7 : 1, whiteSpace: "nowrap" }}
+                                    >
+                                      {payNowLoading ? "..." : "Pay Now"}
+                                    </button>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
                           {patient.payment_status !== "paid" && !patient.amount_paid && (
                             <div style={{ display: "flex", gap: "8px" }}>
                               <button
