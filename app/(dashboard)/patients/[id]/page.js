@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { logAudit } from "@/lib/logAudit";
 import { PROVISIONAL_PLAN_FEE, estimateRangeForPlan, formatMonthsDays, applyCouponDiscount, monthSlotLabels, totalCost, recomputeCumulative, buildMonthlyPlan, PLAN_CONFIGS } from "@/lib/monthlyPlan";
 import { INVESTIGATION_TYPES, isInvestigationDone } from "@/lib/investigations";
+import { isNewModelAppointment } from "@/lib/appointmentModel";
 
 const supabase = getSupabaseClient();
 
@@ -545,7 +546,7 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
   const okBanner = { marginTop: "12px", padding: "10px 12px", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "8px", color: "#16a34a", fontWeight: "700", fontSize: "13px" };
   const changeLinkStyle = { marginTop: "10px", padding: "8px 16px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "white", color: "#374151", fontWeight: "600", fontSize: "12px", cursor: "pointer" };
 
-  if (appt?.monthly_plan || appt?.provisional_min_months != null || appt?.provisional_max_months != null) {
+  if (isNewModelAppointment(appt)) {
     return <MonthlyBillingCards appointmentId={appointmentId} appt={appt} setAppt={setAppt} actor={actor} />;
   }
 
@@ -1160,10 +1161,8 @@ function deriveSteps(appt) {
   if (!appt) return {};
   const js = appt.journey_steps || {};
   const hasMonthlyPlan = !!appt.monthly_plan;
-  // New-model as soon as Provisional Planning is done under it, not only
-  // once Final Plan Review generates monthly_plan — see the patient page's
-  // deriveSteps for the same reasoning.
-  const isNewModel = hasMonthlyPlan || appt.provisional_min_months != null || appt.provisional_max_months != null;
+  // New leads default to the new model — see lib/appointmentModel.ts.
+  const isNewModel = isNewModelAppointment(appt);
   const amountPaid = Number(appt.amount_paid) || 0;
   // Same computation as the patient page's prealignerProcedures() — kept
   // inline here since this is the only other place it's needed.
@@ -1820,7 +1819,7 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
     }
   };
 
-  const isNewModelAppt = !!(appt?.monthly_plan || appt?.provisional_min_months != null || appt?.provisional_max_months != null);
+  const isNewModelAppt = isNewModelAppointment(appt);
   const allSteps = isNewModelAppt ? NEW_ALL_STEPS : LEGACY_ALL_STEPS;
   const doneCount = allSteps.filter((s) => !!steps[s.key]).length;
 
@@ -2682,7 +2681,7 @@ function ReportTab({ appointmentId, appt }) {
   // Required, per-month Aligner Sets) in place of the legacy Plan & Payment /
   // Planning Done / Manufacturing Started-Completed / Dispatched-Received
   // sequence — both are built below, gated on this flag.
-  const isNewModel = !!appt.monthly_plan || appt.provisional_min_months != null || appt.provisional_max_months != null;
+  const isNewModel = isNewModelAppointment(appt);
   const pd = { ...EMPTY_PAYMENT, ...(appt.payment_data || {}) };
   const fullAmt = parseFloat(pd.full_amount) || 0;
   const disc = parseFloat(pd.discount) || 0;
@@ -3546,7 +3545,7 @@ export default function PatientDetailPage() {
           and only for legacy (lump-sum) patients — new-model patients manage
           production/dispatch per package directly in the Journey tab instead. */}
       <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "20px" }}>
-        {TABS.filter((tab) => tab !== "Manufacturing" || (!appt.monthly_plan && appt.provisional_min_months == null && appt.provisional_max_months == null && (appt.status === "confirmed" || appt.status === "completed"))).map((tab) => (
+        {TABS.filter((tab) => tab !== "Manufacturing" || (!isNewModelAppointment(appt) && (appt.status === "confirmed" || appt.status === "completed"))).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}

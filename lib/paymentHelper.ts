@@ -8,6 +8,7 @@ import { logAuditEntry } from "./auditLog";
 import { sendWhatsApp } from "./notifications/aisensy";
 import { sendStepNotification } from "./notifyStep";
 import { applyCouponDiscount, alignerRangeLabel, monthSlotLabels, FINAL_PLAN_FEE, PROVISIONAL_PLAN_FEE, provisionalPaymentBaseline, PLAN_CONFIGS, type MonthlyPlan, type PlanKey, type ProvisionalPaymentChoice } from "./monthlyPlan";
+import { isNewModelAppointment } from "./appointmentModel";
 
 export type PaymentType = "down_payment" | "pending" | "full" | "others";
 
@@ -237,7 +238,7 @@ export async function recordPaymentReceived(params: RecordPaymentParams): Promis
 
   const { data: appt, error: fetchError } = await supabase
     .from("appointments_booking")
-    .select("id, name, email, phone, payment_data, amount_paid, amount_to_pay, payment_status, first_payment_date, monthly_plan, manufacturing_data, provisional_min_months, provisional_max_months")
+    .select("id, name, email, phone, payment_data, amount_paid, amount_to_pay, payment_status, first_payment_date, monthly_plan, manufacturing_data, provisional_min_months, provisional_max_months, provisional_plan_submitted, aligner_total_sets, journey_steps, created_at")
     .eq("id", appointmentId)
     .single();
 
@@ -253,7 +254,8 @@ export async function recordPaymentReceived(params: RecordPaymentParams): Promis
   // see the comment below) since it would otherwise need updating in three
   // separate places (provisional submit, final review submit, coupon apply).
   const monthlyPlan = appt.monthly_plan as MonthlyPlan | null | undefined;
-  const isNewModel = !!monthlyPlan || appt.provisional_min_months != null || appt.provisional_max_months != null;
+  // New leads default to the new model — see lib/appointmentModel.ts.
+  const isNewModel = isNewModelAppointment(appt);
   let fullAmount: number;
   if (monthlyPlan) {
     const couponsTotal = ((pd.applied_coupons as { discount?: number }[]) || [])

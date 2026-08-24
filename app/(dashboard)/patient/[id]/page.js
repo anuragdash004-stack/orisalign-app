@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import { PROVISIONAL_PLAN_FEE, estimateRange, estimateRangeForPlan, formatMonthsDays, applyCouponDiscount, totalCost, monthSlotLabels, PLAN_CONFIGS } from "@/lib/monthlyPlan";
 import { INVESTIGATION_TYPES, MAX_INVESTIGATION_FILE_SIZE, isInvestigationDone } from "@/lib/investigations";
+import { isNewModelAppointment } from "@/lib/appointmentModel";
 
 const supabase = getSupabaseClient();
 
@@ -88,12 +89,8 @@ function deriveSteps(appt) {
   const procs = prealignerProcedures(appt);
   const prealignerDone = js.prealigner_done || {};
   const hasMonthlyPlan = !!appt.monthly_plan;
-  // A patient counts as "new model" as soon as Provisional Planning has been
-  // done under it (provisional_min_months set), not only once Final Plan
-  // Review generates monthly_plan — otherwise a patient mid-transition (plan
-  // picked, fee paid, schedule not generated yet) would incorrectly still
-  // see the legacy roadmap/payment UI.
-  const isNewModel = hasMonthlyPlan || appt.provisional_min_months != null || appt.provisional_max_months != null;
+  // New leads default to the new model — see lib/appointmentModel.ts.
+  const isNewModel = isNewModelAppointment(appt);
   const amountPaid = Number(appt.amount_paid) || 0;
 
   const base = {
@@ -289,7 +286,7 @@ export default function PatientJourney() {
   const steps = deriveSteps(patient);
   // Counts as "new model" from Provisional Planning onward, not only once
   // Final Plan Review generates monthly_plan — see deriveSteps for why.
-  const isNewModel = !!(patient.monthly_plan || patient.provisional_min_months != null || patient.provisional_max_months != null);
+  const isNewModel = isNewModelAppointment(patient);
   const journeySteps = isNewModel ? NEW_JOURNEY_STEPS : LEGACY_JOURNEY_STEPS;
   const shortId = id.substring(0, 8).toUpperCase();
   const patientIdLabel = patient.booking_confirmed ? shortId : "Pending";
