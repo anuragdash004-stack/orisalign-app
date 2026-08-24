@@ -207,6 +207,29 @@ export default function PatientJourney() {
     load();
   }, [id]);
 
+  // Live updates — when the admin changes something on this appointment from
+  // the backend Journey tab (or a payment/webhook updates it), reflect it
+  // here immediately instead of requiring the patient to refresh.
+  useEffect(() => {
+    if (!id || !supabase) return;
+    const channel = supabase
+      .channel(`appointment-${id}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "appointments_booking", filter: `id=eq.${id}` },
+        (payload) => {
+          setPatient((prev) => (prev ? { ...prev, ...payload.new } : payload.new));
+          if (payload.new?.payment_data?.applied_coupons) {
+            setAppliedCoupons(payload.new.payment_data.applied_coupons);
+          }
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [id]);
+
   // Once applied, a coupon is saved onto the appointment immediately —
   // permanent for this patient ID, and checked against that saved list (not
   // just what's in memory) so the same code can't be applied a second time
