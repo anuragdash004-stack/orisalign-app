@@ -3824,7 +3824,13 @@ function LMCTab({ appointmentId, initialData, actor }) {
 export default function PatientDetailPage() {
   const { id } = useParams();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState("Payment");
+  // Which tab (and how far scrolled) survives a full page refresh — read
+  // synchronously on first render so there's no flash of the Payment tab
+  // before switching to whichever tab was actually active.
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window === "undefined" || !id) return "Payment";
+    return sessionStorage.getItem(`patientTab-${id}`) || "Payment";
+  });
   const [loading, setLoading] = useState(true);
   const [appt, setAppt] = useState(null);
   const [userRole, setUserRole] = useState("");
@@ -3848,6 +3854,38 @@ export default function PatientDetailPage() {
     };
     load();
   }, [id]);
+
+  // Scroll position survives a refresh too — restored once the page has
+  // actually rendered (not before, or there's nothing to scroll to yet),
+  // and continuously saved as the admin scrolls so the very latest position
+  // is always what gets restored.
+  useEffect(() => {
+    if (loading || !id) return;
+    const key = `patientScroll-${id}`;
+    const saved = sessionStorage.getItem(key);
+    if (saved) {
+      const target = parseInt(saved, 10) || 0;
+      // A few staggered attempts — the tabs themselves fetch their own data
+      // asynchronously (audit log, doctors list, etc.), so the page can keep
+      // growing for a moment after this effect first runs; retrying catches
+      // the final height instead of scrolling to a spot that didn't exist
+      // yet.
+      [0, 150, 400, 800].forEach((delay) => {
+        setTimeout(() => window.scrollTo(0, target), delay);
+      });
+    }
+    let ticking = false;
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        sessionStorage.setItem(key, String(window.scrollY));
+        ticking = false;
+      });
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [loading, id]);
 
   if (loading) {
     return <div style={{ padding: "40px", textAlign: "center", color: "#6b7280" }}>Loading patient data...</div>;
@@ -3901,7 +3939,10 @@ export default function PatientDetailPage() {
         {TABS.filter((tab) => tab !== "Manufacturing" || (!isNewModelAppointment(appt) && (appt.status === "confirmed" || appt.status === "completed"))).map((tab) => (
           <button
             key={tab}
-            onClick={() => setActiveTab(tab)}
+            onClick={() => {
+              setActiveTab(tab);
+              sessionStorage.setItem(`patientTab-${id}`, tab);
+            }}
             style={{
               padding: "9px 20px", borderRadius: "99px", border: "none",
               background: activeTab === tab ? "#111827" : "white",
