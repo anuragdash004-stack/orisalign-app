@@ -13,9 +13,13 @@ const TABS = ["Payment", "Manufacturing", "Journey", "LMC", "Message", "Patient 
 
 const LMC_TREATMENT_TYPES = ["Aligners", "RCT", "Implant", "Extraction", "Restoration", "Scaling", "Polishing", "Checkup"];
 
-// Same list the dentist's own form uses (app/(dashboard)/dentist/[id]/appointment/page.js)
-// — kept in sync so admin-flagged procedures match what the dentist would pick.
-const PREALIGNER_PROCEDURE_OPTIONS = ["Restorations", "Root Canal", "Scaling", "Extraction", "Gingival Therapy", "Others"];
+// Same list the dentist's own form uses (app/(dashboard)/dentist/[id]/appointment/page.js),
+// minus "Others" — admin adds any procedure not on this list via the free-text
+// "+ Add" control instead, so there's no separate Others/free-text branch to manage.
+const PREALIGNER_PROCEDURE_OPTIONS = ["Restorations", "Root Canal", "Scaling", "Extraction", "Gingival Therapy"];
+// Post-aligner procedures have no fixed dentist-form list to mirror — admin
+// builds the list entirely via "+ Add" as needed per patient.
+const POST_ALIGNER_PROCEDURE_OPTIONS = [];
 
 // Legacy (lump-sum OrisPro/OrisPro Plus) list — unchanged, for any
 // appointment still in progress without a monthly_plan.
@@ -1604,19 +1608,27 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
   // dentist remembers to flag them in their own form, and this lets the
   // admin add (or correct) them later from the Journey tab instead of
   // being stuck with whatever (if anything) the dentist originally chose.
+  // No "Others" checkbox — any procedure not in the fixed list is added via
+  // the free-text "+ Add" control, repeatable for as many as needed.
   const [editingPrealignerProcs, setEditingPrealignerProcs] = useState(false);
   const [prealignerProcSelection, setPrealignerProcSelection] = useState(appt.patient_form_data?.pre_orthodontic_procedures || []);
-  const [prealignerOthersText, setPrealignerOthersText] = useState(appt.patient_form_data?.pre_orthodontic_others || "");
+  const [prealignerCustomInput, setPrealignerCustomInput] = useState("");
   const [savingPrealignerProcs, setSavingPrealignerProcs] = useState(false);
   const togglePrealignerProcSelection = (proc) => {
     setPrealignerProcSelection((prev) => (prev.includes(proc) ? prev.filter((p) => p !== proc) : [...prev, proc]));
+  };
+  const addCustomPrealignerProc = () => {
+    const name = prealignerCustomInput.trim();
+    if (!name) return;
+    setPrealignerProcSelection((prev) => (prev.includes(name) ? prev : [...prev, name]));
+    setPrealignerCustomInput("");
   };
   const savePrealignerProcs = async () => {
     setSavingPrealignerProcs(true);
     const newPfd = {
       ...(appt.patient_form_data || {}),
       pre_orthodontic_procedures: prealignerProcSelection,
-      pre_orthodontic_others: prealignerProcSelection.includes("Others") ? prealignerOthersText : "",
+      pre_orthodontic_others: "",
     };
     const { error } = await supabase.from("appointments_booking").update({ patient_form_data: newPfd }).eq("id", appointmentId);
     setSavingPrealignerProcs(false);
@@ -1624,6 +1636,49 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
     logAudit({ appointmentId, actor, action: "Prealigner Procedures Flagged by Admin", entity: "patient_form_data", newData: newPfd });
     appt.patient_form_data = newPfd;
     setEditingPrealignerProcs(false);
+    setPlanChoiceTick((t) => t + 1);
+  };
+
+  // Post Aligner Treatment — same mechanism as Prealigner Treatment above,
+  // but stored in journey_steps (no dentist-form counterpart to mirror) since
+  // this list is built entirely by the admin, procedure by procedure.
+  const [editingPostAlignerProcs, setEditingPostAlignerProcs] = useState(false);
+  const [postAlignerProcSelection, setPostAlignerProcSelection] = useState(appt.journey_steps?.post_aligner_procedures || []);
+  const [postAlignerCustomInput, setPostAlignerCustomInput] = useState("");
+  const [savingPostAlignerProcs, setSavingPostAlignerProcs] = useState(false);
+  const [markingPostAlignerProc, setMarkingPostAlignerProc] = useState(null);
+  const togglePostAlignerProcSelection = (proc) => {
+    setPostAlignerProcSelection((prev) => (prev.includes(proc) ? prev.filter((p) => p !== proc) : [...prev, proc]));
+  };
+  const addCustomPostAlignerProc = () => {
+    const name = postAlignerCustomInput.trim();
+    if (!name) return;
+    setPostAlignerProcSelection((prev) => (prev.includes(name) ? prev : [...prev, name]));
+    setPostAlignerCustomInput("");
+  };
+  const savePostAlignerProcs = async () => {
+    setSavingPostAlignerProcs(true);
+    const newJourneySteps = { ...(appt.journey_steps || {}), post_aligner_procedures: postAlignerProcSelection };
+    const { error } = await supabase.from("appointments_booking").update({ journey_steps: newJourneySteps }).eq("id", appointmentId);
+    setSavingPostAlignerProcs(false);
+    if (error) { alert("Failed to save: " + error.message); return; }
+    logAudit({ appointmentId, actor, action: "Post Aligner Procedures Flagged by Admin", entity: "journey_steps", newData: { post_aligner_procedures: postAlignerProcSelection } });
+    appt.journey_steps = newJourneySteps;
+    setEditingPostAlignerProcs(false);
+    setPlanChoiceTick((t) => t + 1);
+  };
+  const togglePostAlignerProcDone = async (procName) => {
+    const doneMap = appt.journey_steps?.post_aligner_done || {};
+    const isDone = !!doneMap[procName];
+    setMarkingPostAlignerProc(procName);
+    const newDone = { ...doneMap };
+    if (isDone) delete newDone[procName]; else newDone[procName] = new Date().toISOString();
+    const newJourneySteps = { ...(appt.journey_steps || {}), post_aligner_done: newDone };
+    const { error } = await supabase.from("appointments_booking").update({ journey_steps: newJourneySteps }).eq("id", appointmentId);
+    setMarkingPostAlignerProc(null);
+    if (error) { alert("Failed to save: " + error.message); return; }
+    logAudit({ appointmentId, actor, action: isDone ? `Post Aligner Procedure Marked Undone: ${procName}` : `Post Aligner Procedure Marked Done: ${procName}`, entity: "post_aligner_done", newData: newDone });
+    appt.journey_steps = newJourneySteps;
     setPlanChoiceTick((t) => t + 1);
   };
 
@@ -2426,6 +2481,10 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                   behalf, and let the admin flag/add procedures the dentist never flagged. */}
               {isAdmin && step.key === "prealigner_treatment" && (() => {
                 const pfd = appt.patient_form_data || {};
+                // Older rows may still have a literal "Others" entry with the
+                // detail in pre_orthodontic_others — shown as-is for those,
+                // going forward every procedure (fixed or custom-added) is
+                // stored as its own real name, no "Others" placeholder.
                 const procs = [...(pfd.pre_orthodontic_procedures || [])].map((p) => (p === "Others" && pfd.pre_orthodontic_others ? `Others: ${pfd.pre_orthodontic_others}` : p));
                 const doneMap = appt.journey_steps?.prealigner_done || {};
                 return (
@@ -2461,7 +2520,6 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                       <button
                         onClick={() => {
                           setPrealignerProcSelection(pfd.pre_orthodontic_procedures || []);
-                          setPrealignerOthersText(pfd.pre_orthodontic_others || "");
                           setEditingPrealignerProcs(true);
                         }}
                         style={{ marginTop: procs.length > 0 ? "8px" : 0, padding: "8px 14px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "white", color: "#374151", fontWeight: "700", fontSize: "12px", cursor: "pointer", alignSelf: "flex-start" }}
@@ -2487,15 +2545,37 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                               {proc}
                             </button>
                           ))}
+                          {/* Custom procedures added below — shown as removable chips
+                              alongside the fixed list. */}
+                          {prealignerProcSelection
+                            .filter((p) => !PREALIGNER_PROCEDURE_OPTIONS.includes(p))
+                            .map((p) => (
+                              <button
+                                key={p}
+                                onClick={() => togglePrealignerProcSelection(p)}
+                                style={{ padding: "8px 14px", borderRadius: "8px", border: "2px solid #b8905a", background: "#fff7ed", color: "#b8905a", fontWeight: "700", fontSize: "13px", cursor: "pointer" }}
+                              >
+                                {p} ✕
+                              </button>
+                            ))}
                         </div>
-                        {prealignerProcSelection.includes("Others") && (
-                          <textarea
-                            style={{ ...input, minHeight: "60px", fontFamily: "inherit", resize: "vertical" }}
-                            placeholder="Describe the other procedure(s)..."
-                            value={prealignerOthersText}
-                            onChange={(e) => setPrealignerOthersText(e.target.value)}
+                        <div style={{ display: "flex", gap: "8px" }}>
+                          <input
+                            style={{ ...input, flex: 1 }}
+                            type="text"
+                            placeholder="Other procedure..."
+                            value={prealignerCustomInput}
+                            onChange={(e) => setPrealignerCustomInput(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCustomPrealignerProc(); } }}
                           />
-                        )}
+                          <button
+                            onClick={addCustomPrealignerProc}
+                            disabled={!prealignerCustomInput.trim()}
+                            style={{ padding: "10px 18px", borderRadius: "8px", border: "none", background: "#111827", color: "white", fontWeight: "700", fontSize: "13px", cursor: prealignerCustomInput.trim() ? "pointer" : "not-allowed", opacity: prealignerCustomInput.trim() ? 1 : 0.5, flexShrink: 0 }}
+                          >
+                            + Add
+                          </button>
+                        </div>
                         <div style={{ display: "flex", gap: "8px" }}>
                           <button
                             style={savingPrealignerProcs ? { ...btnPrimary, opacity: 0.6 } : btnPrimary}
@@ -2507,6 +2587,120 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                           <button
                             onClick={() => setEditingPrealignerProcs(false)}
                             disabled={savingPrealignerProcs}
+                            style={{ padding: "10px 16px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "white", color: "#374151", fontWeight: "700", fontSize: "13px", cursor: "pointer" }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* Post Aligner Treatment — same flag-and-track mechanism as
+                  Prealigner Treatment, entirely admin-built (no dentist form). */}
+              {isAdmin && step.key === "post_aligner_treatment" && (() => {
+                const postProcs = appt.journey_steps?.post_aligner_procedures || [];
+                const doneMap = appt.journey_steps?.post_aligner_done || {};
+                return (
+                  <div style={subBox}>
+                    {postProcs.length === 0 && !editingPostAlignerProcs && (
+                      <p style={{ margin: 0, fontSize: "13px", color: "#9ca3af", fontStyle: "italic" }}>No post-aligner procedures flagged yet.</p>
+                    )}
+                    {postProcs.length > 0 && !editingPostAlignerProcs && (
+                      <>
+                        <span style={label}>POST-ALIGNER PROCEDURES</span>
+                        {postProcs.map((proc) => {
+                          const doneAt = doneMap[proc];
+                          return (
+                            <div key={proc} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", padding: "10px 12px", background: doneAt ? "#f0fdf4" : "white", borderRadius: "8px", border: doneAt ? "1px solid #bbf7d0" : "1px solid #e5e7eb" }}>
+                              <div>
+                                <span style={{ fontSize: "13px", fontWeight: "700", color: "#111827" }}>{proc}</span>
+                                {doneAt && <span style={{ display: "block", fontSize: "11px", color: "#16a34a" }}>Done on {new Date(doneAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>}
+                              </div>
+                              <button
+                                onClick={() => togglePostAlignerProcDone(proc)}
+                                disabled={markingPostAlignerProc === proc}
+                                style={{ padding: "6px 14px", borderRadius: "8px", border: "none", cursor: markingPostAlignerProc === proc ? "not-allowed" : "pointer", background: doneAt ? "#fee2e2" : "#111827", color: doneAt ? "#dc2626" : "white", fontWeight: "700", fontSize: "12px", flexShrink: 0 }}
+                              >
+                                {markingPostAlignerProc === proc ? "..." : doneAt ? "Undo" : "Mark Done"}
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </>
+                    )}
+
+                    {!editingPostAlignerProcs ? (
+                      <button
+                        onClick={() => {
+                          setPostAlignerProcSelection(postProcs);
+                          setEditingPostAlignerProcs(true);
+                        }}
+                        style={{ marginTop: postProcs.length > 0 ? "8px" : 0, padding: "8px 14px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "white", color: "#374151", fontWeight: "700", fontSize: "12px", cursor: "pointer", alignSelf: "flex-start" }}
+                      >
+                        {postProcs.length === 0 ? "Flag Procedure(s)" : "Edit Flagged Procedures"}
+                      </button>
+                    ) : (
+                      <>
+                        <span style={label}>FLAG PROCEDURE(S)</span>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                          {POST_ALIGNER_PROCEDURE_OPTIONS.map((proc) => (
+                            <button
+                              key={proc}
+                              onClick={() => togglePostAlignerProcSelection(proc)}
+                              style={{
+                                padding: "8px 14px", borderRadius: "8px",
+                                border: postAlignerProcSelection.includes(proc) ? "2px solid #b8905a" : "1px solid #e5e7eb",
+                                background: postAlignerProcSelection.includes(proc) ? "#fff7ed" : "white",
+                                color: postAlignerProcSelection.includes(proc) ? "#b8905a" : "#374151",
+                                fontWeight: "700", fontSize: "13px", cursor: "pointer",
+                              }}
+                            >
+                              {proc}
+                            </button>
+                          ))}
+                          {postAlignerProcSelection
+                            .filter((p) => !POST_ALIGNER_PROCEDURE_OPTIONS.includes(p))
+                            .map((p) => (
+                              <button
+                                key={p}
+                                onClick={() => togglePostAlignerProcSelection(p)}
+                                style={{ padding: "8px 14px", borderRadius: "8px", border: "2px solid #b8905a", background: "#fff7ed", color: "#b8905a", fontWeight: "700", fontSize: "13px", cursor: "pointer" }}
+                              >
+                                {p} ✕
+                              </button>
+                            ))}
+                        </div>
+                        <div style={{ display: "flex", gap: "8px" }}>
+                          <input
+                            style={{ ...input, flex: 1 }}
+                            type="text"
+                            placeholder="Add a procedure..."
+                            value={postAlignerCustomInput}
+                            onChange={(e) => setPostAlignerCustomInput(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCustomPostAlignerProc(); } }}
+                          />
+                          <button
+                            onClick={addCustomPostAlignerProc}
+                            disabled={!postAlignerCustomInput.trim()}
+                            style={{ padding: "10px 18px", borderRadius: "8px", border: "none", background: "#111827", color: "white", fontWeight: "700", fontSize: "13px", cursor: postAlignerCustomInput.trim() ? "pointer" : "not-allowed", opacity: postAlignerCustomInput.trim() ? 1 : 0.5, flexShrink: 0 }}
+                          >
+                            + Add
+                          </button>
+                        </div>
+                        <div style={{ display: "flex", gap: "8px" }}>
+                          <button
+                            style={savingPostAlignerProcs ? { ...btnPrimary, opacity: 0.6 } : btnPrimary}
+                            onClick={savePostAlignerProcs}
+                            disabled={savingPostAlignerProcs}
+                          >
+                            {savingPostAlignerProcs ? "Saving..." : "Save"}
+                          </button>
+                          <button
+                            onClick={() => setEditingPostAlignerProcs(false)}
+                            disabled={savingPostAlignerProcs}
                             style={{ padding: "10px 16px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "white", color: "#374151", fontWeight: "700", fontSize: "13px", cursor: "pointer" }}
                           >
                             Cancel
