@@ -444,6 +444,14 @@ export default function PatientJourney() {
   // it's never automatic.
   const isPlanApprovalUnlocked = !isNewModel || !!patient.journey_steps?.plan_approval_unlocked;
 
+  // For the new model, the admin's switch is the sole authority once
+  // flipped on — it deliberately bypasses isPlanApprovalReady (an
+  // incomplete Investigation Required, etc. included), per explicit
+  // instruction: switching it on should unlock Approve Plan even if an
+  // earlier step isn't finished yet. Legacy patients have no switch
+  // concept at all, so their button still depends purely on readiness.
+  const canApprovePlan = isNewModel ? isPlanApprovalUnlocked : isPlanApprovalReady;
+
   const handleApprovePlan = async () => {
     const confirmed = window.confirm(
       "By clicking OK, you confirm that you have reviewed your 3D treatment plan and legally authorise Orisalign Private Limited to commence fabrication of your aligners."
@@ -692,7 +700,7 @@ export default function PatientJourney() {
                             <span style={{ flexShrink: 0, padding: "4px 10px", borderRadius: "99px", background: "#dcfce7", color: "#16a34a", fontSize: "12px", fontWeight: "700", whiteSpace: "nowrap" }}>
                               ✓ Approved
                             </span>
-                          ) : isPlanApprovalReady && isPlanApprovalUnlocked ? (
+                          ) : canApprovePlan ? (
                             <button
                               onClick={(e) => { e.stopPropagation(); handleApprovePlan(); }}
                               disabled={approving || !consentChecked}
@@ -727,7 +735,7 @@ export default function PatientJourney() {
                         )}
                         {isClickable && !step.approveAction && <span style={{ fontSize: "12px", color: done ? "#16a34a" : "#9ca3af", flexShrink: 0, marginLeft: "8px" }}>{isExpanded ? "▲" : "▼"}</span>}
                       </div>
-                      {step.key === "plan_approved" && isPlanApprovalReady && isPlanApprovalUnlocked && !patient.plan_approved && (
+                      {step.key === "plan_approved" && canApprovePlan && !patient.plan_approved && (
                         <label
                           onClick={(e) => e.stopPropagation()}
                           style={{ display: "flex", alignItems: "flex-start", gap: "8px", marginTop: "12px", paddingTop: "12px", borderTop: "1px solid #e5e7eb", cursor: "pointer" }}
