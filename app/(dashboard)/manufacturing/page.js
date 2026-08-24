@@ -5,10 +5,9 @@ import { useRouter } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { logAudit } from "@/lib/logAudit";
 import { isNewModelAppointment } from "@/lib/appointmentModel";
+import { computeNextBatchDue } from "@/lib/manufacturingTriggers";
 
 const supabase = getSupabaseClient();
-
-const DELIVERY_PARTNERS = ["BlueDart", "Delhivery", "Other"];
 
 const card = { background: "white", borderRadius: "14px", border: "1px solid #e5e7eb", padding: "18px 20px", marginBottom: "14px", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" };
 const label = { display: "block", fontSize: "11px", fontWeight: "700", color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "6px" };
@@ -17,12 +16,13 @@ const btnPrimary = { padding: "9px 18px", borderRadius: "8px", border: "none", b
 const btnGold = { padding: "9px 18px", borderRadius: "8px", border: "none", background: "#b8905a", color: "white", fontWeight: "700", fontSize: "12px", cursor: "pointer" };
 const pill = (bg, color) => ({ display: "inline-block", padding: "4px 10px", borderRadius: "99px", background: bg, color, fontSize: "11px", fontWeight: "700" });
 
-/**
- * A single package/batch row for one patient — same fields ManufacturingTab
- * (formerly a per-patient tab, now retired) used to manage: aligner range or
- * per-arch slot label, start/end manufacturing dates, and dispatch logistics.
- */
-function BatchRow({ appointmentId, batch, onSaved, actor }) {
+const todayISO = () => new Date().toISOString().slice(0, 10);
+
+/** One package/batch row — start/end range or per-arch label, manufacturing
+ * started/done dates. Delivery partner, shipment ID and tracking now live
+ * on the patient's own Journey tab (Aligners Dispatched step) instead —
+ * this page stays focused purely on manufacturing status. */
+function BatchRow({ batch, onSaved }) {
   const [local, setLocal] = useState(batch);
   const [saving, setSaving] = useState(null);
 
@@ -31,28 +31,20 @@ function BatchRow({ appointmentId, batch, onSaved, actor }) {
   const persist = async (patch, auditAction) => {
     const merged = { ...local, ...patch };
     setLocal(merged);
-    const ok = await onSaved(merged, auditAction);
-    return ok;
+    await onSaved(merged, auditAction);
   };
 
   const markStarted = async () => {
     const hasArchLabels = local.slot_label || local.upper_aligners || local.lower_aligners;
     if (!hasArchLabels && (local.start === "" || local.end === "")) { alert("Enter the aligner set range for this batch first."); return; }
     setSaving("started");
-    await persist({ mfg_started: new Date().toISOString().slice(0, 10) }, `Manufacturing Started — Batch ${batch.num}`);
+    await persist({ mfg_started: todayISO() }, `Manufacturing Started — Batch ${batch.num}`);
     setSaving(null);
   };
 
   const markEnded = async () => {
     setSaving("ended");
-    await persist({ mfg_done: new Date().toISOString().slice(0, 10) }, `Manufacturing Ended — Batch ${batch.num}`);
-    setSaving(null);
-  };
-
-  const saveLogistics = async () => {
-    setSaving("logistics");
-    const today = new Date().toISOString().slice(0, 10);
-    await persist({ mfg_done: local.shipment_link ? (local.mfg_done || today) : local.mfg_done }, `Tracking Link & Logistics Saved — Batch ${batch.num}`);
+    await persist({ mfg_done: todayISO() }, `Manufacturing Ended — Batch ${batch.num}`);
     setSaving(null);
   };
 
@@ -64,12 +56,11 @@ function BatchRow({ appointmentId, batch, onSaved, actor }) {
             ? `PACKAGE ${local.num} — ${local.slot_label.toUpperCase()}`
             : local.upper_aligners || local.lower_aligners
             ? `PACKAGE ${local.num} — UPPER ${local.upper_aligners || "—"}, LOWER ${local.lower_aligners || "—"}`
-            : `BATCH ${local.num}`}
+            : `BATCH ${local.num}${local.start && local.end ? ` — SETS ${local.start}–${local.end}` : ""}`}
         </h4>
         <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
           {local.mfg_started ? <span style={pill("#f0fdf4", "#16a34a")}>✓ Started {local.mfg_started}</span> : <span style={pill("#fef3c7", "#92400e")}>Not started</span>}
           {local.mfg_done && <span style={pill("#f0fdf4", "#16a34a")}>✓ Done {local.mfg_done}</span>}
-          {local.shipment_link && <span style={pill("#dbeafe", "#1e40af")}>Dispatched</span>}
         </div>
       </div>
 
@@ -80,7 +71,7 @@ function BatchRow({ appointmentId, batch, onSaved, actor }) {
         </div>
       )}
 
-      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "10px" }}>
+      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
         {!local.mfg_started && (
           <button style={saving === "started" ? { ...btnPrimary, opacity: 0.6 } : btnPrimary} onClick={markStarted} disabled={saving === "started"}>
             {saving === "started" ? "Saving..." : "Mark Started"}
@@ -92,56 +83,34 @@ function BatchRow({ appointmentId, batch, onSaved, actor }) {
           </button>
         )}
       </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "8px" }}>
-        <div>
-          <span style={label}>Delivery Partner</span>
-          <select style={input} value={local.delivery_partner} onChange={(e) => update("delivery_partner", e.target.value)}>
-            <option value="">Select...</option>
-            {DELIVERY_PARTNERS.map((p) => <option key={p} value={p}>{p}</option>)}
-          </select>
-        </div>
-        <div>
-          <span style={label}>Shipment ID</span>
-          <input style={input} type="text" placeholder="Tracking number" value={local.shipment_id} onChange={(e) => update("shipment_id", e.target.value)} />
-        </div>
-      </div>
-      <div style={{ marginBottom: "10px" }}>
-        <span style={label}>Shipment Tracking Link</span>
-        <input style={input} type="url" placeholder="https://..." value={local.shipment_link} onChange={(e) => update("shipment_link", e.target.value)} />
-      </div>
-      <button style={saving === "logistics" ? { ...btnPrimary, opacity: 0.6 } : btnPrimary} onClick={saveLogistics} disabled={saving === "logistics"}>
-        {saving === "logistics" ? "Saving..." : "Save Logistics"}
-      </button>
     </div>
   );
 }
 
-/** One patient's manufacturing card — their existing batches, plus (for a
- * legacy patient whose plan is approved but nothing's been sent to
- * manufacturing yet) a quick "start the first batch" prompt. */
+/** One patient's manufacturing card. */
 function PatientCard({ appt, actor, onRefresh }) {
   const router = useRouter();
   const isNewModel = isNewModelAppointment(appt);
   const batches = appt.manufacturing_data?.batches || [];
   const needsFirstBatch = !isNewModel && appt.plan_approved && batches.length === 0;
+  const nextDue = !isNewModel && !needsFirstBatch ? computeNextBatchDue(appt) : null;
 
   const [newFrom, setNewFrom] = useState("");
   const [newTo, setNewTo] = useState("");
   const [startingFirst, setStartingFirst] = useState(false);
+  const [creatingNext, setCreatingNext] = useState(false);
+  const [editingTrigger, setEditingTrigger] = useState(false);
+  const [setsPerInstallmentInput, setSetsPerInstallmentInput] = useState(appt.journey_steps?.manufacturing_sets_per_installment || "");
+  const [savingTrigger, setSavingTrigger] = useState(false);
 
   const persistBatch = async (updatedBatch, auditAction) => {
     const updatedBatches = batches.map((b) => (b.num === updatedBatch.num ? updatedBatch : b));
     const mfgPayload = {
       ...appt.manufacturing_data,
-      batches: updatedBatches.map(({ num, start, end, upper_aligners, lower_aligners, slot_label, mfg_started, mfg_done, shipment_link }) => ({ num, start, end, upper_aligners, lower_aligners, slot_label, mfg_started, mfg_done, shipment_link })),
-    };
-    const logPayload = {
-      batches: updatedBatches.map(({ num, aligner_received, delivery_partner, delivery_partner_other, shipment_id, shipment_link }) => ({ num, aligner_received, delivery_partner, delivery_partner_other, shipment_id, shipment_link })),
+      batches: updatedBatches.map(({ num, start, end, upper_aligners, lower_aligners, slot_label, mfg_started, mfg_done }) => ({ num, start, end, upper_aligners, lower_aligners, slot_label, mfg_started, mfg_done })),
     };
     const started = updatedBatches.some((b) => b.mfg_started);
     const completed = updatedBatches.length > 0 && updatedBatches.every((b) => b.mfg_done);
-    const dispatched = updatedBatches.some((b) => b.shipment_link);
     const startDates = updatedBatches.map((b) => b.mfg_started).filter(Boolean).sort();
     const doneDates = updatedBatches.map((b) => b.mfg_done).filter(Boolean).sort();
     const js = appt.journey_steps || {};
@@ -149,33 +118,52 @@ function PatientCard({ appt, actor, onRefresh }) {
       ...js,
       manufacturing_started: started,
       manufacturing_completed: completed,
-      aligners_dispatched: dispatched,
       manufacturing_started_at: startDates[0] || null,
       manufacturing_completed_at: doneDates[doneDates.length - 1] || null,
-      aligners_dispatched_at: dispatched ? (js.aligners_dispatched_at || new Date().toISOString()) : null,
     };
-    const { error } = await supabase
-      .from("appointments_booking")
-      .update({ manufacturing_data: mfgPayload, logistics_data: logPayload, journey_steps: newJs })
-      .eq("id", appt.id);
+    const { error } = await supabase.from("appointments_booking").update({ manufacturing_data: mfgPayload, journey_steps: newJs }).eq("id", appt.id);
     if (error) { alert("Error saving: " + error.message); return false; }
     logAudit({ appointmentId: appt.id, actor, action: auditAction, entity: "manufacturing_data", newData: mfgPayload });
     onRefresh();
     return true;
   };
 
+  const createBatch = async (from, to, auditAction) => {
+    const nextNum = batches.length > 0 ? Math.max(...batches.map((b) => b.num)) + 1 : 1;
+    const newBatch = { num: nextNum, start: String(from), end: String(to), mfg_started: todayISO(), mfg_done: "" };
+    const mfgPayload = { ...appt.manufacturing_data, batches: [...batches, newBatch] };
+    const { error } = await supabase
+      .from("appointments_booking")
+      .update({ manufacturing_data: mfgPayload, journey_steps: { ...(appt.journey_steps || {}), manufacturing_started: true, manufacturing_started_at: (appt.journey_steps?.manufacturing_started_at || newBatch.mfg_started) } })
+      .eq("id", appt.id);
+    if (error) { alert("Error saving: " + error.message); return; }
+    logAudit({ appointmentId: appt.id, actor, action: auditAction, entity: "manufacturing_data", newData: mfgPayload });
+    onRefresh();
+  };
+
   const startFirstBatch = async () => {
     if (!newFrom || !newTo) { alert("Enter the aligner set range first."); return; }
     setStartingFirst(true);
-    const newBatch = { num: 1, start: newFrom, end: newTo, mfg_started: new Date().toISOString().slice(0, 10), mfg_done: "", shipment_link: "" };
-    const mfgPayload = { ...appt.manufacturing_data, batches: [newBatch] };
-    const { error } = await supabase
-      .from("appointments_booking")
-      .update({ manufacturing_data: mfgPayload, journey_steps: { ...(appt.journey_steps || {}), manufacturing_started: true, manufacturing_started_at: newBatch.mfg_started } })
-      .eq("id", appt.id);
+    await createBatch(newFrom, newTo, "Manufacturing Started — Batch 1 (sent on plan approval)");
     setStartingFirst(false);
-    if (error) { alert("Error saving: " + error.message); return; }
-    logAudit({ appointmentId: appt.id, actor, action: "Manufacturing Started — Batch 1 (sent on plan approval)", entity: "manufacturing_data", newData: mfgPayload });
+  };
+
+  const sendNextDue = async () => {
+    if (!nextDue) return;
+    setCreatingNext(true);
+    await createBatch(nextDue.from, nextDue.to, `Manufacturing Started — Sets ${nextDue.from}-${nextDue.to} (auto-flagged)`);
+    setCreatingNext(false);
+  };
+
+  const saveTrigger = async () => {
+    setSavingTrigger(true);
+    const val = parseInt(setsPerInstallmentInput, 10) || null;
+    const newJs = { ...(appt.journey_steps || {}), manufacturing_sets_per_installment: val };
+    const { error } = await supabase.from("appointments_booking").update({ journey_steps: newJs }).eq("id", appt.id);
+    setSavingTrigger(false);
+    if (error) { alert("Failed to save: " + error.message); return; }
+    logAudit({ appointmentId: appt.id, actor, action: "Manufacturing Auto-Trigger Updated", entity: "journey_steps", newData: { manufacturing_sets_per_installment: val } });
+    setEditingTrigger(false);
     onRefresh();
   };
 
@@ -194,6 +182,7 @@ function PatientCard({ appt, actor, onRefresh }) {
           </p>
         </div>
         {needsFirstBatch && <span style={pill("#fee2e2", "#dc2626")}>Needs Manufacturing</span>}
+        {nextDue && <span style={pill("#fef3c7", "#92400e")}>Next Set(s) Due</span>}
       </div>
 
       {needsFirstBatch && (
@@ -211,9 +200,49 @@ function PatientCard({ appt, actor, onRefresh }) {
         </div>
       )}
 
+      {nextDue && (
+        <div style={{ padding: "14px", borderRadius: "10px", border: "1px dashed #dc2626", background: "#fef2f2", marginBottom: "12px" }}>
+          <p style={{ margin: "0 0 10px", fontSize: "13px", color: "#991b1b", fontWeight: "600" }}>
+            {nextDue.reason} — Set{nextDue.to > nextDue.from ? `s ${nextDue.from}–${nextDue.to}` : ` ${nextDue.from}`} should be sent.
+          </p>
+          <button style={creatingNext ? { ...btnPrimary, opacity: 0.6, background: "#dc2626" } : { ...btnPrimary, background: "#dc2626" }} onClick={sendNextDue} disabled={creatingNext}>
+            {creatingNext ? "Sending..." : `Send Set${nextDue.to > nextDue.from ? "s" : ""} ${nextDue.from}${nextDue.to > nextDue.from ? `–${nextDue.to}` : ""} to Manufacturing`}
+          </button>
+        </div>
+      )}
+
       {batches.map((b) => (
-        <BatchRow key={b.num} appointmentId={appt.id} batch={{ ...b, delivery_partner: appt.logistics_data?.batches?.find((x) => x.num === b.num)?.delivery_partner || "", delivery_partner_other: appt.logistics_data?.batches?.find((x) => x.num === b.num)?.delivery_partner_other || "", shipment_id: appt.logistics_data?.batches?.find((x) => x.num === b.num)?.shipment_id || "", aligner_received: appt.logistics_data?.batches?.find((x) => x.num === b.num)?.aligner_received || "" }} onSaved={persistBatch} actor={actor} />
+        <BatchRow key={b.num} batch={b} onSaved={persistBatch} />
       ))}
+
+      {!isNewModel && (
+        <div style={{ marginTop: "10px" }}>
+          {!editingTrigger ? (
+            <button
+              onClick={() => setEditingTrigger(true)}
+              style={{ padding: "6px 12px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "white", color: "#6b7280", fontWeight: "700", fontSize: "11px", cursor: "pointer" }}
+            >
+              ⚙ Auto-Trigger{appt.journey_steps?.manufacturing_sets_per_installment ? `: ${appt.journey_steps.manufacturing_sets_per_installment} sets/installment` : ": Off"}
+            </button>
+          ) : (
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "10px", borderRadius: "8px", background: "#f8f7f5" }}>
+              <span style={{ fontSize: "12px", color: "#374151", fontWeight: "600", flexShrink: 0 }}>Sets released per installment paid:</span>
+              <input
+                type="number" min="0" placeholder="e.g. 2"
+                value={setsPerInstallmentInput}
+                onChange={(e) => setSetsPerInstallmentInput(e.target.value)}
+                style={{ ...input, width: "70px", flex: "none" }}
+              />
+              <button style={savingTrigger ? { ...btnPrimary, opacity: 0.6 } : btnPrimary} onClick={saveTrigger} disabled={savingTrigger}>
+                {savingTrigger ? "Saving..." : "Save"}
+              </button>
+              <button onClick={() => setEditingTrigger(false)} style={{ padding: "9px 14px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "white", color: "#6b7280", fontWeight: "700", fontSize: "12px", cursor: "pointer" }}>
+                Cancel
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -234,7 +263,7 @@ export default function ManufacturingPage() {
       }
       const { data, error } = await supabase
         .from("appointments_booking")
-        .select("id, name, phone, status, plan_approved, monthly_plan, amount_paid, manufacturing_data, logistics_data, journey_steps, provisional_min_months, provisional_max_months, final_upper_sets, final_lower_sets, aligner_total_sets, created_at")
+        .select("id, name, phone, status, plan_approved, monthly_plan, amount_paid, payment_data, manufacturing_data, journey_steps, provisional_min_months, provisional_max_months, final_upper_sets, final_lower_sets, aligner_total_sets, aligner_days_per_set, created_at")
         .in("status", ["confirmed", "completed"])
         .order("created_at", { ascending: false });
       if (error) console.error(error);
@@ -246,24 +275,26 @@ export default function ManufacturingPage() {
 
   const onRefresh = () => setRefreshTick((t) => t + 1);
 
-  // Every patient with either something already in manufacturing, or a
-  // legacy plan approved with nothing sent yet ("needs manufacturing").
+  // Every patient with something already in manufacturing, a legacy plan
+  // approved with nothing sent yet, or a flagged "next set(s) due".
   const relevant = appointments.filter((a) => {
     const batches = a.manufacturing_data?.batches || [];
     const isNewModel = isNewModelAppointment(a);
     const needsFirstBatch = !isNewModel && a.plan_approved && batches.length === 0;
-    return batches.length > 0 || needsFirstBatch;
+    const nextDue = !isNewModel && !needsFirstBatch ? computeNextBatchDue(a) : null;
+    return batches.length > 0 || needsFirstBatch || !!nextDue;
   });
 
   const q = search.toLowerCase();
   const filtered = relevant.filter((a) => !q || (a.name || "").toLowerCase().includes(q) || (a.phone || "").includes(q));
 
-  // Needs-action patients first (nothing started, or a batch mid-production),
-  // fully-done patients last.
+  // Needs-action patients first, fully-done patients last.
   const statusRank = (a) => {
     const batches = a.manufacturing_data?.batches || [];
     const isNewModel = isNewModelAppointment(a);
-    if (!isNewModel && a.plan_approved && batches.length === 0) return 0;
+    const needsFirstBatch = !isNewModel && a.plan_approved && batches.length === 0;
+    if (needsFirstBatch) return 0;
+    if (!isNewModel && computeNextBatchDue(a)) return 0;
     if (batches.some((b) => !b.mfg_started)) return 0;
     if (batches.some((b) => b.mfg_started && !b.mfg_done)) return 1;
     return 2;
@@ -279,7 +310,7 @@ export default function ManufacturingPage() {
       <div style={{ marginBottom: "20px" }}>
         <h1 style={{ fontSize: "26px", fontWeight: "800", color: "#111827", margin: "0 0 6px" }}>Manufacturing</h1>
         <p style={{ margin: 0, fontSize: "13px", color: "#6b7280" }}>
-          Every patient's aligner packages — what's been manufactured, what's still due, and dispatch tracking. A package appears here the moment a patient pays for it (new-model) or their plan is approved (legacy).
+          Every patient's aligner packages — what's been manufactured and what's still due. A package appears here the moment a patient pays for it (new-model), their plan is approved (legacy), or — for a legacy patient with "Auto-Trigger" configured — the moment an installment is paid or their current set is about to run out.
         </p>
       </div>
 

@@ -1669,6 +1669,34 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
     setPlanChoiceTick((t) => t + 1);
   };
 
+  // Aligners Dispatched (legacy) — delivery partner, shipment ID/tracking
+  // link, and the date the patient actually received it, per manufacturing
+  // batch. Lives here (not the Manufacturing section) since it's dispatch
+  // logistics, not manufacturing status — stored in logistics_data.batches
+  // so it never collides with what the Manufacturing page writes.
+  const [dispatchDrafts, setDispatchDrafts] = useState({});
+  const [savingDispatch, setSavingDispatch] = useState(null);
+  const saveDispatchInfo = async (batchNum) => {
+    const draft = dispatchDrafts[batchNum] || {};
+    const existingLog = (appt.logistics_data?.batches || []).find((b) => b.num === batchNum) || {};
+    const merged = {
+      num: batchNum,
+      delivery_partner: draft.delivery_partner ?? existingLog.delivery_partner ?? "",
+      delivery_partner_other: draft.delivery_partner_other ?? existingLog.delivery_partner_other ?? "",
+      shipment_id: draft.shipment_id ?? existingLog.shipment_id ?? "",
+      shipment_link: draft.shipment_link ?? existingLog.shipment_link ?? "",
+      aligner_received: draft.aligner_received ?? existingLog.aligner_received ?? "",
+    };
+    const newLogisticsBatches = [...(appt.logistics_data?.batches || []).filter((b) => b.num !== batchNum), merged];
+    setSavingDispatch(batchNum);
+    const { error } = await supabase.from("appointments_booking").update({ logistics_data: { batches: newLogisticsBatches } }).eq("id", appointmentId);
+    setSavingDispatch(null);
+    if (error) { alert("Failed to save: " + error.message); return; }
+    logAudit({ appointmentId, actor, action: `Dispatch Logistics Saved — Batch ${batchNum}`, entity: "logistics_data", newData: merged });
+    appt.logistics_data = { batches: newLogisticsBatches };
+    setPlanChoiceTick((t) => t + 1);
+  };
+
   const isNewModelAppt = isNewModelAppointment(appt);
   const allSteps = isNewModelAppt ? NEW_ALL_STEPS : LEGACY_ALL_STEPS;
   const doneCount = allSteps.filter((s) => !!steps[s.key]).length;
@@ -2532,6 +2560,57 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                   </p>
                 </div>
               )}
+
+              {/* Aligners Dispatched (legacy) — delivery/tracking per manufacturing
+                  batch. Batches themselves are created/tracked from the dedicated
+                  Manufacturing section; this just adds shipping details to them. */}
+              {isAdmin && step.key === "aligners_dispatched" && !isNewModelAppt && (() => {
+                const batches = appt.manufacturing_data?.batches || [];
+                if (batches.length === 0) {
+                  return (
+                    <div style={subBox}>
+                      <p style={{ margin: 0, fontSize: "13px", color: "#9ca3af", fontStyle: "italic" }}>No manufacturing batches yet — add them from the Manufacturing section first.</p>
+                    </div>
+                  );
+                }
+                return (
+                  <div style={subBox}>
+                    {batches.map((b) => {
+                      const existingLog = (appt.logistics_data?.batches || []).find((x) => x.num === b.num) || {};
+                      const draft = dispatchDrafts[b.num] || {};
+                      const val = (key) => (draft[key] !== undefined ? draft[key] : (existingLog[key] || ""));
+                      const setVal = (key, v) => setDispatchDrafts((prev) => ({ ...prev, [b.num]: { ...prev[b.num], [key]: v } }));
+                      return (
+                        <div key={b.num} style={{ padding: "12px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "#fafafa", marginBottom: "10px" }}>
+                          <span style={label}>BATCH {b.num}{b.start && b.end ? ` — SETS ${b.start}–${b.end}` : ""}</span>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "8px" }}>
+                            <select style={input} value={val("delivery_partner")} onChange={(e) => setVal("delivery_partner", e.target.value)}>
+                              <option value="">Delivery partner...</option>
+                              <option value="BlueDart">BlueDart</option>
+                              <option value="Delhivery">Delhivery</option>
+                              <option value="Other">Other</option>
+                            </select>
+                            <input style={input} type="text" placeholder="Shipment ID" value={val("shipment_id")} onChange={(e) => setVal("shipment_id", e.target.value)} />
+                          </div>
+                          {val("delivery_partner") === "Other" && (
+                            <input style={{ ...input, marginBottom: "8px" }} type="text" placeholder="Delivery partner name" value={val("delivery_partner_other")} onChange={(e) => setVal("delivery_partner_other", e.target.value)} />
+                          )}
+                          <input style={{ ...input, marginBottom: "8px" }} type="url" placeholder="Shipment tracking link" value={val("shipment_link")} onChange={(e) => setVal("shipment_link", e.target.value)} />
+                          <span style={label}>ALIGNER RECEIVED BY PATIENT</span>
+                          <input style={{ ...input, marginBottom: "8px" }} type="date" value={val("aligner_received")} onChange={(e) => setVal("aligner_received", e.target.value)} />
+                          <button
+                            style={savingDispatch === b.num ? { ...btnPrimary, opacity: 0.6 } : btnPrimary}
+                            onClick={() => saveDispatchInfo(b.num)}
+                            disabled={savingDispatch === b.num}
+                          >
+                            {savingDispatch === b.num ? "Saving..." : "Save"}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
 
               {/* Smile Correction — admin sets number of sets, start date & days/set */}
               {isAdmin && step.key === "smile_correction" && (

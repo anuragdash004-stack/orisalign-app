@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { isNewModelAppointment } from "@/lib/appointmentModel";
+import { computeNextBatchDue } from "@/lib/manufacturingTriggers";
 
 const supabase = getSupabaseClient();
 
@@ -70,7 +71,7 @@ export default function DTDReportPage() {
 
       const { data: appts } = await supabase
         .from("appointments_booking")
-        .select("id, name, phone, status, lead_stage, callback_date, date, time, plan_approved, monthly_plan, manufacturing_data, journey_steps, provisional_min_months, provisional_max_months")
+        .select("id, name, phone, status, lead_stage, callback_date, date, time, plan_approved, monthly_plan, manufacturing_data, journey_steps, provisional_min_months, provisional_max_months, payment_data, aligner_total_sets, aligner_days_per_set")
         .order("created_at", { ascending: false });
 
       const candidates = [];
@@ -107,10 +108,13 @@ export default function DTDReportPage() {
           });
         }
         // Manufacturing — legacy patients whose plan is approved but
-        // nothing's been sent to production yet.
+        // nothing's been sent to production yet, or (for a patient with
+        // "Auto-Trigger" configured on the Manufacturing page) whose next
+        // set(s) are now due, per computeNextBatchDue.
         const isNewModel = isNewModelAppointment(a);
         const batches = a.manufacturing_data?.batches || [];
-        if (!isNewModel && a.plan_approved && batches.length === 0) {
+        const needsFirstBatch = !isNewModel && a.plan_approved && batches.length === 0;
+        if (needsFirstBatch) {
           candidates.push({
             source_key: `manufacturing:${a.id}`,
             category: "manufacturing",
@@ -118,6 +122,17 @@ export default function DTDReportPage() {
             detail: "Plan approved — send Set 1 to manufacturing",
             link_url: "/manufacturing",
           });
+        } else if (!isNewModel) {
+          const nextDue = computeNextBatchDue(a);
+          if (nextDue) {
+            candidates.push({
+              source_key: `manufacturing_next:${a.id}:${nextDue.from}-${nextDue.to}`,
+              category: "manufacturing",
+              title: a.name || "Unnamed patient",
+              detail: `${nextDue.reason} — Set${nextDue.to > nextDue.from ? `s ${nextDue.from}–${nextDue.to}` : ` ${nextDue.from}`}`,
+              link_url: "/manufacturing",
+            });
+          }
         }
         // Follow-up visits booked for today.
         const followupAt = a.journey_steps?.followup_appointment_at;
