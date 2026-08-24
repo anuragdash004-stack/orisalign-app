@@ -1443,6 +1443,20 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
       return withoutNone.includes(key) ? withoutNone.filter((t) => t !== key) : [...withoutNone, key];
     });
   };
+  // Custom investigation types beyond the fixed list — the typed text is
+  // used as-is for both the key and the display label (every place that
+  // shows a type already falls back to the raw key when it's not found in
+  // INVESTIGATION_TYPES, so no extra plumbing is needed for custom ones).
+  const [customInvestigationInput, setCustomInvestigationInput] = useState("");
+  const addCustomInvestigationType = () => {
+    const name = customInvestigationInput.trim();
+    if (!name) return;
+    setInvestigationTypesSelection((prev) => {
+      const withoutNone = prev.filter((t) => t !== "NONE");
+      return withoutNone.includes(name) ? withoutNone : [...withoutNone, name];
+    });
+    setCustomInvestigationInput("");
+  };
   const saveInvestigationTypes = async () => {
     setSavingInvestigationTypes(true);
     const newJourneySteps = { ...(appt.journey_steps || {}), investigation_types: investigationTypesSelection, investigation_types_at: new Date().toISOString() };
@@ -2242,6 +2256,23 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                         {t.label}
                       </button>
                     ))}
+                    {/* Custom types added below — shown alongside the fixed list so
+                        they can be toggled off the same way. */}
+                    {investigationTypesSelection
+                      .filter((t) => t !== "NONE" && !INVESTIGATION_TYPES.some((it) => it.key === t))
+                      .map((t) => (
+                        <button
+                          key={t}
+                          onClick={() => toggleInvestigationType(t)}
+                          style={{
+                            padding: "8px 14px", borderRadius: "8px",
+                            border: "2px solid #b8905a", background: "#fff7ed", color: "#b8905a",
+                            fontWeight: "700", fontSize: "13px", cursor: "pointer",
+                          }}
+                        >
+                          {t} ✕
+                        </button>
+                      ))}
                     <button
                       onClick={() => toggleInvestigationType("NONE")}
                       style={{
@@ -2255,6 +2286,30 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                       None Required
                     </button>
                   </div>
+
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <input
+                      style={{ ...input, flex: 1 }}
+                      type="text"
+                      placeholder="Other investigation (e.g. MRI)..."
+                      value={customInvestigationInput}
+                      onChange={(e) => setCustomInvestigationInput(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCustomInvestigationType(); } }}
+                    />
+                    <button
+                      onClick={addCustomInvestigationType}
+                      disabled={!customInvestigationInput.trim()}
+                      style={{
+                        padding: "10px 18px", borderRadius: "8px", border: "none",
+                        background: "#111827", color: "white", fontWeight: "700", fontSize: "13px",
+                        cursor: customInvestigationInput.trim() ? "pointer" : "not-allowed",
+                        opacity: customInvestigationInput.trim() ? 1 : 0.5, flexShrink: 0,
+                      }}
+                    >
+                      + Add
+                    </button>
+                  </div>
+
                   <button
                     style={savingInvestigationTypes ? { ...btnPrimary, opacity: 0.6 } : btnPrimary}
                     onClick={saveInvestigationTypes}

@@ -7,6 +7,7 @@ export const INVESTIGATION_TYPES: InvestigationType[] = [
   { key: "IOPA", label: "IOPA" },
   { key: "OPG", label: "OPG" },
   { key: "LAT_CEPH", label: "Lateral Ceph" },
+  { key: "CBCT", label: "CBCT" },
   { key: "BLOOD_TEST", label: "Blood Test" },
 ];
 
