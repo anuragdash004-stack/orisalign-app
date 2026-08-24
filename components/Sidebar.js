@@ -67,6 +67,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
     campaigns:    userRole === "admin" || userRole === "counselor",
     audit:        userRole === "admin",
     lmc:          userRole === "admin",
+    manufacturing: userRole === "admin",
     onlineReports: userRole === "admin" || userRole === "dentist" || userRole === "orthodontist",
     doctors:      userRole === "admin",
   };
@@ -302,6 +303,14 @@ export default function Sidebar({ collapsed, setCollapsed }) {
               ...(path.startsWith("/lmc") ? { background: "#ffffff90" } : {}),
             }}>
               {showContent ? "LIFETIME MEMBERSHIP" : ""}
+            </Link>
+          )}
+          {show.manufacturing && (
+            <Link href="/manufacturing" style={{
+              ...linkStyle("/manufacturing"),
+              ...(path.startsWith("/manufacturing") ? { background: "#ffffff90" } : {}),
+            }}>
+              {showContent ? "MANUFACTURING" : ""}
             </Link>
           )}
         </div>

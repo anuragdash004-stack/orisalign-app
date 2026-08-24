@@ -9,7 +9,7 @@ import { isNewModelAppointment } from "@/lib/appointmentModel";
 
 const supabase = getSupabaseClient();
 
-const TABS = ["Payment", "Manufacturing", "Journey", "LMC", "Message", "Patient Page", "Report"];
+const TABS = ["Payment", "Journey", "LMC", "Message", "Patient Page", "Report"];
 
 const LMC_TREATMENT_TYPES = ["Aligners", "RCT", "Implant", "Extraction", "Restoration", "Scaling", "Polishing", "Checkup"];
 
@@ -66,7 +66,6 @@ const NEW_ALL_STEPS = [
   { key: "post_aligner_treatment",  label: "Post Aligner Treatment" },
   { key: "feedback_submitted",      label: "Feedback Submitted" },
 ];
-const DELIVERY_PARTNERS = ["BlueDart", "Delhivery", "Other"];
 // Plan determines the per-set price and the default down payment — total
 // amount is just sets × price, no separate treatment-model selector anymore.
 const PLAN_OPTIONS = [
@@ -174,18 +173,6 @@ const btnGold = {
   background: "linear-gradient(135deg, #b8905a, #f59e0b)",
 };
 
-const infoPill = {
-  display: "inline-block",
-  padding: "4px 10px",
-  borderRadius: "99px",
-  background: "#f3f4f6",
-  color: "#374151",
-  fontSize: "12px",
-  fontWeight: "600",
-  marginRight: "8px",
-  marginBottom: "6px",
-};
-
 const row = {
   display: "grid",
   gridTemplateColumns: "1fr 1fr",
@@ -215,25 +202,6 @@ function PaymentSummaryRow({ label: lbl, value }) {
     <div style={{ display: "flex", justifyContent: "space-between", gap: "16px", padding: "10px 0", borderBottom: "1px dashed #e5e7eb" }}>
       <span style={{ fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>{lbl}</span>
       <span style={{ fontSize: "14px", fontWeight: "700", color: "#111827", textAlign: "right" }}>{value}</span>
-    </div>
-  );
-}
-
-// Wraps a single-choice control with a Cancel (✕) button when it has a value.
-function Clearable({ show, onClear, children }) {
-  return (
-    <div style={{ display: "flex", gap: "6px", alignItems: "stretch" }}>
-      <div style={{ flex: 1, minWidth: 0 }}>{children}</div>
-      {show && (
-        <button
-          type="button"
-          onClick={onClear}
-          title="Clear selection"
-          style={{ flexShrink: 0, padding: "0 12px", borderRadius: "8px", border: "1px solid #fecaca", background: "#fef2f2", color: "#dc2626", fontWeight: "700", fontSize: "13px", cursor: "pointer" }}
-        >
-          ✕
-        </button>
-      )}
     </div>
   );
 }
@@ -900,271 +868,6 @@ function MonthlyBillingCards({ appointmentId, appt, setAppt, actor }) {
   );
 }
 const okBannerText = { margin: 0, fontSize: "14px", fontWeight: "800", color: "#16a34a" };
-
-// ─── Manufacturing & Logistics Tab (merged) ───────────────────────────────────
-function ManufacturingTab({ appointmentId, initialData, logisticsData, actor }) {
-  const [batches, setBatches] = useState(() => {
-    const mfg = initialData?.batches || [];
-    const log = logisticsData?.batches || [];
-    return mfg.map((b) => {
-      const l = log.find((x) => x.num === b.num) || {};
-      return {
-        num: b.num, start: b.start ?? "", end: b.end ?? "",
-        // Set instead of start/end for batches auto-created by a paid month
-        // under the new per-arch, month-by-month model — see
-        // lib/paymentHelper.ts.
-        upper_aligners: b.upper_aligners || "", lower_aligners: b.lower_aligners || "",
-        slot_label: b.slot_label || "",
-        mfg_started: b.mfg_started || "", mfg_done: b.mfg_done || "",
-        shipment_link: b.shipment_link || l.shipment_link || "",
-        shipment_id: l.shipment_id || "",
-        delivery_partner: l.delivery_partner || "",
-        delivery_partner_other: l.delivery_partner_other || "",
-        aligner_received: l.aligner_received || "",
-      };
-    });
-  });
-  const [alignerDelivered, setAlignerDelivered] = useState(initialData?.aligner_delivered || "");
-  const [saving, setSaving] = useState(null);
-  const [savedBatch, setSavedBatch] = useState(null);
-
-  const addBatch = () => {
-    const nextNum = batches.length > 0 ? Math.max(...batches.map((b) => b.num)) + 1 : 1;
-    setBatches((prev) => [...prev, {
-      num: nextNum, start: "", end: "", mfg_started: "", mfg_done: "", shipment_link: "",
-      shipment_id: "", delivery_partner: "", delivery_partner_other: "", aligner_received: "",
-    }]);
-  };
-
-  const updateBatch = (num, key, val) => {
-    setBatches((prev) => prev.map((b) => b.num === num ? { ...b, [key]: val } : b));
-  };
-
-  // Persists the given batches (manufacturing + logistics fields together),
-  // re-derives journey steps from them, and notifies the patient for any
-  // step that just turned on. Returns whether it succeeded.
-  const persistBatches = async (updatedBatches, auditAction) => {
-    const mfgPayload = {
-      batches: updatedBatches.map(({ num, start, end, upper_aligners, lower_aligners, slot_label, mfg_started, mfg_done, shipment_link }) => ({ num, start, end, upper_aligners, lower_aligners, slot_label, mfg_started, mfg_done, shipment_link })),
-      aligner_delivered: alignerDelivered,
-    };
-    const logPayload = {
-      batches: updatedBatches.map(({ num, aligner_received, delivery_partner, delivery_partner_other, shipment_id, shipment_link }) => ({ num, aligner_received, delivery_partner, delivery_partner_other, shipment_id, shipment_link })),
-    };
-
-    const { data: cur } = await supabase.from("appointments_booking").select("journey_steps, email").eq("id", appointmentId).single();
-    const js = cur?.journey_steps || {};
-    const started = updatedBatches.some((b) => b.mfg_started);
-    const completed = updatedBatches.length > 0 && updatedBatches.every((b) => b.mfg_done);
-    const dispatched = updatedBatches.some((b) => b.shipment_link);
-    const startDates = updatedBatches.map((b) => b.mfg_started).filter(Boolean).sort();
-    const doneDates = updatedBatches.map((b) => b.mfg_done).filter(Boolean).sort();
-    const newJs = {
-      ...js,
-      manufacturing_started: started,
-      manufacturing_completed: completed,
-      aligners_dispatched: dispatched,
-      manufacturing_started_at: startDates[0] || null,
-      manufacturing_completed_at: doneDates[doneDates.length - 1] || null,
-      // First moment any batch actually got a tracking link saved — the
-      // Report tab shows this as the dispatch timestamp.
-      aligners_dispatched_at: dispatched ? (js.aligners_dispatched_at || new Date().toISOString()) : null,
-    };
-
-    const { error } = await supabase
-      .from("appointments_booking")
-      .update({ manufacturing_data: mfgPayload, logistics_data: logPayload, journey_steps: newJs })
-      .eq("id", appointmentId);
-    if (error) { alert("Error saving: " + error.message); return false; }
-
-    logAudit({ appointmentId, actor, action: auditAction, entity: "manufacturing_data", newData: mfgPayload });
-    [["manufacturing_started", started], ["manufacturing_completed", completed], ["aligners_dispatched", dispatched]].forEach(([key, val]) => {
-      if (val && !js[key]) {
-        fetch("/api/notify-step", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ appointmentId, stepKey: key, email: cur?.email || null }),
-        }).catch(() => {});
-      }
-    });
-    return true;
-  };
-
-  const markStarted = async (num) => {
-    const batch = batches.find((b) => b.num === num);
-    const hasArchLabels = batch.slot_label || batch.upper_aligners || batch.lower_aligners;
-    if (!hasArchLabels && (batch.start === "" || batch.end === "")) { alert("Enter the aligner set range for this batch first."); return; }
-    setSaving(`${num}-started`);
-    const updated = batches.map((b) => b.num === num ? { ...b, mfg_started: new Date().toISOString().slice(0, 10) } : b);
-    const ok = await persistBatches(updated, `Manufacturing Started — Batch ${num}`);
-    setSaving(null);
-    if (ok) setBatches(updated);
-  };
-
-  const markEnded = async (num) => {
-    setSaving(`${num}-ended`);
-    const updated = batches.map((b) => b.num === num ? { ...b, mfg_done: new Date().toISOString().slice(0, 10) } : b);
-    const ok = await persistBatches(updated, `Manufacturing Ended — Batch ${num}`);
-    setSaving(null);
-    if (ok) setBatches(updated);
-  };
-
-  // Saving the tracking link is what actually tells the patient their
-  // aligners shipped — if manufacturing was never explicitly marked ended,
-  // a saved link implies it's done too.
-  const saveTrackingAndLogistics = async (num) => {
-    setSaving(`${num}-tracking`);
-    const today = new Date().toISOString().slice(0, 10);
-    const updated = batches.map((b) => b.num === num
-      ? { ...b, mfg_done: b.shipment_link ? (b.mfg_done || today) : b.mfg_done }
-      : b
-    );
-    const ok = await persistBatches(updated, `Tracking Link & Logistics Saved — Batch ${num}`);
-    setSaving(null);
-    if (ok) { setBatches(updated); setSavedBatch(num); setTimeout(() => setSavedBatch(null), 3000); }
-  };
-
-  return (
-    <div>
-      {batches.map((batch) => (
-        <div key={batch.num} style={card}>
-          <h4 style={{ margin: "0 0 16px", fontSize: "14px", color: "#b8905a", fontWeight: "800", letterSpacing: "0.5px" }}>
-            {batch.slot_label
-              ? `PACKAGE ${batch.num} — ${batch.slot_label.toUpperCase()}`
-              : batch.upper_aligners || batch.lower_aligners
-              ? `PACKAGE ${batch.num} — UPPER ${batch.upper_aligners || "—"}, LOWER ${batch.lower_aligners || "—"}`
-              : `BATCH ${batch.num}`}
-          </h4>
-          <div style={row}>
-            <div>
-              <span style={label}>ALIGNERS FROM</span>
-              <input style={input} type="number" min="0" placeholder="e.g. 0" value={batch.start}
-                onChange={(e) => updateBatch(batch.num, "start", e.target.value)} />
-            </div>
-            <div>
-              <span style={label}>ALIGNERS TO</span>
-              <input style={input} type="number" min="0" placeholder="e.g. 1" value={batch.end}
-                onChange={(e) => updateBatch(batch.num, "end", e.target.value)} />
-            </div>
-          </div>
-
-          <div style={{ marginBottom: "20px", display: "flex", gap: "10px", flexWrap: "wrap" }}>
-            {batch.mfg_started ? (
-              <span style={infoPill}>✓ Manufacturing Started — {batch.mfg_started}</span>
-            ) : (
-              <button
-                style={saving === `${batch.num}-started` ? { ...btnPrimary, opacity: 0.6 } : btnPrimary}
-                onClick={() => markStarted(batch.num)}
-                disabled={saving === `${batch.num}-started`}
-              >
-                {saving === `${batch.num}-started` ? "Saving..." : "Manufacturing Started"}
-              </button>
-            )}
-            {batch.mfg_done ? (
-              <span style={infoPill}>✓ Manufacturing Ended — {batch.mfg_done}</span>
-            ) : (
-              <button
-                style={saving === `${batch.num}-ended` ? { ...btnPrimary, opacity: 0.6 } : btnPrimary}
-                onClick={() => markEnded(batch.num)}
-                disabled={saving === `${batch.num}-ended`}
-              >
-                {saving === `${batch.num}-ended` ? "Saving..." : "Manufacturing Ended"}
-              </button>
-            )}
-          </div>
-
-          <p style={{ margin: "0 0 14px", fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Logistics</p>
-          <div style={row}>
-            <div>
-              <span style={label}>ALIGNER RECEIVED BY PATIENT</span>
-              <input style={input} type="date" value={batch.aligner_received}
-                onChange={(e) => updateBatch(batch.num, "aligner_received", e.target.value)} />
-            </div>
-            <div>
-              <span style={label}>DELIVERY PARTNER</span>
-              <Clearable show={!!batch.delivery_partner} onClear={() => updateBatch(batch.num, "delivery_partner", "")}>
-                <select style={select} value={batch.delivery_partner}
-                  onChange={(e) => updateBatch(batch.num, "delivery_partner", e.target.value)}>
-                  <option value="">Select...</option>
-                  {DELIVERY_PARTNERS.map((p) => <option key={p} value={p}>{p}</option>)}
-                </select>
-              </Clearable>
-            </div>
-          </div>
-          {batch.delivery_partner === "Other" && (
-            <div style={{ marginBottom: "16px" }}>
-              <span style={label}>DELIVERY PARTNER NAME</span>
-              <input style={input} type="text" placeholder="Enter delivery partner name" value={batch.delivery_partner_other}
-                onChange={(e) => updateBatch(batch.num, "delivery_partner_other", e.target.value)} />
-            </div>
-          )}
-          <div style={{ marginBottom: "16px" }}>
-            <span style={label}>SHIPMENT ID</span>
-            <input style={input} type="text" placeholder="Tracking number" value={batch.shipment_id}
-              onChange={(e) => updateBatch(batch.num, "shipment_id", e.target.value)} />
-          </div>
-          <div style={{ marginBottom: "16px" }}>
-            <span style={label}>SHIPMENT TRACKING LINK</span>
-            <input style={input} type="url" placeholder="https://..." value={batch.shipment_link}
-              onChange={(e) => updateBatch(batch.num, "shipment_link", e.target.value)} />
-            <p style={{ margin: "6px 0 0", fontSize: "11px", color: "#9ca3af" }}>
-              Saving a tracking link activates &quot;Aligners Dispatched&quot; (and &quot;Manufacturing Ended&quot;
-              too, if it wasn't already) — the patient gets a Track Shipment button that opens this link directly.
-            </p>
-          </div>
-          <button
-            style={saving === `${batch.num}-tracking` ? { ...btnPrimary, opacity: 0.6 } : btnPrimary}
-            onClick={() => saveTrackingAndLogistics(batch.num)}
-            disabled={saving === `${batch.num}-tracking`}
-          >
-            {saving === `${batch.num}-tracking` ? "Saving..." : savedBatch === batch.num ? "Saved ✓" : "Save Tracking & Logistics"}
-          </button>
-        </div>
-      ))}
-
-      <div style={card}>
-        <button style={btnGold} onClick={addBatch}>+ Add Batch</button>
-      </div>
-
-      {batches.length > 0 && (
-        <div style={card}>
-          <h4 style={{ margin: "0 0 16px", fontSize: "14px", color: "#111827", fontWeight: "800", letterSpacing: "0.5px" }}>
-            ALIGNER DELIVERED
-          </h4>
-          <div style={{ marginBottom: "16px" }}>
-            <span style={label}>DELIVERY DATE</span>
-            <input style={input} type="date" value={alignerDelivered}
-              onChange={(e) => setAlignerDelivered(e.target.value)} />
-          </div>
-          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-            <button
-              style={saving === "delivered" ? { ...btnPrimary, opacity: 0.6 } : btnPrimary}
-              onClick={async () => {
-                setSaving("delivered");
-                const ok = await persistBatches(batches, "Aligner Delivery Date Saved");
-                setSaving(null);
-                if (ok) { setSavedBatch("delivered"); setTimeout(() => setSavedBatch(null), 3000); }
-              }}
-              disabled={saving === "delivered"}
-            >
-              {saving === "delivered" ? "Saving..." : savedBatch === "delivered" ? "Saved ✓" : "Save"}
-            </button>
-            <button
-              onClick={async () => {
-                if (!window.confirm("Clear ALL manufacturing and logistics data, including all batches?")) return;
-                setBatches([]); setAlignerDelivered("");
-                await supabase.from("appointments_booking").update({ manufacturing_data: {}, logistics_data: {} }).eq("id", appointmentId);
-              }}
-              style={{ padding: "10px 22px", borderRadius: "10px", border: "1px solid #e5e7eb", background: "white", color: "#6b7280", fontWeight: "700", fontSize: "13px", cursor: "pointer" }}
-            >
-              Clear All
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ─── Derive steps ─────────────────────────────────────────────────────────────
 function deriveSteps(appt) {
@@ -3098,8 +2801,8 @@ function ReportTab({ appointmentId, appt }) {
   };
 
   const findDoneLog = (label) => logs.find((l) => l.action === `Step Marked Done: ${label}`);
-  // Some _at fields are full ISO timestamps, others (from ManufacturingTab's
-  // batch dates) are bare "YYYY-MM-DD" — normalize either into something
+  // Some _at fields are full ISO timestamps, others (from the Manufacturing
+  // section's batch dates) are bare "YYYY-MM-DD" — normalize either into something
   // `fmt`/`new Date()` can parse correctly.
   const asDateTime = (v) => (!v ? null : v.includes("T") ? v : `${v}T00:00:00`);
   const staffLabel = (uuid) => {
@@ -3981,10 +3684,10 @@ export default function PatientDetailPage() {
       </div>
 
       {/* Tab Pills — Manufacturing/Logistics only apply once the appointment is confirmed,
-          and only for legacy (lump-sum) patients — new-model patients manage
-          production/dispatch per package directly in the Journey tab instead. */}
+          Manufacturing itself now lives in its own dedicated section (see the
+          sidebar), across every patient at once, instead of a per-patient tab. */}
       <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "20px" }}>
-        {TABS.filter((tab) => tab !== "Manufacturing" || (!isNewModelAppointment(appt) && (appt.status === "confirmed" || appt.status === "completed"))).map((tab) => (
+        {TABS.map((tab) => (
           <button
             key={tab}
             onClick={() => {
@@ -4012,9 +3715,6 @@ export default function PatientDetailPage() {
       </div>
       <div style={{ display: activeTab === "Payment" ? "block" : "none" }}>
         <PaymentTab appointmentId={id} initialData={appt.payment_data || {}} actor={actor} patientEmail={appt.email} />
-      </div>
-      <div style={{ display: activeTab === "Manufacturing" ? "block" : "none" }}>
-        <ManufacturingTab appointmentId={id} initialData={appt.manufacturing_data || null} logisticsData={appt.logistics_data || null} actor={actor} />
       </div>
       <div style={{ display: activeTab === "LMC" ? "block" : "none" }}>
         <LMCTab appointmentId={id} initialData={appt.lmc_data || null} actor={actor} />
