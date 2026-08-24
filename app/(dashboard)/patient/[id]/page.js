@@ -46,6 +46,7 @@ const LEGACY_JOURNEY_STEPS = [
   { key: "aligners_delivered",      label: "Aligners Delivered" },
   { key: "smile_correction",        label: "Smile Correction Started",   smileLink: true },
   { key: "treatment_completed",     label: "Treatment Completed" },
+  { key: "post_aligner_treatment",  label: "Post Aligner Treatment" },
   { key: "feedback_submitted",      label: "Feedback Form Submitted",    expandable: true },
 ];
 
@@ -70,6 +71,7 @@ const NEW_JOURNEY_STEPS = [
   { key: "aligners_delivered",      label: "Aligners Delivered" },
   { key: "smile_correction",        label: "Smile Correction Started",   smileLink: true },
   { key: "treatment_completed",     label: "Treatment Completed" },
+  { key: "post_aligner_treatment",  label: "Post Aligner Treatment" },
   { key: "feedback_submitted",      label: "Feedback Form Submitted",    expandable: true },
 ];
 
@@ -130,6 +132,7 @@ function deriveSteps(appt) {
     aligners_delivered:      !!js.aligners_delivered,
     smile_correction:        !!js.smile_correction,
     treatment_completed:     js.treatment_completed  !== undefined ? !!js.treatment_completed  : appt.status === "completed",
+    post_aligner_treatment:  !!js.post_aligner_treatment,
     feedback_submitted:      !!js.feedback_submitted,
   };
 

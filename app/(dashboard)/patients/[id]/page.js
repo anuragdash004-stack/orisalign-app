@@ -13,6 +13,10 @@ const TABS = ["Payment", "Manufacturing", "Journey", "LMC", "Message", "Patient 
 
 const LMC_TREATMENT_TYPES = ["Aligners", "RCT", "Implant", "Extraction", "Restoration", "Scaling", "Polishing", "Checkup"];
 
+// Same list the dentist's own form uses (app/(dashboard)/dentist/[id]/appointment/page.js)
+// — kept in sync so admin-flagged procedures match what the dentist would pick.
+const PREALIGNER_PROCEDURE_OPTIONS = ["Restorations", "Root Canal", "Scaling", "Extraction", "Gingival Therapy", "Others"];
+
 // Legacy (lump-sum OrisPro/OrisPro Plus) list — unchanged, for any
 // appointment still in progress without a monthly_plan.
 const LEGACY_ALL_STEPS = [
@@ -31,6 +35,7 @@ const LEGACY_ALL_STEPS = [
   { key: "aligners_delivered",      label: "Aligners Delivered" },
   { key: "smile_correction",        label: "Smile Correction Started" },
   { key: "treatment_completed",     label: "Treatment Completed" },
+  { key: "post_aligner_treatment",  label: "Post Aligner Treatment" },
   { key: "feedback_submitted",      label: "Feedback Submitted" },
 ];
 
@@ -54,6 +59,7 @@ const NEW_ALL_STEPS = [
   { key: "aligners_delivered",      label: "Aligners Delivered" },
   { key: "smile_correction",        label: "Smile Correction Started" },
   { key: "treatment_completed",     label: "Treatment Completed" },
+  { key: "post_aligner_treatment",  label: "Post Aligner Treatment" },
   { key: "feedback_submitted",      label: "Feedback Submitted" },
 ];
 const DELIVERY_PARTNERS = ["BlueDart", "Delhivery", "Other"];
@@ -1199,6 +1205,7 @@ function deriveSteps(appt) {
     aligners_delivered:      js.aligners_delivered   !== undefined ? !!js.aligners_delivered   : false,
     smile_correction:        js.smile_correction     !== undefined ? !!js.smile_correction     : false,
     treatment_completed:     js.treatment_completed  !== undefined ? !!js.treatment_completed  : appt.status === "completed",
+    post_aligner_treatment:  !!js.post_aligner_treatment,
     feedback_submitted:      js.feedback_submitted   !== undefined ? !!js.feedback_submitted   : false,
   };
 
@@ -1246,6 +1253,7 @@ const DEFAULT_STEP_MESSAGES = {
   aligners_delivered:      { subject: "Aligners Delivered — Start Your Smile Correction — OrisAlign", body: "Your aligners have arrived! Please begin wearing them as instructed by your orthodontist. Consistent wear (20–22 hours per day) is the key to the best results. If you have any questions, reach out to our team — we’re always here to help." },
   smile_correction:        { subject: "Smile Correction Phase Started — OrisAlign", body: "Your Smile Correction phase has officially started! You’re now actively on your journey to a more confident smile. Wear your aligners consistently and follow the schedule provided. We’ll be with you every step of the way." },
   treatment_completed:     { subject: "Treatment Complete — Congratulations from OrisAlign!", body: "Congratulations — your OrisAlign treatment is complete! Your smile has been transformed through precision, care, and your own commitment. We are incredibly proud to have been part of your journey. Share your smile with the world — you’ve earned it!" },
+  post_aligner_treatment:  { subject: "Post-Aligner Treatment — OrisAlign", body: "As a final step, our team will guide you through any post-aligner treatment recommended to keep your new smile in place. Please reach out if you have any questions." },
   feedback_submitted:      { subject: "Thank You for Your Feedback — OrisAlign", body: "Thank you so much for taking the time to share your experience with us. Your feedback helps us improve and inspire others. Your ₹5,000 hamper will be sent to you shortly as a token of our appreciation. Thank you for choosing OrisAlign and trusting us with your smile." },
 };
 
@@ -1589,6 +1597,33 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
     if (error) { alert("Failed to save: " + error.message); return; }
     logAudit({ appointmentId, actor, action: isDone ? `Prealigner Procedure Marked Undone: ${procName}` : `Prealigner Procedure Marked Done: ${procName}`, entity: "prealigner_done", newData: newDone });
     appt.journey_steps = newJourneySteps;
+    setPlanChoiceTick((t) => t + 1);
+  };
+
+  // Admin can also flag pre-orthodontic procedures directly — not every
+  // dentist remembers to flag them in their own form, and this lets the
+  // admin add (or correct) them later from the Journey tab instead of
+  // being stuck with whatever (if anything) the dentist originally chose.
+  const [editingPrealignerProcs, setEditingPrealignerProcs] = useState(false);
+  const [prealignerProcSelection, setPrealignerProcSelection] = useState(appt.patient_form_data?.pre_orthodontic_procedures || []);
+  const [prealignerOthersText, setPrealignerOthersText] = useState(appt.patient_form_data?.pre_orthodontic_others || "");
+  const [savingPrealignerProcs, setSavingPrealignerProcs] = useState(false);
+  const togglePrealignerProcSelection = (proc) => {
+    setPrealignerProcSelection((prev) => (prev.includes(proc) ? prev.filter((p) => p !== proc) : [...prev, proc]));
+  };
+  const savePrealignerProcs = async () => {
+    setSavingPrealignerProcs(true);
+    const newPfd = {
+      ...(appt.patient_form_data || {}),
+      pre_orthodontic_procedures: prealignerProcSelection,
+      pre_orthodontic_others: prealignerProcSelection.includes("Others") ? prealignerOthersText : "",
+    };
+    const { error } = await supabase.from("appointments_booking").update({ patient_form_data: newPfd }).eq("id", appointmentId);
+    setSavingPrealignerProcs(false);
+    if (error) { alert("Failed to save: " + error.message); return; }
+    logAudit({ appointmentId, actor, action: "Prealigner Procedures Flagged by Admin", entity: "patient_form_data", newData: newPfd });
+    appt.patient_form_data = newPfd;
+    setEditingPrealignerProcs(false);
     setPlanChoiceTick((t) => t + 1);
   };
 
@@ -2387,39 +2422,98 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                 </div>
               )}
 
-              {/* Prealigner Treatment — mark dentist-flagged procedures on the patient's behalf */}
+              {/* Prealigner Treatment — mark dentist-flagged procedures on the patient's
+                  behalf, and let the admin flag/add procedures the dentist never flagged. */}
               {isAdmin && step.key === "prealigner_treatment" && (() => {
                 const pfd = appt.patient_form_data || {};
                 const procs = [...(pfd.pre_orthodontic_procedures || [])].map((p) => (p === "Others" && pfd.pre_orthodontic_others ? `Others: ${pfd.pre_orthodontic_others}` : p));
                 const doneMap = appt.journey_steps?.prealigner_done || {};
-                if (procs.length === 0) {
-                  return (
-                    <div style={subBox}>
-                      <p style={{ margin: 0, fontSize: "13px", color: "#9ca3af", fontStyle: "italic" }}>No prealigner procedures were flagged by the dentist for this patient.</p>
-                    </div>
-                  );
-                }
                 return (
                   <div style={subBox}>
-                    <span style={label}>PREALIGNER PROCEDURES</span>
-                    {procs.map((proc) => {
-                      const doneAt = doneMap[proc];
-                      return (
-                        <div key={proc} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", padding: "10px 12px", background: doneAt ? "#f0fdf4" : "white", borderRadius: "8px", border: doneAt ? "1px solid #bbf7d0" : "1px solid #e5e7eb" }}>
-                          <div>
-                            <span style={{ fontSize: "13px", fontWeight: "700", color: "#111827" }}>{proc}</span>
-                            {doneAt && <span style={{ display: "block", fontSize: "11px", color: "#16a34a" }}>Done on {new Date(doneAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>}
-                          </div>
+                    {procs.length === 0 && !editingPrealignerProcs && (
+                      <p style={{ margin: 0, fontSize: "13px", color: "#9ca3af", fontStyle: "italic" }}>No prealigner procedures were flagged by the dentist for this patient.</p>
+                    )}
+                    {procs.length > 0 && !editingPrealignerProcs && (
+                      <>
+                        <span style={label}>PREALIGNER PROCEDURES</span>
+                        {procs.map((proc) => {
+                          const doneAt = doneMap[proc];
+                          return (
+                            <div key={proc} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", padding: "10px 12px", background: doneAt ? "#f0fdf4" : "white", borderRadius: "8px", border: doneAt ? "1px solid #bbf7d0" : "1px solid #e5e7eb" }}>
+                              <div>
+                                <span style={{ fontSize: "13px", fontWeight: "700", color: "#111827" }}>{proc}</span>
+                                {doneAt && <span style={{ display: "block", fontSize: "11px", color: "#16a34a" }}>Done on {new Date(doneAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>}
+                              </div>
+                              <button
+                                onClick={() => toggleAdminPrealignerDone(proc)}
+                                disabled={markingPrealignerProc === proc}
+                                style={{ padding: "6px 14px", borderRadius: "8px", border: "none", cursor: markingPrealignerProc === proc ? "not-allowed" : "pointer", background: doneAt ? "#fee2e2" : "#111827", color: doneAt ? "#dc2626" : "white", fontWeight: "700", fontSize: "12px", flexShrink: 0 }}
+                              >
+                                {markingPrealignerProc === proc ? "..." : doneAt ? "Undo" : "Mark Done"}
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </>
+                    )}
+
+                    {!editingPrealignerProcs ? (
+                      <button
+                        onClick={() => {
+                          setPrealignerProcSelection(pfd.pre_orthodontic_procedures || []);
+                          setPrealignerOthersText(pfd.pre_orthodontic_others || "");
+                          setEditingPrealignerProcs(true);
+                        }}
+                        style={{ marginTop: procs.length > 0 ? "8px" : 0, padding: "8px 14px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "white", color: "#374151", fontWeight: "700", fontSize: "12px", cursor: "pointer", alignSelf: "flex-start" }}
+                      >
+                        {procs.length === 0 ? "Flag Procedure(s) Manually" : "Edit Flagged Procedures"}
+                      </button>
+                    ) : (
+                      <>
+                        <span style={label}>FLAG PROCEDURE(S)</span>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                          {PREALIGNER_PROCEDURE_OPTIONS.map((proc) => (
+                            <button
+                              key={proc}
+                              onClick={() => togglePrealignerProcSelection(proc)}
+                              style={{
+                                padding: "8px 14px", borderRadius: "8px",
+                                border: prealignerProcSelection.includes(proc) ? "2px solid #b8905a" : "1px solid #e5e7eb",
+                                background: prealignerProcSelection.includes(proc) ? "#fff7ed" : "white",
+                                color: prealignerProcSelection.includes(proc) ? "#b8905a" : "#374151",
+                                fontWeight: "700", fontSize: "13px", cursor: "pointer",
+                              }}
+                            >
+                              {proc}
+                            </button>
+                          ))}
+                        </div>
+                        {prealignerProcSelection.includes("Others") && (
+                          <textarea
+                            style={{ ...input, minHeight: "60px", fontFamily: "inherit", resize: "vertical" }}
+                            placeholder="Describe the other procedure(s)..."
+                            value={prealignerOthersText}
+                            onChange={(e) => setPrealignerOthersText(e.target.value)}
+                          />
+                        )}
+                        <div style={{ display: "flex", gap: "8px" }}>
                           <button
-                            onClick={() => toggleAdminPrealignerDone(proc)}
-                            disabled={markingPrealignerProc === proc}
-                            style={{ padding: "6px 14px", borderRadius: "8px", border: "none", cursor: markingPrealignerProc === proc ? "not-allowed" : "pointer", background: doneAt ? "#fee2e2" : "#111827", color: doneAt ? "#dc2626" : "white", fontWeight: "700", fontSize: "12px", flexShrink: 0 }}
+                            style={savingPrealignerProcs ? { ...btnPrimary, opacity: 0.6 } : btnPrimary}
+                            onClick={savePrealignerProcs}
+                            disabled={savingPrealignerProcs}
                           >
-                            {markingPrealignerProc === proc ? "..." : doneAt ? "Undo" : "Mark Done"}
+                            {savingPrealignerProcs ? "Saving..." : "Save"}
+                          </button>
+                          <button
+                            onClick={() => setEditingPrealignerProcs(false)}
+                            disabled={savingPrealignerProcs}
+                            style={{ padding: "10px 16px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "white", color: "#374151", fontWeight: "700", fontSize: "13px", cursor: "pointer" }}
+                          >
+                            Cancel
                           </button>
                         </div>
-                      );
-                    })}
+                      </>
+                    )}
                   </div>
                 );
               })()}
@@ -3075,6 +3169,16 @@ function ReportTab({ appointmentId, appt }) {
     by: completeLog?.actor_email ? `admin (${completeLog.actor_email})` : "OrisAlign team",
     at: js.treatment_completed_at || completeLog?.created_at || null,
     detail: [`The OrisAlign aligner treatment for ${appt.name || "the patient"} has been successfully completed.`],
+  });
+
+  // 15b. Post Aligner Treatment
+  const postAlignerLog = findDoneLog("Post Aligner Treatment");
+  events.push({
+    done: !!steps.post_aligner_treatment,
+    title: "Post Aligner Treatment",
+    by: postAlignerLog?.actor_email ? `admin (${postAlignerLog.actor_email})` : "OrisAlign team",
+    at: js.post_aligner_treatment_at || postAlignerLog?.created_at || null,
+    detail: [`Post-aligner treatment for ${appt.name || "the patient"} has been completed.`],
   });
 
   // 16. Feedback — actually logged as a plain "Feedback Submitted" action

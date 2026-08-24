@@ -237,7 +237,15 @@ function getStepContent(stepKey: string): StepContent | null {
       subject: "Treatment Complete — Congratulations from OrisAlign!",
       headline: "Treatment Complete!",
       body: "Congratulations — your OrisAlign treatment is complete! Your smile has been transformed through precision, care, and your own commitment. We are incredibly proud to have been part of your journey. Share your smile with the world — you've earned it!",
-      nextStep: null,
+      nextStep: "Post Aligner Treatment",
+    },
+    // No approved AiSensy campaign yet — email only until one is created.
+    post_aligner_treatment: {
+      emoji: "🦷",
+      subject: "Post-Aligner Treatment — OrisAlign",
+      headline: "Post-Aligner Treatment",
+      body: "As a final step, our team will guide you through any post-aligner treatment recommended to keep your new smile in place. Please reach out if you have any questions.",
+      nextStep: "Feedback",
     },
     feedback_submitted: {
       emoji: "🎉",

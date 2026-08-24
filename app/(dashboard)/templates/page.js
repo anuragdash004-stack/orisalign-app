@@ -24,6 +24,7 @@ const STEP_ORDER = [
   "aligners_delivered",
   "smile_correction",
   "treatment_completed",
+  "post_aligner_treatment",
   "feedback_submitted",
 ];
 
