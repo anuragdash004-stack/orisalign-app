@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Script from "next/script";
 
 /**
@@ -60,6 +60,10 @@ function PaymentInner() {
   const id = params.get("id") ?? "";
   const amountRaw = params.get("amount") ?? "";
   const amount = Number(amountRaw) || 0;
+  // ?gateway=cashfree — used by flows (e.g. the provisional-planning-only
+  // fee) that skip the gateway picker entirely and go straight to Cashfree.
+  const forcedGateway = params.get("gateway");
+  const visibleOptions = forcedGateway === "cashfree" ? OPTIONS.filter((o) => o.key === "cashfree") : OPTIONS;
 
   const shortId = id ? id.substring(0, 8).toUpperCase() : "—";
   const formatted = amount > 0 ? `₹ ${amount.toLocaleString("en-IN")}` : "—";
@@ -202,6 +206,17 @@ function PaymentInner() {
     rzp.open();
   };
 
+  // ?gateway=cashfree skips the picker and goes straight into Cashfree —
+  // redirectTarget "_self" is a full-page navigation, not a popup, so this
+  // isn't blocked by the browser the way an auto-opened window would be.
+  useEffect(() => {
+    if (forcedGateway === "cashfree" && id && !selected) {
+      setSelected("cashfree");
+      void startCashfree();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [forcedGateway, id]);
+
   const handleSelect = (opt: PaymentOption) => {
     setSelected(opt.key);
     if (opt.key === "cashfree") {
@@ -233,7 +248,9 @@ function PaymentInner() {
             ORIS<span style={{ color: GOLD }}>ALIGN</span>
           </a>
           <h1 style={{ margin: "16px 0 6px", fontSize: "26px", fontWeight: "900", color: NAVY }}>Complete Your Payment</h1>
-          <p style={{ margin: 0, fontSize: "13px", color: "#6b7280" }}>Choose how you'd like to pay below.</p>
+          <p style={{ margin: 0, fontSize: "13px", color: "#6b7280" }}>
+            {forcedGateway === "cashfree" ? "Redirecting you to Cashfree checkout…" : "Choose how you'd like to pay below."}
+          </p>
         </div>
 
         {/* Order Summary */}
@@ -260,7 +277,7 @@ function PaymentInner() {
 
         {/* Options */}
         <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-          {OPTIONS.map((opt) => {
+          {visibleOptions.map((opt) => {
             const isSelected = selected === opt.key;
             const isBusyOption = busy && (opt.key === "cashfree" || opt.key === "razorpay");
             return (

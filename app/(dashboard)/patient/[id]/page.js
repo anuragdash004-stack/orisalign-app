@@ -358,14 +358,14 @@ export default function PatientJourney() {
   // on the row only the shortfall must actually be charged — otherwise the
   // gateway would take the full amount but recordPaymentReceived would then
   // reject saving it for exceeding the cap.
-  const selectPaymentChoiceAndPay = async (choice, threshold) => {
+  const selectPaymentChoiceAndPay = async (choice, threshold, gateway) => {
     const amount = Math.max(0, threshold - (Number(patient.amount_paid) || 0));
     if (amount <= 0) return;
     const newPaymentData = { ...(patient.payment_data || {}), provisional_payment_choice: choice };
     const { error } = await supabase.from("appointments_booking").update({ payment_data: newPaymentData }).eq("id", id);
     if (error) { alert("Couldn't save: " + error.message); return; }
     setPatient((prev) => prev && { ...prev, payment_data: newPaymentData });
-    handlePayNow(amount);
+    handlePayNow(amount, gateway);
   };
 
   // Investigation Required — patient uploads one file (image or PDF) per
@@ -459,7 +459,7 @@ export default function PatientJourney() {
   // so we push the displayed amount there as a custom amount before
   // redirecting — otherwise the server falls back to the stale, undiscounted
   // down_payment/full_amount and overcharges.
-  const handlePayNow = async (amount) => {
+  const handlePayNow = async (amount, gateway) => {
     setPayNowLoading(true);
     try {
       const res = await fetch("/api/set-payment-type", {
@@ -472,7 +472,7 @@ export default function PatientJourney() {
         alert("Couldn't start payment: " + (j.error || "Please try again."));
         return;
       }
-      router.push(`/checkout?id=${id}&amount=${amount}`);
+      router.push(`/checkout?id=${id}&amount=${amount}${gateway ? `&gateway=${gateway}` : ""}`);
     } catch {
       alert("Network error. Please try again.");
     } finally {
@@ -835,6 +835,43 @@ export default function PatientJourney() {
                             </button>
                           );
                         })}
+
+                        {/* Third option — independent of which plan is picked above:
+                            pay the flat ₹2,499 planning fee only, straight to Cashfree
+                            (no gateway picker), to unlock the final 3D plan now and pay
+                            for the first month separately once it's ready. */}
+                        {(() => {
+                          const amountPaidNow = Number(patient.amount_paid) || 0;
+                          const choice = patient.payment_data?.provisional_payment_choice;
+                          const isLocked = !!patient.monthly_plan;
+                          const fullPlanPaid = choice === "full_plan" && amountPaidNow >= PROVISIONAL_PLAN_FEE;
+                          // Mutually exclusive with "Pay First Month" below — once that's
+                          // chosen this flat fee no longer applies.
+                          if (choice === "first_month") return null;
+                          return (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); selectPaymentChoiceAndPay("full_plan", PROVISIONAL_PLAN_FEE, "cashfree"); }}
+                              disabled={isLocked || fullPlanPaid || payNowLoading}
+                              style={{
+                                textAlign: "left", padding: "14px", borderRadius: "10px",
+                                border: fullPlanPaid ? "2px solid #16a34a" : "1px dashed #b8905a",
+                                background: fullPlanPaid ? "#f0fdf4" : "#fffbeb",
+                                cursor: (isLocked || fullPlanPaid || payNowLoading) ? "default" : "pointer",
+                                opacity: isLocked && !fullPlanPaid ? 0.5 : 1,
+                              }}
+                            >
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                                <span style={{ fontSize: "14px", fontWeight: "800", color: "#111827" }}>Pay for Full Planning Only</span>
+                                {fullPlanPaid && <span style={{ fontSize: "11px", fontWeight: "700", color: "#16a34a" }}>✅ PAID</span>}
+                              </div>
+                              <span style={{ fontSize: "13px", color: "#374151" }}>
+                                {fullPlanPaid
+                                  ? `Paid ${fmt(PROVISIONAL_PLAN_FEE)} — your final plan is being prepared.`
+                                  : `${fmt(Math.max(0, PROVISIONAL_PLAN_FEE - amountPaidNow))} — get your final 3D plan first, pay for your first month separately once it's ready.`}
+                              </span>
+                            </button>
+                          );
+                        })()}
                       </div>
                       {patient.monthly_plan && (
                         <p style={{ margin: "12px 0 0", fontSize: "11px", color: "#9ca3af", fontStyle: "italic" }}>
@@ -842,26 +879,23 @@ export default function PatientJourney() {
                         </p>
                       )}
 
-                      {/* Payment choice — shown once a plan is picked, until paid */}
-                      {patient.payment_data?.plan && (() => {
+                      {/* "Pay First Month" — shown once a plan is picked, unless the
+                          flat planning-only fee was already paid instead. */}
+                      {patient.payment_data?.plan && patient.payment_data?.provisional_payment_choice !== "full_plan" && (() => {
                         const cfg = PLAN_CONFIGS[patient.payment_data.plan] || PLAN_CONFIGS.ORISPRO;
-                        const choice = patient.payment_data?.provisional_payment_choice;
                         const amountPaidNow = Number(patient.amount_paid) || 0;
-                        const threshold = choice === "first_month" ? cfg.monthRate : choice === "full_plan" ? PROVISIONAL_PLAN_FEE : null;
-                        const isPaid = threshold !== null && amountPaidNow >= threshold;
+                        const isPaid = amountPaidNow >= cfg.monthRate && patient.payment_data?.provisional_payment_choice === "first_month";
                         return (
                           <div style={{ marginTop: "14px", paddingTop: "14px", borderTop: "1px solid #e5e7eb" }}>
                             <p style={{ margin: "0 0 10px", fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Payment</p>
                             {isPaid ? (
                               <div style={{ padding: "10px 12px", background: "#f0fdf4", borderRadius: "8px", border: "1px solid #bbf7d0" }}>
-                                <p style={{ margin: 0, fontSize: "13px", fontWeight: "800", color: "#16a34a" }}>
-                                  ✅ Paid — {choice === "first_month" ? `First Month (${fmt(cfg.monthRate)})` : `Full Plan Fee (${fmt(PROVISIONAL_PLAN_FEE)})`}
-                                </p>
+                                <p style={{ margin: 0, fontSize: "13px", fontWeight: "800", color: "#16a34a" }}>✅ Paid — First Month ({fmt(cfg.monthRate)})</p>
                               </div>
                             ) : (
                               <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                                 <p style={{ margin: 0, fontSize: "13px", color: "#374151", lineHeight: "1.6" }}>
-                                  Pay your first month upfront (unlocks your final plan and pays for Month 1 in one go), or pay a smaller fee now to get your final plan first and pay for Month 1 separately once it's ready.
+                                  Pay your first month upfront — unlocks your final plan and pays for Month 1 in one go.
                                 </p>
                                 <button
                                   onClick={(e) => { e.stopPropagation(); selectPaymentChoiceAndPay("first_month", cfg.monthRate); }}
@@ -869,13 +903,6 @@ export default function PatientJourney() {
                                   style={{ display: "block", width: "100%", padding: "12px", borderRadius: "10px", border: "none", background: "linear-gradient(135deg, #b8905a, #f59e0b)", color: "white", fontWeight: "800", fontSize: "14px", cursor: payNowLoading ? "not-allowed" : "pointer", opacity: payNowLoading ? 0.7 : 1 }}
                                 >
                                   Pay First Month · {fmt(Math.max(0, cfg.monthRate - amountPaidNow))}
-                                </button>
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); selectPaymentChoiceAndPay("full_plan", PROVISIONAL_PLAN_FEE); }}
-                                  disabled={payNowLoading}
-                                  style={{ display: "block", width: "100%", padding: "12px", borderRadius: "10px", border: "1px solid #b8905a", background: "white", color: "#b8905a", fontWeight: "800", fontSize: "14px", cursor: payNowLoading ? "not-allowed" : "pointer", opacity: payNowLoading ? 0.7 : 1 }}
-                                >
-                                  Pay for Full Plan · {fmt(Math.max(0, PROVISIONAL_PLAN_FEE - amountPaidNow))}
                                 </button>
                               </div>
                             )}
