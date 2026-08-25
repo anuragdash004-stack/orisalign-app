@@ -1437,6 +1437,7 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
   };
 
   const markProductionCompleted = async (num) => {
+    const wasAlreadyDone = !!batchesState.find((b) => b.num === num)?.mfg_done;
     setSavingBatch(`${num}-prod`);
     const today = new Date().toISOString().slice(0, 10);
     const updatedBatches = batchesState.map((b) => (b.num === num ? { ...b, mfg_done: b.mfg_done || today } : b));
@@ -1447,10 +1448,22 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
     logAudit({ appointmentId, actor, action: `Package ${num} Production Completed`, entity: "manufacturing_data", newData: { num, mfg_done: today } });
     appt.manufacturing_data = newMfg;
     setBatchesState(updatedBatches);
+
+    // Same gap as saveDispatch below — per-package production-complete never
+    // notified the patient at all. manufacturing_completed has no WhatsApp
+    // campaign by design (see lib/notifyStep.ts), so this sends email only.
+    if (!wasAlreadyDone) {
+      fetch("/api/notify-step", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ appointmentId, stepKey: "manufacturing_completed", email: appt.email || null }),
+      }).catch(() => {});
+    }
   };
 
   const saveDispatch = async (num) => {
     const draft = trackingInputs[num] || {};
+    const wasAlreadyDispatched = !!batchesState.find((b) => b.num === num)?.shipment_link;
     setSavingBatch(`${num}-dispatch`);
     const today = new Date().toISOString().slice(0, 10);
     const updatedBatches = batchesState.map((b) => {
@@ -1470,6 +1483,20 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
     logAudit({ appointmentId, actor, action: `Package ${num} Dispatched`, entity: "manufacturing_data", newData: updatedBatches.find((b) => b.num === num) });
     appt.manufacturing_data = newMfg;
     setBatchesState(updatedBatches);
+
+    // The legacy Manufacturing flow always notified the patient the moment a
+    // tracking link was saved — the new per-package flow never got that
+    // wiring at all, so dispatching a package silently updated the UI with
+    // no WhatsApp/email ever firing. Fire it here, once per package, the
+    // first time it actually gets a tracking link.
+    const nowDispatched = !!updatedBatches.find((b) => b.num === num)?.shipment_link;
+    if (nowDispatched && !wasAlreadyDispatched) {
+      fetch("/api/notify-step", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ appointmentId, stepKey: "aligners_dispatched", email: appt.email || null }),
+      }).catch(() => {});
+    }
   };
 
   // Smile Correction setup — number of sets, start date, days/set (admin-controlled)
