@@ -133,6 +133,23 @@ export default function DTDReportPage() {
               link_url: "/manufacturing",
             });
           }
+        } else {
+          // New (monthly_plan) model — a package's batch is auto-created and
+          // pushed to production the instant its payment threshold is
+          // crossed, with no admin click involved. Surface each one still
+          // awaiting physical manufacture (mfg_started but not mfg_done) as
+          // its own task so it doesn't just silently sit there.
+          for (const b of batches) {
+            if (b.mfg_started && !b.mfg_done) {
+              candidates.push({
+                source_key: `manufacturing_pkg:${a.id}:${b.num}`,
+                category: "manufacturing",
+                title: a.name || "Unnamed patient",
+                detail: `Package ${b.num} paid & pushed to production — needs manufacturing`,
+                link_url: "/manufacturing",
+              });
+            }
+          }
         }
         // Follow-up visits booked for today.
         const followupAt = a.journey_steps?.followup_appointment_at;

@@ -94,6 +94,12 @@ function PatientCard({ appt, actor, onRefresh }) {
   const batches = appt.manufacturing_data?.batches || [];
   const needsFirstBatch = !isNewModel && appt.plan_approved && batches.length === 0;
   const nextDue = !isNewModel && !needsFirstBatch ? computeNextBatchDue(appt) : null;
+  // New (monthly_plan) model — a package's batch is auto-created and pushed
+  // to production the instant its payment threshold is crossed (see
+  // autoCreatePaidBatches), with no manual "Send to Manufacturing" click
+  // involved at all. That's invisible to the team unless it shows up
+  // somewhere — this is the "still needs to actually be manufactured" flag.
+  const pendingNewModelBatches = isNewModel ? batches.filter((b) => b.mfg_started && !b.mfg_done) : [];
 
   const [newFrom, setNewFrom] = useState("");
   const [newTo, setNewTo] = useState("");
@@ -203,7 +209,17 @@ function PatientCard({ appt, actor, onRefresh }) {
         </div>
         {needsFirstBatch && <span style={pill("#fee2e2", "#dc2626")}>Needs Manufacturing</span>}
         {nextDue && <span style={pill("#fef3c7", "#92400e")}>Next Set(s) Due</span>}
+        {pendingNewModelBatches.length > 0 && <span style={pill("#fee2e2", "#dc2626")}>Needs Manufacturing</span>}
       </div>
+
+      {pendingNewModelBatches.length > 0 && (
+        <div style={{ padding: "14px", borderRadius: "10px", border: "1px dashed #dc2626", background: "#fef2f2", marginBottom: "12px" }}>
+          <p style={{ margin: 0, fontSize: "13px", color: "#991b1b", fontWeight: "600" }}>
+            Paid and pushed to production — still needs to be physically manufactured: Package{pendingNewModelBatches.length > 1 ? "s" : ""} {pendingNewModelBatches.map((b) => b.num).join(", ")}.
+            Mark each one "Done" below once it's actually made.
+          </p>
+        </div>
+      )}
 
       {needsFirstBatch && (
         <div style={{ padding: "14px", borderRadius: "10px", border: "1px dashed #b8905a", background: "#fffbeb", marginBottom: "12px" }}>
