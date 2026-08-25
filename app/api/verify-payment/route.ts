@@ -61,21 +61,48 @@ export async function POST(req: Request) {
       try {
         const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID
         if (keyId) {
-          const razorpay = new Razorpay({ key_id: keyId, key_secret: keySecret })
-          const order = await razorpay.orders.fetch(razorpay_order_id)
-          const amountPaidRupees = Number(order.amount) / 100
+          // Idempotency: /api/razorpay/webhook can record this same payment
+          // server-to-server before (or after) this browser callback ever
+          // fires — recordPaymentReceived is purely additive, so without
+          // this check the same payment could get credited twice.
+          const { data: existing } = await supabase
+            .from("appointments_booking")
+            .select("payment_data")
+            .eq("id", appointmentId)
+            .single()
+          const alreadyRecorded = (existing?.payment_data as Record<string, unknown> | null)?.razorpay_payment_id === razorpay_payment_id
 
-          const result = await recordPaymentReceived({
-            supabase,
-            appointmentId,
-            amountPaid: amountPaidRupees,
-            transactionId: razorpay_payment_id,
-            paymentMethod: "Razorpay",
-            actorEmail: "razorpay_verify",
-            actorRole: "payment_gateway",
-          })
-          if (!result.success) {
-            console.warn("[verify-payment] failed to record payment status", result.error)
+          if (!alreadyRecorded) {
+            const razorpay = new Razorpay({ key_id: keyId, key_secret: keySecret })
+            const order = await razorpay.orders.fetch(razorpay_order_id)
+            const amountPaidRupees = Number(order.amount) / 100
+
+            await supabase
+              .from("appointments_booking")
+              .update({
+                payment_data: {
+                  ...(existing?.payment_data as Record<string, unknown> || {}),
+                  razorpay_order_id,
+                  razorpay_payment_id,
+                  razorpay_paid_amount: amountPaidRupees,
+                  razorpay_paid_at: new Date().toISOString(),
+                  razorpay_source: "verify_redirect",
+                },
+              })
+              .eq("id", appointmentId)
+
+            const result = await recordPaymentReceived({
+              supabase,
+              appointmentId,
+              amountPaid: amountPaidRupees,
+              transactionId: razorpay_payment_id,
+              paymentMethod: "Razorpay",
+              actorEmail: "razorpay_verify",
+              actorRole: "payment_gateway",
+            })
+            if (!result.success) {
+              console.warn("[verify-payment] failed to record payment status", result.error)
+            }
           }
         }
       } catch (e) {
