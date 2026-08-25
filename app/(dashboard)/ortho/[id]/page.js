@@ -276,6 +276,14 @@ export default function OrthoCase() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ appointmentId: id }),
     }).catch(() => {});
+    // Never had a caller anywhere — the patient was never told the final
+    // schedule was ready to approve when submitted from the ortho side
+    // either. Email only (no WhatsApp campaign for this step, by design).
+    fetch("/api/notify-step", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ appointmentId: id, stepKey: "final_plan_review", email: patient?.email || null }),
+    }).catch(() => {});
   };
 
   // ── FINAL PLAN ────────────────────────────────────────────────

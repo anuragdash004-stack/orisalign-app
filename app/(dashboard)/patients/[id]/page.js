@@ -1147,6 +1147,16 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ appointmentId }),
     }).catch(() => {});
+    // This step's own notification never had a caller anywhere — the patient
+    // was never told the final schedule was ready to approve unless they
+    // happened to check the journey page themselves. getStepContent already
+    // has full copy for "final_plan_review" (no WhatsApp campaign by design,
+    // email only), it just needed to actually be called.
+    fetch("/api/notify-step", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ appointmentId, stepKey: "final_plan_review", email: appt.email || null }),
+    }).catch(() => {});
   };
 
   // Investigation Required — admin picks which investigation(s) are needed

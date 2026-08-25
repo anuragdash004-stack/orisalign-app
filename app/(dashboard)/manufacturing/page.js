@@ -103,6 +103,20 @@ function PatientCard({ appt, actor, onRefresh }) {
   const [setsPerInstallmentInput, setSetsPerInstallmentInput] = useState(appt.journey_steps?.manufacturing_sets_per_installment || "");
   const [savingTrigger, setSavingTrigger] = useState(false);
 
+  // Fires the (email-only — manufacturing_started/completed have no WhatsApp
+  // campaign by design) step notification exactly once, the moment a status
+  // actually transitions false -> true. The manufacturing-activation cron
+  // already deliberately skips its own notification once this is manually
+  // true ("already activated (e.g. manually by admin)") — this is the send
+  // that comment always assumed existed but never actually did.
+  const notifyStepOnce = (stepKey) => {
+    fetch("/api/notify-step", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ appointmentId: appt.id, stepKey, email: appt.email || null }),
+    }).catch(() => {});
+  };
+
   const persistBatch = async (updatedBatch, auditAction) => {
     const updatedBatches = batches.map((b) => (b.num === updatedBatch.num ? updatedBatch : b));
     const mfgPayload = {
@@ -114,6 +128,8 @@ function PatientCard({ appt, actor, onRefresh }) {
     const startDates = updatedBatches.map((b) => b.mfg_started).filter(Boolean).sort();
     const doneDates = updatedBatches.map((b) => b.mfg_done).filter(Boolean).sort();
     const js = appt.journey_steps || {};
+    const wasStarted = !!js.manufacturing_started;
+    const wasCompleted = !!js.manufacturing_completed;
     const newJs = {
       ...js,
       manufacturing_started: started,
@@ -124,11 +140,14 @@ function PatientCard({ appt, actor, onRefresh }) {
     const { error } = await supabase.from("appointments_booking").update({ manufacturing_data: mfgPayload, journey_steps: newJs }).eq("id", appt.id);
     if (error) { alert("Error saving: " + error.message); return false; }
     logAudit({ appointmentId: appt.id, actor, action: auditAction, entity: "manufacturing_data", newData: mfgPayload });
+    if (!wasStarted && started) notifyStepOnce("manufacturing_started");
+    if (!wasCompleted && completed) notifyStepOnce("manufacturing_completed");
     onRefresh();
     return true;
   };
 
   const createBatch = async (from, to, auditAction) => {
+    const wasStarted = !!appt.journey_steps?.manufacturing_started;
     const nextNum = batches.length > 0 ? Math.max(...batches.map((b) => b.num)) + 1 : 1;
     const newBatch = { num: nextNum, start: String(from), end: String(to), mfg_started: todayISO(), mfg_done: "" };
     const mfgPayload = { ...appt.manufacturing_data, batches: [...batches, newBatch] };
@@ -138,6 +157,7 @@ function PatientCard({ appt, actor, onRefresh }) {
       .eq("id", appt.id);
     if (error) { alert("Error saving: " + error.message); return; }
     logAudit({ appointmentId: appt.id, actor, action: auditAction, entity: "manufacturing_data", newData: mfgPayload });
+    if (!wasStarted) notifyStepOnce("manufacturing_started");
     onRefresh();
   };
 
