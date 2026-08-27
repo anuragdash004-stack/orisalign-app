@@ -33,7 +33,7 @@ declare global {
       checkout: (opts: {
         paymentSessionId: string;
         redirectTarget?: "_self" | "_blank" | "_modal";
-      }) => Promise<unknown> | void;
+      }) => Promise<{ error?: { message?: string }; paymentDetails?: unknown }>;
     };
   }
 }

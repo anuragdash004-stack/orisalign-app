@@ -2,37 +2,19 @@ import { NextResponse } from "next/server"
 import crypto from "crypto"
 import Razorpay from "razorpay"
 import { createClient } from "@supabase/supabase-js"
-import { incrementCouponUsage, type AmountType } from "@/lib/onlineReportPricing"
-import { sendEmail } from "@/lib/notifications/resend"
-import { sendWhatsApp } from "@/lib/notifications/aisensy"
-import { notifyImpressionPaid, notifyPlanPaid } from "@/lib/notifications/notify"
-import { markAppointmentLeadPaid } from "@/lib/onlineReportLeadSync"
+import type { AmountType } from "@/lib/onlineReportPricing"
+import { recordReportPayment, type ReportFormData } from "@/lib/onlineReportPaymentRecording"
 
 // NOTE: this currently uses the LIVE Razorpay key already configured in this
 // project — see app/api/online-report/create-order/route.ts for details.
+// Razorpay is now the manually-revealed fallback gateway for this flow —
+// Cashfree (app/api/online-report/cashfree/*) is the default. Kept working
+// exactly as before for patients who fall back to it.
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
-
-const ADMIN_EMAIL = process.env.ONLINE_REPORT_ADMIN_EMAIL
-
-type ReportFormData = {
-  fullName: string
-  age?: number | null
-  sex?: string | null
-  patientPhone?: string | null
-  patientEmail?: string | null
-  conditions: Record<string, unknown>
-  chiefComplaint?: string | null
-  knownCavities?: string | null
-  foodLodgement?: string | null
-  toothMobility?: string | null
-  pain?: string | null
-  otherConcerns?: string | null
-  photoUrls: Record<string, string>
-}
 
 /**
  * POST /api/online-report/verify-payment
@@ -74,167 +56,26 @@ export async function POST(req: Request) {
     const order = await razorpay.orders.fetch(razorpay_order_id)
     const amountPaidRupees = Number(order.amount) / 100
 
-    if (amountType === ("report" as AmountType)) {
-      if (!reportId || !formData) {
-        return NextResponse.json({ error: "reportId and formData required" }, { status: 400 })
-      }
-      const fd = formData as ReportFormData
-
-      // Upsert, not insert — Step 1 (see app/api/online-report/lead) already
-      // created this row as a lead the moment the patient filled in their
-      // name/phone/gender/age, so this fills in the rest of that same row.
-      const { error: upsertError } = await supabase.from("online_reports").upsert([{
-        id: reportId,
-        full_name: fd.fullName,
-        age: fd.age ?? null,
-        sex: fd.sex ?? null,
-        patient_phone: fd.patientPhone ?? null,
-        patient_email: fd.patientEmail ?? null,
-        chief_complaint: fd.chiefComplaint ?? null,
-        conditions: fd.conditions || {},
-        known_cavities: fd.knownCavities ?? null,
-        food_lodgement: fd.foodLodgement ?? null,
-        tooth_mobility: fd.toothMobility ?? null,
-        pain: fd.pain ?? null,
-        other_concerns: fd.otherConcerns ?? null,
-        photo_urls: fd.photoUrls || {},
-        payment_amount: amountPaidRupees,
-        payment_status: "paid",
-        razorpay_order_id,
-        razorpay_payment_id,
-        status: "new_submission",
-      }], { onConflict: "id" })
-
-      if (upsertError) {
-        console.error("[online-report verify-payment] upsert failed", upsertError)
-        return NextResponse.json({ error: "Payment verified but failed to save submission" }, { status: 500 })
-      }
-
-      if (couponId) await incrementCouponUsage(supabase, couponId).catch(() => {})
-      // Awaited (not fire-and-forget) throughout this route: on Vercel an
-      // unawaited promise can be killed the instant the response is sent,
-      // before it ever runs.
-      await markAppointmentLeadPaid(supabase, reportId).catch((err) => console.error("[online-report verify-payment] tracker sync failed", err))
-
-      // Generic payment receipt (every payment on this flow gets one) plus
-      // the Online Smile Report-specific confirmation, both best-effort.
-      if (fd.patientPhone) {
-        await sendWhatsApp({
-          campaignName: "orisalign_payment_received",
-          destination: fd.patientPhone,
-          userName: fd.fullName,
-          templateParams: [`₹${Math.round(amountPaidRupees)}`],
-        }).catch(() => {})
-        await sendWhatsApp({
-          campaignName: "orisalign_osr",
-          destination: fd.patientPhone,
-          userName: fd.fullName,
-          templateParams: [],
-        }).catch(() => {})
-      }
-
-      if (ADMIN_EMAIL) {
-        await sendEmail({
-          to: ADMIN_EMAIL,
-          subject: `New Online Report submission from ${fd.fullName}`,
-          html: `
-            <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:20px;">
-              <h2 style="color:#1B2A4A;">New Online Smile Report Submission</h2>
-              <p><strong>Patient:</strong> ${fd.fullName}</p>
-              <p><strong>Phone:</strong> ${fd.patientPhone || "—"}</p>
-              <p><strong>Amount Paid:</strong> ₹${amountPaidRupees}</p>
-              <p><a href="${process.env.NEXT_PUBLIC_SITE_URL || ""}/online-reports/${reportId}">View in Admin Panel</a></p>
-            </div>
-          `,
-        }).catch(() => {})
-      }
-
-      return NextResponse.json({ success: true, reportId })
+    if (amountType === ("report" as AmountType) && (!reportId || !formData)) {
+      return NextResponse.json({ error: "reportId and formData required" }, { status: 400 })
     }
-
-    // ── Step 2 / Step 3 payments — reportId must already exist ──
-    if (!reportId) {
+    if (amountType !== ("report" as AmountType) && !reportId) {
       return NextResponse.json({ error: "reportId required" }, { status: 400 })
     }
 
-    const { data: report, error: fetchError } = await supabase
-      .from("online_reports")
-      .select("id, full_name, patient_email, patient_phone")
-      .eq("id", reportId)
-      .single()
+    const result = await recordReportPayment({
+      supabase,
+      amountType: amountType as AmountType,
+      reportId,
+      amountPaidRupees,
+      gatewayPaymentId: razorpay_payment_id,
+      gatewayOrderId: razorpay_order_id,
+      couponId,
+      formData: formData as ReportFormData | undefined,
+    })
 
-    if (fetchError || !report) {
-      return NextResponse.json({ error: "Report not found" }, { status: 404 })
-    }
-
-    const patient = { name: report.full_name, email: report.patient_email, whatsapp: report.patient_phone }
-
-    if (amountType === "impression") {
-      const { error: updateError } = await supabase
-        .from("online_reports")
-        .update({
-          status: "impression_paid",
-          impression_amount_paid: amountPaidRupees,
-          impression_razorpay_payment_id: razorpay_payment_id,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", reportId)
-      if (updateError) return NextResponse.json({ error: "Failed to record payment" }, { status: 500 })
-
-      if (couponId) await incrementCouponUsage(supabase, couponId).catch(() => {})
-      await notifyImpressionPaid(patient).catch(() => {})
-      if (report.patient_phone) {
-        await sendWhatsApp({
-          campaignName: "orisalign_payment_received",
-          destination: report.patient_phone,
-          userName: report.full_name,
-          templateParams: [`₹${Math.round(amountPaidRupees)}`],
-        }).catch(() => {})
-      }
-      if (ADMIN_EMAIL) {
-        await sendEmail({ to: ADMIN_EMAIL, subject: `Impression payment received — ${report.full_name}`, html: `<p>${report.full_name} paid ₹${amountPaidRupees} for their impression visit.</p>` }).catch(() => {})
-      }
-    } else if (amountType === "plan_only" || amountType === "plan_treatment") {
-      const newStatus = amountType === "plan_treatment" ? "treatment_started" : "plan_paid"
-      const { error: updateError } = await supabase
-        .from("online_reports")
-        .update({
-          status: newStatus,
-          plan_choice: amountType,
-          plan_amount_paid: amountPaidRupees,
-          plan_razorpay_payment_id: razorpay_payment_id,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", reportId)
-      if (updateError) return NextResponse.json({ error: "Failed to record payment" }, { status: 500 })
-
-      if (couponId) await incrementCouponUsage(supabase, couponId).catch(() => {})
-      await notifyPlanPaid(patient, amountType).catch(() => {})
-      if (report.patient_phone) {
-        await sendWhatsApp({
-          campaignName: "orisalign_payment_received",
-          destination: report.patient_phone,
-          userName: report.full_name,
-          templateParams: [`₹${Math.round(amountPaidRupees)}`],
-        }).catch(() => {})
-        // Full Plan Only (₹2,499) reuses the same static, zero-variable
-        // template already approved for the classic appointment flow's
-        // matching ₹2,499 provisional-planning fee — not fired for
-        // plan_treatment (₹4,999), which is a different payment.
-        if (amountType === "plan_only") {
-          await sendWhatsApp({
-            campaignName: "orisalign_full_plan_payment_done",
-            destination: report.patient_phone,
-            userName: report.full_name,
-            templateParams: [],
-          }).catch(() => {})
-        }
-      }
-      if (ADMIN_EMAIL) {
-        await sendEmail({ to: ADMIN_EMAIL, subject: `Plan payment received — ${report.full_name}`, html: `<p>${report.full_name} paid ₹${amountPaidRupees} for "${amountType}".</p>` }).catch(() => {})
-      }
-    } else {
-      return NextResponse.json({ error: "Unknown amountType" }, { status: 400 })
+    if (!result.success) {
+      return NextResponse.json({ error: result.error }, { status: result.status || 500 })
     }
 
     return NextResponse.json({ success: true, reportId })
