@@ -60,10 +60,20 @@ function PaymentInner() {
   const id = params.get("id") ?? "";
   const amountRaw = params.get("amount") ?? "";
   const amount = Number(amountRaw) || 0;
-  // ?gateway=cashfree — used by flows (e.g. the provisional-planning-only
-  // fee) that skip the gateway picker entirely and go straight to Cashfree.
+  // Cashfree is the default gateway everywhere — it has a real server-to-
+  // server webhook plus a reconciliation cron backing it up, so a payment
+  // can never go unrecorded even if the patient's browser never comes back.
+  // Razorpay has neither wired up yet (its webhook needs a one-time manual
+  // setup in the Razorpay dashboard) — a payment made there only gets
+  // recorded if the browser's own JS callback fires, which is exactly what
+  // silently failed for a patient who paid mid-UPI-app-switch. Until that's
+  // set up, Razorpay is a manually-revealed fallback only, never the default.
+  // ?gateway=cashfree|razorpay still forces a specific one outright (used by
+  // flows like the provisional-planning-only fee).
   const forcedGateway = params.get("gateway");
-  const visibleOptions = forcedGateway === "cashfree" ? OPTIONS.filter((o) => o.key === "cashfree") : OPTIONS;
+  const effectiveGateway = forcedGateway || "cashfree";
+  const [showAllOptions, setShowAllOptions] = useState(false);
+  const visibleOptions = showAllOptions ? OPTIONS : OPTIONS.filter((o) => o.key === effectiveGateway);
 
   const shortId = id ? id.substring(0, 8).toUpperCase() : "—";
   const formatted = amount > 0 ? `₹ ${amount.toLocaleString("en-IN")}` : "—";
@@ -206,16 +216,17 @@ function PaymentInner() {
     rzp.open();
   };
 
-  // ?gateway=cashfree skips the picker and goes straight into Cashfree —
-  // redirectTarget "_self" is a full-page navigation, not a popup, so this
-  // isn't blocked by the browser the way an auto-opened window would be.
+  // Skips the picker and goes straight into the effective gateway (Cashfree
+  // by default, or whatever ?gateway= explicitly forced) — redirectTarget
+  // "_self" is a full-page navigation, not a popup, so this isn't blocked by
+  // the browser the way an auto-opened window would be.
   useEffect(() => {
-    if (forcedGateway === "cashfree" && id && !selected) {
-      setSelected("cashfree");
-      void startCashfree();
-    }
+    if (!id || selected || showAllOptions) return;
+    setSelected(effectiveGateway);
+    if (effectiveGateway === "razorpay") void startRazorpay();
+    else void startCashfree();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [forcedGateway, id]);
+  }, [effectiveGateway, id, showAllOptions]);
 
   const handleSelect = (opt: PaymentOption) => {
     setSelected(opt.key);
@@ -249,7 +260,7 @@ function PaymentInner() {
           </a>
           <h1 style={{ margin: "16px 0 6px", fontSize: "26px", fontWeight: "900", color: NAVY }}>Complete Your Payment</h1>
           <p style={{ margin: 0, fontSize: "13px", color: "#6b7280" }}>
-            {forcedGateway === "cashfree" ? "Redirecting you to Cashfree checkout…" : "Choose how you'd like to pay below."}
+            {showAllOptions ? "Choose how you'd like to pay below." : `Redirecting you to ${effectiveGateway === "razorpay" ? "Razorpay" : "Cashfree"} checkout…`}
           </p>
         </div>
 
@@ -334,6 +345,17 @@ function PaymentInner() {
             );
           })}
         </div>
+
+        {!showAllOptions && !forcedGateway && (
+          <div style={{ textAlign: "center", marginTop: "14px" }}>
+            <button
+              onClick={() => setShowAllOptions(true)}
+              style={{ background: "none", border: "none", padding: 0, color: "#6b7280", fontSize: "12px", textDecoration: "underline", cursor: "pointer", fontFamily: "inherit" }}
+            >
+              Trouble paying? Choose a different payment method
+            </button>
+          </div>
+        )}
 
         {/* Footer */}
         <div style={{ marginTop: "28px", padding: "16px", background: "white", border: "1px solid #e5e7eb", borderRadius: "12px", textAlign: "center" }}>
