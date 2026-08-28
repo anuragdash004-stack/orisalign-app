@@ -1,0 +1,28 @@
+name: Reconcile pending payments
+
+# Vercel's Hobby plan caps cron jobs at once per day — nowhere near fast
+# enough to catch a Cashfree payment whose webhook/browser-redirect
+# confirmation never arrives (this is the exact gap that silently stalled
+# Ravindra Sahu's and Utpal Behuria's payments for hours/days until someone
+# noticed and it had to be fixed by hand). GitHub Actions has no such limit,
+# so this runs the same safety-net cron every 10 minutes instead, without
+# requiring a paid Vercel plan.
+#
+# Both endpoints are unauthenticated (no CRON_SECRET is configured for this
+# project) — safe to call from here with no secrets needed. If CRON_SECRET
+# is ever set in Vercel, add it as a GitHub Actions secret and pass it as
+# an Authorization: Bearer header below.
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Reconcile pending Cashfree payments
+        run: curl -sf https://app.orisalign.com/api/cron/reconcile-payments
+      - name: Activate manufacturing 12h after plan approval
+        run: curl -sf https://app.orisalign.com/api/cron/manufacturing-activation
