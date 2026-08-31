@@ -128,6 +128,13 @@ input::placeholder {
   pointer-events: none;
   z-index: 0;
 }
+/* Patient journey screen — fainter still than the admin console's; the
+   source image's own colour content reads noticeably cooler/greyer than
+   the ivory ground even at low opacity, so this needed a bigger cut than
+   a couple of points. */
+.motif-bg::before {
+  opacity: 0.018;
+}
 .admin-pattern-bg > *,
 .motif-bg > * {
   position: relative;

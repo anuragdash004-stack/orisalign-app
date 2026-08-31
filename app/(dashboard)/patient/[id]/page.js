@@ -79,9 +79,9 @@ const NEW_JOURNEY_STEPS = [
 // The steps ride a circle whose centre sits off the left edge of the screen,
 // so the slice that crosses the screen reads as a gentle vertical arc. Nodes
 // are laid out by angle; rotating the rail is just a change of offset.
-const ARC_CX = 40;           // circle centre, px from the left edge (matches the hero circle's centre)
-const ARC_R = 248;           // radius — nodes ride just outside the hero circle
-const ARC_STEP_ANGLE = 24;   // degrees between neighbouring steps
+const ARC_CX = 55;           // circle centre, px from the left edge — kept clear of the screen's right edge at rel=0
+const ARC_R = 270;           // radius — nodes ride just outside the (bigger) hero circle
+const ARC_STEP_ANGLE = 26;   // degrees between neighbouring steps
 const ARC_VISIBLE = 3.4;     // steps either side of centre before full fade
 
 // One line icon per step key, in the same thin-stroke style throughout.
@@ -668,8 +668,8 @@ export default function PatientJourney() {
           src="/logo.png"
           alt="OrisAlign"
           style={{
-            position: "absolute", top: "16px", left: "50%", transform: "translateX(-50%)",
-            width: "126px", height: "auto", objectFit: "contain", mixBlendMode: "multiply",
+            position: "absolute", top: "18px", left: "50%", transform: "translateX(-50%)",
+            width: "184px", height: "auto", objectFit: "contain", mixBlendMode: "multiply",
           }}
         />
         <button
@@ -686,26 +686,29 @@ export default function PatientJourney() {
         <div style={{
           position: "absolute", zIndex: 3, left: "-150px", top: "50%",
           transform: "translateY(-50%)",
-          width: "360px", height: "360px", borderRadius: "50%",
+          width: "400px", height: "400px", borderRadius: "50%",
           background: "linear-gradient(150deg, #1B2A4A 0%, #14203A 70%)",
           boxShadow: "0 22px 50px -22px rgba(27,42,74,0.55)",
           display: "flex", flexDirection: "column", justifyContent: "center",
-          padding: "0 24px 0 170px", color: "#F5F1E6",
+          padding: "0 26px 0 170px", color: "#F5F1E6",
         }}>
-          <p style={{ margin: "0 0 6px", fontSize: "9.5px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", color: "#C9A84C" }}>Patient</p>
-          <p style={{ margin: "0 0 10px", fontSize: "23px", fontWeight: "700", lineHeight: "1.08", letterSpacing: "-0.015em" }}>{patient.name || "Patient"}</p>
-          <div style={{ height: "1px", background: "rgba(201,168,76,0.4)", margin: "0 0 10px" }} />
-          <p style={{ margin: 0, fontSize: "11px", lineHeight: "1.75", color: "#B9C2D4", fontVariantNumeric: "tabular-nums" }}>
+          <p style={{ margin: "0 0 8px", fontSize: "11px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", color: "#C9A84C" }}>Patient</p>
+          <p style={{ margin: "0 0 14px", fontSize: "29px", fontWeight: "700", lineHeight: "1.1", letterSpacing: "-0.015em" }}>{patient.name || "Patient"}</p>
+          <div style={{ height: "1px", background: "rgba(201,168,76,0.4)", margin: "0 0 14px" }} />
+          <p style={{ margin: 0, fontSize: "14px", lineHeight: "1.9", color: "#B9C2D4", fontVariantNumeric: "tabular-nums" }}>
             <b style={{ color: "#F5F1E6", fontWeight: "600" }}>{patient.phone || "No phone"}</b><br />
             ID <b style={{ color: "#F5F1E6", fontWeight: "600", letterSpacing: "0.04em" }}>{patientIdLabel}</b>
           </p>
-          <div style={{ marginTop: "12px" }}>
-            <div style={{ height: "4px", borderRadius: "99px", background: "rgba(255,255,255,0.14)", overflow: "hidden" }}>
-              <div style={{ height: "100%", borderRadius: "99px", width: `${progressPct}%`, background: "#2E8B62", transition: "width 0.8s ease" }} />
+          <div style={{ marginTop: "18px" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "7px" }}>
+              <span style={{ fontSize: "10.5px", color: "#B9C2D4", letterSpacing: "0.05em", textTransform: "uppercase", fontWeight: "700" }}>
+                {completedCount} of {journeySteps.length} steps
+              </span>
+              <span style={{ fontSize: "12px", color: "#6FCF9E", fontWeight: "800" }}>{progressPct}%</span>
             </div>
-            <p style={{ margin: "6px 0 0", fontSize: "9.5px", color: "#B9C2D4", letterSpacing: "0.05em" }}>
-              {completedCount} of {journeySteps.length} steps complete
-            </p>
+            <div style={{ height: "9px", borderRadius: "99px", background: "rgba(255,255,255,0.22)", overflow: "hidden" }}>
+              <div style={{ height: "100%", borderRadius: "99px", width: `${progressPct}%`, background: "linear-gradient(90deg, #2E8B62, #4FAF7E)", transition: "width 0.8s ease" }} />
+            </div>
           </div>
         </div>
 
@@ -734,9 +737,9 @@ export default function PatientJourney() {
               }}
               style={{
                 position: "absolute", top: "50%", left: 0, zIndex: 20 - Math.round(dist),
-                width: "104px", marginLeft: "-52px",
-                display: "flex", flexDirection: "column", alignItems: "center", gap: "6px",
-                transform: `translate(${x}px, ${y - 27}px) scale(${scale})`,
+                width: "128px", marginLeft: "-64px",
+                display: "flex", flexDirection: "column", alignItems: "center", gap: "7px",
+                transform: `translate(${x}px, ${y + 5}px) scale(${scale})`,
                 transformOrigin: "center top",
                 opacity,
                 pointerEvents: opacity < 0.25 ? "none" : "auto",
@@ -745,20 +748,20 @@ export default function PatientJourney() {
               }}
             >
               <div style={{
-                width: "54px", height: "54px", borderRadius: "50%", flexShrink: 0,
+                width: "72px", height: "72px", borderRadius: "50%", flexShrink: 0,
                 display: "grid", placeItems: "center",
                 background: isDone ? "#2E8B62" : "rgba(255,255,255,0.94)",
-                border: `1.5px solid ${isDone ? "#2E8B62" : isCurrent ? "#A9762E" : "var(--admin-line, #e9e1d0)"}`,
+                border: `2px solid ${isDone ? "#2E8B62" : isCurrent ? "#A9762E" : "var(--admin-line, #e9e1d0)"}`,
                 boxShadow: isCurrent
-                  ? "0 0 0 4px rgba(169,118,46,0.14), 0 6px 16px -8px rgba(27,42,74,0.35)"
-                  : "0 6px 16px -8px rgba(27,42,74,0.35)",
+                  ? "0 0 0 5px rgba(169,118,46,0.14), 0 8px 20px -8px rgba(27,42,74,0.4)"
+                  : "0 8px 20px -8px rgba(27,42,74,0.4)",
               }}>
-                <svg viewBox="0 0 24 24" width="24" height="24" style={{ fill: "none", stroke: isDone ? "#fff" : "#1B2A4A", strokeWidth: 1.5, strokeLinecap: "round", strokeLinejoin: "round" }}
+                <svg viewBox="0 0 24 24" width="32" height="32" style={{ fill: "none", stroke: isDone ? "#fff" : "#1B2A4A", strokeWidth: 1.6, strokeLinecap: "round", strokeLinejoin: "round" }}
                   dangerouslySetInnerHTML={{ __html: STEP_ICONS[step.key] || DEFAULT_STEP_ICON }} />
               </div>
               {dist <= 1.6 && (
                 <span style={{
-                  fontSize: "9.5px", fontWeight: "700", letterSpacing: "0.06em", textTransform: "uppercase",
+                  fontSize: "10.5px", fontWeight: "700", letterSpacing: "0.05em", textTransform: "uppercase",
                   lineHeight: "1.35", textAlign: "center",
                   color: isDone ? "#2E8B62" : isCurrent ? "#1B2A4A" : "#A9A395",
                   display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
