@@ -102,41 +102,49 @@ function buildRecurringInstallments(amount, tenure, recurringDate, existing = []
   return result;
 }
 
-// ─── Shared styles ────────────────────────────────────────────────────────────
+// ─── Shared styles — "Ledger" theme ────────────────────────────────────────────
+// Same brand (navy/gold, Inter + Bricolage Grotesque) as the patient-facing
+// site, at a more restrained, premium register: warm ivory paper, hairline
+// rules instead of heavy shadows, muted gold for structure, a deeper bright
+// gold reserved for the one action that should draw the eye. See
+// app/globals.css's --admin-* tokens (hex fallbacks kept alongside so nothing
+// breaks if a value is ever read outside a browser context).
 const card = {
-  background: "white",
-  borderRadius: "16px",
-  border: "1px solid #e5e7eb",
+  background: "var(--admin-card, #fff)",
+  borderRadius: "14px",
+  border: "1px solid var(--admin-line, #e9e1d0)",
   padding: "24px",
-  boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+  boxShadow: "0 1px 2px rgba(27,42,74,0.04)",
   marginBottom: "16px",
 };
 
 const label = {
   display: "block",
-  fontSize: "12px",
+  fontSize: "11px",
   fontWeight: "700",
-  color: "#6b7280",
+  color: "var(--admin-ink2, #837a66)",
   marginBottom: "6px",
-  letterSpacing: "0.5px",
+  letterSpacing: "0.7px",
+  textTransform: "uppercase",
 };
 
 const input = {
   width: "100%",
   padding: "10px 14px",
-  borderRadius: "10px",
-  border: "1px solid #e5e7eb",
+  borderRadius: "9px",
+  border: "1px solid var(--admin-line, #e9e1d0)",
   fontSize: "14px",
   outline: "none",
-  background: "white",
-  color: "#111827",
+  background: "var(--admin-card, #fff)",
+  color: "var(--admin-ink, #1b2a4a)",
   boxSizing: "border-box",
+  fontFamily: "var(--admin-font-body)",
 };
 
 const readonlyInput = {
   ...input,
-  background: "#f8f7f5",
-  color: "#374151",
+  background: "var(--admin-gold-wash, #f3f0e6)",
+  color: "var(--admin-ink, #1b2a4a)",
   fontWeight: "700",
 };
 
@@ -148,9 +156,9 @@ const select = {
 const subBox = {
   marginTop: "8px",
   padding: "16px",
-  borderRadius: "12px",
-  border: "1px solid #e5e7eb",
-  background: "#fafafa",
+  borderRadius: "11px",
+  border: "1px solid var(--admin-line, #e9e1d0)",
+  background: "var(--admin-bg, #faf6ec)",
   display: "flex",
   flexDirection: "column",
   gap: "10px",
@@ -158,19 +166,20 @@ const subBox = {
 
 const btnPrimary = {
   padding: "10px 22px",
-  borderRadius: "10px",
+  borderRadius: "9px",
   border: "none",
-  background: "#111827",
-  color: "white",
+  background: "var(--admin-ink, #1b2a4a)",
+  color: "var(--admin-card, #fff)",
   fontWeight: "700",
   fontSize: "13px",
   cursor: "pointer",
-  letterSpacing: "0.5px",
+  letterSpacing: "0.4px",
+  fontFamily: "var(--admin-font-body)",
 };
 
 const btnGold = {
   ...btnPrimary,
-  background: "linear-gradient(135deg, #b8905a, #f59e0b)",
+  background: "var(--admin-gold-strong, #a9762e)",
 };
 
 const row = {
@@ -3770,30 +3779,30 @@ export default function PatientDetailPage() {
   }
 
   return (
-    <div style={{ background: "#f8f7f5", minHeight: "100vh", padding: "24px" }}>
+    <div style={{ background: "var(--admin-bg, #faf6ec)", minHeight: "100vh", padding: "24px", fontFamily: "var(--admin-font-body)" }}>
 
       {/* Header */}
       <div style={{ marginBottom: "24px" }}>
         <button
           onClick={() => router.push("/patients")}
-          style={{ background: "none", border: "none", color: "#b8905a", fontSize: "13px", fontWeight: "700", cursor: "pointer", padding: 0, marginBottom: "10px", letterSpacing: "0.5px" }}
+          style={{ background: "none", border: "none", color: "var(--admin-gold-strong, #a9762e)", fontSize: "13px", fontWeight: "700", cursor: "pointer", padding: 0, marginBottom: "10px", letterSpacing: "0.5px" }}
         >
           ← Back to Patients
         </button>
-        <div style={{ background: "white", borderRadius: "16px", border: "1px solid #e5e7eb", padding: "20px 24px", boxShadow: "0 2px 8px rgba(0,0,0,0.04)", display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
-          <div style={{ width: "52px", height: "52px", borderRadius: "50%", background: "linear-gradient(135deg, #b8905a, #f59e0b)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: "800", fontSize: "22px", flexShrink: 0 }}>
+        <div style={{ background: "var(--admin-card, #fff)", borderRadius: "14px", border: "1px solid var(--admin-line, #e9e1d0)", padding: "20px 24px", boxShadow: "0 1px 2px rgba(27,42,74,0.04)", display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
+          <div style={{ width: "52px", height: "52px", borderRadius: "50%", background: "var(--admin-gold-strong, #a9762e)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: "800", fontSize: "22px", flexShrink: 0, fontFamily: "var(--admin-font-display)" }}>
             {(appt.name || "P")[0].toUpperCase()}
           </div>
           <div style={{ flex: 1 }}>
-            <h1 style={{ margin: "0 0 4px", fontSize: "20px", color: "#111827" }}>{appt.name || "Unnamed Patient"}</h1>
-            <p style={{ margin: 0, fontSize: "13px", color: "#6b7280" }}>
+            <h1 style={{ margin: "0 0 4px", fontSize: "21px", fontWeight: "700", letterSpacing: "-0.01em", color: "var(--admin-ink, #1b2a4a)", fontFamily: "var(--admin-font-display)" }}>{appt.name || "Unnamed Patient"}</h1>
+            <p style={{ margin: 0, fontSize: "13px", color: "var(--admin-ink2, #837a66)" }}>
               {appt.phone || "No phone"}
               {appt.email ? ` • ${appt.email}` : ""}
               {" • "}
-              <span style={{ fontFamily: "monospace", fontSize: "12px" }}>{appt.id?.substring(0, 8).toUpperCase()}</span>
+              <span style={{ fontFamily: "ui-monospace, monospace", fontSize: "12px", letterSpacing: "0.03em" }}>{appt.id?.substring(0, 8).toUpperCase()}</span>
             </p>
           </div>
-          <div style={{ padding: "6px 14px", borderRadius: "99px", background: "#f3f4f6", fontSize: "12px", fontWeight: "700", color: "#374151", letterSpacing: "0.5px" }}>
+          <div style={{ padding: "6px 14px", borderRadius: "99px", background: "var(--admin-gold-wash, #f3f0e6)", fontSize: "11px", fontWeight: "700", color: "var(--admin-gold-strong, #a9762e)", letterSpacing: "0.7px" }}>
             {appt.status?.toUpperCase() || "PENDING"}
           </div>
         </div>
@@ -3812,11 +3821,11 @@ export default function PatientDetailPage() {
             }}
             style={{
               padding: "9px 20px", borderRadius: "99px", border: "none",
-              background: activeTab === tab ? "#111827" : "white",
-              color: activeTab === tab ? "white" : "#374151",
-              fontWeight: "700", fontSize: "13px", cursor: "pointer", letterSpacing: "0.5px",
-              boxShadow: activeTab === tab ? "0 2px 8px rgba(17,24,39,0.18)" : "0 1px 4px rgba(0,0,0,0.06)",
-              border: activeTab === tab ? "none" : "1px solid #e5e7eb",
+              background: activeTab === tab ? "var(--admin-ink, #1b2a4a)" : "var(--admin-card, #fff)",
+              color: activeTab === tab ? "#fff" : "var(--admin-ink2, #837a66)",
+              fontWeight: "700", fontSize: "13px", cursor: "pointer", letterSpacing: "0.4px",
+              boxShadow: activeTab === tab ? "0 2px 8px rgba(27,42,74,0.18)" : "none",
+              border: activeTab === tab ? "none" : "1px solid var(--admin-line, #e9e1d0)",
               transition: "all 0.15s ease",
             }}
           >

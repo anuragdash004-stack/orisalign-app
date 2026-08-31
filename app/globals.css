@@ -27,6 +27,33 @@
   --color-line: #E6E9EA;
 }
 
+/*
+ * Admin console — "Ledger" theme.
+ * Same brand palette as the patient-facing site (navy #1B2A4A, gold, warm
+ * paper) at a more restrained, premium register: warm ivory ground, hairline
+ * rules instead of heavy shadows, muted gold for structure, a deeper bright
+ * gold reserved for the one thing that should draw the eye. Scoped to its
+ * own custom properties (not the --color-* tokens above, which app/page.js's
+ * public marketing site already relies on) so this never touches anything
+ * outside the admin dashboard.
+ */
+:root {
+  --admin-bg: #FAF6EC;
+  --admin-rail: #FBF8F1;
+  --admin-card: #FFFFFF;
+  --admin-line: #E9E1D0;
+  --admin-line-soft: #F0E9D9;
+  --admin-ink: #1B2A4A;
+  --admin-ink2: #837A66;
+  --admin-gold: #B8905A;
+  --admin-gold-strong: #A9762E;
+  --admin-gold-wash: #F3F0E6;
+  --admin-danger: #DC2626;
+  --admin-danger-wash: #FEF2F2;
+  --admin-font-display: var(--font-bricolage), var(--font-inter), ui-sans-serif, sans-serif;
+  --admin-font-body: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);

@@ -79,14 +79,16 @@ export default function Sidebar({ collapsed, setCollapsed }) {
   const linkStyle = (route) => ({
     display: "block",
     padding: "11px 14px",
-    borderRadius: "10px",
+    borderRadius: "9px",
     marginBottom: "4px",
-    background: path === route ? "#ffffff90" : "transparent",
-    color: "#0f172a",
+    background: path === route ? "var(--admin-gold-wash, #f3f0e6)" : "transparent",
+    boxShadow: path === route ? "inset 2px 0 0 var(--admin-gold-strong, #a9762e)" : "none",
+    color: path === route ? "var(--admin-gold-strong, #a9762e)" : "var(--admin-ink, #1b2a4a)",
     textDecoration: "none",
     fontWeight: "700",
-    letterSpacing: "0.5px",
-    fontSize: "13px",
+    letterSpacing: "0.6px",
+    fontSize: "12.5px",
+    transition: "background 0.15s ease, color 0.15s ease",
   });
 
   const HamburgerIcon = () => (
@@ -94,9 +96,9 @@ export default function Sidebar({ collapsed, setCollapsed }) {
       display: "flex", flexDirection: "column",
       justifyContent: "center", alignItems: "center", gap: "4px",
     }}>
-      <span style={{ width: "14px", height: "2px", background: "#374151", borderRadius: "1px", display: "block" }} />
-      <span style={{ width: "14px", height: "2px", background: "#374151", borderRadius: "1px", display: "block" }} />
-      <span style={{ width: "14px", height: "2px", background: "#374151", borderRadius: "1px", display: "block" }} />
+      <span style={{ width: "14px", height: "2px", background: "var(--admin-ink, #1b2a4a)", borderRadius: "1px", display: "block" }} />
+      <span style={{ width: "14px", height: "2px", background: "var(--admin-ink, #1b2a4a)", borderRadius: "1px", display: "block" }} />
+      <span style={{ width: "14px", height: "2px", background: "var(--admin-ink, #1b2a4a)", borderRadius: "1px", display: "block" }} />
     </div>
   );
 
@@ -122,11 +124,11 @@ export default function Sidebar({ collapsed, setCollapsed }) {
           style={{
             position: "fixed", top: "14px", left: "14px",
             zIndex: 101, width: "40px", height: "40px",
-            background: "white", border: "1px solid #e5e7eb",
-            borderRadius: "8px", cursor: "pointer",
+            background: "var(--admin-card, white)", border: "1px solid var(--admin-line, #e5e7eb)",
+            borderRadius: "9px", cursor: "pointer",
             display: "flex", flexDirection: "column",
             justifyContent: "center", alignItems: "center", gap: "4px",
-            boxShadow: "0 2px 10px rgba(0,0,0,0.12)",
+            boxShadow: "0 2px 10px rgba(27,42,74,0.1)",
           }}
         >
           <HamburgerIcon />
@@ -139,8 +141,9 @@ export default function Sidebar({ collapsed, setCollapsed }) {
         height: "100vh",
         padding: "16px 12px",
         transition: "width 0.25s ease, transform 0.25s ease",
-        borderRight: "1px solid #e5e7eb",
-        backgroundColor: "#f8f6f2",
+        borderRight: "1px solid var(--admin-line, #e5e7eb)",
+        backgroundColor: "var(--admin-rail, #f8f6f2)",
+        fontFamily: "var(--admin-font-body)",
         display: "flex",
         flexDirection: "column",
         justifyContent: "space-between",
@@ -175,9 +178,9 @@ export default function Sidebar({ collapsed, setCollapsed }) {
               aria-label="Toggle sidebar"
               style={{
                 width: "34px", height: "34px",
-                border: "1px solid #e5e7eb",
-                borderRadius: "6px",
-                background: "white",
+                border: "1px solid var(--admin-line, #e5e7eb)",
+                borderRadius: "8px",
+                background: "var(--admin-card, white)",
                 cursor: "pointer",
                 display: "flex",
                 justifyContent: "center",
@@ -192,18 +195,19 @@ export default function Sidebar({ collapsed, setCollapsed }) {
           {/* User info pill */}
           {showContent && userEmail && (
             <div style={{
-              padding: "8px 10px",
-              background: "rgba(255,255,255,0.7)",
-              borderRadius: "8px",
-              marginBottom: "16px",
+              padding: "9px 11px",
+              background: "var(--admin-card, rgba(255,255,255,0.7))",
+              border: "1px solid var(--admin-line-soft, transparent)",
+              borderRadius: "9px",
+              marginBottom: "18px",
               fontSize: "11px",
-              color: "#6b7280",
+              color: "var(--admin-ink2, #6b7280)",
               wordBreak: "break-all",
               lineHeight: "1.4",
             }}>
               <span style={{
-                display: "block", fontSize: "10px", fontWeight: "800",
-                color: "#374151", marginBottom: "2px", letterSpacing: "0.6px",
+                display: "block", fontSize: "9.5px", fontWeight: "800",
+                color: "var(--admin-gold-strong, #a9762e)", marginBottom: "3px", letterSpacing: "0.9px",
               }}>
                 {userRole?.toUpperCase() || "USER"}
               </span>
@@ -220,7 +224,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
           {show.dtdReport && (
             <Link href="/dtd-report" style={{
               ...linkStyle("/dtd-report"),
-              ...(path.startsWith("/dtd-report") ? { background: "#ffffff90" } : {}),
+              ...(path.startsWith("/dtd-report") ? { background: "var(--admin-gold-wash, #f3f0e6)", boxShadow: "inset 2px 0 0 var(--admin-gold-strong, #a9762e)", color: "var(--admin-gold-strong, #a9762e)" } : {}),
             }}>
               {showContent ? "DAY-TO-DAY REPORT" : ""}
             </Link>
@@ -253,7 +257,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
           {show.templates && (
             <Link href="/templates" style={{
               ...linkStyle("/templates"),
-              ...(path.startsWith("/templates") ? { background: "#ffffff90" } : {}),
+              ...(path.startsWith("/templates") ? { background: "var(--admin-gold-wash, #f3f0e6)", boxShadow: "inset 2px 0 0 var(--admin-gold-strong, #a9762e)", color: "var(--admin-gold-strong, #a9762e)" } : {}),
             }}>
               {showContent ? "MESSAGE TEMPLATES" : ""}
             </Link>
@@ -261,7 +265,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
           {show.calculator && (
             <Link href="/calculator" style={{
               ...linkStyle("/calculator"),
-              ...(path.startsWith("/calculator") ? { background: "#ffffff90" } : {}),
+              ...(path.startsWith("/calculator") ? { background: "var(--admin-gold-wash, #f3f0e6)", boxShadow: "inset 2px 0 0 var(--admin-gold-strong, #a9762e)", color: "var(--admin-gold-strong, #a9762e)" } : {}),
             }}>
               {showContent ? "EMI CALCULATOR" : ""}
             </Link>
@@ -269,7 +273,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
           {show.coupons && (
             <Link href="/coupons" style={{
               ...linkStyle("/coupons"),
-              ...(path.startsWith("/coupons") ? { background: "#ffffff90" } : {}),
+              ...(path.startsWith("/coupons") ? { background: "var(--admin-gold-wash, #f3f0e6)", boxShadow: "inset 2px 0 0 var(--admin-gold-strong, #a9762e)", color: "var(--admin-gold-strong, #a9762e)" } : {}),
             }}>
               {showContent ? "COUPONS" : ""}
             </Link>
@@ -277,7 +281,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
           {show.onlineReports && (
             <Link href="/online-reports" style={{
               ...linkStyle("/online-reports"),
-              ...(path.startsWith("/online-reports") ? { background: "#ffffff90" } : {}),
+              ...(path.startsWith("/online-reports") ? { background: "var(--admin-gold-wash, #f3f0e6)", boxShadow: "inset 2px 0 0 var(--admin-gold-strong, #a9762e)", color: "var(--admin-gold-strong, #a9762e)" } : {}),
             }}>
               {showContent ? "SMILE REPORTS" : ""}
             </Link>
@@ -285,7 +289,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
           {show.doctors && (
             <Link href="/doctors" style={{
               ...linkStyle("/doctors"),
-              ...(path.startsWith("/doctors") ? { background: "#ffffff90" } : {}),
+              ...(path.startsWith("/doctors") ? { background: "var(--admin-gold-wash, #f3f0e6)", boxShadow: "inset 2px 0 0 var(--admin-gold-strong, #a9762e)", color: "var(--admin-gold-strong, #a9762e)" } : {}),
             }}>
               {showContent ? "DOCTORS" : ""}
             </Link>
@@ -293,7 +297,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
           {show.campaigns && (
             <Link href="/campaigns" style={{
               ...linkStyle("/campaigns"),
-              ...(path.startsWith("/campaigns") ? { background: "#ffffff90" } : {}),
+              ...(path.startsWith("/campaigns") ? { background: "var(--admin-gold-wash, #f3f0e6)", boxShadow: "inset 2px 0 0 var(--admin-gold-strong, #a9762e)", color: "var(--admin-gold-strong, #a9762e)" } : {}),
             }}>
               {showContent ? "CAMPAIGNS" : ""}
             </Link>
@@ -301,7 +305,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
           {show.audit && (
             <Link href="/audit" style={{
               ...linkStyle("/audit"),
-              ...(path.startsWith("/audit") ? { background: "#ffffff90" } : {}),
+              ...(path.startsWith("/audit") ? { background: "var(--admin-gold-wash, #f3f0e6)", boxShadow: "inset 2px 0 0 var(--admin-gold-strong, #a9762e)", color: "var(--admin-gold-strong, #a9762e)" } : {}),
             }}>
               {showContent ? "AUDIT LOG" : ""}
             </Link>
@@ -309,7 +313,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
           {show.lmc && (
             <Link href="/lmc" style={{
               ...linkStyle("/lmc"),
-              ...(path.startsWith("/lmc") ? { background: "#ffffff90" } : {}),
+              ...(path.startsWith("/lmc") ? { background: "var(--admin-gold-wash, #f3f0e6)", boxShadow: "inset 2px 0 0 var(--admin-gold-strong, #a9762e)", color: "var(--admin-gold-strong, #a9762e)" } : {}),
             }}>
               {showContent ? "LIFETIME MEMBERSHIP" : ""}
             </Link>
@@ -317,7 +321,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
           {show.manufacturing && (
             <Link href="/manufacturing" style={{
               ...linkStyle("/manufacturing"),
-              ...(path.startsWith("/manufacturing") ? { background: "#ffffff90" } : {}),
+              ...(path.startsWith("/manufacturing") ? { background: "var(--admin-gold-wash, #f3f0e6)", boxShadow: "inset 2px 0 0 var(--admin-gold-strong, #a9762e)", color: "var(--admin-gold-strong, #a9762e)" } : {}),
             }}>
               {showContent ? "MANUFACTURING" : ""}
             </Link>
