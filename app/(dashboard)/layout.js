@@ -86,7 +86,7 @@ export default function DashboardLayout({ children }) {
   return (
     <div style={{ display: "flex", width: "100vw", minHeight: "100vh" }}>
       <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
-      <div className="pattern-bg" style={{
+      <div className="admin-pattern-bg" style={{
         flex: 1,
         minHeight: "100vh",
         width: 0,

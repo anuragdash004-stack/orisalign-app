@@ -85,7 +85,8 @@ input::placeholder {
   color: #999;
 }
 
-/* Pattern background at 60% opacity via pseudo-element */
+/* Pattern background at 60% opacity via pseudo-element — patient-facing
+   pages only (app/(dashboard)/layout.js's public-patient branch). */
 .pattern-bg {
   position: relative;
 }
@@ -101,6 +102,31 @@ input::placeholder {
   z-index: 0;
 }
 .pattern-bg > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Admin console background — "Sparse Motif Field": the same brand mark,
+   at roughly 4x the scale and under 5% opacity, rotated onto a diagonal so
+   it reads as ambient texture instead of a countable grid of icons (see
+   the picked option from the background-treatment comparison). Oversized
+   and offset on all sides so the rotation never exposes a bare edge. */
+.admin-pattern-bg {
+  position: relative;
+}
+.admin-pattern-bg::before {
+  content: '';
+  position: absolute;
+  inset: -20%;
+  background-image: url('/pattern-icon.png');
+  background-repeat: repeat;
+  background-size: 420px;
+  transform: rotate(15deg);
+  opacity: 0.045;
+  pointer-events: none;
+  z-index: 0;
+}
+.admin-pattern-bg > * {
   position: relative;
   z-index: 1;
 }
