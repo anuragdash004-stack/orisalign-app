@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
@@ -74,6 +74,39 @@ const NEW_JOURNEY_STEPS = [
   { key: "post_aligner_treatment",  label: "Post Aligner Treatment" },
   { key: "feedback_submitted",      label: "Feedback Form Submitted",    expandable: true },
 ];
+
+// ─── Journey arc ──────────────────────────────────────────────────────────────
+// The steps ride a circle whose centre sits off the left edge of the screen,
+// so the slice that crosses the screen reads as a gentle vertical arc. Nodes
+// are laid out by angle; rotating the rail is just a change of offset.
+const ARC_CX = 40;           // circle centre, px from the left edge (matches the hero circle's centre)
+const ARC_R = 248;           // radius — nodes ride just outside the hero circle
+const ARC_STEP_ANGLE = 24;   // degrees between neighbouring steps
+const ARC_VISIBLE = 3.4;     // steps either side of centre before full fade
+
+// One line icon per step key, in the same thin-stroke style throughout.
+const STEP_ICONS = {
+  booked: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/>',
+  confirmed: '<path d="M20 6L9 17l-5-5"/>',
+  scanning_done: '<path d="M3 8V5a2 2 0 0 1 2-2h3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M21 16v3a2 2 0 0 1-2 2h-3"/><path d="M7 12h10"/>',
+  provisional_planning: '<path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/>',
+  payment_done: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/>',
+  planning_done: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/>',
+  investigation_required: '<circle cx="12" cy="12" r="9"/><path d="M12 7v10M7 12h10"/>',
+  plan_approved: '<path d="M12 3l8 3v6c0 5-3.4 8.2-8 9-4.6-.8-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>',
+  prealigner_treatment: '<path d="M12 3c2.5 0 4 1 5.5 1S20 3.5 20 6c0 4-1.5 6-2.5 10-.6 2.4-2.4 2.6-2.9.3-.4-2-.9-3.3-2.6-3.3s-2.2 1.3-2.6 3.3c-.5 2.3-2.3 2.1-2.9-.3C5.5 12 4 10 4 6c0-2.5 1-3 2.5-3S9.5 3 12 3z"/>',
+  post_aligner_treatment: '<path d="M12 3c2.5 0 4 1 5.5 1S20 3.5 20 6c0 4-1.5 6-2.5 10-.6 2.4-2.4 2.6-2.9.3-.4-2-.9-3.3-2.6-3.3s-2.2 1.3-2.6 3.3c-.5 2.3-2.3 2.1-2.9-.3C5.5 12 4 10 4 6c0-2.5 1-3 2.5-3S9.5 3 12 3z"/>',
+  aligner_sets: '<path d="M3 8l9-5 9 5v8l-9 5-9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/>',
+  manufacturing: '<path d="M3 20h18M4 20V10l5 3V10l5 3V6l6 4v10"/>',
+  aligners_dispatched: '<path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="1.6"/><circle cx="17.5" cy="18" r="1.6"/>',
+  aligners_received: '<path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="1.6"/><circle cx="17.5" cy="18" r="1.6"/>',
+  aligners_delivered: '<path d="M20 7l-8-4-8 4 8 4 8-4z"/><path d="M4 7v10l8 4 8-4V7"/><path d="M9 14l2 2 4-4"/>',
+  followup_appointment: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/>',
+  smile_correction: '<circle cx="12" cy="12" r="9"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9.5h.01M15 9.5h.01"/>',
+  treatment_completed: '<path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4v2a3 3 0 0 0 3 3M17 6h3v2a3 3 0 0 1-3 3M10 19h4M12 14v5"/>',
+  feedback_submitted: '<path d="M12 4l2.4 5 5.6.8-4 3.9 1 5.5-5-2.7-5 2.7 1-5.5-4-3.9 5.6-.8z"/>',
+};
+const DEFAULT_STEP_ICON = '<circle cx="12" cy="12" r="8"/>';
 
 // All pre-aligner procedures the dentist selected on the Patient Form
 // ("Restorations", "Extraction", "Scaling", etc. — see PROCEDURE_OPTIONS in
@@ -172,6 +205,11 @@ export default function PatientJourney() {
   const [patient, setPatient] = useState(null);
   const [loading, setLoading] = useState(true);
   const [expandedStep, setExpandedStep] = useState(null);
+  // Journey arc — how far the rail of step icons has been rotated, measured
+  // in steps (fractional while a drag is in progress). See ARC_* below.
+  const [arcOffset, setArcOffset] = useState(0);
+  const arcDrag = useRef({ active: false, lastY: 0, moved: 0 });
+  const arcCentred = useRef(false);
   const [expandedMonth, setExpandedMonth] = useState(null);
   const [selectedPackages, setSelectedPackages] = useState([]); // unpaid package nums chosen to order together
   const [approving, setApproving] = useState(false);
@@ -295,6 +333,17 @@ export default function PatientJourney() {
       setApplyingCoupon(false);
     }
   };
+
+  // Open the arc on whichever step the patient is actually up to, rather than
+  // always at step 1 — done once, so it never fights a drag afterwards.
+  useEffect(() => {
+    if (!patient || arcCentred.current) return;
+    arcCentred.current = true;
+    const list = isNewModelAppointment(patient) ? NEW_JOURNEY_STEPS : LEGACY_JOURNEY_STEPS;
+    const done = deriveSteps(patient);
+    const firstOpen = list.findIndex((s) => !done[s.key]);
+    setArcOffset(firstOpen === -1 ? list.length - 1 : firstOpen);
+  }, [patient]);
 
   if (loading) return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
@@ -579,88 +628,186 @@ export default function PatientJourney() {
   return (
     <div style={{ minHeight: "100vh", paddingBottom: "60px", fontFamily: "'Inter', system-ui, sans-serif", colorScheme: "light" }}>
 
-      {/* HEADER */}
-      <div style={{ background: "white", padding: "28px 20px 36px", textAlign: "center", borderBottom: "3px solid #C9A84C", boxShadow: "0 2px 16px rgba(201,168,76,0.10)", position: "relative" }}>
+      {/* ───── JOURNEY ARC ─────────────────────────────────────────────
+          Patient details sit in the navy circle; every treatment step is a
+          node riding an arc whose centre is off the left edge of the screen.
+          Dragging vertically rotates the rail (see ARC_* at the top of this
+          file); tapping a node opens that step's full panel in the sheet
+          below — the same panels as before, just no longer all stacked. */}
+      <div
+        className="motif-bg"
+        onPointerDown={(e) => {
+          arcDrag.current = { active: true, lastY: e.clientY, moved: 0 };
+        }}
+        onPointerMove={(e) => {
+          if (!arcDrag.current.active) return;
+          const dy = e.clientY - arcDrag.current.lastY;
+          arcDrag.current.lastY = e.clientY;
+          arcDrag.current.moved += Math.abs(dy);
+          setArcOffset((prev) => Math.max(0, Math.min(journeySteps.length - 1, prev - dy / 58)));
+        }}
+        onPointerUp={() => {
+          if (!arcDrag.current.active) return;
+          arcDrag.current.active = false;
+          setArcOffset((prev) => Math.max(0, Math.min(journeySteps.length - 1, Math.round(prev))));
+        }}
+        onPointerCancel={() => { arcDrag.current.active = false; }}
+        onWheel={(e) => {
+          setArcOffset((prev) => Math.max(0, Math.min(journeySteps.length - 1, Math.round(prev + (e.deltaY > 0 ? 1 : -1)))));
+        }}
+        style={{
+          position: "relative", minHeight: "100dvh", overflow: "hidden",
+          background: "var(--admin-bg, #faf6ec)", touchAction: "none", userSelect: "none",
+        }}
+      >
+        {/* Logo, centred at the top. Deliberately NOT inside a z-indexed
+            wrapper: mix-blend-mode only blends within its own stacking
+            context, so a positioned+z-indexed parent would leave the logo's
+            white plate sitting on the ivory instead of dissolving into it. */}
+        <img
+          src="/logo.png"
+          alt="OrisAlign"
+          style={{
+            position: "absolute", top: "16px", left: "50%", transform: "translateX(-50%)",
+            width: "126px", height: "auto", objectFit: "contain", mixBlendMode: "multiply",
+          }}
+        />
         <button
           onClick={() => {
             try { window.localStorage.removeItem("orisalign_patient_id"); } catch {}
             window.location.href = "/login";
           }}
-          style={{
-            position: "absolute", top: "14px", right: "16px",
-            background: "none", border: "none", color: "#9ca3af",
-            fontSize: "11px", fontWeight: "700", letterSpacing: "0.4px",
-            cursor: "pointer", padding: "4px",
-          }}
+          style={{ position: "absolute", top: "20px", right: "16px", zIndex: 6, background: "none", border: "none", color: "#A9A395", fontSize: "10.5px", fontWeight: "700", letterSpacing: "0.06em", cursor: "pointer", padding: "4px" }}
         >
-          Logout
+          LOGOUT
         </button>
-        <div style={{ display: "flex", justifyContent: "center", marginBottom: "14px" }}>
-          <Image src="/logo.png" alt="OrisAlign" width={160} height={54} />
+
+        {/* Patient hero circle */}
+        <div style={{
+          position: "absolute", zIndex: 3, left: "-150px", top: "50%",
+          transform: "translateY(-50%)",
+          width: "360px", height: "360px", borderRadius: "50%",
+          background: "linear-gradient(150deg, #1B2A4A 0%, #14203A 70%)",
+          boxShadow: "0 22px 50px -22px rgba(27,42,74,0.55)",
+          display: "flex", flexDirection: "column", justifyContent: "center",
+          padding: "0 24px 0 170px", color: "#F5F1E6",
+        }}>
+          <p style={{ margin: "0 0 6px", fontSize: "9.5px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", color: "#C9A84C" }}>Patient</p>
+          <p style={{ margin: "0 0 10px", fontSize: "23px", fontWeight: "700", lineHeight: "1.08", letterSpacing: "-0.015em" }}>{patient.name || "Patient"}</p>
+          <div style={{ height: "1px", background: "rgba(201,168,76,0.4)", margin: "0 0 10px" }} />
+          <p style={{ margin: 0, fontSize: "11px", lineHeight: "1.75", color: "#B9C2D4", fontVariantNumeric: "tabular-nums" }}>
+            <b style={{ color: "#F5F1E6", fontWeight: "600" }}>{patient.phone || "No phone"}</b><br />
+            ID <b style={{ color: "#F5F1E6", fontWeight: "600", letterSpacing: "0.04em" }}>{patientIdLabel}</b>
+          </p>
+          <div style={{ marginTop: "12px" }}>
+            <div style={{ height: "4px", borderRadius: "99px", background: "rgba(255,255,255,0.14)", overflow: "hidden" }}>
+              <div style={{ height: "100%", borderRadius: "99px", width: `${progressPct}%`, background: "#2E8B62", transition: "width 0.8s ease" }} />
+            </div>
+            <p style={{ margin: "6px 0 0", fontSize: "9.5px", color: "#B9C2D4", letterSpacing: "0.05em" }}>
+              {completedCount} of {journeySteps.length} steps complete
+            </p>
+          </div>
         </div>
-        <h1 style={{ fontSize: "clamp(20px, 5vw, 26px)", fontWeight: "900", margin: "0 0 6px", color: "#1B2A4A" }}>
-          Your Smile Journey
-        </h1>
-        <p style={{ fontSize: "13px", color: "#b8905a", margin: "0 0 12px", fontWeight: "500" }}>Track every step of your treatment</p>
-        <div style={{ display: "flex", justifyContent: "center", gap: "16px", fontSize: "12px", color: "#9ca3af", fontWeight: "600" }}>
-          <span>🦷 Expert Care</span>
-          <span>📍 Bhubaneswar</span>
-          <span>🇮🇳 Made in India</span>
+
+        {/* Step nodes on the arc */}
+        {journeySteps.map((step, i) => {
+          const rel = i - arcOffset;
+          const ang = (rel * ARC_STEP_ANGLE) * Math.PI / 180;
+          const x = ARC_CX + ARC_R * Math.cos(ang);
+          const y = ARC_R * Math.sin(ang);
+          const dist = Math.abs(rel);
+          const scale = Math.max(0.62, 1 - dist * 0.09);
+          const opacity = dist > ARC_VISIBLE ? 0 : Math.max(0, 1 - Math.pow(dist / (ARC_VISIBLE + 0.2), 2.2));
+          const isDone = !!steps[step.key];
+          const isCurrent = !isDone && i > 0 && !!steps[journeySteps[i - 1]?.key];
+          const isClickable = step.expandable || (step.smileLink && steps[step.key]);
+          return (
+            <div
+              key={step.key}
+              onClick={() => {
+                // Ignore the click that ends a drag, so scrolling the rail
+                // never opens a step by accident.
+                if (arcDrag.current.moved > 6) { arcDrag.current.moved = 0; return; }
+                setArcOffset(i);
+                if (step.smileLink) { handleStepClick(step); return; }
+                setExpandedStep(step.key);
+              }}
+              style={{
+                position: "absolute", top: "50%", left: 0, zIndex: 20 - Math.round(dist),
+                width: "104px", marginLeft: "-52px",
+                display: "flex", flexDirection: "column", alignItems: "center", gap: "6px",
+                transform: `translate(${x}px, ${y - 27}px) scale(${scale})`,
+                transformOrigin: "center top",
+                opacity,
+                pointerEvents: opacity < 0.25 ? "none" : "auto",
+                cursor: "pointer",
+                transition: arcDrag.current.active ? "none" : "transform 0.28s cubic-bezier(.22,.8,.3,1), opacity 0.28s ease",
+              }}
+            >
+              <div style={{
+                width: "54px", height: "54px", borderRadius: "50%", flexShrink: 0,
+                display: "grid", placeItems: "center",
+                background: isDone ? "#2E8B62" : "rgba(255,255,255,0.94)",
+                border: `1.5px solid ${isDone ? "#2E8B62" : isCurrent ? "#A9762E" : "var(--admin-line, #e9e1d0)"}`,
+                boxShadow: isCurrent
+                  ? "0 0 0 4px rgba(169,118,46,0.14), 0 6px 16px -8px rgba(27,42,74,0.35)"
+                  : "0 6px 16px -8px rgba(27,42,74,0.35)",
+              }}>
+                <svg viewBox="0 0 24 24" width="24" height="24" style={{ fill: "none", stroke: isDone ? "#fff" : "#1B2A4A", strokeWidth: 1.5, strokeLinecap: "round", strokeLinejoin: "round" }}
+                  dangerouslySetInnerHTML={{ __html: STEP_ICONS[step.key] || DEFAULT_STEP_ICON }} />
+              </div>
+              {dist <= 1.6 && (
+                <span style={{
+                  fontSize: "9.5px", fontWeight: "700", letterSpacing: "0.06em", textTransform: "uppercase",
+                  lineHeight: "1.35", textAlign: "center",
+                  color: isDone ? "#2E8B62" : isCurrent ? "#1B2A4A" : "#A9A395",
+                  display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
+                }}>
+                  {step.label}
+                </span>
+              )}
+            </div>
+          );
+        })}
+
+        {/* Scroll affordance + contact line */}
+        <div style={{ position: "absolute", right: "16px", bottom: "56px", zIndex: 5, display: "flex", flexDirection: "column", alignItems: "center", gap: "3px", fontSize: "9px", fontWeight: "700", letterSpacing: "0.1em", textTransform: "uppercase", color: "#A9A395", pointerEvents: "none" }}>
+          <span style={{ fontSize: "12px" }}>▲</span>
+          <span>Scroll</span>
         </div>
+        <p style={{ position: "absolute", left: 0, right: 0, bottom: "16px", zIndex: 5, textAlign: "center", margin: 0, fontSize: "11px", color: "#A9A395" }}>
+          Questions? <a href="mailto:hello@orisalign.com" style={{ color: "#A9762E", fontWeight: "600", textDecoration: "none" }}>hello@orisalign.com</a>
+        </p>
       </div>
 
-      <div style={{ maxWidth: "520px", margin: "0 auto", padding: "0 16px" }}>
-
-        {/* PATIENT INFO CARD */}
-        <div style={{ background: "white", borderRadius: "20px", padding: "24px", marginTop: "-20px", boxShadow: "0 10px 40px rgba(0,0,0,0.10)", marginBottom: "24px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "16px" }}>
-            <div style={{ width: "52px", height: "52px", borderRadius: "50%", background: "linear-gradient(135deg, #b8905a, #f59e0b)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: "800", fontSize: "20px", flexShrink: 0 }}>
-              {(patient.name || "P")[0].toUpperCase()}
-            </div>
-            <div>
-              <h2 style={{ margin: 0, fontSize: "18px", fontWeight: "700", color: "#111827" }}>{patient.name || "Patient"}</h2>
-              <p style={{ margin: 0, fontSize: "13px", color: "#6b7280" }}>
-                {patient.age ? `${patient.age} yrs` : ""}{patient.sex ? ` • ${patient.sex}` : ""}
-              </p>
-            </div>
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "16px" }}>
-            {[["Patient ID", patientIdLabel], ["Phone", patient.phone || "N/A"], ["Date", patient.date || "N/A"], ["Time", patient.time || "N/A"]].map(([lbl, val]) => (
-              <div key={lbl} style={{ background: "#f8f7f5", borderRadius: "10px", padding: "10px 12px" }}>
-                <p style={{ margin: 0, fontSize: "10px", color: "#9ca3af", fontWeight: "700", letterSpacing: "0.6px", textTransform: "uppercase" }}>{lbl}</p>
-                <p style={{ margin: "2px 0 0", fontSize: "14px", fontWeight: "600", color: "#111827" }}>{val}</p>
-              </div>
-            ))}
-          </div>
-
-          <div>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
-              <span style={{ fontSize: "12px", fontWeight: "600", color: "#374151" }}>Overall Progress</span>
-              <span style={{ fontSize: "12px", fontWeight: "700", color: "#22c55e" }}>{progressPct}%</span>
-            </div>
-            <div style={{ height: "8px", borderRadius: "99px", background: "#e5e7eb", overflow: "hidden" }}>
-              <div style={{ height: "100%", borderRadius: "99px", width: `${progressPct}%`, background: "linear-gradient(90deg, #22c55e, #16a34a)", transition: "width 1s ease" }} />
-            </div>
-            <p style={{ margin: "6px 0 0", fontSize: "11px", color: "#9ca3af" }}>{completedCount} of {journeySteps.length} steps completed</p>
-          </div>
-        </div>
-
-        {/* ROADMAP */}
-        <div style={{ textAlign: "center", marginBottom: "20px" }}>
-          <h3 style={{ fontSize: "18px", fontWeight: "900", color: "#1B2A4A", margin: "0 0 4px", letterSpacing: "-0.3px" }}>Treatment Roadmap</h3>
-          <p style={{ fontSize: "12px", color: "#9ca3af", margin: 0 }}>Your progress, step by step</p>
-        </div>
-
-        <div style={{ position: "relative" }}>
-          <div style={{ position: "absolute", left: "22px", top: "22px", bottom: "22px", width: "2px", background: "linear-gradient(180deg, #22c55e 0%, #e5e7eb 60%)", zIndex: 0 }} />
-
-          <div style={{ display: "flex", flexDirection: "column", gap: "0" }}>
+      {/* ───── STEP SHEET — the opened step's full panel ───── */}
+      {expandedStep && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 60 }}>
+          <div onClick={() => setExpandedStep(null)} style={{ position: "absolute", inset: 0, background: "rgba(20,30,50,0.35)" }} />
+          <div style={{
+            position: "absolute", left: 0, right: 0, bottom: 0,
+            maxHeight: "82vh", overflowY: "auto",
+            background: "white", borderTop: "2px solid #A9762E",
+            borderRadius: "22px 22px 0 0", boxShadow: "0 -18px 44px -20px rgba(27,42,74,0.4)",
+            padding: "14px 0 24px",
+          }}>
+            <div style={{ width: "42px", height: "4px", borderRadius: "99px", background: "var(--admin-line, #e9e1d0)", margin: "0 auto 12px" }} />
+            <button
+              onClick={() => setExpandedStep(null)}
+              aria-label="Close"
+              style={{ position: "absolute", top: "12px", right: "16px", background: "none", border: "none", color: "#A9A395", fontSize: "20px", cursor: "pointer", lineHeight: 1 }}
+            >
+              ×
+            </button>
+            <div style={{ maxWidth: "520px", margin: "0 auto", padding: "0 16px" }}>
             {journeySteps.map((step, index) => {
+              // Only the step the patient tapped renders here — the arc above
+              // is the navigation now, and the sheet shows one step at a time.
+              if (step.key !== expandedStep) return null;
               const done = steps[step.key];
               const isNext = !done && index > 0 && steps[journeySteps[index - 1]?.key];
               const isClickable = step.expandable || (step.smileLink && steps[step.key]);
-              const isExpanded = expandedStep === step.key;
+              const isExpanded = true;
 
               return (
                 <div key={step.key} style={{ marginBottom: "10px", position: "relative", zIndex: 1 }}>
@@ -1699,22 +1846,10 @@ export default function PatientJourney() {
                 </div>
               );
             })}
+            </div>
           </div>
         </div>
-
-        {/* FOOTER */}
-        <div style={{ marginTop: "32px", textAlign: "center", padding: "20px", background: "white", borderRadius: "16px", boxShadow: "0 4px 12px rgba(0,0,0,0.05)" }}>
-          <p style={{ margin: 0, fontSize: "13px", color: "#6b7280", lineHeight: "1.6" }}>
-            For any queries, contact us at{" "}
-            <a href="mailto:hello@orisalign.com" style={{ color: "#b8905a", fontWeight: "600" }}>hello@orisalign.com</a>
-          </p>
-          <p style={{ margin: "6px 0 0", fontSize: "11px", color: "#9ca3af" }}>
-            {patient.booking_confirmed
-              ? <>Your Patient ID: <strong style={{ color: "#374151" }}>{shortId}</strong></>
-              : <>Fill your details and confirm your booking to receive your Patient ID.</>}
-          </p>
-        </div>
-      </div>
+      )}
     </div>
   );
 }

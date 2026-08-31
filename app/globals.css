@@ -111,10 +111,12 @@ input::placeholder {
    it reads as ambient texture instead of a countable grid of icons (see
    the picked option from the background-treatment comparison). Oversized
    and offset on all sides so the rotation never exposes a bare edge. */
-.admin-pattern-bg {
+.admin-pattern-bg,
+.motif-bg {
   position: relative;
 }
-.admin-pattern-bg::before {
+.admin-pattern-bg::before,
+.motif-bg::before {
   content: '';
   position: absolute;
   inset: -20%;
@@ -126,7 +128,8 @@ input::placeholder {
   pointer-events: none;
   z-index: 0;
 }
-.admin-pattern-bg > * {
+.admin-pattern-bg > *,
+.motif-bg > * {
   position: relative;
   z-index: 1;
 }
