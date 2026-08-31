@@ -3,10 +3,11 @@ import type { CapacitorConfig } from "@capacitor/cli";
 const config: CapacitorConfig = {
   appId: "com.orisalign.app",
   appName: "OrisAlign",
-  webDir: "public",
+  webDir: "capacitor-web",
   server: {
-    url: "https://orisalign.com",
+    url: "https://app.orisalign.com/login",
     androidScheme: "https",
+    allowNavigation: ["app.orisalign.com"],
   },
 };
 

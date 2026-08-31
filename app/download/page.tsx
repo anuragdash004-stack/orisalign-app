@@ -25,7 +25,7 @@ export default function DownloadPage() {
             DOWNLOAD THE ORISALIGN APP
           </h1>
           <p style={{ color: "#6b7280", fontSize: "13px", margin: "6px 0 0" }}>
-            Android · Version 1.0 · ~11 MB
+            Android · Version 1.1 · ~5.4 MB
           </p>
         </div>
 
