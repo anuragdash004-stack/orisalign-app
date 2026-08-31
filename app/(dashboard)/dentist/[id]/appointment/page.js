@@ -85,7 +85,7 @@ function ToothField({ label, dentition, value, onChange }) {
   const toggleTooth = (t) => setTemp((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
   const add = () => { onChange([...temp].sort((a, b) => a - b)); setOpen(false); };
 
-  const lblStyle = { display: "block", fontSize: "13px", fontWeight: "700", color: "#111827", marginBottom: "6px" };
+  const lblStyle = { display: "block", fontSize: "13px", fontWeight: "700", color: "var(--admin-ink, #1b2a4a)", marginBottom: "6px" };
 
   return (
     <div style={{ marginBottom: "14px" }}>
@@ -96,8 +96,8 @@ function ToothField({ label, dentition, value, onChange }) {
           onClick={openPicker}
           style={{
             flex: 1, minHeight: "42px", padding: "9px 12px", borderRadius: "8px",
-            border: "1px solid #e5e7eb", background: "white", textAlign: "left",
-            fontSize: "14px", cursor: "pointer", color: selected.length ? "#111827" : "#9ca3af",
+            border: "1px solid var(--admin-line, #e9e1d0)", background: "white", textAlign: "left",
+            fontSize: "14px", cursor: "pointer", color: selected.length ? "var(--admin-ink, #1b2a4a)" : "var(--admin-ink2, #837a66)",
           }}
         >
           {selected.length ? selected.join(", ") : "Tap to select teeth"}
@@ -115,8 +115,8 @@ function ToothField({ label, dentition, value, onChange }) {
       </div>
 
       {open && (
-        <div style={{ marginTop: "8px", border: "1px solid #e5e7eb", borderRadius: "10px", padding: "12px", background: "#fafafa" }}>
-          <p style={{ margin: "0 0 8px", fontSize: "11px", fontWeight: "700", color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+        <div style={{ marginTop: "8px", border: "1px solid var(--admin-line, #e9e1d0)", borderRadius: "10px", padding: "12px", background: "#fafafa" }}>
+          <p style={{ margin: "0 0 8px", fontSize: "11px", fontWeight: "700", color: "var(--admin-ink2, #837a66)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
             {dentition === "child" ? "Child Dentition" : "Adult Dentition"}
           </p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "6px" }}>
@@ -133,7 +133,7 @@ function ToothField({ label, dentition, value, onChange }) {
                         padding: "8px 0", borderRadius: "7px", fontSize: "13px", fontWeight: "700", cursor: "pointer",
                         border: on ? "none" : "1px solid #d1d5db",
                         background: on ? "#16a34a" : "white",
-                        color: on ? "white" : "#374151",
+                        color: on ? "white" : "var(--admin-ink, #1b2a4a)",
                       }}
                     >
                       {t}
@@ -147,14 +147,14 @@ function ToothField({ label, dentition, value, onChange }) {
             <button
               type="button"
               onClick={() => setOpen(false)}
-              style={{ flex: 1, padding: "10px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "white", color: "#374151", fontWeight: "700", fontSize: "13px", cursor: "pointer" }}
+              style={{ flex: 1, padding: "10px", borderRadius: "8px", border: "1px solid var(--admin-line, #e9e1d0)", background: "white", color: "var(--admin-ink, #1b2a4a)", fontWeight: "700", fontSize: "13px", cursor: "pointer" }}
             >
               Cancel
             </button>
             <button
               type="button"
               onClick={add}
-              style={{ flex: 1, padding: "10px", borderRadius: "8px", border: "none", background: "#111827", color: "white", fontWeight: "700", fontSize: "13px", cursor: "pointer" }}
+              style={{ flex: 1, padding: "10px", borderRadius: "8px", border: "none", background: "var(--admin-ink, #1b2a4a)", color: "white", fontWeight: "700", fontSize: "13px", cursor: "pointer" }}
             >
               Add ({temp.length})
             </button>
@@ -168,16 +168,16 @@ function ToothField({ label, dentition, value, onChange }) {
 function SectionCard({ sectionKey, label, done, activeSection, setActiveSection, children }) {
   const isOpen = activeSection === sectionKey;
   return (
-    <div style={{ background: "white", border: `1px solid ${done ? "#22c55e" : "#e5e7eb"}`, borderRadius: "16px", overflow: "hidden", boxShadow: "0 4px 12px rgba(0,0,0,0.04)" }}>
+    <div style={{ background: "white", border: `1px solid ${done ? "#22c55e" : "var(--admin-line, #e9e1d0)"}`, borderRadius: "16px", overflow: "hidden", boxShadow: "0 4px 12px rgba(0,0,0,0.04)" }}>
       <div
         onClick={() => !done && setActiveSection(isOpen ? null : sectionKey)}
         style={{ padding: "18px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: done ? "default" : "pointer", background: done ? "#f0fdf4" : "white" }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <span style={{ width: "24px", height: "24px", borderRadius: "50%", background: done ? "#22c55e" : "#e5e7eb", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: "13px", fontWeight: "700", flexShrink: 0 }}>
+          <span style={{ width: "24px", height: "24px", borderRadius: "50%", background: done ? "#22c55e" : "var(--admin-line, #e9e1d0)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: "13px", fontWeight: "700", flexShrink: 0 }}>
             {done ? "✓" : ""}
           </span>
-          <span style={{ fontWeight: "600", color: done ? "#16a34a" : "#111827" }}>{label}</span>
+          <span style={{ fontWeight: "600", color: done ? "#16a34a" : "var(--admin-ink, #1b2a4a)" }}>{label}</span>
         </div>
         {done ? (
           <span style={{ color: "#16a34a", fontSize: "13px", fontWeight: "600" }}>Completed</span>
@@ -186,7 +186,7 @@ function SectionCard({ sectionKey, label, done, activeSection, setActiveSection,
         )}
       </div>
       {isOpen && !done && (
-        <div style={{ padding: "20px", borderTop: "1px solid #e5e7eb" }}>
+        <div style={{ padding: "20px", borderTop: "1px solid var(--admin-line, #e9e1d0)" }}>
           {children}
         </div>
       )}
@@ -475,12 +475,12 @@ export default function AppointmentWorkflow() {
   // ─── STYLES ───────────────────────────────────────────────────────
   const inp = {
     width: "100%", padding: "11px 12px", borderRadius: "8px",
-    border: "1px solid #e5e7eb", fontSize: "14px",
+    border: "1px solid var(--admin-line, #e9e1d0)", fontSize: "14px",
     outline: "none", boxSizing: "border-box",
-    background: "white", color: "#111827",
+    background: "white", color: "var(--admin-ink, #1b2a4a)",
   };
 
-  const lbl = { display: "block", fontSize: "13px", fontWeight: "700", color: "#111827", marginBottom: "6px" };
+  const lbl = { display: "block", fontSize: "13px", fontWeight: "700", color: "var(--admin-ink, #1b2a4a)", marginBottom: "6px" };
 
   const gr = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "16px" };
 
@@ -546,7 +546,7 @@ export default function AppointmentWorkflow() {
           </div>
 
           {/* Dental Examination */}
-          <p style={{ fontSize: "11px", fontWeight: "800", color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 12px" }}>Dental Examination</p>
+          <p style={{ fontSize: "11px", fontWeight: "800", color: "var(--admin-ink2, #837a66)", textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 12px" }}>Dental Examination</p>
 
           <ToothField label="Dental Caries" dentition="adult" value={form.dental_caries} onChange={(v) => setForm((p) => ({ ...p, dental_caries: v }))} />
           <ToothField label="Missing Tooth" dentition="adult" value={form.missing_tooth} onChange={(v) => setForm((p) => ({ ...p, missing_tooth: v }))} />
@@ -588,7 +588,7 @@ export default function AppointmentWorkflow() {
                   </select>
                 </Clearable>
               ) : (
-                <input style={{ ...inp, background: "#f3f4f6", color: "#9ca3af" }} type="text" value="Not Applicable" readOnly />
+                <input style={{ ...inp, background: "var(--admin-gold-wash, #f3f0e6)", color: "var(--admin-ink2, #837a66)" }} type="text" value="Not Applicable" readOnly />
               )}
             </div>
           </div>
@@ -601,7 +601,7 @@ export default function AppointmentWorkflow() {
               style={{
                 width: "100%", padding: "12px", borderRadius: "8px",
                 border: "2px solid #d1d5db", background: "white",
-                color: "#374151", fontWeight: "600", fontSize: "13px",
+                color: "var(--admin-ink, #1b2a4a)", fontWeight: "600", fontSize: "13px",
                 cursor: "pointer", marginBottom: "8px",
               }}
             >
@@ -665,7 +665,7 @@ export default function AppointmentWorkflow() {
                       key={proc}
                       style={{
                         display: "flex", alignItems: "center", gap: "10px",
-                        padding: "10px 12px", borderRadius: "8px", border: "1px solid #e5e7eb",
+                        padding: "10px 12px", borderRadius: "8px", border: "1px solid var(--admin-line, #e9e1d0)",
                         cursor: "pointer", background: selectedProcedures.includes(proc) ? "#f0fdf4" : "white",
                       }}
                     >
@@ -675,7 +675,7 @@ export default function AppointmentWorkflow() {
                         onChange={() => handleProcedureToggle(proc)}
                         style={{ cursor: "pointer", width: "18px", height: "18px" }}
                       />
-                      <span style={{ fontSize: "14px", fontWeight: "500", color: "#111827" }}>{proc}</span>
+                      <span style={{ fontSize: "14px", fontWeight: "500", color: "var(--admin-ink, #1b2a4a)" }}>{proc}</span>
                     </label>
                   ))}
                 </div>
@@ -695,8 +695,8 @@ export default function AppointmentWorkflow() {
                     onClick={() => setShowProcedureModal(false)}
                     style={{
                       flex: 1, padding: "10px", borderRadius: "8px",
-                      border: "1px solid #e5e7eb", background: "white",
-                      color: "#111827", fontWeight: "600", fontSize: "13px",
+                      border: "1px solid var(--admin-line, #e9e1d0)", background: "white",
+                      color: "var(--admin-ink, #1b2a4a)", fontWeight: "600", fontSize: "13px",
                       cursor: "pointer",
                     }}
                   >
@@ -706,7 +706,7 @@ export default function AppointmentWorkflow() {
                     onClick={submitProcedures}
                     style={{
                       flex: 1, padding: "10px", borderRadius: "8px",
-                      border: "none", background: "#111827",
+                      border: "none", background: "var(--admin-ink, #1b2a4a)",
                       color: "white", fontWeight: "600", fontSize: "13px",
                       cursor: "pointer",
                     }}
@@ -721,7 +721,7 @@ export default function AppointmentWorkflow() {
           {/* Upload Documents */}
           <div style={{ marginBottom: "16px" }}>
             <span style={lbl}>Upload Documents</span>
-            <p style={{ fontSize: "11px", color: "#6b7280", margin: "0 0 8px" }}>Photos (JPG, PNG) and PDFs — multiple files allowed</p>
+            <p style={{ fontSize: "11px", color: "var(--admin-ink2, #837a66)", margin: "0 0 8px" }}>Photos (JPG, PNG) and PDFs — multiple files allowed</p>
             <input
               ref={fileInputRef}
               type="file"
@@ -736,7 +736,7 @@ export default function AppointmentWorkflow() {
               style={{
                 width: "100%", padding: "12px", borderRadius: "8px",
                 border: "2px dashed #d1d5db", background: "#fafafa",
-                color: "#374151", fontWeight: "600", fontSize: "13px",
+                color: "var(--admin-ink, #1b2a4a)", fontWeight: "600", fontSize: "13px",
                 cursor: docUploading ? "not-allowed" : "pointer",
                 opacity: docUploading ? 0.6 : 1,
                 marginBottom: formDocs.length ? "10px" : 0,
@@ -749,13 +749,13 @@ export default function AppointmentWorkflow() {
                 {formDocs.map((doc, idx) => {
                   const isImg = doc.type?.startsWith("image/");
                   return (
-                    <div key={idx} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 12px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "#f9fafb" }}>
+                    <div key={idx} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 12px", borderRadius: "8px", border: "1px solid var(--admin-line, #e9e1d0)", background: "var(--admin-bg, #faf6ec)" }}>
                       <span style={{ fontSize: "18px" }}>{isImg ? "🖼️" : "📄"}</span>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ margin: 0, fontSize: "12px", fontWeight: "600", color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{doc.name}</p>
-                        {doc.size && <p style={{ margin: 0, fontSize: "10px", color: "#9ca3af" }}>{(doc.size / 1024).toFixed(0)} KB</p>}
+                        <p style={{ margin: 0, fontSize: "12px", fontWeight: "600", color: "var(--admin-ink, #1b2a4a)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{doc.name}</p>
+                        {doc.size && <p style={{ margin: 0, fontSize: "10px", color: "var(--admin-ink2, #837a66)" }}>{(doc.size / 1024).toFixed(0)} KB</p>}
                       </div>
-                      <a href={doc.url} target="_blank" rel="noreferrer" style={{ padding: "4px 10px", borderRadius: "6px", background: "#111827", color: "white", fontWeight: "700", fontSize: "10px", textDecoration: "none" }}>View</a>
+                      <a href={doc.url} target="_blank" rel="noreferrer" style={{ padding: "4px 10px", borderRadius: "6px", background: "var(--admin-ink, #1b2a4a)", color: "white", fontWeight: "700", fontSize: "10px", textDecoration: "none" }}>View</a>
                       <button onClick={() => removeDoc(idx)} style={{ padding: "4px 10px", borderRadius: "6px", border: "1px solid #fecaca", background: "#fef2f2", color: "#dc2626", fontWeight: "700", fontSize: "10px", cursor: "pointer" }}>Remove</button>
                     </div>
                   );
@@ -767,7 +767,7 @@ export default function AppointmentWorkflow() {
           <button
             onClick={submitForm}
             disabled={formSaving}
-            style={{ width: "100%", padding: "12px", borderRadius: "8px", border: "none", background: "#111827", color: "white", fontWeight: "600", cursor: "pointer", opacity: formSaving ? 0.7 : 1 }}
+            style={{ width: "100%", padding: "12px", borderRadius: "8px", border: "none", background: "var(--admin-ink, #1b2a4a)", color: "white", fontWeight: "600", cursor: "pointer", opacity: formSaving ? 0.7 : 1 }}
           >
             {formSaving ? "Saving..." : "Submit Form"}
           </button>
@@ -778,8 +778,8 @@ export default function AppointmentWorkflow() {
           <p style={{ fontSize: "13px", color: "gray", marginBottom: "16px" }}>Upload all 9 required photos before submitting.</p>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", marginBottom: "16px" }}>
             {IMAGE_SLOTS.map((slot) => (
-              <div key={slot.key} style={{ border: `2px dashed ${images[slot.key] ? "#22c55e" : "#e5e7eb"}`, borderRadius: "10px", padding: "10px", textAlign: "center", background: images[slot.key] ? "#f0fdf4" : "#fafafa" }}>
-                <p style={{ fontSize: "11px", fontWeight: "600", marginBottom: "6px", color: "#374151" }}>{slot.label}</p>
+              <div key={slot.key} style={{ border: `2px dashed ${images[slot.key] ? "#22c55e" : "var(--admin-line, #e9e1d0)"}`, borderRadius: "10px", padding: "10px", textAlign: "center", background: images[slot.key] ? "#f0fdf4" : "#fafafa" }}>
+                <p style={{ fontSize: "11px", fontWeight: "600", marginBottom: "6px", color: "var(--admin-ink, #1b2a4a)" }}>{slot.label}</p>
                 {images[slot.key] ? (
                   <div>
                     <p style={{ fontSize: "10px", color: "#16a34a", margin: "0 0 4px" }}>✓ Selected</p>
@@ -793,7 +793,7 @@ export default function AppointmentWorkflow() {
                   </div>
                 ) : (
                   <label style={{ cursor: "pointer" }}>
-                    <span style={{ fontSize: "11px", color: "#6b7280" }}>Tap to upload</span>
+                    <span style={{ fontSize: "11px", color: "var(--admin-ink2, #837a66)" }}>Tap to upload</span>
                     <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => handleImageChange(slot.key, e.target.files[0])} />
                   </label>
                 )}
@@ -803,7 +803,7 @@ export default function AppointmentWorkflow() {
           <button
             onClick={submitImages}
             disabled={!allImagesSelected || imagesSaving}
-            style={{ width: "100%", padding: "12px", borderRadius: "8px", border: "none", background: allImagesSelected ? "#111827" : "#e5e7eb", color: allImagesSelected ? "white" : "#9ca3af", fontWeight: "600", cursor: allImagesSelected ? "pointer" : "not-allowed", opacity: imagesSaving ? 0.7 : 1 }}
+            style={{ width: "100%", padding: "12px", borderRadius: "8px", border: "none", background: allImagesSelected ? "var(--admin-ink, #1b2a4a)" : "var(--admin-line, #e9e1d0)", color: allImagesSelected ? "white" : "var(--admin-ink2, #837a66)", fontWeight: "600", cursor: allImagesSelected ? "pointer" : "not-allowed", opacity: imagesSaving ? 0.7 : 1 }}
           >
             {imagesSaving ? "Uploading..." : `Submit Images (${Object.keys(images).length}/9)`}
           </button>
@@ -814,8 +814,8 @@ export default function AppointmentWorkflow() {
           <p style={{ fontSize: "13px", color: "gray", marginBottom: "16px" }}>Upload all 4 scan files before submitting.</p>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "16px" }}>
             {STL_SLOTS.map((slot) => (
-              <div key={slot.key} style={{ border: `2px dashed ${stls[slot.key] ? "#22c55e" : "#e5e7eb"}`, borderRadius: "10px", padding: "14px", textAlign: "center", background: stls[slot.key] ? "#f0fdf4" : "#fafafa" }}>
-                <p style={{ fontSize: "12px", fontWeight: "600", marginBottom: "8px", color: "#374151" }}>{slot.label}</p>
+              <div key={slot.key} style={{ border: `2px dashed ${stls[slot.key] ? "#22c55e" : "var(--admin-line, #e9e1d0)"}`, borderRadius: "10px", padding: "14px", textAlign: "center", background: stls[slot.key] ? "#f0fdf4" : "#fafafa" }}>
+                <p style={{ fontSize: "12px", fontWeight: "600", marginBottom: "8px", color: "var(--admin-ink, #1b2a4a)" }}>{slot.label}</p>
                 {stls[slot.key] ? (
                   <div>
                     <p style={{ fontSize: "11px", color: "#16a34a", margin: "0 0 6px" }}>✓ {stls[slot.key].name.substring(0, 18)}...</p>
@@ -828,7 +828,7 @@ export default function AppointmentWorkflow() {
                   </div>
                 ) : (
                   <label style={{ cursor: "pointer" }}>
-                    <span style={{ fontSize: "12px", color: "#6b7280" }}>Tap to upload</span>
+                    <span style={{ fontSize: "12px", color: "var(--admin-ink2, #837a66)" }}>Tap to upload</span>
                     <input type="file" accept=".stl,.obj,.ply" style={{ display: "none" }} onChange={(e) => handleStlChange(slot.key, e.target.files[0])} />
                   </label>
                 )}
@@ -838,7 +838,7 @@ export default function AppointmentWorkflow() {
           <button
             onClick={submitStls}
             disabled={!allStlsSelected || stlSaving}
-            style={{ width: "100%", padding: "12px", borderRadius: "8px", border: "none", background: allStlsSelected ? "#111827" : "#e5e7eb", color: allStlsSelected ? "white" : "#9ca3af", fontWeight: "600", cursor: allStlsSelected ? "pointer" : "not-allowed", opacity: stlSaving ? 0.7 : 1 }}
+            style={{ width: "100%", padding: "12px", borderRadius: "8px", border: "none", background: allStlsSelected ? "var(--admin-ink, #1b2a4a)" : "var(--admin-line, #e9e1d0)", color: allStlsSelected ? "white" : "var(--admin-ink2, #837a66)", fontWeight: "600", cursor: allStlsSelected ? "pointer" : "not-allowed", opacity: stlSaving ? 0.7 : 1 }}
           >
             {stlSaving ? "Uploading..." : `Submit STL Files (${Object.keys(stls).length}/4)`}
           </button>
@@ -847,9 +847,9 @@ export default function AppointmentWorkflow() {
       </div>
 
       {/* ── SECTION 4: PROVISIONAL PLANNING ── */}
-      <div style={{ marginTop: "14px", background: "white", border: "1px solid #e5e7eb", borderRadius: "16px", overflow: "hidden", boxShadow: "0 4px 12px rgba(0,0,0,0.04)" }}>
-        <div style={{ padding: "18px 20px", background: provisionalPlanSubmitted ? "#f0fdf4" : "#fafafa", borderBottom: "1px solid #e5e7eb" }}>
-          <span style={{ fontWeight: "600", color: provisionalPlanSubmitted ? "#16a34a" : "#111827" }}>4. Provisional Planning</span>
+      <div style={{ marginTop: "14px", background: "white", border: "1px solid var(--admin-line, #e9e1d0)", borderRadius: "16px", overflow: "hidden", boxShadow: "0 4px 12px rgba(0,0,0,0.04)" }}>
+        <div style={{ padding: "18px 20px", background: provisionalPlanSubmitted ? "#f0fdf4" : "#fafafa", borderBottom: "1px solid var(--admin-line, #e9e1d0)" }}>
+          <span style={{ fontWeight: "600", color: provisionalPlanSubmitted ? "#16a34a" : "var(--admin-ink, #1b2a4a)" }}>4. Provisional Planning</span>
           {provisionalPlanSubmitted && (
             <span style={{ marginLeft: "10px", fontSize: "12px", color: "#16a34a", fontWeight: "600" }}>✓ Submitted by orthodontist</span>
           )}
@@ -857,13 +857,13 @@ export default function AppointmentWorkflow() {
         <div style={{ padding: "20px" }}>
           {provisionalPlanSubmitted ? (
             <div>
-              <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "8px", padding: "14px", fontSize: "14px", color: "#111827", whiteSpace: "pre-wrap", lineHeight: "1.6", marginBottom: orthoNote ? "12px" : 0 }}>
+              <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "8px", padding: "14px", fontSize: "14px", color: "var(--admin-ink, #1b2a4a)", whiteSpace: "pre-wrap", lineHeight: "1.6", marginBottom: orthoNote ? "12px" : 0 }}>
                 {provisionalPlan}
               </div>
               {orthoNote ? (
                 <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "8px", padding: "14px" }}>
                   <p style={{ fontSize: "11px", fontWeight: "700", color: "#16a34a", textTransform: "uppercase", letterSpacing: "0.5px", margin: "0 0 6px" }}>Notes from Orthodontist</p>
-                  <p style={{ margin: 0, fontSize: "14px", color: "#111827", whiteSpace: "pre-wrap", lineHeight: "1.6" }}>{orthoNote}</p>
+                  <p style={{ margin: 0, fontSize: "14px", color: "var(--admin-ink, #1b2a4a)", whiteSpace: "pre-wrap", lineHeight: "1.6" }}>{orthoNote}</p>
                 </div>
               ) : null}
             </div>
@@ -874,7 +874,7 @@ export default function AppointmentWorkflow() {
       </div>
 
       {/* ── END APPOINTMENT ── */}
-      <div style={{ marginTop: "24px", padding: "20px", background: allDone ? "#f0fdf4" : "#f9fafb", borderRadius: "16px", border: `1px solid ${allDone ? "#22c55e" : "#e5e7eb"}` }}>
+      <div style={{ marginTop: "24px", padding: "20px", background: allDone ? "#f0fdf4" : "var(--admin-bg, #faf6ec)", borderRadius: "16px", border: `1px solid ${allDone ? "#22c55e" : "var(--admin-line, #e9e1d0)"}` }}>
         {!allDone && (
           <p style={{ fontSize: "13px", color: "gray", marginBottom: "12px", textAlign: "center" }}>
             Complete all 3 sections above to end the appointment.
@@ -883,7 +883,7 @@ export default function AppointmentWorkflow() {
         <button
           onClick={endAppointment}
           disabled={!allDone || ending}
-          style={{ width: "100%", padding: "14px", borderRadius: "10px", border: "none", background: allDone ? "#dc2626" : "#e5e7eb", color: allDone ? "white" : "#9ca3af", fontWeight: "700", fontSize: "15px", cursor: allDone ? "pointer" : "not-allowed", opacity: ending ? 0.7 : 1 }}
+          style={{ width: "100%", padding: "14px", borderRadius: "10px", border: "none", background: allDone ? "#dc2626" : "var(--admin-line, #e9e1d0)", color: allDone ? "white" : "var(--admin-ink2, #837a66)", fontWeight: "700", fontSize: "15px", cursor: allDone ? "pointer" : "not-allowed", opacity: ending ? 0.7 : 1 }}
         >
           {ending ? "Ending..." : "🏁 End Appointment"}
         </button>

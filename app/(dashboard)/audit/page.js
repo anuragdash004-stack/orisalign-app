@@ -49,15 +49,15 @@ export default function AuditIndexPage() {
     );
   });
 
-  if (loading) return <p style={{ padding: "20px", color: "#6b7280" }}>Loading...</p>;
+  if (loading) return <p style={{ padding: "20px", color: "var(--admin-ink2, #837a66)" }}>Loading...</p>;
 
   return (
     <div style={{ maxWidth: "720px" }}>
 
       {/* Header */}
       <div style={{ marginBottom: "24px" }}>
-        <h1 style={{ margin: "0 0 4px", fontSize: "22px", color: "#111827" }}>Audit Log</h1>
-        <p style={{ margin: 0, fontSize: "13px", color: "#6b7280" }}>
+        <h1 style={{ margin: "0 0 4px", fontSize: "22px", color: "var(--admin-ink, #1b2a4a)" }}>Audit Log</h1>
+        <p style={{ margin: 0, fontSize: "13px", color: "var(--admin-ink2, #837a66)" }}>
           Admin-only · Immutable record of every save action across all patients
         </p>
       </div>
@@ -70,14 +70,14 @@ export default function AuditIndexPage() {
         onChange={(e) => setSearch(e.target.value)}
         style={{
           width: "100%", padding: "10px 14px", borderRadius: "10px",
-          border: "1px solid #e5e7eb", fontSize: "14px",
+          border: "1px solid var(--admin-line, #e9e1d0)", fontSize: "14px",
           outline: "none", marginBottom: "20px",
-          boxSizing: "border-box", background: "white", color: "#111827",
+          boxSizing: "border-box", background: "white", color: "var(--admin-ink, #1b2a4a)",
         }}
       />
 
       {filtered.length === 0 ? (
-        <p style={{ color: "#9ca3af", fontStyle: "italic" }}>No patients found.</p>
+        <p style={{ color: "var(--admin-ink2, #837a66)", fontStyle: "italic" }}>No patients found.</p>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
           {filtered.map((appt) => {
@@ -89,19 +89,19 @@ export default function AuditIndexPage() {
                 key={appt.id}
                 onClick={() => router.push(`/audit/${appt.id}`)}
                 style={{
-                  background: "white", border: "1px solid #e5e7eb",
+                  background: "white", border: "1px solid var(--admin-line, #e9e1d0)",
                   borderRadius: "14px", padding: "16px 20px",
                   boxShadow: "0 1px 6px rgba(0,0,0,0.04)",
                   display: "flex", alignItems: "center", gap: "14px",
                   cursor: "pointer", transition: "border-color 0.15s, box-shadow 0.15s",
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#b8905a"; e.currentTarget.style.boxShadow = "0 4px 14px rgba(0,0,0,0.08)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#e5e7eb"; e.currentTarget.style.boxShadow = "0 1px 6px rgba(0,0,0,0.04)"; }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--admin-gold, #b8905a)"; e.currentTarget.style.boxShadow = "0 4px 14px rgba(0,0,0,0.08)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--admin-line, #e9e1d0)"; e.currentTarget.style.boxShadow = "0 1px 6px rgba(0,0,0,0.04)"; }}
               >
                 {/* Avatar */}
                 <div style={{
                   width: "42px", height: "42px", borderRadius: "50%",
-                  background: "linear-gradient(135deg, #b8905a, #f59e0b)",
+                  background: "var(--admin-gold-strong, #a9762e)",
                   display: "flex", alignItems: "center", justifyContent: "center",
                   color: "white", fontWeight: "800", fontSize: "17px", flexShrink: 0,
                 }}>
@@ -110,10 +110,10 @@ export default function AuditIndexPage() {
 
                 {/* Info */}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ margin: 0, fontSize: "15px", fontWeight: "700", color: "#111827" }}>
+                  <p style={{ margin: 0, fontSize: "15px", fontWeight: "700", color: "var(--admin-ink, #1b2a4a)" }}>
                     {appt.name || "Unnamed"}
                   </p>
-                  <p style={{ margin: "2px 0 0", fontSize: "12px", color: "#9ca3af" }}>
+                  <p style={{ margin: "2px 0 0", fontSize: "12px", color: "var(--admin-ink2, #837a66)" }}>
                     ID: {shortId}
                     {appt.phone ? ` · ${appt.phone}` : ""}
                     {appt.email ? ` · ${appt.email}` : ""}
@@ -135,15 +135,15 @@ export default function AuditIndexPage() {
                   ) : (
                     <span style={{
                       display: "inline-block", padding: "4px 12px",
-                      borderRadius: "99px", background: "#f3f4f6",
-                      color: "#9ca3af", fontSize: "12px", fontWeight: "600",
+                      borderRadius: "99px", background: "var(--admin-gold-wash, #f3f0e6)",
+                      color: "var(--admin-ink2, #837a66)", fontSize: "12px", fontWeight: "600",
                     }}>
                       No entries
                     </span>
                   )}
                 </div>
 
-                <div style={{ color: "#b8905a", fontSize: "18px", flexShrink: 0 }}>›</div>
+                <div style={{ color: "var(--admin-gold, #b8905a)", fontSize: "18px", flexShrink: 0 }}>›</div>
               </div>
             );
           })}

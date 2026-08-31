@@ -9,11 +9,11 @@ import { computeNextBatchDue } from "@/lib/manufacturingTriggers";
 
 const supabase = getSupabaseClient();
 
-const card = { background: "white", borderRadius: "14px", border: "1px solid #e5e7eb", padding: "18px 20px", marginBottom: "14px", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" };
-const label = { display: "block", fontSize: "11px", fontWeight: "700", color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "6px" };
-const input = { width: "100%", padding: "9px 11px", borderRadius: "8px", border: "1px solid #e5e7eb", fontSize: "13px", outline: "none", boxSizing: "border-box" };
-const btnPrimary = { padding: "9px 18px", borderRadius: "8px", border: "none", background: "#111827", color: "white", fontWeight: "700", fontSize: "12px", cursor: "pointer" };
-const btnGold = { padding: "9px 18px", borderRadius: "8px", border: "none", background: "#b8905a", color: "white", fontWeight: "700", fontSize: "12px", cursor: "pointer" };
+const card = { background: "var(--admin-card, #fff)", borderRadius: "13px", border: "1px solid var(--admin-line, #e9e1d0)", padding: "18px 20px", marginBottom: "14px", boxShadow: "0 1px 2px rgba(27,42,74,0.04)" };
+const label = { display: "block", fontSize: "10.5px", fontWeight: "700", color: "var(--admin-ink2, #837a66)", textTransform: "uppercase", letterSpacing: "0.7px", marginBottom: "6px" };
+const input = { width: "100%", padding: "9px 11px", borderRadius: "8px", border: "1px solid var(--admin-line, #e9e1d0)", fontSize: "13px", outline: "none", boxSizing: "border-box", background: "var(--admin-card, #fff)", color: "var(--admin-ink, #1b2a4a)", fontFamily: "var(--admin-font-body)" };
+const btnPrimary = { padding: "9px 18px", borderRadius: "8px", border: "none", background: "var(--admin-ink, #1b2a4a)", color: "white", fontWeight: "700", fontSize: "12px", cursor: "pointer", fontFamily: "var(--admin-font-body)" };
+const btnGold = { padding: "9px 18px", borderRadius: "8px", border: "none", background: "var(--admin-gold-strong, #a9762e)", color: "white", fontWeight: "700", fontSize: "12px", cursor: "pointer", fontFamily: "var(--admin-font-body)" };
 const pill = (bg, color) => ({ display: "inline-block", padding: "4px 10px", borderRadius: "99px", background: bg, color, fontSize: "11px", fontWeight: "700" });
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
@@ -49,9 +49,9 @@ function BatchRow({ batch, onSaved }) {
   };
 
   return (
-    <div style={{ padding: "14px", borderRadius: "10px", border: "1px solid #e5e7eb", background: "#fafafa", marginBottom: "10px" }}>
+    <div style={{ padding: "14px", borderRadius: "10px", border: "1px solid var(--admin-line, #e9e1d0)", background: "#fafafa", marginBottom: "10px" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", marginBottom: "10px", flexWrap: "wrap" }}>
-        <h4 style={{ margin: 0, fontSize: "13px", color: "#b8905a", fontWeight: "800", letterSpacing: "0.4px" }}>
+        <h4 style={{ margin: 0, fontSize: "13px", color: "var(--admin-gold, #b8905a)", fontWeight: "800", letterSpacing: "0.4px" }}>
           {local.slot_label
             ? `PACKAGE ${local.num} — ${local.slot_label.toUpperCase()}`
             : local.upper_aligners || local.lower_aligners
@@ -199,11 +199,11 @@ function PatientCard({ appt, actor, onRefresh }) {
         <div>
           <button
             onClick={() => router.push(`/patients/${appt.id}`)}
-            style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: "15px", fontWeight: "800", color: "#111827", textAlign: "left" }}
+            style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: "15px", fontWeight: "800", color: "var(--admin-ink, #1b2a4a)", textAlign: "left" }}
           >
             {appt.name || "Unnamed Patient"}
           </button>
-          <p style={{ margin: "2px 0 0", fontSize: "12px", color: "#6b7280" }}>
+          <p style={{ margin: "2px 0 0", fontSize: "12px", color: "var(--admin-ink2, #837a66)" }}>
             {appt.phone || "No phone"} · {isNewModel ? "New model" : "Legacy"} · {appt.id?.substring(0, 8).toUpperCase()}
           </p>
         </div>
@@ -222,7 +222,7 @@ function PatientCard({ appt, actor, onRefresh }) {
       )}
 
       {needsFirstBatch && (
-        <div style={{ padding: "14px", borderRadius: "10px", border: "1px dashed #b8905a", background: "#fffbeb", marginBottom: "12px" }}>
+        <div style={{ padding: "14px", borderRadius: "10px", border: "1px dashed var(--admin-gold, #b8905a)", background: "#fffbeb", marginBottom: "12px" }}>
           <p style={{ margin: "0 0 10px", fontSize: "13px", color: "#92400e", fontWeight: "600" }}>
             Plan approved — nothing sent to manufacturing yet. Enter the first set's aligner range to start it.
           </p>
@@ -256,13 +256,13 @@ function PatientCard({ appt, actor, onRefresh }) {
           {!editingTrigger ? (
             <button
               onClick={() => setEditingTrigger(true)}
-              style={{ padding: "6px 12px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "white", color: "#6b7280", fontWeight: "700", fontSize: "11px", cursor: "pointer" }}
+              style={{ padding: "6px 12px", borderRadius: "8px", border: "1px solid var(--admin-line, #e9e1d0)", background: "white", color: "var(--admin-ink2, #837a66)", fontWeight: "700", fontSize: "11px", cursor: "pointer" }}
             >
               ⚙ Auto-Trigger{appt.journey_steps?.manufacturing_sets_per_installment ? `: ${appt.journey_steps.manufacturing_sets_per_installment} sets/installment` : ": Off"}
             </button>
           ) : (
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "10px", borderRadius: "8px", background: "#f8f7f5" }}>
-              <span style={{ fontSize: "12px", color: "#374151", fontWeight: "600", flexShrink: 0 }}>Sets released per installment paid:</span>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "10px", borderRadius: "8px", background: "var(--admin-bg, #faf6ec)" }}>
+              <span style={{ fontSize: "12px", color: "var(--admin-ink, #1b2a4a)", fontWeight: "600", flexShrink: 0 }}>Sets released per installment paid:</span>
               <input
                 type="number" min="0" placeholder="e.g. 2"
                 value={setsPerInstallmentInput}
@@ -272,7 +272,7 @@ function PatientCard({ appt, actor, onRefresh }) {
               <button style={savingTrigger ? { ...btnPrimary, opacity: 0.6 } : btnPrimary} onClick={saveTrigger} disabled={savingTrigger}>
                 {savingTrigger ? "Saving..." : "Save"}
               </button>
-              <button onClick={() => setEditingTrigger(false)} style={{ padding: "9px 14px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "white", color: "#6b7280", fontWeight: "700", fontSize: "12px", cursor: "pointer" }}>
+              <button onClick={() => setEditingTrigger(false)} style={{ padding: "9px 14px", borderRadius: "8px", border: "1px solid var(--admin-line, #e9e1d0)", background: "white", color: "var(--admin-ink2, #837a66)", fontWeight: "700", fontSize: "12px", cursor: "pointer" }}>
                 Cancel
               </button>
             </div>
@@ -338,14 +338,14 @@ export default function ManufacturingPage() {
   const sorted = [...filtered].sort((x, y) => statusRank(x) - statusRank(y));
 
   if (loading) {
-    return <div style={{ padding: "40px", textAlign: "center", color: "#6b7280" }}>Loading manufacturing queue...</div>;
+    return <div style={{ padding: "40px", textAlign: "center", color: "var(--admin-ink2, #837a66)" }}>Loading manufacturing queue...</div>;
   }
 
   return (
     <div style={{ maxWidth: "820px" }}>
       <div style={{ marginBottom: "20px" }}>
-        <h1 style={{ fontSize: "26px", fontWeight: "800", color: "#111827", margin: "0 0 6px" }}>Manufacturing</h1>
-        <p style={{ margin: 0, fontSize: "13px", color: "#6b7280" }}>
+        <h1 style={{ fontSize: "25px", fontWeight: "700", letterSpacing: "-0.01em", color: "var(--admin-ink, #1b2a4a)", margin: "0 0 6px", fontFamily: "var(--admin-font-display)" }}>Manufacturing</h1>
+        <p style={{ margin: 0, fontSize: "13px", color: "var(--admin-ink2, #837a66)" }}>
           Every patient's aligner packages — what's been manufactured and what's still due. A package appears here the moment a patient pays for it (new-model), their plan is approved (legacy), or — for a legacy patient with "Auto-Trigger" configured — the moment an installment is paid or their current set is about to run out.
         </p>
       </div>
@@ -359,7 +359,7 @@ export default function ManufacturingPage() {
       />
 
       {sorted.length === 0 ? (
-        <p style={{ fontSize: "14px", color: "#9ca3af" }}>No patients currently need manufacturing attention.</p>
+        <p style={{ fontSize: "14px", color: "var(--admin-ink2, #837a66)" }}>No patients currently need manufacturing attention.</p>
       ) : (
         sorted.map((appt) => <PatientCard key={appt.id} appt={appt} actor={actor} onRefresh={onRefresh} />)
       )}

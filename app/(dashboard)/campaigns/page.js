@@ -99,34 +99,34 @@ export default function CampaignsPage() {
   };
 
   const input = {
-    width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #e5e7eb",
-    fontSize: "14px", outline: "none", background: "white", color: "#111827", boxSizing: "border-box",
+    width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid var(--admin-line, #e9e1d0)",
+    fontSize: "14px", outline: "none", background: "white", color: "var(--admin-ink, #1b2a4a)", boxSizing: "border-box",
   };
-  const label = { display: "block", fontSize: "11px", fontWeight: "700", color: "#6b7280", marginBottom: "6px", letterSpacing: "0.5px", textTransform: "uppercase" };
-  const fieldLabel = { display: "block", fontSize: "11px", fontWeight: "700", color: "#9ca3af", marginBottom: "2px", letterSpacing: "0.5px", textTransform: "uppercase" };
+  const label = { display: "block", fontSize: "11px", fontWeight: "700", color: "var(--admin-ink2, #837a66)", marginBottom: "6px", letterSpacing: "0.5px", textTransform: "uppercase" };
+  const fieldLabel = { display: "block", fontSize: "11px", fontWeight: "700", color: "var(--admin-ink2, #837a66)", marginBottom: "2px", letterSpacing: "0.5px", textTransform: "uppercase" };
 
-  if (loading) return <div style={{ padding: "40px", textAlign: "center", color: "#6b7280" }}>Loading campaigns...</div>;
+  if (loading) return <div style={{ padding: "40px", textAlign: "center", color: "var(--admin-ink2, #837a66)" }}>Loading campaigns...</div>;
 
   return (
     <div style={{ padding: "24px", maxWidth: "900px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "12px", marginBottom: "20px" }}>
         <div>
-          <h1 style={{ fontSize: "28px", fontWeight: "700", color: "#111827", margin: 0 }}>Campaigns</h1>
-          <p style={{ fontSize: "14px", color: "#6b7280", margin: "4px 0 0" }}>
+          <h1 style={{ fontSize: "28px", fontWeight: "700", color: "var(--admin-ink, #1b2a4a)", margin: 0 }}>Campaigns</h1>
+          <p style={{ fontSize: "14px", color: "var(--admin-ink2, #837a66)", margin: "4px 0 0" }}>
             {campaigns.length} {campaigns.length === 1 ? "campaign" : "campaigns"} · tag leads with the ad campaign they came from.
           </p>
         </div>
         <button
           onClick={addCampaign}
           disabled={adding}
-          style={{ padding: "12px 22px", borderRadius: "10px", border: "none", background: "#b8905a", color: "white", fontWeight: "700", fontSize: "14px", cursor: adding ? "not-allowed" : "pointer", opacity: adding ? 0.6 : 1, whiteSpace: "nowrap" }}
+          style={{ padding: "12px 22px", borderRadius: "10px", border: "none", background: "var(--admin-gold, #b8905a)", color: "white", fontWeight: "700", fontSize: "14px", cursor: adding ? "not-allowed" : "pointer", opacity: adding ? 0.6 : 1, whiteSpace: "nowrap" }}
         >
           {adding ? "Adding..." : `+ Add Campaign ${campaigns.length + 1}`}
         </button>
       </div>
 
       {campaigns.length === 0 ? (
-        <div style={{ padding: "40px 24px", background: "white", borderRadius: "12px", border: "1px solid #e5e7eb", textAlign: "center", color: "#9ca3af" }}>
+        <div style={{ padding: "40px 24px", background: "white", borderRadius: "12px", border: "1px solid var(--admin-line, #e9e1d0)", textAlign: "center", color: "var(--admin-ink2, #837a66)" }}>
           No campaigns yet. Click "+ Add Campaign 1" above to create your first one.
         </div>
       ) : (
@@ -135,14 +135,14 @@ export default function CampaignsPage() {
             const d = drafts[campaign.id] || { price: "", discount: "", benefits: "", notes: "" };
             const isEditing = !!editing[campaign.id];
             return (
-              <div key={campaign.id} style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: "16px", padding: "18px 20px", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
+              <div key={campaign.id} style={{ background: "white", border: "1px solid var(--admin-line, #e9e1d0)", borderRadius: "16px", padding: "18px 20px", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
-                  <span style={{ fontSize: "16px", fontWeight: "800", color: "#111827" }}>Campaign {campaign.campaign_number}</span>
+                  <span style={{ fontSize: "16px", fontWeight: "800", color: "var(--admin-ink, #1b2a4a)" }}>Campaign {campaign.campaign_number}</span>
                   <div style={{ display: "flex", gap: "8px" }}>
                     {!isEditing && (
                       <button
                         onClick={() => startEdit(campaign)}
-                        style={{ padding: "6px 14px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "white", color: "#111827", fontWeight: "700", fontSize: "12px", cursor: "pointer" }}
+                        style={{ padding: "6px 14px", borderRadius: "8px", border: "1px solid var(--admin-line, #e9e1d0)", background: "white", color: "var(--admin-ink, #1b2a4a)", fontWeight: "700", fontSize: "12px", cursor: "pointer" }}
                       >
                         Edit
                       </button>
@@ -183,7 +183,7 @@ export default function CampaignsPage() {
                       {!(campaign.price === null && !campaign.discount && !campaign.benefits && !campaign.notes) && (
                         <button
                           onClick={() => setEditing((prev) => ({ ...prev, [campaign.id]: false }))}
-                          style={{ padding: "9px 18px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "white", color: "#111827", fontWeight: "700", fontSize: "13px", cursor: "pointer" }}
+                          style={{ padding: "9px 18px", borderRadius: "8px", border: "1px solid var(--admin-line, #e9e1d0)", background: "white", color: "var(--admin-ink, #1b2a4a)", fontWeight: "700", fontSize: "13px", cursor: "pointer" }}
                         >
                           Cancel
                         </button>
@@ -191,7 +191,7 @@ export default function CampaignsPage() {
                       <button
                         onClick={() => saveCampaign(campaign)}
                         disabled={saving === campaign.id}
-                        style={{ padding: "9px 20px", borderRadius: "8px", border: "none", background: "#111827", color: "white", fontWeight: "700", fontSize: "13px", cursor: saving === campaign.id ? "not-allowed" : "pointer", opacity: saving === campaign.id ? 0.6 : 1 }}
+                        style={{ padding: "9px 20px", borderRadius: "8px", border: "none", background: "var(--admin-ink, #1b2a4a)", color: "white", fontWeight: "700", fontSize: "13px", cursor: saving === campaign.id ? "not-allowed" : "pointer", opacity: saving === campaign.id ? 0.6 : 1 }}
                       >
                         {saving === campaign.id ? "Saving..." : "Save"}
                       </button>
@@ -202,20 +202,20 @@ export default function CampaignsPage() {
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
                       <div>
                         <span style={fieldLabel}>Price</span>
-                        <p style={{ margin: 0, fontSize: "15px", fontWeight: "700", color: "#111827" }}>{campaign.price !== null ? inr(campaign.price) : "—"}</p>
+                        <p style={{ margin: 0, fontSize: "15px", fontWeight: "700", color: "var(--admin-ink, #1b2a4a)" }}>{campaign.price !== null ? inr(campaign.price) : "—"}</p>
                       </div>
                       <div>
                         <span style={fieldLabel}>Discount</span>
-                        <p style={{ margin: 0, fontSize: "15px", fontWeight: "700", color: "#111827" }}>{campaign.discount || "—"}</p>
+                        <p style={{ margin: 0, fontSize: "15px", fontWeight: "700", color: "var(--admin-ink, #1b2a4a)" }}>{campaign.discount || "—"}</p>
                       </div>
                     </div>
                     <div>
                       <span style={fieldLabel}>Benefits</span>
-                      <p style={{ margin: 0, fontSize: "14px", color: "#374151", whiteSpace: "pre-wrap" }}>{campaign.benefits || "—"}</p>
+                      <p style={{ margin: 0, fontSize: "14px", color: "var(--admin-ink, #1b2a4a)", whiteSpace: "pre-wrap" }}>{campaign.benefits || "—"}</p>
                     </div>
                     <div>
                       <span style={fieldLabel}>Notes</span>
-                      <p style={{ margin: 0, fontSize: "14px", color: "#374151", whiteSpace: "pre-wrap" }}>{campaign.notes || "—"}</p>
+                      <p style={{ margin: 0, fontSize: "14px", color: "var(--admin-ink, #1b2a4a)", whiteSpace: "pre-wrap" }}>{campaign.notes || "—"}</p>
                     </div>
                   </div>
                 )}

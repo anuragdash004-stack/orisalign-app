@@ -75,7 +75,7 @@ export default function AdminDashboard() {
 
   return (
     <div>
-      <h1 style={{ marginBottom: "20px", color: "#111827" }}>Dashboard</h1>
+      <h1 style={{ marginBottom: "20px", color: "var(--admin-ink, #1b2a4a)" }}>Dashboard</h1>
 
       <div style={{ display: "flex", gap: "20px", flexWrap: "wrap" }}>
         <StatCard color="#38bdf8" label="Total" value={stats.total} />

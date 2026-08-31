@@ -166,15 +166,15 @@ export default function AppointmentPage() {
 
   return (
     <div>
-      <h1 style={{ color: "#111827" }}>Appointments</h1>
+      <h1 style={{ color: "var(--admin-ink, #1b2a4a)" }}>Appointments</h1>
 
       {/* FILTER TABS */}
       <div style={{ display: "flex", gap: "8px", marginBottom: "20px", flexWrap: "wrap" }}>
         {["all", "pending", "assigned", "confirmed"].map((f) => (
           <button key={f} onClick={() => setFilter(f)} style={{
-            padding: "6px 14px", borderRadius: "99px", border: "1px solid #e5e7eb",
-            background: filter === f ? "#111827" : "white",
-            color: filter === f ? "white" : "#374151",
+            padding: "6px 14px", borderRadius: "99px", border: "1px solid var(--admin-line, #e9e1d0)",
+            background: filter === f ? "var(--admin-ink, #1b2a4a)" : "white",
+            color: filter === f ? "white" : "var(--admin-ink, #1b2a4a)",
             cursor: "pointer", fontSize: "13px", fontWeight: "500",
           }}>
             {f.charAt(0).toUpperCase() + f.slice(1)}
@@ -189,8 +189,8 @@ export default function AppointmentPage() {
             return (
             <div key={appointment.id} style={{
               background: appointment.status === "cancelled" ? "#fef2f2" : "white",
-              border: `1px solid ${appointment.status === "cancelled" ? "#fecaca" : "#e5e7eb"}`,
-              borderRadius: "16px", padding: "16px 20px", color: "#111827",
+              border: `1px solid ${appointment.status === "cancelled" ? "#fecaca" : "var(--admin-line, #e9e1d0)"}`,
+              borderRadius: "16px", padding: "16px 20px", color: "var(--admin-ink, #1b2a4a)",
               boxShadow: "0 10px 30px rgba(0,0,0,0.05)",
             }}>
               {/* Collapsible header — name + appointment date/time only */}
@@ -199,8 +199,8 @@ export default function AppointmentPage() {
                 style={{ cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px" }}
               >
                 <div style={{ minWidth: 0 }}>
-                  <strong style={{ fontSize: "17px", color: "#111827" }}>{appointment.name || "Unnamed patient"}</strong>
-                  <p style={{ margin: "4px 0 0", fontSize: "13px", color: "#6b7280" }}>
+                  <strong style={{ fontSize: "17px", color: "var(--admin-ink, #1b2a4a)" }}>{appointment.name || "Unnamed patient"}</strong>
+                  <p style={{ margin: "4px 0 0", fontSize: "13px", color: "var(--admin-ink2, #837a66)" }}>
                     📅 {[appointment.date, appointment.time].filter(Boolean).join(" at ") || "No date/time set"}
                   </p>
                 </div>
@@ -212,12 +212,12 @@ export default function AppointmentPage() {
                   }}>
                     {(appointment.status || "pending").toUpperCase()}
                   </span>
-                  <span style={{ color: "#9ca3af", fontSize: "13px" }}>{isOpen ? "▲" : "▼"}</span>
+                  <span style={{ color: "var(--admin-ink2, #837a66)", fontSize: "13px" }}>{isOpen ? "▲" : "▼"}</span>
                 </div>
               </div>
 
               {!isOpen ? null : (
-              <div style={{ marginTop: "16px", borderTop: "1px solid #f3f4f6", paddingTop: "16px" }}>
+              <div style={{ marginTop: "16px", borderTop: "1px solid var(--admin-gold-wash, #f3f0e6)", paddingTop: "16px" }}>
               {editingId === appointment.id ? (
                 <div style={{ display: "grid", gap: "8px", marginBottom: "12px" }}>
                   {[
@@ -225,13 +225,13 @@ export default function AppointmentPage() {
                     ["Age", "age", "number"], ["Gender", "sex", "text"], ["Date", "date", "date"], ["Time", "time", "text"],
                   ].map(([label, key, type]) => (
                     <div key={key} style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
-                      <label style={{ fontSize: "11px", fontWeight: "700", color: "#6b7280", textTransform: "uppercase" }}>{label}</label>
+                      <label style={{ fontSize: "11px", fontWeight: "700", color: "var(--admin-ink2, #837a66)", textTransform: "uppercase" }}>{label}</label>
                       <input type={type} value={formData[key] || ""} onChange={(e) => setFormData({ ...formData, [key]: e.target.value })}
                         style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #d1d5db", fontSize: "14px", color: "#111", background: "white", width: "100%", boxSizing: "border-box" }} />
                     </div>
                   ))}
                   <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
-                    <label style={{ fontSize: "11px", fontWeight: "700", color: "#6b7280", textTransform: "uppercase" }}>Clinic</label>
+                    <label style={{ fontSize: "11px", fontWeight: "700", color: "var(--admin-ink2, #837a66)", textTransform: "uppercase" }}>Clinic</label>
                     <select value={formData.clinic_location || ""} onChange={(e) => setFormData({ ...formData, clinic_location: e.target.value })}
                       style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #d1d5db", fontSize: "14px", color: "#111", background: "white", width: "100%", boxSizing: "border-box" }}>
                       <option value="">— Select clinic —</option>
@@ -240,19 +240,19 @@ export default function AppointmentPage() {
                     </select>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
-                    <label style={{ fontSize: "11px", fontWeight: "700", color: "#6b7280", textTransform: "uppercase" }}>Chief Complaint / Problem</label>
+                    <label style={{ fontSize: "11px", fontWeight: "700", color: "var(--admin-ink2, #837a66)", textTransform: "uppercase" }}>Chief Complaint / Problem</label>
                     <textarea value={formData.problem || ""} onChange={(e) => setFormData({ ...formData, problem: e.target.value })}
                       style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #d1d5db", fontSize: "14px", color: "#111", background: "white", width: "100%", boxSizing: "border-box", minHeight: "70px", resize: "vertical" }} />
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
-                    <label style={{ fontSize: "11px", fontWeight: "700", color: "#6b7280", textTransform: "uppercase" }}>Address / Location</label>
+                    <label style={{ fontSize: "11px", fontWeight: "700", color: "var(--admin-ink2, #837a66)", textTransform: "uppercase" }}>Address / Location</label>
                     <textarea value={formData.address || ""} onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                       style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #d1d5db", fontSize: "14px", color: "#111", background: "white", width: "100%", boxSizing: "border-box", minHeight: "60px", resize: "vertical" }} />
                   </div>
                   <button onClick={handleSave} style={{ padding: "10px", borderRadius: "8px", background: "#16a34a", color: "white", fontWeight: "700", border: "none", cursor: "pointer", fontSize: "14px" }}>
                     Save Changes
                   </button>
-                  <button onClick={() => setEditingId(null)} style={{ padding: "8px", borderRadius: "8px", background: "#f3f4f6", color: "#374151", fontWeight: "600", border: "none", cursor: "pointer", fontSize: "13px" }}>
+                  <button onClick={() => setEditingId(null)} style={{ padding: "8px", borderRadius: "8px", background: "var(--admin-gold-wash, #f3f0e6)", color: "var(--admin-ink, #1b2a4a)", fontWeight: "600", border: "none", cursor: "pointer", fontSize: "13px" }}>
                     Cancel
                   </button>
                 </div>
@@ -261,39 +261,39 @@ export default function AppointmentPage() {
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
                     {userRole !== "orthodontist" && (
                       <>
-                        <div style={{ background: "#f8f7f5", borderRadius: "8px", padding: "8px 12px" }}>
-                          <p style={{ margin: 0, fontSize: "10px", color: "#9ca3af", fontWeight: "700", textTransform: "uppercase" }}>Phone</p>
+                        <div style={{ background: "var(--admin-bg, #faf6ec)", borderRadius: "8px", padding: "8px 12px" }}>
+                          <p style={{ margin: 0, fontSize: "10px", color: "var(--admin-ink2, #837a66)", fontWeight: "700", textTransform: "uppercase" }}>Phone</p>
                           <a href={`tel:${appointment.phone}`} style={{ fontSize: "14px", fontWeight: "600", color: "#1B2A4A", textDecoration: "none" }}>{appointment.phone || "N/A"}</a>
                         </div>
-                        <div style={{ background: "#f8f7f5", borderRadius: "8px", padding: "8px 12px" }}>
-                          <p style={{ margin: 0, fontSize: "10px", color: "#9ca3af", fontWeight: "700", textTransform: "uppercase" }}>Email</p>
+                        <div style={{ background: "var(--admin-bg, #faf6ec)", borderRadius: "8px", padding: "8px 12px" }}>
+                          <p style={{ margin: 0, fontSize: "10px", color: "var(--admin-ink2, #837a66)", fontWeight: "700", textTransform: "uppercase" }}>Email</p>
                           <p style={{ margin: 0, fontSize: "13px", fontWeight: "600", color: "#1B2A4A", wordBreak: "break-all" }}>{appointment.email || "N/A"}</p>
                         </div>
                       </>
                     )}
-                    <div style={{ background: "#f8f7f5", borderRadius: "8px", padding: "8px 12px" }}>
-                      <p style={{ margin: 0, fontSize: "10px", color: "#9ca3af", fontWeight: "700", textTransform: "uppercase" }}>Age / Gender</p>
+                    <div style={{ background: "var(--admin-bg, #faf6ec)", borderRadius: "8px", padding: "8px 12px" }}>
+                      <p style={{ margin: 0, fontSize: "10px", color: "var(--admin-ink2, #837a66)", fontWeight: "700", textTransform: "uppercase" }}>Age / Gender</p>
                       <p style={{ margin: 0, fontSize: "14px", fontWeight: "600", color: "#111" }}>{appointment.age || "N/A"} / {appointment.sex || "N/A"}</p>
                     </div>
-                    <div style={{ background: "#f8f7f5", borderRadius: "8px", padding: "8px 12px" }}>
-                      <p style={{ margin: 0, fontSize: "10px", color: "#9ca3af", fontWeight: "700", textTransform: "uppercase" }}>Date & Time</p>
+                    <div style={{ background: "var(--admin-bg, #faf6ec)", borderRadius: "8px", padding: "8px 12px" }}>
+                      <p style={{ margin: 0, fontSize: "10px", color: "var(--admin-ink2, #837a66)", fontWeight: "700", textTransform: "uppercase" }}>Date & Time</p>
                       <p style={{ margin: 0, fontSize: "14px", fontWeight: "600", color: "#111" }}>{[appointment.date, appointment.time].filter(Boolean).join(" at ") || "N/A"}</p>
                     </div>
-                    <div style={{ background: "#f8f7f5", borderRadius: "8px", padding: "8px 12px" }}>
-                      <p style={{ margin: 0, fontSize: "10px", color: "#9ca3af", fontWeight: "700", textTransform: "uppercase" }}>Clinic</p>
+                    <div style={{ background: "var(--admin-bg, #faf6ec)", borderRadius: "8px", padding: "8px 12px" }}>
+                      <p style={{ margin: 0, fontSize: "10px", color: "var(--admin-ink2, #837a66)", fontWeight: "700", textTransform: "uppercase" }}>Clinic</p>
                       <p style={{ margin: 0, fontSize: "14px", fontWeight: "600", color: "#111" }}>{appointment.clinic_location ? `${appointment.clinic_location} Clinic` : "N/A"}</p>
                     </div>
                   </div>
                   {appointment.problem && (
                     <div style={{ marginTop: "8px", background: "#fffbeb", borderRadius: "8px", padding: "10px 12px", border: "1px solid #fde68a" }}>
                       <p style={{ margin: 0, fontSize: "10px", color: "#92400e", fontWeight: "700", textTransform: "uppercase", marginBottom: "4px" }}>Chief Complaint</p>
-                      <p style={{ margin: 0, fontSize: "13px", color: "#374151" }}>{appointment.problem}</p>
+                      <p style={{ margin: 0, fontSize: "13px", color: "var(--admin-ink, #1b2a4a)" }}>{appointment.problem}</p>
                     </div>
                   )}
                   {appointment.address && (
-                    <div style={{ marginTop: "8px", background: "#f8f7f5", borderRadius: "8px", padding: "10px 12px" }}>
-                      <p style={{ margin: 0, fontSize: "10px", color: "#9ca3af", fontWeight: "700", textTransform: "uppercase", marginBottom: "4px" }}>Address / Location</p>
-                      <p style={{ margin: 0, fontSize: "13px", color: "#374151" }}>
+                    <div style={{ marginTop: "8px", background: "var(--admin-bg, #faf6ec)", borderRadius: "8px", padding: "10px 12px" }}>
+                      <p style={{ margin: 0, fontSize: "10px", color: "var(--admin-ink2, #837a66)", fontWeight: "700", textTransform: "uppercase", marginBottom: "4px" }}>Address / Location</p>
+                      <p style={{ margin: 0, fontSize: "13px", color: "var(--admin-ink, #1b2a4a)" }}>
                         {appointment.address.split(" | ").map((part, i) => {
                           if (part.startsWith("Maps: http")) {
                             const url = part.replace("Maps: ", "");
@@ -308,7 +308,7 @@ export default function AppointmentPage() {
               )}
 
               {/* Assignment info */}
-              <div style={{ marginTop: "10px", background: "#f8f7f5", borderRadius: "8px", padding: "10px 12px", fontSize: "12px", color: "#6b7280" }}>
+              <div style={{ marginTop: "10px", background: "var(--admin-bg, #faf6ec)", borderRadius: "8px", padding: "10px 12px", fontSize: "12px", color: "var(--admin-ink2, #837a66)" }}>
                 <div>Assigned at: {appointment.assigned_at ? new Date(appointment.assigned_at).toLocaleString() : "N/A"}</div>
                 <div>Dentist: {dentistMap[appointment.assigned_dentist] || "N/A"}</div>
               </div>

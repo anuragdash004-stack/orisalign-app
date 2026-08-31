@@ -124,7 +124,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
           style={{
             position: "fixed", top: "14px", left: "14px",
             zIndex: 101, width: "40px", height: "40px",
-            background: "var(--admin-card, white)", border: "1px solid var(--admin-line, #e5e7eb)",
+            background: "var(--admin-card, white)", border: "1px solid var(--admin-line, var(--admin-line, #e9e1d0))",
             borderRadius: "9px", cursor: "pointer",
             display: "flex", flexDirection: "column",
             justifyContent: "center", alignItems: "center", gap: "4px",
@@ -141,7 +141,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
         height: "100vh",
         padding: "16px 12px",
         transition: "width 0.25s ease, transform 0.25s ease",
-        borderRight: "1px solid var(--admin-line, #e5e7eb)",
+        borderRight: "1px solid var(--admin-line, var(--admin-line, #e9e1d0))",
         backgroundColor: "var(--admin-rail, #f8f6f2)",
         fontFamily: "var(--admin-font-body)",
         display: "flex",
@@ -178,7 +178,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
               aria-label="Toggle sidebar"
               style={{
                 width: "34px", height: "34px",
-                border: "1px solid var(--admin-line, #e5e7eb)",
+                border: "1px solid var(--admin-line, var(--admin-line, #e9e1d0))",
                 borderRadius: "8px",
                 background: "var(--admin-card, white)",
                 cursor: "pointer",
@@ -201,7 +201,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
               borderRadius: "9px",
               marginBottom: "18px",
               fontSize: "11px",
-              color: "var(--admin-ink2, #6b7280)",
+              color: "var(--admin-ink2, var(--admin-ink2, #837a66))",
               wordBreak: "break-all",
               lineHeight: "1.4",
             }}>

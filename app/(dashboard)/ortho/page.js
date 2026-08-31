@@ -78,10 +78,10 @@ export default function OrthoPage() {
                   key={appt.id}
                   style={{
                     background: "white",
-                    border: "1px solid #e5e7eb",
+                    border: "1px solid var(--admin-line, #e9e1d0)",
                     borderRadius: "16px",
                     padding: "20px",
-                    color: "#111827",
+                    color: "var(--admin-ink, #1b2a4a)",
                     boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
                   }}
                 >
@@ -101,8 +101,8 @@ export default function OrthoPage() {
                     <span style={{
                       fontSize: "12px", fontWeight: "600", padding: "4px 10px",
                       borderRadius: "99px",
-                      background: isCompleted ? "#f3f4f6" : "#fef9c3",
-                      color: isCompleted ? "#6b7280" : "#854d0e",
+                      background: isCompleted ? "var(--admin-gold-wash, #f3f0e6)" : "#fef9c3",
+                      color: isCompleted ? "var(--admin-ink2, #837a66)" : "#854d0e",
                     }}>
                       {appt.status?.toUpperCase() || "ASSIGNED"}
                     </span>
@@ -113,7 +113,7 @@ export default function OrthoPage() {
                     style={{
                       marginTop: "14px", padding: "10px 24px",
                       borderRadius: "8px", border: "none",
-                      background: dentistStarted ? "#22c55e" : "#9ca3af",
+                      background: dentistStarted ? "#22c55e" : "var(--admin-ink2, #837a66)",
                       color: "white", cursor: "pointer",
                       fontSize: "14px", fontWeight: "600",
                       transition: "background 0.2s",

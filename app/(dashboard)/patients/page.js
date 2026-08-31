@@ -10,7 +10,7 @@ const STATUS_STYLE = {
   pending:   { bg: "#fef9c3", color: "#854d0e" },
   assigned:  { bg: "#dbeafe", color: "#1e40af" },
   confirmed: { bg: "#dcfce7", color: "#16a34a" },
-  completed: { bg: "#f3f4f6", color: "#6b7280" },
+  completed: { bg: "var(--admin-gold-wash, #f3f0e6)", color: "var(--admin-ink2, #837a66)" },
   cancelled: { bg: "#fee2e2", color: "#dc2626" },
 };
 
@@ -68,10 +68,10 @@ export default function PatientsPage() {
         style={{
           width: "100%", maxWidth: "400px",
           padding: "10px 14px", borderRadius: "10px",
-          border: "1px solid #e5e7eb", fontSize: "14px",
+          border: "1px solid var(--admin-line, #e9e1d0)", fontSize: "14px",
           outline: "none", marginBottom: "20px",
           boxSizing: "border-box", background: "white",
-          color: "#111827",
+          color: "var(--admin-ink, #1b2a4a)",
         }}
       />
 
@@ -89,7 +89,7 @@ export default function PatientsPage() {
                 onClick={() => router.push(`/patients/${appt.id}`)}
                 style={{
                   background: "white",
-                  border: "1px solid #e5e7eb",
+                  border: "1px solid var(--admin-line, #e9e1d0)",
                   borderRadius: "16px",
                   padding: "18px 20px",
                   boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
@@ -100,13 +100,13 @@ export default function PatientsPage() {
                   cursor: "pointer",
                   transition: "box-shadow 0.15s, border-color 0.15s",
                 }}
-                onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.10)"; e.currentTarget.style.borderColor = "#b8905a"; }}
-                onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.04)"; e.currentTarget.style.borderColor = "#e5e7eb"; }}
+                onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.10)"; e.currentTarget.style.borderColor = "var(--admin-gold, #b8905a)"; }}
+                onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.04)"; e.currentTarget.style.borderColor = "var(--admin-line, #e9e1d0)"; }}
               >
                 {/* Avatar */}
                 <div style={{
                   width: "44px", height: "44px", borderRadius: "50%",
-                  background: "linear-gradient(135deg, #b8905a, #f59e0b)",
+                  background: "var(--admin-gold-strong, #a9762e)",
                   display: "flex", alignItems: "center", justifyContent: "center",
                   color: "white", fontWeight: "800", fontSize: "18px", flexShrink: 0,
                 }}>
@@ -116,7 +116,7 @@ export default function PatientsPage() {
                 {/* Info */}
                 <div style={{ flex: 1, minWidth: "160px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", marginBottom: "4px" }}>
-                    <strong style={{ fontSize: "15px", color: "#111827" }}>
+                    <strong style={{ fontSize: "15px", color: "var(--admin-ink, #1b2a4a)" }}>
                       {appt.name || "Unnamed"}
                     </strong>
                     <span style={{
@@ -126,15 +126,15 @@ export default function PatientsPage() {
                       {appt.status?.toUpperCase() || "PENDING"}
                     </span>
                   </div>
-                  <p style={{ margin: 0, fontSize: "13px", color: "#6b7280" }}>
+                  <p style={{ margin: 0, fontSize: "13px", color: "var(--admin-ink2, #837a66)" }}>
                     {appt.phone || "No phone"} {appt.email ? `• ${appt.email}` : ""}
                   </p>
-                  <p style={{ margin: "2px 0 0", fontSize: "12px", color: "#9ca3af" }}>
+                  <p style={{ margin: "2px 0 0", fontSize: "12px", color: "var(--admin-ink2, #837a66)" }}>
                     ID: {shortId} &nbsp;•&nbsp; {[appt.date, appt.time].filter(Boolean).join(" ") || "No date"}
                   </p>
                 </div>
 
-                <div style={{ color: "#b8905a", fontSize: "18px", flexShrink: 0 }}>›</div>
+                <div style={{ color: "var(--admin-gold, #b8905a)", fontSize: "18px", flexShrink: 0 }}>›</div>
               </div>
             );
           })}

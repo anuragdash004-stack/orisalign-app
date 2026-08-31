@@ -104,24 +104,24 @@ export default function MessageTemplatesPage() {
   };
 
   if (loading) {
-    return <div style={{ padding: "40px", textAlign: "center", color: "#6b7280" }}>Loading templates...</div>;
+    return <div style={{ padding: "40px", textAlign: "center", color: "var(--admin-ink2, #837a66)" }}>Loading templates...</div>;
   }
 
   const inputStyle = {
     width: "100%", padding: "11px 12px", borderRadius: "8px",
-    border: "1px solid #e5e7eb", fontSize: "14px", outline: "none",
-    boxSizing: "border-box", background: "white", color: "#111827",
+    border: "1px solid var(--admin-line, #e9e1d0)", fontSize: "14px", outline: "none",
+    boxSizing: "border-box", background: "white", color: "var(--admin-ink, #1b2a4a)",
   };
   const label = {
-    display: "block", fontSize: "11px", fontWeight: "800", color: "#6b7280",
+    display: "block", fontSize: "11px", fontWeight: "800", color: "var(--admin-ink2, #837a66)",
     textTransform: "uppercase", letterSpacing: "0.6px", marginBottom: "6px",
   };
 
   return (
     <div style={{ padding: "24px", maxWidth: "860px" }}>
       <div style={{ marginBottom: "20px" }}>
-        <h1 style={{ fontSize: "28px", fontWeight: "700", color: "#111827", margin: 0 }}>Message Templates</h1>
-        <p style={{ fontSize: "14px", color: "#6b7280", margin: "6px 0 0", lineHeight: 1.6 }}>
+        <h1 style={{ fontSize: "28px", fontWeight: "700", color: "var(--admin-ink, #1b2a4a)", margin: 0 }}>Message Templates</h1>
+        <p style={{ fontSize: "14px", color: "var(--admin-ink2, #837a66)", margin: "6px 0 0", lineHeight: 1.6 }}>
           These are the emails patients receive at each step of their journey. Edit and save a template, and
           every future message for that step will be sent using the new text.
         </p>
@@ -129,12 +129,12 @@ export default function MessageTemplatesPage() {
 
       <div style={{ display: "grid", gap: "16px" }}>
         {templates.map((tmpl, idx) => (
-          <div key={tmpl.step_key} style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: "16px", padding: "20px 22px", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
+          <div key={tmpl.step_key} style={{ background: "white", border: "1px solid var(--admin-line, #e9e1d0)", borderRadius: "16px", padding: "20px 22px", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
-              <span style={{ width: "26px", height: "26px", borderRadius: "50%", background: "#111827", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px", fontWeight: "800", flexShrink: 0 }}>
+              <span style={{ width: "26px", height: "26px", borderRadius: "50%", background: "var(--admin-ink, #1b2a4a)", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px", fontWeight: "800", flexShrink: 0 }}>
                 {idx + 1}
               </span>
-              <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "700", color: "#111827" }}>{tmpl.step_label || tmpl.step_key}</h3>
+              <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "700", color: "var(--admin-ink, #1b2a4a)" }}>{tmpl.step_label || tmpl.step_key}</h3>
             </div>
 
             <div style={{ marginBottom: "14px" }}>
@@ -160,7 +160,7 @@ export default function MessageTemplatesPage() {
               disabled={savingKey === tmpl.step_key}
               style={{
                 padding: "10px 22px", borderRadius: "10px", border: "none",
-                background: savedKey === tmpl.step_key ? "#16a34a" : "#111827",
+                background: savedKey === tmpl.step_key ? "#16a34a" : "var(--admin-ink, #1b2a4a)",
                 color: "white", fontWeight: "700", fontSize: "13px",
                 cursor: savingKey === tmpl.step_key ? "not-allowed" : "pointer",
                 opacity: savingKey === tmpl.step_key ? 0.6 : 1, letterSpacing: "0.5px",

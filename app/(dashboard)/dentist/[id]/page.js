@@ -13,5 +13,5 @@ export default function DentistCaseRedirect() {
     if (id) router.replace(`/dentist/${id}/appointment`);
   }, [id]);
 
-  return <p style={{ padding: "24px", color: "#6b7280" }}>Redirecting…</p>;
+  return <p style={{ padding: "24px", color: "var(--admin-ink2, #837a66)" }}>Redirecting…</p>;
 }

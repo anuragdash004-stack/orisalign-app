@@ -98,10 +98,10 @@ const EMPTY_FORM = {
 };
 
 const input = {
-  width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #e5e7eb",
-  fontSize: "14px", outline: "none", background: "white", color: "#111827", boxSizing: "border-box",
+  width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid var(--admin-line, #e9e1d0)",
+  fontSize: "14px", outline: "none", background: "var(--admin-card, #fff)", color: "var(--admin-ink, #1b2a4a)", boxSizing: "border-box", fontFamily: "var(--admin-font-body)",
 };
-const label = { display: "block", fontSize: "11px", fontWeight: "700", color: "#6b7280", marginBottom: "5px", letterSpacing: "0.4px", textTransform: "uppercase" };
+const label = { display: "block", fontSize: "11px", fontWeight: "700", color: "var(--admin-ink2, #837a66)", marginBottom: "5px", letterSpacing: "0.6px", textTransform: "uppercase" };
 
 export default function LeadTrackerPage() {
   const router = useRouter();
@@ -301,19 +301,19 @@ export default function LeadTrackerPage() {
 
   const patientFollowups = getPatientFollowups(patients, selectedDate);
 
-  if (loading) return <div style={{ padding: "40px", textAlign: "center", color: "#6b7280" }}>Loading lead tracker...</div>;
+  if (loading) return <div style={{ padding: "40px", textAlign: "center", color: "var(--admin-ink2, #837a66)" }}>Loading lead tracker...</div>;
 
   // ── Cold leads view (admin only) ──
   if (view === "cold" && isAdmin) {
     return (
       <div style={{ padding: "24px", maxWidth: "1100px" }}>
-        <button onClick={() => setView("tracker")} style={{ background: "none", border: "none", color: "#b8905a", fontSize: "13px", fontWeight: "700", cursor: "pointer", padding: 0, marginBottom: "12px", letterSpacing: "0.5px" }}>
+        <button onClick={() => setView("tracker")} style={{ background: "none", border: "none", color: "var(--admin-gold, #b8905a)", fontSize: "13px", fontWeight: "700", cursor: "pointer", padding: 0, marginBottom: "12px", letterSpacing: "0.5px" }}>
           ← Back to Tracker
         </button>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "12px", marginBottom: "18px" }}>
           <div>
-            <h1 style={{ fontSize: "28px", fontWeight: "700", color: "#111827", margin: 0 }}>Cold Leads</h1>
-            <p style={{ fontSize: "14px", color: "#6b7280", margin: "4px 0 0" }}>{coldLeads.length} cold {coldLeads.length === 1 ? "lead" : "leads"} · add a cold lead to the live tracker when you reconnect</p>
+            <h1 style={{ fontSize: "28px", fontWeight: "700", color: "var(--admin-ink, #1b2a4a)", margin: 0 }}>Cold Leads</h1>
+            <p style={{ fontSize: "14px", color: "var(--admin-ink2, #837a66)", margin: "4px 0 0" }}>{coldLeads.length} cold {coldLeads.length === 1 ? "lead" : "leads"} · add a cold lead to the live tracker when you reconnect</p>
           </div>
           <button
             onClick={() => setEditing({ mode: "cold", lead: null })}
@@ -323,7 +323,7 @@ export default function LeadTrackerPage() {
           </button>
         </div>
         {coldLeads.length === 0 ? (
-          <div style={{ padding: "40px 24px", background: "white", borderRadius: "12px", border: "1px solid #e5e7eb", textAlign: "center", color: "#9ca3af" }}>
+          <div style={{ padding: "40px 24px", background: "white", borderRadius: "12px", border: "1px solid var(--admin-line, #e9e1d0)", textAlign: "center", color: "var(--admin-ink2, #837a66)" }}>
             No cold leads yet.
           </div>
         ) : (
@@ -340,8 +340,8 @@ export default function LeadTrackerPage() {
     <div style={{ padding: "24px", maxWidth: "1100px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "12px", marginBottom: "16px" }}>
         <div>
-          <h1 style={{ fontSize: "28px", fontWeight: "700", color: "#111827", margin: 0 }}>Lead Tracker</h1>
-          <p style={{ fontSize: "14px", color: "#6b7280", margin: "4px 0 0" }}>{pipelineLeads.length} total leads in the pipeline</p>
+          <h1 style={{ fontSize: "28px", fontWeight: "700", color: "var(--admin-ink, #1b2a4a)", margin: 0 }}>Lead Tracker</h1>
+          <p style={{ fontSize: "14px", color: "var(--admin-ink2, #837a66)", margin: "4px 0 0" }}>{pipelineLeads.length} total leads in the pipeline</p>
         </div>
         <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
           {isAdmin && (
@@ -354,7 +354,7 @@ export default function LeadTrackerPage() {
           )}
           <button
             onClick={() => setEditing({ mode: "normal", lead: null })}
-            style={{ padding: "11px 20px", borderRadius: "10px", border: "none", background: "#b8905a", color: "white", fontWeight: "700", fontSize: "13px", cursor: "pointer", letterSpacing: "0.5px" }}
+            style={{ padding: "11px 20px", borderRadius: "10px", border: "none", background: "var(--admin-gold, #b8905a)", color: "white", fontWeight: "700", fontSize: "13px", cursor: "pointer", letterSpacing: "0.5px" }}
           >
             + Add Lead
           </button>
@@ -368,12 +368,12 @@ export default function LeadTrackerPage() {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="🔍 Search any patient or lead by name or phone number..."
-          style={{ width: "100%", padding: "13px 16px", borderRadius: "12px", border: "1px solid #e5e7eb", fontSize: "14px", outline: "none", background: "white", color: "#111827", boxSizing: "border-box", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}
+          style={{ width: "100%", padding: "13px 16px", borderRadius: "12px", border: "1px solid var(--admin-line, #e9e1d0)", fontSize: "14px", outline: "none", background: "white", color: "var(--admin-ink, #1b2a4a)", boxSizing: "border-box", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}
         />
         {searchQuery.trim() && (
-          <div style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, right: 0, zIndex: 40, background: "white", border: "1px solid #e5e7eb", borderRadius: "12px", boxShadow: "0 10px 30px rgba(0,0,0,0.12)", maxHeight: "420px", overflowY: "auto" }}>
+          <div style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, right: 0, zIndex: 40, background: "white", border: "1px solid var(--admin-line, #e9e1d0)", borderRadius: "12px", boxShadow: "0 10px 30px rgba(0,0,0,0.12)", maxHeight: "420px", overflowY: "auto" }}>
             {searchResults.length === 0 ? (
-              <div style={{ padding: "18px", textAlign: "center", color: "#9ca3af", fontSize: "13px" }}>No matches found.</div>
+              <div style={{ padding: "18px", textAlign: "center", color: "var(--admin-ink2, #837a66)", fontSize: "13px" }}>No matches found.</div>
             ) : (
               searchResults.map((r) => {
                 const converted = isConverted(r);
@@ -385,14 +385,14 @@ export default function LeadTrackerPage() {
                       if (converted) router.push(`/patients/${r.id}`);
                       else setEditing({ mode: "normal", lead: r });
                     }}
-                    style={{ display: "flex", alignItems: "center", gap: "12px", width: "100%", textAlign: "left", padding: "12px 16px", border: "none", borderBottom: "1px solid #f3f4f6", background: "white", cursor: "pointer" }}
+                    style={{ display: "flex", alignItems: "center", gap: "12px", width: "100%", textAlign: "left", padding: "12px 16px", border: "none", borderBottom: "1px solid var(--admin-gold-wash, #f3f0e6)", background: "white", cursor: "pointer" }}
                   >
-                    <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: converted ? "linear-gradient(135deg, #16a34a, #22c55e)" : "linear-gradient(135deg, #b8905a, #f59e0b)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: "800", fontSize: "14px", flexShrink: 0 }}>
+                    <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: converted ? "linear-gradient(135deg, #16a34a, #22c55e)" : "var(--admin-gold-strong, #a9762e)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: "800", fontSize: "14px", flexShrink: 0 }}>
                       {(r.name || "?")[0].toUpperCase()}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ margin: 0, fontSize: "14px", fontWeight: "700", color: "#111827" }}>{r.name || "Unnamed"}</p>
-                      <p style={{ margin: "2px 0 0", fontSize: "12px", color: "#6b7280" }}>
+                      <p style={{ margin: 0, fontSize: "14px", fontWeight: "700", color: "var(--admin-ink, #1b2a4a)" }}>{r.name || "Unnamed"}</p>
+                      <p style={{ margin: "2px 0 0", fontSize: "12px", color: "var(--admin-ink2, #837a66)" }}>
                         {r.phone || "—"}{r.email ? ` · ${r.email}` : ""}
                       </p>
                     </div>
@@ -412,7 +412,7 @@ export default function LeadTrackerPage() {
         .cal-scroll { overflow-x: auto; }
         .cal-scroll::-webkit-scrollbar { height: 6px; }
         .cal-scroll::-webkit-scrollbar-track { background: #f1ece3; border-radius: 4px; }
-        .cal-scroll::-webkit-scrollbar-thumb { background: #b8905a; border-radius: 4px; }
+        .cal-scroll::-webkit-scrollbar-thumb { background: var(--admin-gold, #b8905a); border-radius: 4px; }
         .cal-scroll::-webkit-scrollbar-thumb:hover { background: #a0754d; }
       `}</style>
       <div style={{ display: "flex", alignItems: "center", gap: "6px", padding: "4px 2px 0" }}>
@@ -422,7 +422,7 @@ export default function LeadTrackerPage() {
         {/* Left arrow */}
         <button
           onClick={() => setCalendarOffset((o) => o - 10)}
-          style={{ flexShrink: 0, width: "32px", height: "52px", borderRadius: "10px", border: "1px solid #e5e7eb", background: "white", cursor: "pointer", fontSize: "16px", color: "#374151", display: "flex", alignItems: "center", justifyContent: "center" }}
+          style={{ flexShrink: 0, width: "32px", height: "52px", borderRadius: "10px", border: "1px solid var(--admin-line, #e9e1d0)", background: "white", cursor: "pointer", fontSize: "16px", color: "var(--admin-ink, #1b2a4a)", display: "flex", alignItems: "center", justifyContent: "center" }}
           aria-label="Previous dates"
         >‹</button>
 
@@ -448,11 +448,11 @@ export default function LeadTrackerPage() {
         {/* Right arrow */}
         <button
           onClick={() => setCalendarOffset((o) => o + 10)}
-          style={{ flexShrink: 0, width: "32px", height: "52px", borderRadius: "10px", border: "1px solid #e5e7eb", background: "white", cursor: "pointer", fontSize: "16px", color: "#374151", display: "flex", alignItems: "center", justifyContent: "center" }}
+          style={{ flexShrink: 0, width: "32px", height: "52px", borderRadius: "10px", border: "1px solid var(--admin-line, #e9e1d0)", background: "white", cursor: "pointer", fontSize: "16px", color: "var(--admin-ink, #1b2a4a)", display: "flex", alignItems: "center", justifyContent: "center" }}
           aria-label="Next dates"
         >›</button>
       </div>
-      <p style={{ fontSize: "12px", color: "#9ca3af", margin: "2px 0 20px" }}>
+      <p style={{ fontSize: "12px", color: "var(--admin-ink2, #837a66)", margin: "2px 0 20px" }}>
         {selectedDate === "all"
           ? "Showing all leads"
           : `Showing leads from ${new Date(selectedDate).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}`}
@@ -462,14 +462,14 @@ export default function LeadTrackerPage() {
       {/* Catered — the dentist has verified the patient's OTP and started the appointment, on the selected date */}
       <div style={{ marginBottom: "24px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" }}>
-          <h2 style={{ margin: 0, fontSize: "16px", fontWeight: "800", color: "#111827" }}>
+          <h2 style={{ margin: 0, fontSize: "16px", fontWeight: "800", color: "var(--admin-ink, #1b2a4a)" }}>
             {selectedDate === "all" ? "Catered" : selectedDate === dateKey(new Date()) ? "Catered Today" : "Catered"}
           </h2>
           <span style={{ fontSize: "12px", fontWeight: "700", color: "#16a34a", background: "#dcfce7", borderRadius: "99px", padding: "2px 10px" }}>{cateredVisible.length}</span>
           <div style={{ flex: 1, height: "1px", background: "#eee" }} />
         </div>
         {cateredVisible.length === 0 ? (
-          <div style={{ padding: "14px", background: "white", border: "1px dashed #e5e7eb", borderRadius: "12px", textAlign: "center", color: "#9ca3af", fontSize: "13px" }}>
+          <div style={{ padding: "14px", background: "white", border: "1px dashed var(--admin-line, #e9e1d0)", borderRadius: "12px", textAlign: "center", color: "var(--admin-ink2, #837a66)", fontSize: "13px" }}>
             {selectedDate === "all" ? "No appointments started yet." : "No appointments started on this date."}
           </div>
         ) : (
@@ -480,9 +480,9 @@ export default function LeadTrackerPage() {
                 href={`/patients/${a.id}`}
                 style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", background: "white", border: "1px solid #bbf7d0", borderRadius: "10px", padding: "10px 14px", textDecoration: "none" }}
               >
-                <span style={{ fontSize: "14px", fontWeight: "700", color: "#111827" }}>{a.name || "Unnamed"}</span>
-                <span style={{ fontSize: "13px", color: "#6b7280" }}>{a.phone || "—"}</span>
-                <span style={{ fontSize: "12px", color: "#9ca3af" }}>Dentist: {dentistMap[a.assigned_dentist] || "—"}</span>
+                <span style={{ fontSize: "14px", fontWeight: "700", color: "var(--admin-ink, #1b2a4a)" }}>{a.name || "Unnamed"}</span>
+                <span style={{ fontSize: "13px", color: "var(--admin-ink2, #837a66)" }}>{a.phone || "—"}</span>
+                <span style={{ fontSize: "12px", color: "var(--admin-ink2, #837a66)" }}>Dentist: {dentistMap[a.assigned_dentist] || "—"}</span>
                 <span style={{ marginLeft: "auto", fontSize: "12px", fontWeight: "700", color: "#16a34a" }}>
                   Started {a.appointment_started_at ? new Date(a.appointment_started_at).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" }) : ""}
                 </span>
@@ -499,12 +499,12 @@ export default function LeadTrackerPage() {
             return (
               <div key={s.key} style={{ minWidth: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" }}>
-                  <h2 style={{ margin: 0, fontSize: "16px", fontWeight: "800", color: "#111827" }}>{s.label}</h2>
-                  <span style={{ fontSize: "12px", fontWeight: "700", color: "#6b7280", background: "#f3f4f6", borderRadius: "99px", padding: "2px 10px" }}>{freshRows.length}</span>
+                  <h2 style={{ margin: 0, fontSize: "16px", fontWeight: "800", color: "var(--admin-ink, #1b2a4a)" }}>{s.label}</h2>
+                  <span style={{ fontSize: "12px", fontWeight: "700", color: "var(--admin-ink2, #837a66)", background: "var(--admin-gold-wash, #f3f0e6)", borderRadius: "99px", padding: "2px 10px" }}>{freshRows.length}</span>
                   <div style={{ flex: 1, height: "1px", background: "#eee" }} />
                 </div>
                 {freshRows.length === 0 ? (
-                  <div style={{ padding: "14px", background: "white", border: "1px dashed #e5e7eb", borderRadius: "12px", textAlign: "center", color: "#9ca3af", fontSize: "13px" }}>No leads</div>
+                  <div style={{ padding: "14px", background: "white", border: "1px dashed var(--admin-line, #e9e1d0)", borderRadius: "12px", textAlign: "center", color: "var(--admin-ink2, #837a66)", fontSize: "13px" }}>No leads</div>
                 ) : (
                   <LeadTable rows={freshRows} sectionKey={s.key} campaigns={campaigns} isAdmin={isAdmin} onEdit={(lead, entry) => setEditing({ mode: "normal", lead, entry })} onDelete={deleteLead} />
                 )}
@@ -520,12 +520,12 @@ export default function LeadTrackerPage() {
             return (
               <div key={s.key} style={{ minWidth: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" }}>
-                  <h2 style={{ margin: 0, fontSize: "16px", fontWeight: "800", color: "#111827" }}>{s.label}</h2>
-                  <span style={{ fontSize: "12px", fontWeight: "700", color: "#6b7280", background: "#f3f4f6", borderRadius: "99px", padding: "2px 10px" }}>{patientFollowups.length}</span>
+                  <h2 style={{ margin: 0, fontSize: "16px", fontWeight: "800", color: "var(--admin-ink, #1b2a4a)" }}>{s.label}</h2>
+                  <span style={{ fontSize: "12px", fontWeight: "700", color: "var(--admin-ink2, #837a66)", background: "var(--admin-gold-wash, #f3f0e6)", borderRadius: "99px", padding: "2px 10px" }}>{patientFollowups.length}</span>
                   <div style={{ flex: 1, height: "1px", background: "#eee" }} />
                 </div>
                 {patientFollowups.length === 0 ? (
-                  <div style={{ padding: "14px", background: "white", border: "1px dashed #e5e7eb", borderRadius: "12px", textAlign: "center", color: "#9ca3af", fontSize: "13px" }}>
+                  <div style={{ padding: "14px", background: "white", border: "1px dashed var(--admin-line, #e9e1d0)", borderRadius: "12px", textAlign: "center", color: "var(--admin-ink2, #837a66)", fontSize: "13px" }}>
                     No patients due for a set change {selectedDate === "all" ? "today" : "on this date"}.
                   </div>
                 ) : (
@@ -547,17 +547,17 @@ export default function LeadTrackerPage() {
           return (
             <div key={s.key} style={{ minWidth: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" }}>
-                <h2 style={{ margin: 0, fontSize: "16px", fontWeight: "800", color: "#111827" }}>{s.label}</h2>
-                <span style={{ fontSize: "12px", fontWeight: "700", color: "#6b7280", background: "#f3f4f6", borderRadius: "99px", padding: "2px 10px" }}>{rows.length}</span>
+                <h2 style={{ margin: 0, fontSize: "16px", fontWeight: "800", color: "var(--admin-ink, #1b2a4a)" }}>{s.label}</h2>
+                <span style={{ fontSize: "12px", fontWeight: "700", color: "var(--admin-ink2, #837a66)", background: "var(--admin-gold-wash, #f3f0e6)", borderRadius: "99px", padding: "2px 10px" }}>{rows.length}</span>
                 <div style={{ flex: 1, height: "1px", background: "#eee" }} />
               </div>
               {s.key === "old" && (
-                <p style={{ fontSize: "12px", color: "#9ca3af", margin: "-4px 0 10px" }}>
+                <p style={{ fontSize: "12px", color: "var(--admin-ink2, #837a66)", margin: "-4px 0 10px" }}>
                   Carried over from another day — pick a stage on each row to confirm it's been worked.
                 </p>
               )}
               {rows.length === 0 ? (
-                <div style={{ padding: "14px", background: "white", border: "1px dashed #e5e7eb", borderRadius: "12px", textAlign: "center", color: "#9ca3af", fontSize: "13px" }}>No leads</div>
+                <div style={{ padding: "14px", background: "white", border: "1px dashed var(--admin-line, #e9e1d0)", borderRadius: "12px", textAlign: "center", color: "var(--admin-ink2, #837a66)", fontSize: "13px" }}>No leads</div>
               ) : (
                 <LeadTable rows={rows} sectionKey={s.key} campaigns={campaigns} isAdmin={isAdmin} onEdit={(lead, entry) => setEditing({ mode: "normal", lead, entry })} onDelete={deleteLead} />
               )}
@@ -657,9 +657,9 @@ function DateChip({ active, today, onClick, top, mid, bot }) {
       onClick={onClick}
       style={{
         flexShrink: 0, minWidth: "52px", padding: "8px 6px", borderRadius: "12px", cursor: "pointer",
-        border: active ? "none" : today ? "1px solid #b8905a" : "1px solid #e5e7eb",
-        background: active ? "#111827" : today ? "#fff7ed" : "white",
-        color: active ? "white" : today ? "#b8905a" : "#374151",
+        border: active ? "none" : today ? "1px solid var(--admin-gold, #b8905a)" : "1px solid var(--admin-line, #e9e1d0)",
+        background: active ? "var(--admin-ink, #1b2a4a)" : today ? "#fff7ed" : "white",
+        color: active ? "white" : today ? "var(--admin-gold, #b8905a)" : "var(--admin-ink, #1b2a4a)",
         display: "flex", flexDirection: "column", alignItems: "center", gap: "1px", lineHeight: 1.2,
       }}
     >
@@ -692,10 +692,10 @@ function PatientFollowupCard({ patient, onSave }) {
   return (
     <div style={{ background: "white", border: "1px solid #fde68a", borderRadius: "10px", padding: "12px 14px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", marginBottom: "10px" }}>
-        <span style={{ fontSize: "14px", fontWeight: "700", color: "#111827" }}>{patient.name || "Unnamed"}</span>
-        <span style={{ fontSize: "13px", color: "#6b7280" }}>{patient.phone || "—"}</span>
+        <span style={{ fontSize: "14px", fontWeight: "700", color: "var(--admin-ink, #1b2a4a)" }}>{patient.name || "Unnamed"}</span>
+        <span style={{ fontSize: "13px", color: "var(--admin-ink2, #837a66)" }}>{patient.phone || "—"}</span>
         <span style={pill("#fef3c7", "#92400e")}>Set {patient.previousSetNum} → Set {patient.dueSetNum} of {patient.totalSets}</span>
-        <a href={`/patients/${patient.id}`} style={{ marginLeft: "auto", padding: "6px 14px", borderRadius: "8px", border: "none", background: "#111827", color: "white", fontWeight: "700", fontSize: "12px", textDecoration: "none" }}>
+        <a href={`/patients/${patient.id}`} style={{ marginLeft: "auto", padding: "6px 14px", borderRadius: "8px", border: "none", background: "var(--admin-ink, #1b2a4a)", color: "white", fontWeight: "700", fontSize: "12px", textDecoration: "none" }}>
           Open Patient
         </a>
       </div>
@@ -706,9 +706,9 @@ function PatientFollowupCard({ patient, onSave }) {
           disabled={saving}
           style={{
             flex: 1, padding: "7px 10px", borderRadius: "8px", fontWeight: "700", fontSize: "12px", cursor: saving ? "not-allowed" : "pointer",
-            border: callStatus === "received" ? "none" : "1px solid #e5e7eb",
+            border: callStatus === "received" ? "none" : "1px solid var(--admin-line, #e9e1d0)",
             background: callStatus === "received" ? "#16a34a" : "white",
-            color: callStatus === "received" ? "white" : "#374151",
+            color: callStatus === "received" ? "white" : "var(--admin-ink, #1b2a4a)",
           }}
         >
           ✓ Call Received
@@ -718,9 +718,9 @@ function PatientFollowupCard({ patient, onSave }) {
           disabled={saving}
           style={{
             flex: 1, padding: "7px 10px", borderRadius: "8px", fontWeight: "700", fontSize: "12px", cursor: saving ? "not-allowed" : "pointer",
-            border: callStatus === "not_received" ? "none" : "1px solid #e5e7eb",
+            border: callStatus === "not_received" ? "none" : "1px solid var(--admin-line, #e9e1d0)",
             background: callStatus === "not_received" ? "#dc2626" : "white",
-            color: callStatus === "not_received" ? "white" : "#374151",
+            color: callStatus === "not_received" ? "white" : "var(--admin-ink, #1b2a4a)",
           }}
         >
           ✕ Did Not Receive
@@ -732,12 +732,12 @@ function PatientFollowupCard({ patient, onSave }) {
         onChange={(e) => setNote(e.target.value)}
         onBlur={() => onSave(patient, patient.dueSetNum, { note, callStatus })}
         placeholder="Note — what the patient said, e.g. already changed set / needs a reminder call tomorrow..."
-        style={{ width: "100%", minHeight: "44px", padding: "8px 10px", borderRadius: "8px", border: "1px solid #e5e7eb", fontSize: "12px", outline: "none", resize: "vertical", boxSizing: "border-box", color: "#111827" }}
+        style={{ width: "100%", minHeight: "44px", padding: "8px 10px", borderRadius: "8px", border: "1px solid var(--admin-line, #e9e1d0)", fontSize: "12px", outline: "none", resize: "vertical", boxSizing: "border-box", color: "var(--admin-ink, #1b2a4a)" }}
       />
 
       {sendResult && (
         <div style={{ marginTop: "8px", display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-          <span style={{ fontSize: "12px", color: sendResult.emailSent ? "#16a34a" : "#9ca3af" }}>
+          <span style={{ fontSize: "12px", color: sendResult.emailSent ? "#16a34a" : "var(--admin-ink2, #837a66)" }}>
             {sendResult.emailSent ? "✓ Nudge email sent" : "No email on file — email not sent"}
           </span>
           {sendResult.waLink && (
@@ -755,7 +755,7 @@ function LeadCard({ lead, onStage, onEdit, cold, onPromote, onDelete }) {
   const stage = lead.lead_stage || "fresh";
   const isCallback = stage === "callback";
   return (
-    <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "14px 16px", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
+    <div style={{ background: "white", border: "1px solid var(--admin-line, #e9e1d0)", borderRadius: "12px", padding: "14px 16px", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
       {isCallback && (lead.callback_time || lead.callback_date) && (
         <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: "8px", padding: "8px 12px", marginBottom: "10px" }}>
           <span style={{ fontSize: "16px" }}>📞</span>
@@ -769,11 +769,11 @@ function LeadCard({ lead, onStage, onEdit, cold, onPromote, onDelete }) {
       <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", alignItems: "flex-start" }}>
         <div style={{ minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBottom: "4px" }}>
-            <span style={{ fontFamily: "monospace", fontWeight: "800", color: "#b8905a", fontSize: "13px" }}>#{lead.lead_number || "—"}</span>
-            <span style={{ fontSize: "15px", fontWeight: "700", color: stage !== "fresh" ? "#16a34a" : "#111827" }}>{lead.name || "Unnamed"}</span>
+            <span style={{ fontFamily: "monospace", fontWeight: "800", color: "var(--admin-gold, #b8905a)", fontSize: "13px" }}>#{lead.lead_number || "—"}</span>
+            <span style={{ fontSize: "15px", fontWeight: "700", color: stage !== "fresh" ? "#16a34a" : "var(--admin-ink, #1b2a4a)" }}>{lead.name || "Unnamed"}</span>
             {lead.booking_confirmed && <span style={pill("#dcfce7", "#16a34a")}>✓ Patient ID issued</span>}
           </div>
-          <div style={{ fontSize: "13px", color: "#6b7280", display: "flex", gap: "14px", flexWrap: "wrap" }}>
+          <div style={{ fontSize: "13px", color: "var(--admin-ink2, #837a66)", display: "flex", gap: "14px", flexWrap: "wrap" }}>
             <span>📱 {lead.phone || "N/A"}</span>
             {lead.email && <span>✉️ {lead.email}</span>}
           </div>
@@ -810,7 +810,7 @@ function LeadCard({ lead, onStage, onEdit, cold, onPromote, onDelete }) {
           )}
           <button
             onClick={onEdit}
-            style={{ padding: "6px 14px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "white", color: "#111827", fontWeight: "700", fontSize: "12px", cursor: "pointer" }}
+            style={{ padding: "6px 14px", borderRadius: "8px", border: "1px solid var(--admin-line, #e9e1d0)", background: "white", color: "var(--admin-ink, #1b2a4a)", fontWeight: "700", fontSize: "12px", cursor: "pointer" }}
           >
             View / Edit
           </button>
@@ -846,7 +846,7 @@ function LeadTable({ leads, rows: externalRows, onEdit, onDelete, cold, onPromot
   const rows = externalRows || (leads || []).map((lead) => ({ lead, entry: null }));
   const showType = sectionKey === "old";
   return (
-    <div style={{ border: "1px solid #e5e7eb", borderRadius: "12px", background: "white", overflow: "hidden" }}>
+    <div style={{ border: "1px solid var(--admin-line, #e9e1d0)", borderRadius: "12px", background: "white", overflow: "hidden" }}>
       {rows.map(({ lead, entry }, i) => (
         <LeadRow
           key={`${lead.id}-${entry?.loggedAt || "live"}`}
@@ -885,13 +885,13 @@ function LeadRow({ lead, entry, cold, showType, isAdmin, campaigns, onEdit, onDe
 
   const field = (label, value) => (
     <div>
-      <div style={{ fontSize: "10px", fontWeight: "800", color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: "2px" }}>{label}</div>
-      <div style={{ fontSize: "13px", color: "#111827" }}>{value ?? "—"}</div>
+      <div style={{ fontSize: "10px", fontWeight: "800", color: "var(--admin-ink2, #837a66)", textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: "2px" }}>{label}</div>
+      <div style={{ fontSize: "13px", color: "var(--admin-ink, #1b2a4a)" }}>{value ?? "—"}</div>
     </div>
   );
 
   return (
-    <div style={{ borderBottom: isLast ? "none" : "1px solid #f3f4f6" }}>
+    <div style={{ borderBottom: isLast ? "none" : "1px solid var(--admin-gold-wash, #f3f0e6)" }}>
       <button
         onClick={() => setOpen((o) => !o)}
         style={{
@@ -899,13 +899,13 @@ function LeadRow({ lead, entry, cold, showType, isAdmin, campaigns, onEdit, onDe
           border: "none", background: open ? "#f8f6f2" : "white", cursor: "pointer", textAlign: "left",
         }}
       >
-        <span style={{ fontSize: "11px", color: "#9ca3af", transition: "transform 0.15s", transform: open ? "rotate(90deg)" : "none", flexShrink: 0 }}>▶</span>
-        <span style={{ fontFamily: "monospace", fontWeight: 800, color: "#b8905a", fontSize: "12px", flexShrink: 0 }}>#{lead.lead_number || "—"}</span>
-        <span style={{ fontWeight: 700, fontSize: "14px", color: isGreen ? "#16a34a" : "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        <span style={{ fontSize: "11px", color: "var(--admin-ink2, #837a66)", transition: "transform 0.15s", transform: open ? "rotate(90deg)" : "none", flexShrink: 0 }}>▶</span>
+        <span style={{ fontFamily: "monospace", fontWeight: 800, color: "var(--admin-gold, #b8905a)", fontSize: "12px", flexShrink: 0 }}>#{lead.lead_number || "—"}</span>
+        <span style={{ fontWeight: 700, fontSize: "14px", color: isGreen ? "#16a34a" : "var(--admin-ink, #1b2a4a)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {lead.name || lead.phone || "Unnamed"}
         </span>
         {showType && (
-          <span style={pill(...(TYPE_PILL_COLORS[entry?.stage] || ["#f3f4f6", "#6b7280"]))}>
+          <span style={pill(...(TYPE_PILL_COLORS[entry?.stage] || ["var(--admin-gold-wash, #f3f0e6)", "var(--admin-ink2, #837a66)"]))}>
             {STAGES.find((s) => s.key === entry?.stage)?.label || "—"}
           </span>
         )}
@@ -915,7 +915,7 @@ function LeadRow({ lead, entry, cold, showType, isAdmin, campaigns, onEdit, onDe
         <div style={{ padding: "4px 14px 16px 34px", background: "#f8f6f2" }}>
           <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "14px" }}>
             {cold && <button onClick={() => onPromote(lead)} style={miniBtn("#16a34a", "white")}>+ Add to Lead</button>}
-            <button onClick={() => onEdit(lead, entry)} style={miniBtn("white", "#111827", "1px solid #e5e7eb")}>Edit</button>
+            <button onClick={() => onEdit(lead, entry)} style={miniBtn("white", "var(--admin-ink, #1b2a4a)", "1px solid var(--admin-line, #e9e1d0)")}>Edit</button>
             {isAdmin && <button onClick={() => onDelete(lead)} style={miniBtn("#fef2f2", "#dc2626", "1px solid #fecaca")}>Delete</button>}
           </div>
 
@@ -1156,10 +1156,10 @@ function LeadForm({ lead, entry, actor, onClose, onSaved, onDuplicateFound, mode
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-start", justifyContent: "center", zIndex: 1000, padding: "24px", overflowY: "auto" }}>
       <div style={{ background: "white", borderRadius: "16px", padding: "24px", width: "100%", maxWidth: "560px", boxShadow: "0 20px 60px rgba(0,0,0,0.25)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "18px" }}>
-          <h2 style={{ margin: 0, fontSize: "18px", fontWeight: "700", color: "#111827" }}>
+          <h2 style={{ margin: 0, fontSize: "18px", fontWeight: "700", color: "var(--admin-ink, #1b2a4a)" }}>
             {lead ? `${isCold ? "Cold Lead" : "Lead"} #${lead.lead_number || ""}` : isCold ? "Add Cold Lead" : "Add New Lead"}
           </h2>
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: "22px", color: "#9ca3af", cursor: "pointer", lineHeight: 1 }}>×</button>
+          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: "22px", color: "var(--admin-ink2, #837a66)", cursor: "pointer", lineHeight: 1 }}>×</button>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
@@ -1305,31 +1305,31 @@ function LeadForm({ lead, entry, actor, onClose, onSaved, onDuplicateFound, mode
 
         {/* Call / Follow-up History */}
         {(lead?.call_history?.length > 0) && (
-          <div style={{ marginTop: "16px", borderRadius: "10px", border: "1px solid #e5e7eb", overflow: "hidden" }}>
-            <div style={{ background: "#f8f6f2", padding: "8px 14px", borderBottom: "1px solid #e5e7eb" }}>
-              <span style={{ fontSize: "11px", fontWeight: "800", color: "#6b7280", letterSpacing: "0.4px", textTransform: "uppercase" }}>
+          <div style={{ marginTop: "16px", borderRadius: "10px", border: "1px solid var(--admin-line, #e9e1d0)", overflow: "hidden" }}>
+            <div style={{ background: "#f8f6f2", padding: "8px 14px", borderBottom: "1px solid var(--admin-line, #e9e1d0)" }}>
+              <span style={{ fontSize: "11px", fontWeight: "800", color: "var(--admin-ink2, #837a66)", letterSpacing: "0.4px", textTransform: "uppercase" }}>
                 Interaction History ({lead.call_history.length})
               </span>
             </div>
             <div style={{ maxHeight: "220px", overflowY: "auto" }}>
               {[...lead.call_history].reverse().map((entry, i) => (
-                <div key={i} style={{ padding: "10px 14px", borderBottom: i < lead.call_history.length - 1 ? "1px solid #f3f4f6" : "none" }}>
+                <div key={i} style={{ padding: "10px 14px", borderBottom: i < lead.call_history.length - 1 ? "1px solid var(--admin-gold-wash, #f3f0e6)" : "none" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBottom: "4px" }}>
-                    <span style={{ fontSize: "12px", fontWeight: "700", color: "#111827" }}>📞 {formatDate(entry.date)}</span>
+                    <span style={{ fontSize: "12px", fontWeight: "700", color: "var(--admin-ink, #1b2a4a)" }}>📞 {formatDate(entry.date)}</span>
                     <span style={pill(entry.stage === "callback" ? "#fff7ed" : "#eef2ff", entry.stage === "callback" ? "#b45309" : "#4338ca")}>
                       {entry.stage === "callback" ? "Callback" : "Follow-up"}
                     </span>
                     {entry.next_date && (
-                      <span style={{ fontSize: "12px", color: "#6b7280" }}>
+                      <span style={{ fontSize: "12px", color: "var(--admin-ink2, #837a66)" }}>
                         → Next: <strong>{formatDate(entry.next_date)}</strong>{entry.next_time ? ` at ${formatTime(entry.next_time)}` : ""}
                       </span>
                     )}
                   </div>
                   {entry.response && (
-                    <p style={{ margin: 0, fontSize: "13px", color: "#374151", lineHeight: 1.5 }}>{responseDisplay(entry.response)}</p>
+                    <p style={{ margin: 0, fontSize: "13px", color: "var(--admin-ink, #1b2a4a)", lineHeight: 1.5 }}>{responseDisplay(entry.response)}</p>
                   )}
                   {entry.notes && (
-                    <p style={{ margin: "4px 0 0", fontSize: "12px", color: "#6b7280", lineHeight: 1.5, fontStyle: "italic" }}>📝 {entry.notes}</p>
+                    <p style={{ margin: "4px 0 0", fontSize: "12px", color: "var(--admin-ink2, #837a66)", lineHeight: 1.5, fontStyle: "italic" }}>📝 {entry.notes}</p>
                   )}
                 </div>
               ))}
@@ -1351,7 +1351,7 @@ function LeadForm({ lead, entry, actor, onClose, onSaved, onDuplicateFound, mode
           <button
             onClick={() => save()}
             disabled={saving}
-            style={{ flex: 1, minWidth: "120px", padding: "12px", borderRadius: "10px", border: "1px solid #e5e7eb", background: "white", color: "#111827", fontWeight: "700", fontSize: "14px", cursor: saving ? "not-allowed" : "pointer" }}
+            style={{ flex: 1, minWidth: "120px", padding: "12px", borderRadius: "10px", border: "1px solid var(--admin-line, #e9e1d0)", background: "white", color: "var(--admin-ink, #1b2a4a)", fontWeight: "700", fontSize: "14px", cursor: saving ? "not-allowed" : "pointer" }}
           >
             {saving ? "Saving..." : lead ? "Save Changes" : isCold ? "Add Cold Lead" : "Add Lead"}
           </button>
@@ -1366,12 +1366,12 @@ function LeadForm({ lead, entry, actor, onClose, onSaved, onDuplicateFound, mode
           )}
         </div>
         {!isCold && !lead?.booking_confirmed && (
-          <p style={{ margin: "10px 0 0", fontSize: "11px", color: "#9ca3af", textAlign: "center" }}>
+          <p style={{ margin: "10px 0 0", fontSize: "11px", color: "var(--admin-ink2, #837a66)", textAlign: "center" }}>
             Confirming moves the lead to <strong>Booked</strong>, adds it to Appointments, and issues a Patient ID (emailed if an address is on file).
           </p>
         )}
         {isCold && (
-          <p style={{ margin: "10px 0 0", fontSize: "11px", color: "#9ca3af", textAlign: "center" }}>
+          <p style={{ margin: "10px 0 0", fontSize: "11px", color: "var(--admin-ink2, #837a66)", textAlign: "center" }}>
             Cold leads stay separate. Use <strong>+ Add to Lead</strong> on a cold lead to move it into the live tracker as a Fresh lead.
           </p>
         )}

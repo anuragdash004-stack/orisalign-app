@@ -118,10 +118,10 @@ export default function DentistDashboard() {
                 key={appt.id}
                 style={{
                   background: "white",
-                  border: "1px solid #e5e7eb",
+                  border: "1px solid var(--admin-line, #e9e1d0)",
                   borderRadius: "16px",
                   padding: "20px",
-                  color: "#111827",
+                  color: "var(--admin-ink, #1b2a4a)",
                   boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
                   opacity: isCompleted ? 0.75 : 1,
                 }}
@@ -137,8 +137,8 @@ export default function DentistDashboard() {
                   </div>
                   <span style={{
                     fontSize: "12px", fontWeight: "600", padding: "4px 10px", borderRadius: "99px",
-                    background: isCompleted ? "#f3f4f6" : appt.status === "confirmed" ? "#dcfce7" : "#fef9c3",
-                    color: isCompleted ? "#6b7280" : appt.status === "confirmed" ? "#16a34a" : "#854d0e",
+                    background: isCompleted ? "var(--admin-gold-wash, #f3f0e6)" : appt.status === "confirmed" ? "#dcfce7" : "#fef9c3",
+                    color: isCompleted ? "var(--admin-ink2, #837a66)" : appt.status === "confirmed" ? "#16a34a" : "#854d0e",
                   }}>
                     {isCompleted ? "COMPLETED" : (appt.status?.toUpperCase() || "ASSIGNED")}
                   </span>
@@ -149,8 +149,8 @@ export default function DentistDashboard() {
                   disabled={isCompleted || sendingOtp === appt.id}
                   style={{
                     marginTop: "14px", padding: "10px 20px", borderRadius: "8px", border: "none",
-                    background: isCompleted ? "#e5e7eb" : "#22c55e",
-                    color: isCompleted ? "#9ca3af" : "white",
+                    background: isCompleted ? "var(--admin-line, #e9e1d0)" : "#22c55e",
+                    color: isCompleted ? "var(--admin-ink2, #837a66)" : "white",
                     cursor: isCompleted ? "not-allowed" : "pointer",
                     fontSize: "14px", fontWeight: "600",
                   }}

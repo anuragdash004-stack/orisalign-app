@@ -97,13 +97,13 @@ export default function StartAppointment() {
       justifyContent: "center",
     }}>
       <div style={{
-        background: "white", border: "1px solid #e5e7eb",
+        background: "white", border: "1px solid var(--admin-line, #e9e1d0)",
         borderRadius: "20px", padding: "36px", maxWidth: "400px",
         width: "100%", textAlign: "center",
         boxShadow: "0 10px 30px rgba(0,0,0,0.06)",
       }}>
         <div style={{ fontSize: "36px", marginBottom: "12px" }}>🔒</div>
-        <h2 style={{ marginBottom: "8px", color: "#111827" }}>Enter Patient OTP</h2>
+        <h2 style={{ marginBottom: "8px", color: "var(--admin-ink, #1b2a4a)" }}>Enter Patient OTP</h2>
         <p style={{ color: "gray", fontSize: "14px", marginBottom: "24px" }}>
           A 6-digit OTP has been sent to the patient's email.
           Ask the patient for the code to proceed.
@@ -119,7 +119,7 @@ export default function StartAppointment() {
           style={{
             width: "100%", padding: "14px", textAlign: "center",
             fontSize: "24px", letterSpacing: "8px", borderRadius: "10px",
-            border: "1px solid #e5e7eb", outline: "none",
+            border: "1px solid var(--admin-line, #e9e1d0)", outline: "none",
             marginBottom: "12px", boxSizing: "border-box",
           }}
         />

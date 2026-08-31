@@ -63,7 +63,7 @@ export default function OnlineReportsListPage() {
     load();
   }, []);
 
-  if (loading) return <div style={{ padding: 40, textAlign: "center", color: "#6b7280" }}>Loading…</div>;
+  if (loading) return <div style={{ padding: 40, textAlign: "center", color: "var(--admin-ink2, #837a66)" }}>Loading…</div>;
 
   const grouped = { unpaid: [], paid: [], completed: [] };
   for (const r of reports) grouped[categorize(r)].push(r);
@@ -71,8 +71,8 @@ export default function OnlineReportsListPage() {
   return (
     <div style={{ padding: 24, maxWidth: 900 }}>
       <div style={{ marginBottom: 20 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 700, color: "#111827", margin: 0 }}>Online Smile Reports</h1>
-        <p style={{ fontSize: 14, color: "#6b7280", margin: "4px 0 0" }}>
+        <h1 style={{ fontSize: 28, fontWeight: 700, color: "var(--admin-ink, #1b2a4a)", margin: 0 }}>Online Smile Reports</h1>
+        <p style={{ fontSize: 14, color: "var(--admin-ink2, #837a66)", margin: "4px 0 0" }}>
           {reports.length} submission{reports.length === 1 ? "" : "s"} total.
         </p>
       </div>
@@ -83,32 +83,32 @@ export default function OnlineReportsListPage() {
           return (
             <div key={s.key}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-                <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "#111827" }}>{s.label}</h2>
-                <span style={{ fontSize: 12, fontWeight: 700, color: "#6b7280", background: "#f3f4f6", borderRadius: 99, padding: "2px 10px" }}>{rows.length}</span>
+                <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "var(--admin-ink, #1b2a4a)" }}>{s.label}</h2>
+                <span style={{ fontSize: 12, fontWeight: 700, color: "var(--admin-ink2, #837a66)", background: "var(--admin-gold-wash, #f3f0e6)", borderRadius: 99, padding: "2px 10px" }}>{rows.length}</span>
                 <div style={{ flex: 1, height: 1, background: "#eee" }} />
               </div>
               {rows.length === 0 ? (
-                <div style={{ padding: 14, background: "white", border: "1px dashed #e5e7eb", borderRadius: 12, textAlign: "center", color: "#9ca3af", fontSize: 13 }}>
+                <div style={{ padding: 14, background: "white", border: "1px dashed var(--admin-line, #e9e1d0)", borderRadius: 12, textAlign: "center", color: "var(--admin-ink2, #837a66)", fontSize: 13 }}>
                   {s.empty}
                 </div>
               ) : (
                 <div style={{ display: "grid", gap: 10 }}>
                   {rows.map((r) => {
-                    const c = STATUS_COLORS[r.status] || { bg: "#f3f4f6", color: "#6b7280" };
+                    const c = STATUS_COLORS[r.status] || { bg: "var(--admin-gold-wash, #f3f0e6)", color: "var(--admin-ink2, #837a66)" };
                     return (
                       <Link
                         key={r.id}
                         href={`/online-reports/${r.id}`}
-                        style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", background: "white", border: "1px solid #e5e7eb", borderRadius: 12, padding: "14px 18px", textDecoration: "none", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}
+                        style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", background: "white", border: "1px solid var(--admin-line, #e9e1d0)", borderRadius: 12, padding: "14px 18px", textDecoration: "none", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}
                       >
                         <div style={{ flex: 1, minWidth: 160 }}>
-                          <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#111827" }}>{r.full_name}</p>
-                          <p style={{ margin: "2px 0 0", fontSize: 12, color: "#6b7280" }}>{r.patient_phone || "—"} · ₹{r.payment_amount ?? 0}</p>
+                          <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "var(--admin-ink, #1b2a4a)" }}>{r.full_name}</p>
+                          <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--admin-ink2, #837a66)" }}>{r.patient_phone || "—"} · ₹{r.payment_amount ?? 0}</p>
                         </div>
                         <span style={{ padding: "4px 12px", borderRadius: 99, background: c.bg, color: c.color, fontSize: 11, fontWeight: 700 }}>
                           {STATUS_LABELS[r.status] || r.status}
                         </span>
-                        <span style={{ fontSize: 11, color: "#9ca3af" }}>
+                        <span style={{ fontSize: 11, color: "var(--admin-ink2, #837a66)" }}>
                           {new Date(r.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                         </span>
                       </Link>

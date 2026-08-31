@@ -58,25 +58,25 @@ export default function CouponsPage() {
   };
 
   const input = {
-    width: "100%", padding: "11px 12px", borderRadius: "10px", border: "1px solid #e5e7eb",
-    fontSize: "14px", outline: "none", background: "white", color: "#111827", boxSizing: "border-box",
+    width: "100%", padding: "11px 12px", borderRadius: "10px", border: "1px solid var(--admin-line, #e9e1d0)",
+    fontSize: "14px", outline: "none", background: "white", color: "var(--admin-ink, #1b2a4a)", boxSizing: "border-box",
   };
-  const label = { display: "block", fontSize: "11px", fontWeight: "700", color: "#6b7280", marginBottom: "6px", letterSpacing: "0.5px", textTransform: "uppercase" };
+  const label = { display: "block", fontSize: "11px", fontWeight: "700", color: "var(--admin-ink2, #837a66)", marginBottom: "6px", letterSpacing: "0.5px", textTransform: "uppercase" };
 
-  if (loading) return <div style={{ padding: "40px", textAlign: "center", color: "#6b7280" }}>Loading coupons...</div>;
+  if (loading) return <div style={{ padding: "40px", textAlign: "center", color: "var(--admin-ink2, #837a66)" }}>Loading coupons...</div>;
 
   return (
     <div style={{ padding: "24px", maxWidth: "760px" }}>
       <div style={{ marginBottom: "20px" }}>
-        <h1 style={{ fontSize: "28px", fontWeight: "700", color: "#111827", margin: 0 }}>Coupons</h1>
-        <p style={{ fontSize: "14px", color: "#6b7280", margin: "4px 0 0" }}>
+        <h1 style={{ fontSize: "28px", fontWeight: "700", color: "var(--admin-ink, #1b2a4a)", margin: 0 }}>Coupons</h1>
+        <p style={{ fontSize: "14px", color: "var(--admin-ink2, #837a66)", margin: "4px 0 0" }}>
           {coupons.length} {coupons.length === 1 ? "coupon" : "coupons"} · patients enter these at checkout for a discount.
         </p>
       </div>
 
       {/* Add coupon */}
-      <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: "16px", padding: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.04)", marginBottom: "20px" }}>
-        <h3 style={{ margin: "0 0 16px", fontSize: "16px", color: "#111827" }}>Add a Coupon</h3>
+      <div style={{ background: "white", border: "1px solid var(--admin-line, #e9e1d0)", borderRadius: "16px", padding: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.04)", marginBottom: "20px" }}>
+        <h3 style={{ margin: "0 0 16px", fontSize: "16px", color: "var(--admin-ink, #1b2a4a)" }}>Add a Coupon</h3>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: "12px", alignItems: "end" }}>
           <div>
             <span style={label}>Coupon Code</span>
@@ -89,7 +89,7 @@ export default function CouponsPage() {
           <button
             onClick={addCoupon}
             disabled={adding}
-            style={{ padding: "12px 22px", borderRadius: "10px", border: "none", background: "#b8905a", color: "white", fontWeight: "700", fontSize: "14px", cursor: adding ? "not-allowed" : "pointer", opacity: adding ? 0.6 : 1, whiteSpace: "nowrap" }}
+            style={{ padding: "12px 22px", borderRadius: "10px", border: "none", background: "var(--admin-gold, #b8905a)", color: "white", fontWeight: "700", fontSize: "14px", cursor: adding ? "not-allowed" : "pointer", opacity: adding ? 0.6 : 1, whiteSpace: "nowrap" }}
           >
             {adding ? "Adding..." : "Add Coupon"}
           </button>
@@ -98,25 +98,25 @@ export default function CouponsPage() {
 
       {/* Coupon list */}
       {coupons.length === 0 ? (
-        <div style={{ padding: "40px 24px", background: "white", borderRadius: "12px", border: "1px solid #e5e7eb", textAlign: "center", color: "#9ca3af" }}>
+        <div style={{ padding: "40px 24px", background: "white", borderRadius: "12px", border: "1px solid var(--admin-line, #e9e1d0)", textAlign: "center", color: "var(--admin-ink2, #837a66)" }}>
           No coupons yet. Add one above.
         </div>
       ) : (
         <div style={{ display: "grid", gap: "10px" }}>
           {coupons.map((coupon) => (
-            <div key={coupon.id} style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", background: "white", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "14px 18px", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
+            <div key={coupon.id} style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", background: "white", border: "1px solid var(--admin-line, #e9e1d0)", borderRadius: "12px", padding: "14px 18px", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
               <div style={{ flex: 1, minWidth: "160px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-                  <span style={{ fontFamily: "monospace", fontSize: "16px", fontWeight: "800", letterSpacing: "1px", color: "#111827" }}>{coupon.code}</span>
-                  <span style={{ display: "inline-block", padding: "3px 10px", borderRadius: "99px", background: coupon.is_active ? "#dcfce7" : "#f3f4f6", color: coupon.is_active ? "#16a34a" : "#9ca3af", fontSize: "11px", fontWeight: "700" }}>
+                  <span style={{ fontFamily: "monospace", fontSize: "16px", fontWeight: "800", letterSpacing: "1px", color: "var(--admin-ink, #1b2a4a)" }}>{coupon.code}</span>
+                  <span style={{ display: "inline-block", padding: "3px 10px", borderRadius: "99px", background: coupon.is_active ? "#dcfce7" : "var(--admin-gold-wash, #f3f0e6)", color: coupon.is_active ? "#16a34a" : "var(--admin-ink2, #837a66)", fontSize: "11px", fontWeight: "700" }}>
                     {coupon.is_active ? "Active" : "Inactive"}
                   </span>
                 </div>
-                <p style={{ margin: "4px 0 0", fontSize: "14px", color: "#6b7280" }}>Discount: <strong style={{ color: "#111827" }}>{inr(coupon.discount_amount)}</strong></p>
+                <p style={{ margin: "4px 0 0", fontSize: "14px", color: "var(--admin-ink2, #837a66)" }}>Discount: <strong style={{ color: "var(--admin-ink, #1b2a4a)" }}>{inr(coupon.discount_amount)}</strong></p>
               </div>
               <button
                 onClick={() => toggleActive(coupon)}
-                style={{ padding: "7px 14px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "white", color: "#374151", fontWeight: "700", fontSize: "12px", cursor: "pointer", whiteSpace: "nowrap" }}
+                style={{ padding: "7px 14px", borderRadius: "8px", border: "1px solid var(--admin-line, #e9e1d0)", background: "white", color: "var(--admin-ink, #1b2a4a)", fontWeight: "700", fontSize: "12px", cursor: "pointer", whiteSpace: "nowrap" }}
               >
                 {coupon.is_active ? "Deactivate" : "Activate"}
               </button>

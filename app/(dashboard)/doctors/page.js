@@ -6,10 +6,10 @@ import { getSupabaseClient } from "@/lib/supabaseClient";
 const supabase = getSupabaseClient();
 
 const input = {
-  width: "100%", padding: "11px 12px", borderRadius: "10px", border: "1px solid #e5e7eb",
-  fontSize: "14px", outline: "none", background: "white", color: "#111827", boxSizing: "border-box",
+  width: "100%", padding: "11px 12px", borderRadius: "10px", border: "1px solid var(--admin-line, #e9e1d0)",
+  fontSize: "14px", outline: "none", background: "white", color: "var(--admin-ink, #1b2a4a)", boxSizing: "border-box",
 };
-const label = { display: "block", fontSize: "11px", fontWeight: "700", color: "#6b7280", marginBottom: "6px", letterSpacing: "0.5px", textTransform: "uppercase" };
+const label = { display: "block", fontSize: "11px", fontWeight: "700", color: "var(--admin-ink2, #837a66)", marginBottom: "6px", letterSpacing: "0.5px", textTransform: "uppercase" };
 
 const EMPTY_FORM = { name: "", designation: "", registration_number: "", location: "", role_type: "dentist" };
 
@@ -61,20 +61,20 @@ export default function DoctorsPage() {
     setDoctors((prev) => prev.filter((d) => d.id !== doctor.id));
   };
 
-  if (loading) return <div style={{ padding: "40px", textAlign: "center", color: "#6b7280" }}>Loading doctors...</div>;
+  if (loading) return <div style={{ padding: "40px", textAlign: "center", color: "var(--admin-ink2, #837a66)" }}>Loading doctors...</div>;
 
   return (
     <div style={{ padding: "24px", maxWidth: "820px" }}>
       <div style={{ marginBottom: "20px" }}>
-        <h1 style={{ fontSize: "28px", fontWeight: "700", color: "#111827", margin: 0 }}>Doctors</h1>
-        <p style={{ fontSize: "14px", color: "#6b7280", margin: "4px 0 0" }}>
+        <h1 style={{ fontSize: "28px", fontWeight: "700", color: "var(--admin-ink, #1b2a4a)", margin: 0 }}>Doctors</h1>
+        <p style={{ fontSize: "14px", color: "var(--admin-ink2, #837a66)", margin: "4px 0 0" }}>
           {doctors.length} {doctors.length === 1 ? "doctor" : "doctors"} · used to assign a reviewer to an Online Smile Report, and (once wired up) as dentist/orthodontist assignment options elsewhere.
         </p>
       </div>
 
       {/* Add doctor */}
-      <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: "16px", padding: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.04)", marginBottom: "20px" }}>
-        <h3 style={{ margin: "0 0 16px", fontSize: "16px", color: "#111827" }}>Add a Doctor</h3>
+      <div style={{ background: "white", border: "1px solid var(--admin-line, #e9e1d0)", borderRadius: "16px", padding: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.04)", marginBottom: "20px" }}>
+        <h3 style={{ margin: "0 0 16px", fontSize: "16px", color: "var(--admin-ink, #1b2a4a)" }}>Add a Doctor</h3>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "12px" }}>
           <div>
             <span style={label}>Name</span>
@@ -103,7 +103,7 @@ export default function DoctorsPage() {
         <button
           onClick={addDoctor}
           disabled={adding}
-          style={{ padding: "12px 22px", borderRadius: "10px", border: "none", background: "#b8905a", color: "white", fontWeight: "700", fontSize: "14px", cursor: adding ? "not-allowed" : "pointer", opacity: adding ? 0.6 : 1 }}
+          style={{ padding: "12px 22px", borderRadius: "10px", border: "none", background: "var(--admin-gold, #b8905a)", color: "white", fontWeight: "700", fontSize: "14px", cursor: adding ? "not-allowed" : "pointer", opacity: adding ? 0.6 : 1 }}
         >
           {adding ? "Adding..." : "Add Doctor"}
         </button>
@@ -111,30 +111,30 @@ export default function DoctorsPage() {
 
       {/* Doctor list */}
       {doctors.length === 0 ? (
-        <div style={{ padding: "40px 24px", background: "white", borderRadius: "12px", border: "1px solid #e5e7eb", textAlign: "center", color: "#9ca3af" }}>
+        <div style={{ padding: "40px 24px", background: "white", borderRadius: "12px", border: "1px solid var(--admin-line, #e9e1d0)", textAlign: "center", color: "var(--admin-ink2, #837a66)" }}>
           No doctors yet. Add one above.
         </div>
       ) : (
         <div style={{ display: "grid", gap: "10px" }}>
           {doctors.map((d) => (
-            <div key={d.id} style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", background: "white", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "14px 18px", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
+            <div key={d.id} style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", background: "white", border: "1px solid var(--admin-line, #e9e1d0)", borderRadius: "12px", padding: "14px 18px", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
               <div style={{ flex: 1, minWidth: "200px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-                  <span style={{ fontSize: "15px", fontWeight: "800", color: "#111827" }}>{d.name}</span>
+                  <span style={{ fontSize: "15px", fontWeight: "800", color: "var(--admin-ink, #1b2a4a)" }}>{d.name}</span>
                   <span style={{ display: "inline-block", padding: "3px 10px", borderRadius: "99px", background: d.role_type === "dentist" ? "#dbeafe" : "#ede9fe", color: d.role_type === "dentist" ? "#1d4ed8" : "#6d28d9", fontSize: "11px", fontWeight: "700", textTransform: "capitalize" }}>
                     {d.role_type}
                   </span>
-                  <span style={{ display: "inline-block", padding: "3px 10px", borderRadius: "99px", background: d.active ? "#dcfce7" : "#f3f4f6", color: d.active ? "#16a34a" : "#9ca3af", fontSize: "11px", fontWeight: "700" }}>
+                  <span style={{ display: "inline-block", padding: "3px 10px", borderRadius: "99px", background: d.active ? "#dcfce7" : "var(--admin-gold-wash, #f3f0e6)", color: d.active ? "#16a34a" : "var(--admin-ink2, #837a66)", fontSize: "11px", fontWeight: "700" }}>
                     {d.active ? "Active" : "Inactive"}
                   </span>
                 </div>
-                <p style={{ margin: "4px 0 0", fontSize: "13px", color: "#6b7280" }}>
+                <p style={{ margin: "4px 0 0", fontSize: "13px", color: "var(--admin-ink2, #837a66)" }}>
                   {d.designation}{d.location ? ` · ${d.location}` : ""}{d.registration_number ? ` · Reg. No: ${d.registration_number}` : ""}
                 </p>
               </div>
               <button
                 onClick={() => toggleActive(d)}
-                style={{ padding: "7px 14px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "white", color: "#374151", fontWeight: "700", fontSize: "12px", cursor: "pointer", whiteSpace: "nowrap" }}
+                style={{ padding: "7px 14px", borderRadius: "8px", border: "1px solid var(--admin-line, #e9e1d0)", background: "white", color: "var(--admin-ink, #1b2a4a)", fontWeight: "700", fontSize: "12px", cursor: "pointer", whiteSpace: "nowrap" }}
               >
                 {d.active ? "Deactivate" : "Activate"}
               </button>

@@ -67,7 +67,7 @@ function ViewSection({ title, done, activeSection, setActiveSection, children })
   const isOpen = activeSection === title;
   return (
     <div style={{
-      background: "white", border: `1px solid ${done ? "#22c55e" : "#e5e7eb"}`,
+      background: "white", border: `1px solid ${done ? "#22c55e" : "var(--admin-line, #e9e1d0)"}`,
       borderRadius: "16px", overflow: "hidden",
       boxShadow: "0 4px 12px rgba(0,0,0,0.04)",
     }}>
@@ -82,13 +82,13 @@ function ViewSection({ title, done, activeSection, setActiveSection, children })
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           <span style={{
             width: "24px", height: "24px", borderRadius: "50%",
-            background: done ? "#22c55e" : "#e5e7eb",
+            background: done ? "#22c55e" : "var(--admin-line, #e9e1d0)",
             display: "flex", alignItems: "center", justifyContent: "center",
             color: "white", fontSize: "13px", fontWeight: "700", flexShrink: 0,
           }}>
             {done ? "✓" : ""}
           </span>
-          <span style={{ fontWeight: "600", color: done ? "#16a34a" : "#111827" }}>
+          <span style={{ fontWeight: "600", color: done ? "#16a34a" : "var(--admin-ink, #1b2a4a)" }}>
             {title}
           </span>
         </div>
@@ -97,7 +97,7 @@ function ViewSection({ title, done, activeSection, setActiveSection, children })
         </span>
       </div>
       {isOpen && (
-        <div style={{ padding: "20px", borderTop: "1px solid #e5e7eb" }}>
+        <div style={{ padding: "20px", borderTop: "1px solid var(--admin-line, #e9e1d0)" }}>
           {children}
         </div>
       )}
@@ -330,15 +330,15 @@ export default function OrthoCase() {
 
   const inputStyle = {
     width: "100%", padding: "12px", borderRadius: "8px",
-    border: "1px solid #e5e7eb", fontSize: "14px",
+    border: "1px solid var(--admin-line, #e9e1d0)", fontSize: "14px",
     outline: "none", boxSizing: "border-box", marginBottom: "12px",
-    background: "white", color: "#111827",
+    background: "white", color: "var(--admin-ink, #1b2a4a)",
   };
 
   const btnStyle = (active = true) => ({
     width: "100%", padding: "12px", borderRadius: "8px", border: "none",
-    background: active ? "#111827" : "#e5e7eb",
-    color: active ? "white" : "#9ca3af",
+    background: active ? "var(--admin-ink, #1b2a4a)" : "var(--admin-line, #e9e1d0)",
+    color: active ? "white" : "var(--admin-ink2, #837a66)",
     fontWeight: "600", cursor: active ? "pointer" : "not-allowed",
   });
 
@@ -393,9 +393,9 @@ export default function OrthoCase() {
                 {rows.map(([label, val]) => {
                   const has = val !== null && val !== undefined && val !== "";
                   return (
-                    <div key={label} style={{ display: "flex", justifyContent: "space-between", gap: "12px", borderBottom: "1px solid #f3f4f6", paddingBottom: "6px" }}>
+                    <div key={label} style={{ display: "flex", justifyContent: "space-between", gap: "12px", borderBottom: "1px solid var(--admin-gold-wash, #f3f0e6)", paddingBottom: "6px" }}>
                       <span style={{ fontSize: "12px", color: "gray", textTransform: "uppercase", letterSpacing: "0.5px", flexShrink: 0, maxWidth: "45%" }}>{label}</span>
-                      <span style={{ fontSize: "14px", color: has ? "#111827" : "#9ca3af", textAlign: "right", whiteSpace: "pre-wrap", fontStyle: has ? "normal" : "italic" }}>
+                      <span style={{ fontSize: "14px", color: has ? "var(--admin-ink, #1b2a4a)" : "var(--admin-ink2, #837a66)", textAlign: "right", whiteSpace: "pre-wrap", fontStyle: has ? "normal" : "italic" }}>
                         {has ? val : "Not available"}
                       </span>
                     </div>
@@ -407,12 +407,12 @@ export default function OrthoCase() {
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "8px" }}>
                       {docs.map((doc, i) => (
                         doc.type?.startsWith("image/") ? (
-                          <a key={i} href={doc.url} target="_blank" rel="noreferrer" style={{ display: "block", border: "1px solid #e5e7eb", borderRadius: "8px", overflow: "hidden", background: "#fafafa" }}>
+                          <a key={i} href={doc.url} target="_blank" rel="noreferrer" style={{ display: "block", border: "1px solid var(--admin-line, #e9e1d0)", borderRadius: "8px", overflow: "hidden", background: "#fafafa" }}>
                             <img src={doc.url} alt={doc.name} style={{ width: "100%", height: "90px", objectFit: "cover", display: "block" }} />
-                            <p style={{ fontSize: "10px", textAlign: "center", padding: "4px", margin: 0, color: "#374151", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{doc.name}</p>
+                            <p style={{ fontSize: "10px", textAlign: "center", padding: "4px", margin: 0, color: "var(--admin-ink, #1b2a4a)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{doc.name}</p>
                           </a>
                         ) : (
-                          <a key={i} href={doc.url} target="_blank" rel="noreferrer" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "6px", height: "120px", border: "1px solid #e5e7eb", borderRadius: "8px", background: "#fafafa", textDecoration: "none", color: "#374151", padding: "8px" }}>
+                          <a key={i} href={doc.url} target="_blank" rel="noreferrer" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "6px", height: "120px", border: "1px solid var(--admin-line, #e9e1d0)", borderRadius: "8px", background: "#fafafa", textDecoration: "none", color: "var(--admin-ink, #1b2a4a)", padding: "8px" }}>
                             <span style={{ fontSize: "26px" }}>📄</span>
                             <span style={{ fontSize: "10px", textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>{doc.name}</span>
                           </a>
@@ -437,7 +437,7 @@ export default function OrthoCase() {
               {IMAGE_SLOTS.map((slot) => (
                 <div key={slot.key} style={{
                   borderRadius: "10px", overflow: "hidden",
-                  border: "1px solid #e5e7eb", background: "#fafafa",
+                  border: "1px solid var(--admin-line, #e9e1d0)", background: "#fafafa",
                 }}>
                   {imageUrls[slot.key] ? (
                     <a href={imageUrls[slot.key]} target="_blank" rel="noreferrer">
@@ -449,10 +449,10 @@ export default function OrthoCase() {
                     </a>
                   ) : (
                     <div style={{ height: "80px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <span style={{ fontSize: "10px", color: "#9ca3af" }}>Loading...</span>
+                      <span style={{ fontSize: "10px", color: "var(--admin-ink2, #837a66)" }}>Loading...</span>
                     </div>
                   )}
-                  <p style={{ fontSize: "10px", textAlign: "center", padding: "4px", margin: 0, color: "#374151", fontWeight: "600" }}>
+                  <p style={{ fontSize: "10px", textAlign: "center", padding: "4px", margin: 0, color: "var(--admin-ink, #1b2a4a)", fontWeight: "600" }}>
                     {slot.label}
                   </p>
                 </div>
@@ -471,10 +471,10 @@ export default function OrthoCase() {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
               {STL_SLOTS.map((slot) => (
                 <div key={slot.key} style={{
-                  border: "1px solid #e5e7eb", borderRadius: "10px",
+                  border: "1px solid var(--admin-line, #e9e1d0)", borderRadius: "10px",
                   padding: "12px", textAlign: "center", background: "#fafafa",
                 }}>
-                  <p style={{ fontWeight: "600", fontSize: "13px", margin: "0 0 6px", color: "#374151" }}>{slot.label}</p>
+                  <p style={{ fontWeight: "600", fontSize: "13px", margin: "0 0 6px", color: "var(--admin-ink, #1b2a4a)" }}>{slot.label}</p>
                   {stlUrls[slot.key] ? (
                     <a
                       href={stlUrls[slot.key]}
@@ -485,7 +485,7 @@ export default function OrthoCase() {
                       Download ↗
                     </a>
                   ) : (
-                    <span style={{ fontSize: "12px", color: "#9ca3af" }}>Loading...</span>
+                    <span style={{ fontSize: "12px", color: "var(--admin-ink2, #837a66)" }}>Loading...</span>
                   )}
                 </div>
               ))}
@@ -499,25 +499,25 @@ export default function OrthoCase() {
 
         {/* ── SECTION 4: PLANNING ── */}
         <div style={{
-          background: "white", border: "1px solid #e5e7eb",
+          background: "white", border: "1px solid var(--admin-line, #e9e1d0)",
           borderRadius: "16px", overflow: "hidden",
           boxShadow: "0 4px 12px rgba(0,0,0,0.04)",
         }}>
-          <div style={{ padding: "18px 20px", borderBottom: "1px solid #e5e7eb", background: "#fafafa" }}>
-            <h3 style={{ margin: 0, fontWeight: "700", color: "#111827" }}>4. Planning</h3>
+          <div style={{ padding: "18px 20px", borderBottom: "1px solid var(--admin-line, #e9e1d0)", background: "#fafafa" }}>
+            <h3 style={{ margin: 0, fontWeight: "700", color: "var(--admin-ink, #1b2a4a)" }}>4. Planning</h3>
           </div>
 
           <div style={{ padding: "20px", display: "grid", gap: "24px" }}>
 
             {/* ── Provisional Planning + Duration + Notes ── */}
             <div>
-              <label style={{ fontWeight: "600", fontSize: "14px", color: "#111827", display: "block", marginBottom: "8px" }}>
+              <label style={{ fontWeight: "600", fontSize: "14px", color: "var(--admin-ink, #1b2a4a)", display: "block", marginBottom: "8px" }}>
                 Provisional Planning
               </label>
 
               {!provisionalSubmitted && (
-                <div style={{ marginBottom: "16px", padding: "14px", borderRadius: "12px", border: "1px solid #e5e7eb", background: "#f9fafb" }}>
-                  <label style={{ fontWeight: "600", fontSize: "13px", color: "#111827", display: "block", marginBottom: "6px" }}>
+                <div style={{ marginBottom: "16px", padding: "14px", borderRadius: "12px", border: "1px solid var(--admin-line, #e9e1d0)", background: "var(--admin-bg, #faf6ec)" }}>
+                  <label style={{ fontWeight: "600", fontSize: "13px", color: "var(--admin-ink, #1b2a4a)", display: "block", marginBottom: "6px" }}>
                     Estimated Treatment Duration (months)
                   </label>
                   <div style={{ display: "flex", gap: "10px" }}>
@@ -537,8 +537,8 @@ export default function OrthoCase() {
                   {(parseInt(minMonths, 10) > 0 || parseInt(maxMonths, 10) > 0) && (() => {
                     const r = estimateRange(parseInt(minMonths, 10) || 0, parseInt(maxMonths, 10) || 0);
                     return (
-                      <p style={{ fontSize: "12px", color: "#6b7280", margin: "8px 0 0" }}>
-                        Estimated price: <strong style={{ color: "#111827" }}>{fmtRs(r.min)} – {fmtRs(r.max)}</strong> (₹4,999/month)
+                      <p style={{ fontSize: "12px", color: "var(--admin-ink2, #837a66)", margin: "8px 0 0" }}>
+                        Estimated price: <strong style={{ color: "var(--admin-ink, #1b2a4a)" }}>{fmtRs(r.min)} – {fmtRs(r.max)}</strong> (₹4,999/month)
                       </p>
                     );
                   })()}
@@ -546,13 +546,13 @@ export default function OrthoCase() {
               )}
 
               {provisionalSubmitted ? (
-                <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "8px", padding: "14px", fontSize: "14px", color: "#111827", whiteSpace: "pre-wrap" }}>
+                <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "8px", padding: "14px", fontSize: "14px", color: "var(--admin-ink, #1b2a4a)", whiteSpace: "pre-wrap" }}>
                   {(minMonths || maxMonths) ? (() => {
                     const r = estimateRange(parseInt(minMonths, 10) || 0, parseInt(maxMonths, 10) || 0);
                     return (
                       <div style={{ marginBottom: "12px", paddingBottom: "12px", borderBottom: "1px solid #bbf7d0" }}>
                         <p style={{ fontSize: "11px", fontWeight: "700", color: "#16a34a", textTransform: "uppercase", letterSpacing: "0.5px", margin: "0 0 4px" }}>Estimated Duration: {minMonths}–{maxMonths} months</p>
-                        <p style={{ margin: 0, fontSize: "14px", color: "#111827" }}>Estimated price: {fmtRs(r.min)} – {fmtRs(r.max)}</p>
+                        <p style={{ margin: 0, fontSize: "14px", color: "var(--admin-ink, #1b2a4a)" }}>Estimated price: {fmtRs(r.min)} – {fmtRs(r.max)}</p>
                       </div>
                     );
                   })() : patient?.provisional_sets_orispro ? (
@@ -564,7 +564,7 @@ export default function OrthoCase() {
                   {orthoNote ? (
                     <div style={{ marginTop: "12px", paddingTop: "12px", borderTop: "1px solid #bbf7d0" }}>
                       <p style={{ fontSize: "11px", fontWeight: "700", color: "#16a34a", textTransform: "uppercase", letterSpacing: "0.5px", margin: "0 0 4px" }}>Notes</p>
-                      <p style={{ margin: 0, fontSize: "14px", color: "#111827", whiteSpace: "pre-wrap" }}>{orthoNote}</p>
+                      <p style={{ margin: 0, fontSize: "14px", color: "var(--admin-ink, #1b2a4a)", whiteSpace: "pre-wrap" }}>{orthoNote}</p>
                     </div>
                   ) : null}
                   <p style={{ margin: "10px 0 0", fontSize: "12px", color: "#16a34a", fontWeight: "600" }}>✓ Submitted to dentist</p>
@@ -577,7 +577,7 @@ export default function OrthoCase() {
                     value={provisionalPlan}
                     onChange={(e) => setProvisionalPlan(e.target.value)}
                   />
-                  <label style={{ fontWeight: "600", fontSize: "14px", color: "#111827", display: "block", margin: "4px 0 8px" }}>
+                  <label style={{ fontWeight: "600", fontSize: "14px", color: "var(--admin-ink, #1b2a4a)", display: "block", margin: "4px 0 8px" }}>
                     Notes
                   </label>
                   <textarea
@@ -599,7 +599,7 @@ export default function OrthoCase() {
 
             {/* ── Final Planning ── */}
             <div>
-              <label style={{ fontWeight: "600", fontSize: "14px", color: "#111827", display: "block", marginBottom: "8px" }}>
+              <label style={{ fontWeight: "600", fontSize: "14px", color: "var(--admin-ink, #1b2a4a)", display: "block", marginBottom: "8px" }}>
                 Final Planning
               </label>
               <textarea
@@ -612,7 +612,7 @@ export default function OrthoCase() {
 
             {/* ── Video Link ── */}
             <div>
-              <label style={{ fontWeight: "600", fontSize: "14px", color: "#111827", display: "block", marginBottom: "8px" }}>
+              <label style={{ fontWeight: "600", fontSize: "14px", color: "var(--admin-ink, #1b2a4a)", display: "block", marginBottom: "8px" }}>
                 Planning Stimulus Video Link
               </label>
               <input
@@ -633,7 +633,7 @@ export default function OrthoCase() {
 
             {/* ── Final Plan Review (upper/lower sets + monthly schedule) ── */}
             <div>
-              <label style={{ fontWeight: "600", fontSize: "14px", color: "#111827", display: "block", marginBottom: "8px" }}>
+              <label style={{ fontWeight: "600", fontSize: "14px", color: "var(--admin-ink, #1b2a4a)", display: "block", marginBottom: "8px" }}>
                 Final Plan Review
               </label>
 
@@ -646,10 +646,10 @@ export default function OrthoCase() {
                     <div style={{ display: "grid", gap: "6px" }}>
                       {monthlyPlan.months.map((m) => (
                         <div key={m.num} style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", padding: "6px 0", borderBottom: "1px dashed #bbf7d0" }}>
-                          <span style={{ color: "#111827" }}>
+                          <span style={{ color: "var(--admin-ink, #1b2a4a)" }}>
                             Package {m.num} — {monthSlotLabels(m.upper, m.lower).join(", ")}
                           </span>
-                          <strong style={{ color: "#111827" }}>{fmtRs(m.amount)}</strong>
+                          <strong style={{ color: "var(--admin-ink, #1b2a4a)" }}>{fmtRs(m.amount)}</strong>
                         </div>
                       ))}
                       <div style={{ display: "flex", justifyContent: "space-between", fontSize: "14px", paddingTop: "8px", fontWeight: "700" }}>
@@ -661,9 +661,9 @@ export default function OrthoCase() {
                 </div>
               ) : (
                 <>
-                  <p style={{ fontSize: "12px", color: "#6b7280", margin: "0 0 10px" }}>
-                    Patient selected: <strong style={{ color: "#111827" }}>{patient?.payment_data?.plan === "ORISPLUS" ? "OrisPro Plus (10 days/set)" : "OrisPro (15 days/set)"}</strong>
-                    {" · "}Payment: <strong style={{ color: "#111827" }}>{patient?.payment_data?.provisional_payment_choice === "first_month" ? "Paid First Month (Month 1 will show paid immediately)" : "Paid Full Plan Fee"}</strong>
+                  <p style={{ fontSize: "12px", color: "var(--admin-ink2, #837a66)", margin: "0 0 10px" }}>
+                    Patient selected: <strong style={{ color: "var(--admin-ink, #1b2a4a)" }}>{patient?.payment_data?.plan === "ORISPLUS" ? "OrisPro Plus (10 days/set)" : "OrisPro (15 days/set)"}</strong>
+                    {" · "}Payment: <strong style={{ color: "var(--admin-ink, #1b2a4a)" }}>{patient?.payment_data?.provisional_payment_choice === "first_month" ? "Paid First Month (Month 1 will show paid immediately)" : "Paid Full Plan Fee"}</strong>
                   </p>
                   <div style={{ display: "flex", gap: "10px", marginBottom: "12px" }}>
                     <input
@@ -692,7 +692,7 @@ export default function OrthoCase() {
 
             {/* ── Planning PDF ── */}
             <div>
-              <label style={{ fontWeight: "600", fontSize: "14px", color: "#111827", display: "block", marginBottom: "8px" }}>
+              <label style={{ fontWeight: "600", fontSize: "14px", color: "var(--admin-ink, #1b2a4a)", display: "block", marginBottom: "8px" }}>
                 Planning PDF
               </label>
               {pdfSubmitted ? (
@@ -712,7 +712,7 @@ export default function OrthoCase() {
                 </div>
               ) : (
                 <div style={{
-                  border: "2px dashed #e5e7eb", borderRadius: "10px",
+                  border: "2px dashed var(--admin-line, #e9e1d0)", borderRadius: "10px",
                   padding: "20px", textAlign: "center", background: "#fafafa",
                 }}>
                   <input
@@ -723,7 +723,7 @@ export default function OrthoCase() {
                   />
                   {pdfFile && (
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", marginBottom: "12px" }}>
-                      <p style={{ fontSize: "13px", color: "#374151", margin: 0 }}>{pdfFile.name}</p>
+                      <p style={{ fontSize: "13px", color: "var(--admin-ink, #1b2a4a)", margin: 0 }}>{pdfFile.name}</p>
                       <button
                         onClick={() => setPdfFile(null)}
                         style={{ padding: "2px 8px", borderRadius: "6px", border: "1px solid #fecaca", background: "#fef2f2", color: "#dc2626", fontWeight: "700", fontSize: "13px", cursor: "pointer", lineHeight: 1 }}
@@ -745,7 +745,7 @@ export default function OrthoCase() {
 
             {/* ── Select Sheets ── */}
             <div>
-              <label style={{ fontWeight: "600", fontSize: "14px", color: "#111827", display: "block", marginBottom: "12px" }}>
+              <label style={{ fontWeight: "600", fontSize: "14px", color: "var(--admin-ink, #1b2a4a)", display: "block", marginBottom: "12px" }}>
                 Select Sheets
               </label>
 
@@ -756,8 +756,8 @@ export default function OrthoCase() {
                     onClick={() => setActiveSheetCat(activeSheetCat === cat ? null : cat)}
                     style={{
                       padding: "8px 18px", borderRadius: "99px", border: "none",
-                      background: activeSheetCat === cat ? "#111827" : "#f3f4f6",
-                      color: activeSheetCat === cat ? "white" : "#374151",
+                      background: activeSheetCat === cat ? "var(--admin-ink, #1b2a4a)" : "var(--admin-gold-wash, #f3f0e6)",
+                      color: activeSheetCat === cat ? "white" : "var(--admin-ink, #1b2a4a)",
                       fontWeight: "600", fontSize: "13px", cursor: "pointer",
                       transition: "all 0.15s",
                     }}
@@ -810,12 +810,12 @@ export default function OrthoCase() {
                       )}
                       <button
                         onClick={() => setAlignerRows([...alignerRows, { trays: "", sheet: "" }])}
-                        style={{ padding: "10px 14px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "white", fontWeight: "700", fontSize: "18px", cursor: "pointer", flexShrink: 0, color: "#111827", lineHeight: 1 }}
+                        style={{ padding: "10px 14px", borderRadius: "8px", border: "1px solid var(--admin-line, #e9e1d0)", background: "white", fontWeight: "700", fontSize: "18px", cursor: "pointer", flexShrink: 0, color: "var(--admin-ink, #1b2a4a)", lineHeight: 1 }}
                       >+</button>
                       {alignerRows.length > 1 && (
                         <button
                           onClick={() => setAlignerRows(alignerRows.filter((_, i) => i !== idx))}
-                          style={{ padding: "10px 12px", borderRadius: "8px", border: "1px solid #d1d5db", background: "#f3f4f6", fontWeight: "700", fontSize: "14px", cursor: "pointer", flexShrink: 0, color: "#6b7280", lineHeight: 1 }}
+                          style={{ padding: "10px 12px", borderRadius: "8px", border: "1px solid #d1d5db", background: "var(--admin-gold-wash, #f3f0e6)", fontWeight: "700", fontSize: "14px", cursor: "pointer", flexShrink: 0, color: "var(--admin-ink2, #837a66)", lineHeight: 1 }}
                         >🗑</button>
                       )}
                     </div>

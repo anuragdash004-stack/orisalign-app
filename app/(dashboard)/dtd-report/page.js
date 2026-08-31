@@ -9,7 +9,7 @@ import { computeNextBatchDue } from "@/lib/manufacturingTriggers";
 const supabase = getSupabaseClient();
 
 const NAVY = "#1B2A4A";
-const GOLD = "#b8905a";
+const GOLD = "var(--admin-gold, #b8905a)";
 
 // Date-only key in IST, regardless of the viewer's own timezone — matches
 // the same convention used by the Lead Tracker and the set-change cron.
@@ -31,10 +31,10 @@ function formatDateLabel(dateKey, todayKey) {
 const CATEGORY_META = {
   lead_attend:  { label: "Leads to Attend",       color: "#7c3aed", bg: "#f5f3ff", icon: "👤" },
   callback:     { label: "Callbacks Due",         color: "#0891b2", bg: "#ecfeff", icon: "📞" },
-  appointment:  { label: "Appointments Today",    color: "#b8905a", bg: "#fffbeb", icon: "📅" },
+  appointment:  { label: "Appointments Today",    color: "var(--admin-gold, #b8905a)", bg: "#fffbeb", icon: "📅" },
   manufacturing:{ label: "Manufacturing",         color: "#dc2626", bg: "#fef2f2", icon: "🏭" },
   followup:     { label: "Follow-Up Visits",      color: "#16a34a", bg: "#f0fdf4", icon: "🔁" },
-  custom:       { label: "Other Tasks",           color: "#374151", bg: "#f3f4f6", icon: "📝" },
+  custom:       { label: "Other Tasks",           color: "var(--admin-ink, #1b2a4a)", bg: "var(--admin-gold-wash, #f3f0e6)", icon: "📝" },
 };
 const CATEGORY_ORDER = ["lead_attend", "callback", "appointment", "manufacturing", "followup", "custom"];
 
@@ -258,7 +258,7 @@ export default function DTDReportPage() {
       <div
         style={{
           display: "flex", alignItems: "center", gap: "12px", padding: "12px 14px",
-          borderRadius: "10px", border: `1px solid ${task.done ? "#bbf7d0" : "#e5e7eb"}`,
+          borderRadius: "10px", border: `1px solid ${task.done ? "#bbf7d0" : "var(--admin-line, #e9e1d0)"}`,
           background: task.done ? "#f0fdf4" : "white", marginBottom: "8px",
         }}
       >
@@ -280,17 +280,17 @@ export default function DTDReportPage() {
         </span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-            <span style={{ fontSize: "13px", fontWeight: "700", color: task.done ? "#15803d" : "#111827", textDecoration: task.done ? "line-through" : "none" }}>
+            <span style={{ fontSize: "13px", fontWeight: "700", color: task.done ? "#15803d" : "var(--admin-ink, #1b2a4a)", textDecoration: task.done ? "line-through" : "none" }}>
               {task.title}
             </span>
             {carried && <span style={{ fontSize: "10px", fontWeight: "700", padding: "2px 8px", borderRadius: "99px", background: "#fee2e2", color: "#dc2626", letterSpacing: "0.3px" }}>CARRIED FROM {task.task_date}</span>}
           </div>
-          {task.detail && <p style={{ margin: "2px 0 0", fontSize: "12px", color: "#6b7280" }}>{task.detail}</p>}
+          {task.detail && <p style={{ margin: "2px 0 0", fontSize: "12px", color: "var(--admin-ink2, #837a66)" }}>{task.detail}</p>}
         </div>
         {task.link_url && (
           <button
             onClick={() => router.push(task.link_url)}
-            style={{ padding: "6px 12px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "white", color: "#374151", fontWeight: "700", fontSize: "11px", cursor: "pointer", flexShrink: 0 }}
+            style={{ padding: "6px 12px", borderRadius: "8px", border: "1px solid var(--admin-line, #e9e1d0)", background: "white", color: "var(--admin-ink, #1b2a4a)", fontWeight: "700", fontSize: "11px", cursor: "pointer", flexShrink: 0 }}
           >
             Open →
           </button>
@@ -299,7 +299,7 @@ export default function DTDReportPage() {
           <button
             onClick={() => deleteTask(task)}
             disabled={busyId === task.id}
-            style={{ background: "none", border: "none", color: "#9ca3af", fontSize: "16px", cursor: "pointer", flexShrink: 0, padding: "0 4px" }}
+            style={{ background: "none", border: "none", color: "var(--admin-ink2, #837a66)", fontSize: "16px", cursor: "pointer", flexShrink: 0, padding: "0 4px" }}
             title="Remove"
           >
             ✕
@@ -313,7 +313,7 @@ export default function DTDReportPage() {
     <div style={{ maxWidth: "780px" }}>
       <div style={{ marginBottom: "20px" }}>
         <h1 style={{ fontSize: "26px", fontWeight: "800", color: NAVY, margin: "0 0 6px" }}>Day-to-Day Report</h1>
-        <p style={{ margin: 0, fontSize: "13px", color: "#6b7280" }}>
+        <p style={{ margin: 0, fontSize: "13px", color: "var(--admin-ink2, #837a66)" }}>
           Everything due today — leads, callbacks, appointments, manufacturing, follow-ups — in one checklist. Anything left undone carries forward automatically.
         </p>
       </div>
@@ -346,10 +346,10 @@ export default function DTDReportPage() {
       {/* Progress */}
       {totalCount > 0 && (
         <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "18px" }}>
-          <div style={{ flex: 1, height: "8px", borderRadius: "99px", background: "#e5e7eb", overflow: "hidden" }}>
+          <div style={{ flex: 1, height: "8px", borderRadius: "99px", background: "var(--admin-line, #e9e1d0)", overflow: "hidden" }}>
             <div style={{ height: "100%", width: `${pct}%`, background: "linear-gradient(90deg, #22c55e, #16a34a)", transition: "width 0.4s ease" }} />
           </div>
-          <span style={{ fontSize: "12px", color: "#6b7280", fontWeight: "700", flexShrink: 0 }}>{doneCount}/{totalCount} done</span>
+          <span style={{ fontSize: "12px", color: "var(--admin-ink2, #837a66)", fontWeight: "700", flexShrink: 0 }}>{doneCount}/{totalCount} done</span>
         </div>
       )}
 
@@ -361,7 +361,7 @@ export default function DTDReportPage() {
           value={newTaskText}
           onChange={(e) => setNewTaskText(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCustomTask(); } }}
-          style={{ flex: 1, padding: "11px 14px", borderRadius: "10px", border: "1px solid #e5e7eb", fontSize: "13px", outline: "none" }}
+          style={{ flex: 1, padding: "11px 14px", borderRadius: "10px", border: "1px solid var(--admin-line, #e9e1d0)", fontSize: "13px", outline: "none" }}
         />
         <button
           onClick={addCustomTask}
@@ -373,7 +373,7 @@ export default function DTDReportPage() {
       </div>
 
       {loading || syncing ? (
-        <p style={{ fontSize: "14px", color: "#9ca3af" }}>{syncing ? "Checking for anything new due today..." : "Loading..."}</p>
+        <p style={{ fontSize: "14px", color: "var(--admin-ink2, #837a66)" }}>{syncing ? "Checking for anything new due today..." : "Loading..."}</p>
       ) : (
         <>
           {carriedForward.length > 0 && (
@@ -390,7 +390,7 @@ export default function DTDReportPage() {
           )}
 
           {todaysTasks.length === 0 && carriedForward.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "40px 20px", color: "#9ca3af" }}>
+            <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--admin-ink2, #837a66)" }}>
               <p style={{ fontSize: "40px", margin: "0 0 10px" }}>🎉</p>
               <p style={{ fontSize: "14px", margin: 0 }}>Nothing due — all clear for this day.</p>
             </div>
