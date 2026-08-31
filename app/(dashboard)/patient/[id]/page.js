@@ -580,7 +580,21 @@ export default function PatientJourney() {
     <div style={{ minHeight: "100vh", paddingBottom: "60px", fontFamily: "'Inter', system-ui, sans-serif", colorScheme: "light" }}>
 
       {/* HEADER */}
-      <div style={{ background: "white", padding: "28px 20px 36px", textAlign: "center", borderBottom: "3px solid #C9A84C", boxShadow: "0 2px 16px rgba(201,168,76,0.10)" }}>
+      <div style={{ background: "white", padding: "28px 20px 36px", textAlign: "center", borderBottom: "3px solid #C9A84C", boxShadow: "0 2px 16px rgba(201,168,76,0.10)", position: "relative" }}>
+        <button
+          onClick={() => {
+            try { window.localStorage.removeItem("orisalign_patient_id"); } catch {}
+            window.location.href = "/login";
+          }}
+          style={{
+            position: "absolute", top: "14px", right: "16px",
+            background: "none", border: "none", color: "#9ca3af",
+            fontSize: "11px", fontWeight: "700", letterSpacing: "0.4px",
+            cursor: "pointer", padding: "4px",
+          }}
+        >
+          Logout
+        </button>
         <div style={{ display: "flex", justifyContent: "center", marginBottom: "14px" }}>
           <Image src="/logo.png" alt="OrisAlign" width={160} height={54} />
         </div>
