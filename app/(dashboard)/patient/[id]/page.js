@@ -291,13 +291,10 @@ export default function PatientJourney() {
     const measure = () => {
       const el = cardRef.current;
       if (!el) return;
-      const parentH = el.offsetParent ? el.offsetParent.clientHeight : 0;
       const next = {
         left: el.offsetLeft + el.offsetWidth,
         top: el.offsetTop,
-        // Collapsed there is no card on screen to sit beside, so the arrow
-        // parks at the middle of the screen instead of the card's middle.
-        mid: expandedStep ? el.offsetTop + el.offsetHeight / 2 : Math.round(parentH / 2),
+        mid: el.offsetTop + el.offsetHeight / 2,
       };
       // Bail out when nothing moved: this effect deliberately runs on every
       // render (the card's height depends on content), so setting state
@@ -926,7 +923,7 @@ export default function PatientJourney() {
           aria-expanded={!!expandedStep}
           style={{
             position: "absolute", zIndex: 30,
-            left: `${cardBox.left}px`, top: `${cardBox.mid}px`,
+            left: `${cardBox.left}px`, top: expandedStep && cardBox.mid ? `${cardBox.mid}px` : "50%",
             width: "26px", height: "54px", padding: 0, border: "none",
             borderRadius: "0 13px 13px 0", cursor: "pointer",
             display: "grid", placeItems: "center",
