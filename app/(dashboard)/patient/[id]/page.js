@@ -234,17 +234,21 @@ export default function PatientJourney() {
   // than assumed, since the card's width is a percentage of the screen.
   const [cardShut, setCardShut] = useState(false);
   const cardRef = useRef(null);
-  const [cardBox, setCardBox] = useState({ left: 0, top: 0 });
+  const [cardBox, setCardBox] = useState({ left: 0, top: 0, mid: 0 });
   const cardSlide = cardBox.left;   // card's right edge === distance to the screen edge
   useEffect(() => {
     const measure = () => {
       const el = cardRef.current;
       if (!el) return;
-      const next = { left: el.offsetLeft + el.offsetWidth, top: el.offsetTop + el.offsetHeight / 2 };
+      const next = {
+        left: el.offsetLeft + el.offsetWidth,
+        top: el.offsetTop,
+        mid: el.offsetTop + el.offsetHeight / 2,
+      };
       // Bail out when nothing moved: this effect deliberately runs on every
       // render (the card's height depends on content), so setting state
       // unconditionally would loop forever.
-      setCardBox((prev) => (prev.left === next.left && prev.top === next.top ? prev : next));
+      setCardBox((prev) => (prev.left === next.left && prev.top === next.top && prev.mid === next.mid ? prev : next));
     };
     measure();
     window.addEventListener("resize", measure);
@@ -732,7 +736,7 @@ export default function PatientJourney() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", paddingBottom: "60px", fontFamily: "'Inter', system-ui, sans-serif", colorScheme: "light" }}>
+    <div style={{ position: "relative", minHeight: "100vh", paddingBottom: "60px", fontFamily: "'Inter', system-ui, sans-serif", colorScheme: "light" }}>
 
       {/* ───── JOURNEY ARC ─────────────────────────────────────────────
           Patient details sit in the navy circle; every treatment step is a
@@ -850,8 +854,10 @@ export default function PatientJourney() {
           boxShadow: "0 18px 40px -30px rgba(23,59,87,0.25)",
           color: "#0D2945",
           transform: cardShut ? `translateX(${-cardSlide}px)` : "translateX(0)",
-          transition: "transform 0.42s cubic-bezier(.2,.8,.3,1)",
+          transition: "transform 0.42s cubic-bezier(.2,.8,.3,1), opacity 0.24s ease",
           padding: "26px 22px 24px",
+          opacity: expandedStep ? 0 : 1,
+          pointerEvents: expandedStep ? "none" : "auto",
         }}>
           <p style={{ margin: "0 0 7px", fontSize: "10.5px", fontWeight: "800", letterSpacing: "0.2em", textTransform: "uppercase", color: "#C6922E" }}>Patient</p>
           <p style={{ margin: "0 0 13px", fontSize: "24px", fontWeight: "800", lineHeight: "1.1", letterSpacing: "-0.025em" }}>{patient.name || "Patient"}</p>
@@ -881,7 +887,7 @@ export default function PatientJourney() {
           aria-expanded={!cardShut}
           style={{
             position: "absolute", zIndex: 30,
-            left: `${cardBox.left}px`, top: `${cardBox.top}px`,
+            left: `${cardBox.left}px`, top: `${cardBox.mid}px`,
             width: "26px", height: "54px", padding: 0, border: "none",
             borderRadius: "0 13px 13px 0", cursor: "pointer",
             display: "grid", placeItems: "center",
@@ -889,7 +895,9 @@ export default function PatientJourney() {
             boxShadow: "2px 4px 14px -6px rgba(23,59,87,0.45)",
             color: "#168F83",
             transform: `translate(${cardShut ? -cardSlide : 0}px, -50%)`,
-            transition: "transform 0.42s cubic-bezier(.2,.8,.3,1)",
+            transition: "transform 0.42s cubic-bezier(.2,.8,.3,1), opacity 0.24s ease",
+            opacity: expandedStep ? 0 : 1,
+            pointerEvents: expandedStep ? "none" : "auto",
           }}
         >
           <svg viewBox="0 0 24 24" width="15" height="15" style={{ fill: "none", stroke: "currentColor", strokeWidth: 2.2, strokeLinecap: "round", strokeLinejoin: "round", transform: cardShut ? "scaleX(-1)" : "none", transition: "transform 0.42s cubic-bezier(.2,.8,.3,1)" }}>
@@ -971,26 +979,37 @@ export default function PatientJourney() {
         </p>
       </div>
 
-      {/* ───── STEP SHEET — the opened step's full panel ───── */}
+      {/* ───── STEP PANEL — the opened step, shown as the card itself ─────
+          This is the same card the patient's name sits in: opening a step
+          grows it in place rather than sliding a separate sheet over the
+          screen, so the journey behind it stays visible. */}
       {expandedStep && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 60 }}>
-          <div onClick={() => setExpandedStep(null)} style={{ position: "absolute", inset: 0, background: "rgba(20,30,50,0.35)" }} />
-          <div style={{
-            position: "absolute", left: 0, right: 0, bottom: 0,
-            maxHeight: "82vh", overflowY: "auto",
-            background: "white", borderTop: "2px solid #A9762E",
-            borderRadius: "22px 22px 0 0", boxShadow: "0 -18px 44px -20px rgba(27,42,74,0.4)",
-            padding: "14px 0 24px",
-          }}>
-            <div style={{ width: "42px", height: "4px", borderRadius: "99px", background: "var(--admin-line, #e9e1d0)", margin: "0 auto 12px" }} />
+        <div style={{ position: "absolute", inset: 0, zIndex: 60, pointerEvents: "none" }}>
+          <div
+            onPointerDown={(e) => e.stopPropagation()}
+            style={{
+              position: "absolute", left: "10px", top: `${cardBox.top}px`,
+              width: "calc(100% - 20px)", maxWidth: "460px",
+              // Grow downwards from where the card sits, stopping clear of
+              // the contact line at the bottom of the screen.
+              maxHeight: `calc(100dvh - ${cardBox.top}px - 88px)`,
+              overflowY: "auto", pointerEvents: "auto",
+              background: "rgba(255,255,255,0.92)",
+              backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
+              border: "1px solid rgba(255,255,255,0.9)",
+              borderRadius: "20px",
+              boxShadow: "0 26px 56px -26px rgba(23,59,87,0.45)",
+              padding: "34px 0 20px",
+            }}
+          >
             <button
               onClick={() => setExpandedStep(null)}
-              aria-label="Close"
-              style={{ position: "absolute", top: "12px", right: "16px", background: "none", border: "none", color: "#A9A395", fontSize: "20px", cursor: "pointer", lineHeight: 1 }}
+              aria-label="Back to patient details"
+              style={{ position: "absolute", top: "12px", right: "14px", background: "none", border: "none", color: "#71818C", fontSize: "20px", cursor: "pointer", lineHeight: 1, zIndex: 2 }}
             >
               ×
             </button>
-            <div style={{ maxWidth: "520px", margin: "0 auto", padding: "0 16px" }}>
+            <div style={{ padding: "0 14px" }}>
             {journeySteps.map((step, index) => {
               // Only the step the patient tapped renders here — the arc above
               // is the navigation now, and the sheet shows one step at a time.
