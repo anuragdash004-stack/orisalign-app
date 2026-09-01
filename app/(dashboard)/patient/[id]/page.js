@@ -116,9 +116,13 @@ const DEFAULT_STEP_ICON = '<circle cx="12" cy="12" r="8"/>';
 // scroll position is the cross-fade ratio between them.
 const STAGE_COUNT = 15;
 const STAGE_SRC = (n) => `/journey-stages/stage-${String(n + 1).padStart(2, "0")}.webp`;
-// How strongly the simulation shows through the ivory. Kept as one constant
-// so it's a single number to tune.
-const STAGE_OPACITY = 0.28;
+// How strongly the simulation shows through the background. Kept as one
+// constant so it's a single number to tune.
+const STAGE_OPACITY = 0.30;
+// Feathers all four edges of the simulation (see where it's applied below).
+const STAGE_MASK =
+  "linear-gradient(to bottom, transparent 0%, #000 22%, #000 74%, transparent 100%)," +
+  "linear-gradient(to right, transparent 0%, #000 12%, #000 88%, transparent 100%)";
 
 // All pre-aligner procedures the dentist selected on the Patient Form
 // ("Restorations", "Extraction", "Scaling", etc. — see PROCEDURE_OPTIONS in
@@ -222,6 +226,30 @@ export default function PatientJourney() {
   const [arcOffset, setArcOffset] = useState(0);
   const arcDrag = useRef({ active: false, lastY: 0, moved: 0 });
   const arcCentred = useRef(false);
+
+  // ── Patient card tray ───────────────────────────────────────────────────
+  // The card slides out through the left edge; its handle rides along on the
+  // right, so once the card is tucked away the arrow is left sitting at the
+  // screen edge. Both are moved by the card's own width, measured here rather
+  // than assumed, since the card's width is a percentage of the screen.
+  const [cardShut, setCardShut] = useState(false);
+  const cardRef = useRef(null);
+  const [cardBox, setCardBox] = useState({ left: 0, top: 0 });
+  const cardSlide = cardBox.left;   // card's right edge === distance to the screen edge
+  useEffect(() => {
+    const measure = () => {
+      const el = cardRef.current;
+      if (!el) return;
+      const next = { left: el.offsetLeft + el.offsetWidth, top: el.offsetTop + el.offsetHeight / 2 };
+      // Bail out when nothing moved: this effect deliberately runs on every
+      // render (the card's height depends on content), so setting state
+      // unconditionally would loop forever.
+      setCardBox((prev) => (prev.left === next.left && prev.top === next.top ? prev : next));
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  });
 
   // ── Treatment simulation ────────────────────────────────────────────────
   // Painted onto one canvas rather than cross-faded as two stacked <img>
@@ -735,7 +763,11 @@ export default function PatientJourney() {
         }}
         style={{
           position: "relative", minHeight: "100dvh", overflow: "hidden",
-          background: "var(--admin-bg, #faf6ec)", touchAction: "none", userSelect: "none",
+          background:
+            "radial-gradient(120% 60% at 15% 8%, #ffffff 0%, rgba(255,255,255,0) 55%)," +
+            "radial-gradient(90% 45% at 95% 42%, #ffffff 0%, rgba(255,255,255,0) 60%)," +
+            "linear-gradient(168deg, #EAF4FB 0%, #F5FAFD 40%, #EDF5FB 72%, #F2F8FC 100%)",
+          touchAction: "none", userSelect: "none",
           "--stage-opacity": STAGE_OPACITY,
         }}
       >
@@ -743,8 +775,18 @@ export default function PatientJourney() {
             dragging the rail never waits on a fetch mid-fade — see
             paintStages above for why this is one canvas, not stacked imgs. */}
         <div style={{
-          position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
-          width: "106%", zIndex: 0, pointerEvents: "none", opacity: "var(--stage-opacity)",
+          position: "absolute", top: "52%", left: "5%", transform: "translateY(-50%)",
+          width: "65%", zIndex: 0, pointerEvents: "none", opacity: "var(--stage-opacity)",
+          // Desaturated to a cool blue-grey and multiplied into the page: the
+          // renders are near-white, so blending them normally over a pale
+          // background made the teeth vanish. Multiply keeps only the shading
+          // and edges, which is what makes the straightening readable.
+          filter: "grayscale(1) sepia(0.55) hue-rotate(172deg) saturate(1.5) brightness(1.02)",
+          mixBlendMode: "multiply",
+          // The frames are cropped tight, so the gums end in flat lines on every
+          // side — feather all four edges so it dissolves into the background.
+          WebkitMaskImage: STAGE_MASK, maskImage: STAGE_MASK,
+          WebkitMaskComposite: "source-in", maskComposite: "intersect",
         }}>
           <canvas ref={stageCanvas} aria-hidden="true" style={{ display: "block", width: "100%", height: "auto" }} />
         </div>
@@ -771,36 +813,89 @@ export default function PatientJourney() {
           LOGOUT
         </button>
 
-        {/* Patient hero circle */}
-        <div style={{
-          position: "absolute", zIndex: 3, left: "-150px", top: "50%",
-          transform: "translateY(-50%)",
-          width: "440px", height: "440px", borderRadius: "50%",
-          // Outline only — the simulation stays visible straight through it.
-          background: "transparent",
-          border: "1.5px solid rgba(27,42,74,0.28)",
-          display: "flex", flexDirection: "column", justifyContent: "center",
-          padding: "0 26px 0 176px", color: "#1B2A4A",
+        {/* The rail the step nodes ride on. Drawn as its own arc now that the
+            card is a rectangle — it used to be the hero circle's border. */}
+        <svg
+          aria-hidden="true"
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", zIndex: 2, pointerEvents: "none" }}
+        >
+          <path
+            d={(() => {
+              let d = "";
+              for (let a = -98; a <= 98; a += 3) {
+                const r = (a * Math.PI) / 180;
+                d += (d ? " L" : "M") + (ARC_CX + ARC_R * Math.cos(r)).toFixed(1) + " " + (ARC_R * Math.sin(r)).toFixed(1);
+              }
+              return d;
+            })()}
+            fill="none"
+            stroke="rgba(21,158,145,0.45)"
+            strokeWidth="1.5"
+            style={{ transform: "translateY(50%)" }}
+          />
+        </svg>
+
+        {/* ── Patient card ──
+            Slides out through the left edge on its handle. The handle is a
+            SIBLING, not a child: step nodes are painted above the card on
+            purpose, and a handle inside the card would sit underneath whichever
+            node happens to be beside it and never receive the tap. */}
+        <div ref={cardRef} style={{
+          position: "absolute", zIndex: 3, left: "10px", top: "37%", width: "52%",
+          borderRadius: "20px", overflow: "hidden",
+          // Barely-there fill — essentially an outline, so the simulation stays
+          // visible straight through it.
+          background: "rgba(255,255,255,0.05)",
+          border: "1px solid rgba(255,255,255,0.75)",
+          boxShadow: "0 18px 40px -30px rgba(23,59,87,0.25)",
+          color: "#0D2945",
+          transform: cardShut ? `translateX(${-cardSlide}px)` : "translateX(0)",
+          transition: "transform 0.42s cubic-bezier(.2,.8,.3,1)",
+          padding: "26px 22px 24px",
         }}>
-          <p style={{ margin: "0 0 8px", fontSize: "11px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", color: "#A9762E" }}>Patient</p>
-          <p style={{ margin: "0 0 14px", fontSize: "29px", fontWeight: "700", lineHeight: "1.1", letterSpacing: "-0.015em" }}>{patient.name || "Patient"}</p>
-          <div style={{ height: "1px", background: "rgba(169,118,46,0.35)", margin: "0 0 14px" }} />
-          <p style={{ margin: 0, fontSize: "14px", lineHeight: "1.9", color: "#6E6656", fontVariantNumeric: "tabular-nums" }}>
-            <b style={{ color: "#1B2A4A", fontWeight: "600" }}>{patient.phone || "No phone"}</b><br />
-            ID <b style={{ color: "#1B2A4A", fontWeight: "600", letterSpacing: "0.04em" }}>{patientIdLabel}</b>
+          <p style={{ margin: "0 0 7px", fontSize: "10.5px", fontWeight: "800", letterSpacing: "0.2em", textTransform: "uppercase", color: "#C6922E" }}>Patient</p>
+          <p style={{ margin: "0 0 13px", fontSize: "24px", fontWeight: "800", lineHeight: "1.1", letterSpacing: "-0.025em" }}>{patient.name || "Patient"}</p>
+          <div style={{ height: "1.5px", width: "82%", borderRadius: "2px", background: "linear-gradient(90deg, #C6922E 0%, rgba(198,146,46,0.18) 100%)", margin: "0 0 14px" }} />
+          <p style={{ margin: 0, fontSize: "13.5px", lineHeight: "1.9", color: "#71818C", fontVariantNumeric: "tabular-nums" }}>
+            <b style={{ color: "#0D2945", fontWeight: "600" }}>{patient.phone || "No phone"}</b><br />
+            ID <b style={{ color: "#C6922E", fontWeight: "700", letterSpacing: "0.02em" }}>{patientIdLabel}</b>
           </p>
-          <div style={{ marginTop: "18px" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "7px" }}>
-              <span style={{ fontSize: "10.5px", color: "#6E6656", letterSpacing: "0.05em", textTransform: "uppercase", fontWeight: "700" }}>
+          <div style={{ marginTop: "26px" }}>
+            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: "8px" }}>
+              <span style={{ fontSize: "10.5px", color: "#71818C", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600" }}>
                 {completedCount} of {journeySteps.length} steps
               </span>
-              <span style={{ fontSize: "12px", color: "#2E8B62", fontWeight: "800" }}>{progressPct}%</span>
+              <span style={{ fontSize: "14px", color: "#159E91", fontWeight: "800" }}>{progressPct}%</span>
             </div>
-            <div style={{ height: "9px", borderRadius: "99px", background: "rgba(27,42,74,0.12)", overflow: "hidden" }}>
-              <div style={{ height: "100%", borderRadius: "99px", width: `${progressPct}%`, background: "linear-gradient(90deg, #2E8B62, #4FAF7E)", transition: "width 0.8s ease" }} />
+            <div style={{ height: "8px", borderRadius: "99px", background: "#D4DEE3", overflow: "hidden" }}>
+              <div style={{ height: "100%", borderRadius: "99px", width: `${progressPct}%`, background: "linear-gradient(90deg, #168F83, #159E91)", transition: "width 0.9s cubic-bezier(.2,.8,.3,1)" }} />
             </div>
           </div>
         </div>
+
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); setCardShut((v) => !v); }}
+          onPointerDown={(e) => e.stopPropagation()}
+          aria-label={cardShut ? "Show patient details" : "Hide patient details"}
+          aria-expanded={!cardShut}
+          style={{
+            position: "absolute", zIndex: 30,
+            left: `${cardBox.left}px`, top: `${cardBox.top}px`,
+            width: "26px", height: "54px", padding: 0, border: "none",
+            borderRadius: "0 13px 13px 0", cursor: "pointer",
+            display: "grid", placeItems: "center",
+            background: "rgba(255,255,255,0.92)",
+            boxShadow: "2px 4px 14px -6px rgba(23,59,87,0.45)",
+            color: "#168F83",
+            transform: `translate(${cardShut ? -cardSlide : 0}px, -50%)`,
+            transition: "transform 0.42s cubic-bezier(.2,.8,.3,1)",
+          }}
+        >
+          <svg viewBox="0 0 24 24" width="15" height="15" style={{ fill: "none", stroke: "currentColor", strokeWidth: 2.2, strokeLinecap: "round", strokeLinejoin: "round", transform: cardShut ? "scaleX(-1)" : "none", transition: "transform 0.42s cubic-bezier(.2,.8,.3,1)" }}>
+            <path d="M15 5l-7 7 7 7" />
+          </svg>
+        </button>
 
         {/* Step nodes on the arc */}
         {journeySteps.map((step, i) => {
@@ -840,20 +935,23 @@ export default function PatientJourney() {
               <div style={{
                 width: "72px", height: "72px", borderRadius: "50%", flexShrink: 0,
                 display: "grid", placeItems: "center",
-                background: isDone ? "#2E8B62" : "rgba(255,255,255,0.94)",
-                border: `2px solid ${isDone ? "#2E8B62" : isCurrent ? "#A9762E" : "var(--admin-line, #e9e1d0)"}`,
+                background: isDone
+                  ? "linear-gradient(155deg, #3FB3A4 0%, #159E91 45%, #168F83 100%)"
+                  : "linear-gradient(155deg, #B9DFD8 0%, #8CCFC7 100%)",
                 boxShadow: isCurrent
-                  ? "0 0 0 5px rgba(169,118,46,0.14), 0 8px 20px -8px rgba(27,42,74,0.4)"
-                  : "0 8px 20px -8px rgba(27,42,74,0.4)",
+                  ? "0 0 0 4px rgba(255,255,255,0.92), 0 0 0 7px rgba(21,158,145,0.18), 0 10px 22px -8px rgba(21,110,100,0.55)"
+                  : isDone
+                    ? "0 0 0 4px rgba(255,255,255,0.92), 0 10px 20px -8px rgba(21,110,100,0.55)"
+                    : "0 0 0 4px rgba(255,255,255,0.9), 0 8px 16px -8px rgba(90,150,140,0.4)",
               }}>
-                <svg viewBox="0 0 24 24" width="32" height="32" style={{ fill: "none", stroke: isDone ? "#fff" : "#1B2A4A", strokeWidth: 1.6, strokeLinecap: "round", strokeLinejoin: "round" }}
+                <svg viewBox="0 0 24 24" width="30" height="30" style={{ fill: "none", stroke: "#fff", strokeWidth: 1.7, strokeLinecap: "round", strokeLinejoin: "round" }}
                   dangerouslySetInnerHTML={{ __html: STEP_ICONS[step.key] || DEFAULT_STEP_ICON }} />
               </div>
               {dist <= 1.6 && (
                 <span style={{
                   fontSize: "10.5px", fontWeight: "700", letterSpacing: "0.05em", textTransform: "uppercase",
                   lineHeight: "1.35", textAlign: "center",
-                  color: isDone ? "#2E8B62" : isCurrent ? "#1B2A4A" : "#A9A395",
+                  color: "#173B57",
                   display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
                 }}>
                   {step.label}
