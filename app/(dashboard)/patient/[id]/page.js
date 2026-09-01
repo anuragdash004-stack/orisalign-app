@@ -197,7 +197,7 @@ function deriveSteps(appt) {
   return base;
 }
 
-function fmt(n) {
+function moduleFmt(n) {
   if (!n && n !== 0) return "N/A";
   return `₹ ${parseFloat(n).toLocaleString("en-IN")}`;
 }
@@ -429,6 +429,13 @@ export default function PatientJourney() {
   );
 
   const steps = deriveSteps(patient);
+  // Demo accounts (journey_steps.demo_account) are shown to prospective
+  // patients, other dentists, and friends — real pricing has no place there.
+  // Shadows the module-level fmt() for the rest of this render: every call
+  // site already reads through fmt(), so this one flag masks every amount
+  // on the page without touching each of them individually.
+  const isDemoAccount = !!patient.journey_steps?.demo_account;
+  const fmt = isDemoAccount ? () => "₹ XX,XXX" : moduleFmt;
   // Counts as "new model" from Provisional Planning onward, not only once
   // Final Plan Review generates monthly_plan — see deriveSteps for why.
   const isNewModel = isNewModelAppointment(patient);
