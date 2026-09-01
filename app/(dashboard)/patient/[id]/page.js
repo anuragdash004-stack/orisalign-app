@@ -995,12 +995,12 @@ export default function PatientJourney() {
               // scrolls inside itself.
               maxHeight: `calc(100dvh - ${cardBox.top}px - 76px)`,
               overflowY: "auto", pointerEvents: "auto",
-              // Frosted rather than the identity card's near-transparent fill:
-              // the step nodes ride behind the card, and at 5% their circles
-              // read straight through the panel's text.
-              background: "rgba(255,255,255,0.62)",
-              backdropFilter: "blur(16px) saturate(1.1)", WebkitBackdropFilter: "blur(16px) saturate(1.1)",
-              border: "1px solid rgba(255,255,255,0.85)",
+              // Same 5% fill as the patient card. The blur is what keeps the
+              // text legible over the step nodes riding behind it — it costs no
+              // opacity, it just softens whatever shows through.
+              background: "rgba(255,255,255,0.05)",
+              backdropFilter: "blur(18px) saturate(1.1)", WebkitBackdropFilter: "blur(18px) saturate(1.1)",
+              border: "1px solid rgba(255,255,255,0.75)",
               borderRadius: "20px",
               boxShadow: "0 18px 40px -30px rgba(23,59,87,0.25)",
               padding: "30px 0 18px",
@@ -1036,8 +1036,8 @@ export default function PatientJourney() {
 
                     {/* Box */}
                     <div style={{ flex: 1, padding: 0, background: "transparent", border: "none", boxShadow: "none", marginTop: "4px" }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px" }}>
-                        <div style={{ flex: 1 }}>
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "12px" }}>
+                        <div style={{ width: "100%" }}>
                           <p style={{ margin: "0 0 3px", fontSize: "10px", fontWeight: "800", letterSpacing: "0.2em", textTransform: "uppercase", color: "#C6922E" }}>
                             Step {index + 1} of {journeySteps.length}
                           </p>
