@@ -38,13 +38,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Enter your phone number, email, or Patient ID." }, { status: 400 })
     }
 
-    let row: { id: string; name: string | null; phone: string | null } | null = null
+    let row: { id: string; name: string | null; phone: string | null; journey_steps: Record<string, unknown> | null } | null = null
 
     if (raw.includes("@")) {
       // Email lookup.
       const { data } = await supabase
         .from("appointments_booking")
-        .select("id, name, phone")
+        .select("id, name, phone, journey_steps")
         .ilike("email", raw)
         .order("created_at", { ascending: false })
         .limit(1)
@@ -61,7 +61,7 @@ export async function POST(req: Request) {
       const nextHex = (parseInt(lower, 16) + 1).toString(16).padStart(8, "0")
       const { data } = await supabase
         .from("appointments_booking")
-        .select("id, name, phone")
+        .select("id, name, phone, journey_steps")
         .gte("id", `${lower}-0000-0000-0000-000000000000`)
         .lt("id", `${nextHex}-0000-0000-0000-000000000000`)
         .order("created_at", { ascending: false })
@@ -78,7 +78,7 @@ export async function POST(req: Request) {
       }
       const { data } = await supabase
         .from("appointments_booking")
-        .select("id, name, phone")
+        .select("id, name, phone, journey_steps")
         .ilike("phone", `%${last10}%`)
         .order("created_at", { ascending: false })
         .limit(1)
@@ -93,22 +93,35 @@ export async function POST(req: Request) {
       )
     }
 
-    const otp = Math.floor(100000 + Math.random() * 900000).toString()
+    // The demo case (journey_steps.demo_account) is handed to people outside
+    // the clinic to explore — its phone number isn't real, so there's no
+    // WhatsApp to deliver a code to. Rather than a global OTP bypass (which
+    // would weaken every real patient's login), only THIS flagged account
+    // accepts a fixed code instead of a delivered one.
+    const isDemo = !!row.journey_steps?.demo_account
+    const otp = isDemo ? "123456" : Math.floor(100000 + Math.random() * 900000).toString()
     const token = hmac(`patient-login:${row.id}:${otp}`)
 
-    const waResult = await sendWhatsApp({
-      campaignName: "orisalign_otp",
-      destination: row.phone,
-      userName: row.name || "Patient",
-      templateParams: [otp],
-    })
+    if (!isDemo) {
+      const waResult = await sendWhatsApp({
+        campaignName: "orisalign_otp",
+        destination: row.phone,
+        userName: row.name || "Patient",
+        templateParams: [otp],
+      })
 
-    if (!waResult.success) {
-      console.error("[patient-login/request-otp] WhatsApp send failed", waResult.error)
-      return NextResponse.json({ error: "Couldn't send the OTP right now. Please try again in a moment." }, { status: 502 })
+      if (!waResult.success) {
+        console.error("[patient-login/request-otp] WhatsApp send failed", waResult.error)
+        return NextResponse.json({ error: "Couldn't send the OTP right now. Please try again in a moment." }, { status: 502 })
+      }
     }
 
-    return NextResponse.json({ token, appointmentId: row.id, phoneHint: maskPhone(row.phone) })
+    return NextResponse.json({
+      token,
+      appointmentId: row.id,
+      phoneHint: isDemo ? "demo" : maskPhone(row.phone),
+      demo: isDemo,
+    })
   } catch (err) {
     console.error("[patient-login/request-otp]", err)
     return NextResponse.json({ error: "Server error" }, { status: 500 })

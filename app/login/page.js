@@ -172,7 +172,9 @@ function PatientLogin() {
       <>
         <p style={{ color: "#374151", fontSize: "14px", margin: "0 0 4px", fontWeight: "700" }}>Enter the code</p>
         <p style={{ color: "#6b7280", fontSize: "13px", margin: "0 0 16px" }}>
-          We sent a WhatsApp code to the number ending in <strong>{session?.phoneHint}</strong>.
+          {session?.demo
+            ? <>This is a demo account — enter <strong>123456</strong> to continue.</>
+            : <>We sent a WhatsApp code to the number ending in <strong>{session?.phoneHint}</strong>.</>}
         </p>
         <input
           type="tel"
