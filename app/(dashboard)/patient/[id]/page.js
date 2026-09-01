@@ -867,8 +867,14 @@ export default function PatientJourney() {
         />
         <button
           onClick={() => {
+            // Clear both halves of the saved session, then tell the login page
+            // this was a deliberate logout. Without that flag it looks for a
+            // saved session on mount and, if either store survived the clear —
+            // a cookie the WebView holds on a different path, say — sends the
+            // patient straight back here.
             try { window.localStorage.removeItem("orisalign_patient_id"); } catch {}
-            window.location.href = "/login";
+            try { document.cookie = "orisalign_patient_id=;path=/;max-age=0;samesite=lax"; } catch {}
+            window.location.href = "/login?logout=1";
           }}
           style={{ position: "absolute", top: "20px", right: "16px", zIndex: 6, background: "none", border: "none", color: "#A9A395", fontSize: "10.5px", fontWeight: "700", letterSpacing: "0.06em", cursor: "pointer", padding: "4px" }}
         >

@@ -13,6 +13,40 @@ const supabase = getSupabaseClient();
 // app/(dashboard)/patient/[id]/page.js) or by uninstalling the app, since
 // this lives in the WebView's own local storage.
 const PATIENT_ID_KEY = "orisalign_patient_id";
+// The session is written twice — localStorage and a one-year cookie — and read
+// from whichever still has it. In the installed app the WebView can clear its
+// local storage (low storage, a force-stop on some Android builds, "clear
+// cache" from app settings) while cookies survive, and the reverse is true in
+// a browser with third-party storage restrictions. Belt and braces keeps the
+// patient logged in until they actually log out.
+const SESSION_DAYS = 365;
+function readSavedPatientId() {
+  try {
+    const fromStorage = window.localStorage.getItem(PATIENT_ID_KEY);
+    if (fromStorage) return fromStorage;
+  } catch {}
+  try {
+    const hit = document.cookie.split("; ").find((c) => c.startsWith(PATIENT_ID_KEY + "="));
+    return hit ? decodeURIComponent(hit.slice(PATIENT_ID_KEY.length + 1)) : null;
+  } catch {}
+  return null;
+}
+function clearSession() {
+  try { window.localStorage.removeItem(PATIENT_ID_KEY); } catch {}
+  // Expire it on every path the cookie could have been written to.
+  for (const path of ["/", "/login", window.location.pathname]) {
+    try { document.cookie = PATIENT_ID_KEY + "=;path=" + path + ";max-age=0;samesite=lax"; } catch {}
+  }
+}
+function saveSession(id) {
+  try { window.localStorage.setItem(PATIENT_ID_KEY, id); } catch {}
+  try {
+    document.cookie =
+      PATIENT_ID_KEY + "=" + encodeURIComponent(id) +
+      ";path=/;max-age=" + SESSION_DAYS * 24 * 60 * 60 + ";samesite=lax" +
+      (location.protocol === "https:" ? ";secure" : "");
+  } catch {}
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -23,8 +57,16 @@ export default function LoginPage() {
 
   useEffect(() => {
     try {
-      const savedId = window.localStorage.getItem(PATIENT_ID_KEY);
+      if (new URLSearchParams(window.location.search).has("logout")) {
+        clearSession();
+        setCheckingSavedSession(false);
+        return;
+      }
+      const savedId = readSavedPatientId();
       if (savedId) {
+        // Re-assert it, so a session that survived in only one of the two
+        // stores is written back to both.
+        saveSession(savedId);
         router.replace(`/patient/${savedId}`);
         return;
       }
@@ -36,7 +78,7 @@ export default function LoginPage() {
 
   if (checkingSavedSession) {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "#faf7f2" }}>
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "linear-gradient(163deg, #DFEDF8 0%, #F1F8FD 30%, #FAFDFE 52%, #EEF6FC 76%, #E2EEF8 100%)" }}>
         <p style={{ color: "#9ca3af", fontSize: "13px" }}>Loading...</p>
       </div>
     );
@@ -153,11 +195,7 @@ function PatientLogin() {
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error || "Incorrect code."); return; }
-      try {
-        window.localStorage.setItem(PATIENT_ID_KEY, session.appointmentId);
-      } catch {
-        // If storage is unavailable, they'll just need to log in again next time.
-      }
+      saveSession(session.appointmentId);
       window.location.href = `/patient/${session.appointmentId}`;
     } catch {
       setError("Network error — please try again.");
