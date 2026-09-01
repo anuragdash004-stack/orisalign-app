@@ -989,17 +989,21 @@ export default function PatientJourney() {
             onPointerDown={(e) => e.stopPropagation()}
             style={{
               position: "absolute", left: "10px", top: `${cardBox.top}px`,
-              width: "calc(100% - 20px)", maxWidth: "460px",
-              // Grow downwards from where the card sits, stopping clear of
-              // the contact line at the bottom of the screen.
-              maxHeight: `calc(100dvh - ${cardBox.top}px - 88px)`,
+              width: "72%", maxWidth: "460px",
+              // Height follows the content — a short step stays a small card,
+              // a long one grows until it would reach the contact line, then
+              // scrolls inside itself.
+              maxHeight: `calc(100dvh - ${cardBox.top}px - 76px)`,
               overflowY: "auto", pointerEvents: "auto",
-              background: "rgba(255,255,255,0.92)",
-              backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
-              border: "1px solid rgba(255,255,255,0.9)",
+              // Frosted rather than the identity card's near-transparent fill:
+              // the step nodes ride behind the card, and at 5% their circles
+              // read straight through the panel's text.
+              background: "rgba(255,255,255,0.62)",
+              backdropFilter: "blur(16px) saturate(1.1)", WebkitBackdropFilter: "blur(16px) saturate(1.1)",
+              border: "1px solid rgba(255,255,255,0.85)",
               borderRadius: "20px",
-              boxShadow: "0 26px 56px -26px rgba(23,59,87,0.45)",
-              padding: "34px 0 20px",
+              boxShadow: "0 18px 40px -30px rgba(23,59,87,0.25)",
+              padding: "30px 0 18px",
             }}
           >
             <button
@@ -1026,15 +1030,18 @@ export default function PatientJourney() {
                     style={{ display: "flex", alignItems: "flex-start", gap: "14px", cursor: isClickable ? "pointer" : "default" }}
                   >
                     {/* Circle */}
-                    <div style={{ width: "44px", height: "44px", borderRadius: "10px", flexShrink: 0, background: done ? "linear-gradient(135deg, #22c55e, #16a34a)" : isNext ? "linear-gradient(135deg, #f59e0b, #b8905a)" : "white", border: done ? "none" : isNext ? "none" : "2px solid #e5e7eb", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: done ? "0 4px 12px rgba(34,197,94,0.3)" : isNext ? "0 4px 12px rgba(245,158,11,0.3)" : "0 2px 6px rgba(0,0,0,0.06)" }}>
-                      {done ? <span style={{ color: "white", fontSize: "18px", fontWeight: "700" }}>✓</span> : <span style={{ color: isNext ? "white" : "#d1d5db", fontSize: "13px", fontWeight: "700" }}>{index + 1}</span>}
+                    <div style={{ width: "34px", height: "34px", borderRadius: "50%", flexShrink: 0, background: done ? "linear-gradient(155deg, #3FB3A4, #168F83)" : isNext ? "#C6922E" : "rgba(255,255,255,0.75)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 0 3px rgba(255,255,255,0.85)" }}>
+                      {done ? <span style={{ color: "white", fontSize: "15px", fontWeight: "700" }}>✓</span> : <span style={{ color: isNext ? "white" : "#71818C", fontSize: "12px", fontWeight: "800" }}>{index + 1}</span>}
                     </div>
 
                     {/* Box */}
-                    <div style={{ flex: 1, padding: "12px 16px", borderRadius: "12px", background: done ? "linear-gradient(135deg, #f0fdf4, #dcfce7)" : isNext ? "linear-gradient(135deg, #fffbeb, #fef3c7)" : "white", border: `1px solid ${done ? "#bbf7d0" : isNext ? "#fde68a" : "#e5e7eb"}`, boxShadow: done ? "0 2px 8px rgba(34,197,94,0.12)" : "0 2px 6px rgba(0,0,0,0.04)", marginTop: "2px" }}>
+                    <div style={{ flex: 1, padding: 0, background: "transparent", border: "none", boxShadow: "none", marginTop: "4px" }}>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px" }}>
                         <div style={{ flex: 1 }}>
-                          <p style={{ margin: 0, fontSize: "14px", fontWeight: done ? "700" : "500", color: done ? "#15803d" : isNext ? "#92400e" : "#9ca3af" }}>
+                          <p style={{ margin: "0 0 3px", fontSize: "10px", fontWeight: "800", letterSpacing: "0.2em", textTransform: "uppercase", color: "#C6922E" }}>
+                            Step {index + 1} of {journeySteps.length}
+                          </p>
+                          <p style={{ margin: 0, fontSize: "20px", fontWeight: "800", lineHeight: "1.15", letterSpacing: "-0.02em", color: "#0D2945" }}>
                             {step.label}
                           </p>
                           {step.key === "plan_approved" && done && (
@@ -1104,7 +1111,10 @@ export default function PatientJourney() {
                             Review
                           </button>
                         )}
-                        {isClickable && !step.approveAction && <span style={{ fontSize: "12px", color: done ? "#16a34a" : "#9ca3af", flexShrink: 0, marginLeft: "8px" }}>{isExpanded ? "▲" : "▼"}</span>}
+                        {/* The old stacked list needed a caret to say "this row
+                            expands". The card only ever shows the one step the
+                            patient opened, so the caret has nothing to toggle —
+                            and it collided with the close button. */}
                       </div>
                       {step.key === "plan_approved" && canApprovePlan && !patient.plan_approved && (
                         <label
@@ -1138,7 +1148,7 @@ export default function PatientJourney() {
 
                   {/* Expanded Panel — Scanning and Provisional Planning */}
                   {step.key === "scanning_done" && isExpanded && (
-                    <div style={{ marginLeft: "58px", marginTop: "8px", background: "white", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+                    <div style={{ marginLeft: 0, marginTop: "10px", background: "transparent", border: "none", borderRadius: 0, padding: 0, boxShadow: "none" }}>
                       {/* Same number of sets for both plans — only the wear duration differs */}
                       {patient?.provisional_sets_orispro && (
                         <div style={{ padding: "10px 12px", background: "#f3f4f6", borderRadius: "8px", marginBottom: "12px" }}>
@@ -1198,7 +1208,7 @@ export default function PatientJourney() {
 
                   {/* Expanded Panel — Provisional Planning (plan choice) */}
                   {step.key === "provisional_planning" && isExpanded && (
-                    <div style={{ marginLeft: "58px", marginTop: "8px", background: "white", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+                    <div style={{ marginLeft: 0, marginTop: "10px", background: "transparent", border: "none", borderRadius: 0, padding: 0, boxShadow: "none" }}>
                       <p style={{ margin: "0 0 14px", fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Choose Your Plan</p>
                       <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                         {Object.values(PLAN_CONFIGS).map((cfg) => {
@@ -1322,7 +1332,7 @@ export default function PatientJourney() {
                     const procs = prealignerProcedures(patient);
                     const doneMap = patient.journey_steps?.prealigner_done || {};
                     return (
-                      <div style={{ marginLeft: "58px", marginTop: "8px", background: "white", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+                      <div style={{ marginLeft: 0, marginTop: "10px", background: "transparent", border: "none", borderRadius: 0, padding: 0, boxShadow: "none" }}>
                         <p style={{ margin: "0 0 14px", fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Prealigner Treatment</p>
                         {procs.length === 0 ? (
                           <p style={{ margin: 0, fontSize: "13px", color: "#9ca3af", fontStyle: "italic" }}>No prealigner treatment needed — your dentist didn't flag any procedures.</p>
@@ -1362,7 +1372,7 @@ export default function PatientJourney() {
 
                   {/* Expanded Panel — Planning Done */}
                   {step.key === "planning_done" && isExpanded && (
-                    <div style={{ marginLeft: "58px", marginTop: "8px", background: "white", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+                    <div style={{ marginLeft: 0, marginTop: "10px", background: "transparent", border: "none", borderRadius: 0, padding: 0, boxShadow: "none" }}>
                       <p style={{ margin: "0 0 14px", fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Your Aligner Plan</p>
                       {patient.aligner_total_sets && patient.aligner_days_per_set ? (
                         <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
@@ -1411,7 +1421,7 @@ export default function PatientJourney() {
                       },
                     ];
                     return (
-                      <div style={{ marginLeft: "58px", marginTop: "8px", background: "white", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+                      <div style={{ marginLeft: 0, marginTop: "10px", background: "transparent", border: "none", borderRadius: 0, padding: 0, boxShadow: "none" }}>
                         <p style={{ margin: "0 0 14px", fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Manufacturing</p>
                         <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                           {rows.map((r) => (
@@ -1435,7 +1445,7 @@ export default function PatientJourney() {
 
                   {/* Expanded Panel — Aligners Dispatched */}
                   {step.key === "aligners_dispatched" && isExpanded && (
-                    <div style={{ marginLeft: "58px", marginTop: "8px", background: "white", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+                    <div style={{ marginLeft: 0, marginTop: "10px", background: "transparent", border: "none", borderRadius: 0, padding: 0, boxShadow: "none" }}>
                       <p style={{ margin: "0 0 14px", fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Shipment Details</p>
                       {(() => {
                         // Tracking links now live on the manufacturing batches; merge in any
@@ -1495,7 +1505,7 @@ export default function PatientJourney() {
 
                   {/* Expanded Panel — Aligners Received (per batch) */}
                   {step.key === "aligners_received" && isExpanded && (
-                    <div style={{ marginLeft: "58px", marginTop: "8px", background: "white", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+                    <div style={{ marginLeft: 0, marginTop: "10px", background: "transparent", border: "none", borderRadius: 0, padding: 0, boxShadow: "none" }}>
                       <p style={{ margin: "0 0 14px", fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Confirm Receipt — Batch by Batch</p>
                       {(() => {
                         const dispatchedBatches = (patient.manufacturing_data?.batches || [])
@@ -1537,7 +1547,7 @@ export default function PatientJourney() {
 
                   {/* Expanded Panel — Feedback */}
                   {step.key === "feedback_submitted" && isExpanded && (
-                    <div style={{ marginLeft: "58px", marginTop: "8px", background: "linear-gradient(135deg, #fffbeb, #fef9f0)", border: "1px solid #fde68a", borderRadius: "12px", padding: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)", opacity: done ? 1 : 0.5 }}>
+                    <div style={{ marginLeft: 0, marginTop: "10px", background: "transparent", border: "none", borderRadius: 0, padding: 0, boxShadow: "none", opacity: done ? 1 : 0.5 }}>
                       <p style={{ margin: "0 0 8px", fontSize: "13px", fontWeight: "700", color: done ? "#92400e" : "#9ca3af" }}>🎁 Share Your Feedback</p>
                       <p style={{ margin: "0 0 14px", fontSize: "13px", color: done ? "#374151" : "#9ca3af", lineHeight: "1.6" }}>
                         We would love to hear from you! Kindly submit your feedback at the end of treatment to avail your <strong>hamper worth ₹5,000</strong>.
@@ -1557,7 +1567,7 @@ export default function PatientJourney() {
 
                   {/* Expanded Panel — Full Plan (content only — payment now lives in Provisional Planning) */}
                   {step.key === "payment_done" && isExpanded && (isNewModel ? (
-                    <div style={{ marginLeft: "58px", marginTop: "8px", background: "white", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+                    <div style={{ marginLeft: 0, marginTop: "10px", background: "transparent", border: "none", borderRadius: 0, padding: 0, boxShadow: "none" }}>
                       <p style={{ margin: "0 0 14px", fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Full Plan</p>
                       <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                         {patient.final_plan && (
@@ -1593,7 +1603,7 @@ export default function PatientJourney() {
                       </div>
                     </div>
                   ) : (
-                    <div style={{ marginLeft: "58px", marginTop: "8px", background: "white", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+                    <div style={{ marginLeft: 0, marginTop: "10px", background: "transparent", border: "none", borderRadius: 0, padding: 0, boxShadow: "none" }}>
                       <p style={{ margin: "0 0 14px", fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Plan and Payment</p>
                       {!sets ? (
                         <p style={{ margin: 0, fontSize: "13px", color: "#9ca3af", fontStyle: "italic" }}>Payment details will appear here once confirmed.</p>
@@ -1853,7 +1863,7 @@ export default function PatientJourney() {
 
                   {/* Expanded Panel — Investigation Required */}
                   {step.key === "investigation_required" && isExpanded && (
-                    <div style={{ marginLeft: "58px", marginTop: "8px", background: "white", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+                    <div style={{ marginLeft: 0, marginTop: "10px", background: "transparent", border: "none", borderRadius: 0, padding: 0, boxShadow: "none" }}>
                       <p style={{ margin: "0 0 14px", fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Investigation Required</p>
                       {(() => {
                         const types = patient.journey_steps?.investigation_types || [];
@@ -1937,7 +1947,7 @@ export default function PatientJourney() {
                       .filter((m) => selectedPackages.includes(m.num))
                       .reduce((sum, m) => sum + m.payableAmount, 0);
                     return (
-                    <div style={{ marginLeft: "58px", marginTop: "8px", background: "white", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+                    <div style={{ marginLeft: 0, marginTop: "10px", background: "transparent", border: "none", borderRadius: 0, padding: 0, boxShadow: "none" }}>
                       <p style={{ margin: "0 0 14px", fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Aligner Sets — Package by Package</p>
 
                       {unpaidNums.length > 0 && (
