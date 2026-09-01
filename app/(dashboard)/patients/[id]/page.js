@@ -568,8 +568,8 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
           </div>
         </div>
         {appliedCouponsTotal > 0 && (
-          <div style={{ marginBottom: "16px", padding: "10px 12px", background: "#fef3c7", borderRadius: "8px" }}>
-            <p style={{ margin: "0 0 6px", fontSize: "11px", fontWeight: "700", color: "#92400e", textTransform: "uppercase" }}>Coupon(s) applied by patient</p>
+          <div style={{ marginBottom: "16px", padding: "10px 12px", background: "#D7EFEB", borderRadius: "8px" }}>
+            <p style={{ margin: "0 0 6px", fontSize: "11px", fontWeight: "700", color: "#0F5F58", textTransform: "uppercase" }}>Coupon(s) applied by patient</p>
             {(appt?.payment_data?.applied_coupons || []).map((c, i) => (
               <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", color: "var(--admin-ink, #1b2a4a)" }}>
                 <span style={{ fontWeight: "700" }}>{c.code}</span>
@@ -1887,8 +1887,8 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                 {step.key === "plan_approved" && (
                   <span style={{
                     padding: "6px 12px", borderRadius: "8px", fontSize: "11px", fontWeight: "700", flexShrink: 0,
-                    background: done ? "#dcfce7" : steps.planning_done ? "#fef3c7" : "var(--admin-gold-wash, #f3f0e6)",
-                    color: done ? "#16a34a" : steps.planning_done ? "#92400e" : "var(--admin-ink2, #837a66)",
+                    background: done ? "#dcfce7" : steps.planning_done ? "#D7EFEB" : "var(--admin-gold-wash, #f3f0e6)",
+                    color: done ? "#16a34a" : steps.planning_done ? "#0F5F58" : "var(--admin-ink2, #837a66)",
                     letterSpacing: "0.5px",
                   }}>
                     {done ? "APPROVED BY PATIENT" : steps.planning_done ? "AWAITING PATIENT" : "LOCKED"}
@@ -2013,7 +2013,7 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                         style={{
                           flex: 1, padding: "10px", borderRadius: "8px",
                           border: estimatePlan === cfg.key ? "2px solid var(--admin-gold, #b8905a)" : "1px solid var(--admin-line, #e9e1d0)",
-                          background: estimatePlan === cfg.key ? "#fffbeb" : "white",
+                          background: estimatePlan === cfg.key ? "#EAF7F5" : "white",
                           color: "var(--admin-ink, #1b2a4a)", fontWeight: "700", fontSize: "13px", cursor: "pointer",
                         }}
                       >
@@ -2060,7 +2060,7 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                           style={{
                             textAlign: "left", padding: "14px", borderRadius: "10px",
                             border: isSelected ? "2px solid var(--admin-gold, #b8905a)" : "1px solid var(--admin-line, #e9e1d0)",
-                            background: isSelected ? "#fffbeb" : "white",
+                            background: isSelected ? "#EAF7F5" : "white",
                             cursor: savingPlanChoice ? "not-allowed" : "pointer",
                           }}
                         >

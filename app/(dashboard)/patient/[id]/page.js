@@ -119,6 +119,51 @@ const STAGE_SRC = (n) => `/journey-stages/stage-${String(n + 1).padStart(2, "0")
 // How strongly the simulation shows through the background. Kept as one
 // constant so it's a single number to tune.
 const STAGE_OPACITY = 0.30;
+// ── Screen background ───────────────────────────────────────────────────────
+// The gradient deepens to blue in the corners and clears to white through the
+// middle; WAVES lays the flowing line bands over it. Each band is one curve
+// drawn several times, stepped along itself, which is what gives the ribbon of
+// parallel lines its shape, and each fades out at its outer end rather than
+// stopping dead.
+const SCREEN_BG =
+  "radial-gradient(74% 40% at 64% 36%, #FFFFFF 0%, rgba(255,255,255,0) 66%)," +
+  "radial-gradient(66% 32% at 0% 2%, #CFE4F4 0%, rgba(207,228,244,0) 74%)," +
+  "radial-gradient(48% 24% at 100% 54%, #D6E8F5 0%, rgba(214,232,245,0) 70%)," +
+  "radial-gradient(78% 30% at 12% 100%, #D6E8F5 0%, rgba(214,232,245,0) 76%)," +
+  "linear-gradient(163deg, #DFEDF8 0%, #F1F8FD 30%, #FAFDFE 52%, #EEF6FC 76%, #E2EEF8 100%)";
+
+function waveBand(d, n, dx, dy, from, to, w) {
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const t = n > 1 ? i / (n - 1) : 0;
+    out.push(
+      <path
+        key={`${d}-${i}`}
+        d={d}
+        transform={`translate(${(dx * i).toFixed(1)} ${(dy * i).toFixed(1)})`}
+        fill="none"
+        stroke="#ffffff"
+        strokeWidth={w}
+        opacity={(from + (to - from) * t).toFixed(3)}
+      />
+    );
+  }
+  return out;
+}
+
+const WAVE_BANDS = [
+  // Top-left: the tightest, brightest group, sweeping in from the left edge.
+  ["M-50 96 C 60 34, 150 130, 250 74 S 390 6, 470 44", 9, 0, -11, 0.95, 0.14, 1.5],
+  ["M-50 112 C 60 50, 150 146, 250 90 S 390 22, 470 60", 5, 0, 13, 0.5, 0.06, 1.1],
+  // The long soft sweep across the upper third.
+  ["M-50 210 C 90 150, 210 268, 330 214 S 450 150, 480 176", 4, 0, 16, 0.42, 0.08, 1.2],
+  // Right edge: a slim band bulging inwards past the arc.
+  ["M444 286 C 344 400, 340 560, 432 700 S 470 806, 464 862", 8, 15, 0, 0.8, 0.1, 1.3],
+  // Bottom: the widest, calmest group, then the dense run at the very edge.
+  ["M-50 778 C 90 700, 220 848, 350 772 S 460 712, 480 740", 10, 0, 16, 1, 0.14, 1.6],
+  ["M-50 866 C 100 800, 230 922, 360 858 S 470 812, 486 834", 7, 0, 14, 0.9, 0.12, 1.4],
+];
+
 // Feathers all four edges of the simulation (see where it's applied below).
 const STAGE_MASK =
   "linear-gradient(to bottom, transparent 0%, #000 22%, #000 74%, transparent 100%)," +
@@ -227,12 +272,18 @@ export default function PatientJourney() {
   const arcDrag = useRef({ active: false, lastY: 0, moved: 0 });
   const arcCentred = useRef(false);
 
+  // The open card tracks whichever step the rail is centred on.
+  useEffect(() => {
+    if (!expandedStep) return;
+    const centred = journeySteps[Math.round(arcOffset)]?.key;
+    if (centred && centred !== expandedStep) setExpandedStep(centred);
+  });
+
   // ── Patient card tray ───────────────────────────────────────────────────
   // The card slides out through the left edge; its handle rides along on the
   // right, so once the card is tucked away the arrow is left sitting at the
   // screen edge. Both are moved by the card's own width, measured here rather
   // than assumed, since the card's width is a percentage of the screen.
-  const [cardShut, setCardShut] = useState(false);
   const cardRef = useRef(null);
   const [cardBox, setCardBox] = useState({ left: 0, top: 0, mid: 0 });
   const cardSlide = cardBox.left;   // card's right edge === distance to the screen edge
@@ -240,10 +291,13 @@ export default function PatientJourney() {
     const measure = () => {
       const el = cardRef.current;
       if (!el) return;
+      const parentH = el.offsetParent ? el.offsetParent.clientHeight : 0;
       const next = {
         left: el.offsetLeft + el.offsetWidth,
         top: el.offsetTop,
-        mid: el.offsetTop + el.offsetHeight / 2,
+        // Collapsed there is no card on screen to sit beside, so the arrow
+        // parks at the middle of the screen instead of the card's middle.
+        mid: expandedStep ? el.offsetTop + el.offsetHeight / 2 : Math.round(parentH / 2),
       };
       // Bail out when nothing moved: this effect deliberately runs on every
       // render (the card's height depends on content), so setting state
@@ -767,20 +821,27 @@ export default function PatientJourney() {
         }}
         style={{
           position: "relative", minHeight: "100dvh", overflow: "hidden",
-          background:
-            "radial-gradient(120% 60% at 15% 8%, #ffffff 0%, rgba(255,255,255,0) 55%)," +
-            "radial-gradient(90% 45% at 95% 42%, #ffffff 0%, rgba(255,255,255,0) 60%)," +
-            "linear-gradient(168deg, #EAF4FB 0%, #F5FAFD 40%, #EDF5FB 72%, #F2F8FC 100%)",
+          background: SCREEN_BG,
           touchAction: "none", userSelect: "none",
           "--stage-opacity": STAGE_OPACITY,
         }}
       >
+        {/* The flowing line bands the background is built from. */}
+        <svg
+          viewBox="0 0 420 932"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", zIndex: 0, pointerEvents: "none" }}
+        >
+          {WAVE_BANDS.map(([d, n, dx, dy, from, to, w]) => waveBand(d, n, dx, dy, from, to, w))}
+        </svg>
+
         {/* Treatment simulation. All 15 stills are preloaded (15KB each) so
             dragging the rail never waits on a fetch mid-fade — see
             paintStages above for why this is one canvas, not stacked imgs. */}
         <div style={{
           position: "absolute", top: "52%", left: "5%", transform: "translateY(-50%)",
-          width: "65%", zIndex: 0, pointerEvents: "none", opacity: "var(--stage-opacity)",
+          width: "78%", zIndex: 1, pointerEvents: "none", opacity: "var(--stage-opacity)",
           // Desaturated to a cool blue-grey and multiplied into the page: the
           // renders are near-white, so blending them normally over a pale
           // background made the teeth vanish. Multiply keeps only the shading
@@ -833,58 +894,36 @@ export default function PatientJourney() {
               return d;
             })()}
             fill="none"
-            stroke="rgba(21,158,145,0.45)"
+            stroke={expandedStep ? "rgba(21,158,145,0.18)" : "rgba(21,158,145,0.45)"}
             strokeWidth="1.5"
             style={{ transform: "translateY(50%)" }}
           />
         </svg>
 
-        {/* ── Patient card ──
-            Slides out through the left edge on its handle. The handle is a
-            SIBLING, not a child: step nodes are painted above the card on
-            purpose, and a handle inside the card would sit underneath whichever
-            node happens to be beside it and never receive the tap. */}
-        <div ref={cardRef} style={{
-          position: "absolute", zIndex: 3, left: "10px", top: "37%", width: "52%",
-          borderRadius: "20px", overflow: "hidden",
-          // Barely-there fill — essentially an outline, so the simulation stays
-          // visible straight through it.
-          background: "rgba(255,255,255,0.05)",
-          border: "1px solid rgba(255,255,255,0.75)",
-          boxShadow: "0 18px 40px -30px rgba(23,59,87,0.25)",
-          color: "#0D2945",
-          transform: cardShut ? `translateX(${-cardSlide}px)` : "translateX(0)",
-          transition: "transform 0.42s cubic-bezier(.2,.8,.3,1), opacity 0.24s ease",
-          padding: "26px 22px 24px",
-          opacity: expandedStep ? 0 : 1,
-          pointerEvents: expandedStep ? "none" : "auto",
-        }}>
-          <p style={{ margin: "0 0 7px", fontSize: "10.5px", fontWeight: "800", letterSpacing: "0.2em", textTransform: "uppercase", color: "#C6922E" }}>Patient</p>
-          <p style={{ margin: "0 0 13px", fontSize: "24px", fontWeight: "800", lineHeight: "1.1", letterSpacing: "-0.025em" }}>{patient.name || "Patient"}</p>
-          <div style={{ height: "1.5px", width: "82%", borderRadius: "2px", background: "linear-gradient(90deg, #C6922E 0%, rgba(198,146,46,0.18) 100%)", margin: "0 0 14px" }} />
-          <p style={{ margin: 0, fontSize: "13.5px", lineHeight: "1.9", color: "#71818C", fontVariantNumeric: "tabular-nums" }}>
-            <b style={{ color: "#0D2945", fontWeight: "600" }}>{patient.phone || "No phone"}</b><br />
-            ID <b style={{ color: "#C6922E", fontWeight: "700", letterSpacing: "0.02em" }}>{patientIdLabel}</b>
+        {/* Who this is, kept on screen under the logo whether or not a card is
+            open. The patient's own details now live in the Appointment Booked
+            step, so there is no separate patient card any more. */}
+        <div style={{ position: "absolute", top: "148px", right: "18px", zIndex: 7, textAlign: "right", pointerEvents: "none" }}>
+          <p style={{ margin: 0, fontSize: "15px", fontWeight: "800", letterSpacing: "-0.015em", color: "#0D2945" }}>{patient.name || "Patient"}</p>
+          <p style={{ margin: "2px 0 0", fontSize: "10.5px", fontWeight: "600", letterSpacing: "0.08em", textTransform: "uppercase", color: "#71818C", fontVariantNumeric: "tabular-nums" }}>
+            ID <b style={{ color: "#C6922E", fontWeight: "800" }}>{patientIdLabel}</b>
           </p>
-          <div style={{ marginTop: "26px" }}>
-            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: "8px" }}>
-              <span style={{ fontSize: "10.5px", color: "#71818C", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600" }}>
-                {completedCount} of {journeySteps.length} steps
-              </span>
-              <span style={{ fontSize: "14px", color: "#159E91", fontWeight: "800" }}>{progressPct}%</span>
-            </div>
-            <div style={{ height: "8px", borderRadius: "99px", background: "#D4DEE3", overflow: "hidden" }}>
-              <div style={{ height: "100%", borderRadius: "99px", width: `${progressPct}%`, background: "linear-gradient(90deg, #168F83, #159E91)", transition: "width 0.9s cubic-bezier(.2,.8,.3,1)" }} />
-            </div>
-          </div>
         </div>
 
+        {/* The handle that pulls the card out. It is a SIBLING of the card, not
+            a child: step nodes are painted above the card on purpose, and a
+            handle inside it would sit underneath whichever node happens to be
+            beside it and never receive the tap. */}
         <button
           type="button"
-          onClick={(e) => { e.stopPropagation(); setCardShut((v) => !v); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            // Collapsed, the arrow opens whichever step the rail is centred on.
+            setExpandedStep((prev) => (prev ? null : journeySteps[Math.round(arcOffset)]?.key || journeySteps[0].key));
+          }}
           onPointerDown={(e) => e.stopPropagation()}
-          aria-label={cardShut ? "Show patient details" : "Hide patient details"}
-          aria-expanded={!cardShut}
+          aria-label={expandedStep ? "Hide details" : "Show details"}
+          aria-expanded={!!expandedStep}
           style={{
             position: "absolute", zIndex: 30,
             left: `${cardBox.left}px`, top: `${cardBox.mid}px`,
@@ -894,13 +933,11 @@ export default function PatientJourney() {
             background: "rgba(255,255,255,0.92)",
             boxShadow: "2px 4px 14px -6px rgba(23,59,87,0.45)",
             color: "#168F83",
-            transform: `translate(${cardShut ? -cardSlide : 0}px, -50%)`,
-            transition: "transform 0.42s cubic-bezier(.2,.8,.3,1), opacity 0.24s ease",
-            opacity: expandedStep ? 0 : 1,
-            pointerEvents: expandedStep ? "none" : "auto",
+            transform: `translate(${expandedStep ? 0 : -cardSlide}px, -50%)`,
+            transition: "transform 0.42s cubic-bezier(.2,.8,.3,1)",
           }}
         >
-          <svg viewBox="0 0 24 24" width="15" height="15" style={{ fill: "none", stroke: "currentColor", strokeWidth: 2.2, strokeLinecap: "round", strokeLinejoin: "round", transform: cardShut ? "scaleX(-1)" : "none", transition: "transform 0.42s cubic-bezier(.2,.8,.3,1)" }}>
+          <svg viewBox="0 0 24 24" width="15" height="15" style={{ fill: "none", stroke: "currentColor", strokeWidth: 2.2, strokeLinecap: "round", strokeLinejoin: "round", transform: expandedStep ? "none" : "scaleX(-1)", transition: "transform 0.42s cubic-bezier(.2,.8,.3,1)" }}>
             <path d="M15 5l-7 7 7 7" />
           </svg>
         </button>
@@ -934,10 +971,10 @@ export default function PatientJourney() {
                 display: "flex", flexDirection: "column", alignItems: "center", gap: "7px",
                 transform: `translate(${x}px, ${y + 5}px) scale(${scale})`,
                 transformOrigin: "center top",
-                opacity,
-                pointerEvents: opacity < 0.25 ? "none" : "auto",
+                opacity: expandedStep ? opacity * 0.34 : opacity,
+                pointerEvents: opacity < 0.25 || expandedStep ? "none" : "auto",
                 cursor: "pointer",
-                transition: arcDrag.current.active ? "none" : "transform 0.28s cubic-bezier(.22,.8,.3,1), opacity 0.28s ease",
+                transition: arcDrag.current.active ? "none" : "transform 0.28s cubic-bezier(.22,.8,.3,1), opacity 0.3s ease",
               }}
             >
               <div style={{
@@ -986,20 +1023,20 @@ export default function PatientJourney() {
       {expandedStep && (
         <div style={{ position: "absolute", inset: 0, zIndex: 60, pointerEvents: "none" }}>
           <div
+            ref={cardRef}
             onPointerDown={(e) => e.stopPropagation()}
             style={{
-              position: "absolute", left: "10px", top: `${cardBox.top}px`,
+              position: "absolute", left: "10px", top: "37%",
               width: "72%", maxWidth: "460px",
               // Height follows the content — a short step stays a small card,
               // a long one grows until it would reach the contact line, then
               // scrolls inside itself.
-              maxHeight: `calc(100dvh - ${cardBox.top}px - 76px)`,
+              maxHeight: "calc(100dvh - 37% - 76px)",
               overflowY: "auto", pointerEvents: "auto",
-              // Same 5% fill as the patient card. The blur is what keeps the
-              // text legible over the step nodes riding behind it — it costs no
-              // opacity, it just softens whatever shows through.
+              // Exactly the patient card: an outline holding text, with the
+              // background showing straight through. No backdrop blur — that
+              // milked the panel so it read as a different surface.
               background: "rgba(255,255,255,0.05)",
-              backdropFilter: "blur(18px) saturate(1.1)", WebkitBackdropFilter: "blur(18px) saturate(1.1)",
               border: "1px solid rgba(255,255,255,0.75)",
               borderRadius: "20px",
               boxShadow: "0 18px 40px -30px rgba(23,59,87,0.25)",
@@ -1147,6 +1184,31 @@ export default function PatientJourney() {
 
 
                   {/* Expanded Panel — Scanning and Provisional Planning */}
+                  {/* Appointment Booked carries the patient's own details —
+                      there is no separate patient card any more. */}
+                  {step.key === "booked" && (
+                    <div style={{ marginTop: "10px" }}>
+                      <p style={{ margin: "0 0 8px", fontSize: "11px", fontWeight: "700", letterSpacing: "0.08em", textTransform: "uppercase", color: "#71818C" }}>Your details</p>
+                      <div style={{ height: "1.5px", width: "82%", borderRadius: "2px", background: "linear-gradient(90deg, #C6922E 0%, rgba(198,146,46,0.18) 100%)", margin: "0 0 12px" }} />
+                      <p style={{ margin: 0, fontSize: "13.5px", lineHeight: "1.9", color: "#71818C", fontVariantNumeric: "tabular-nums" }}>
+                        <b style={{ color: "#0D2945", fontWeight: "600" }}>{patient.phone || "No phone"}</b><br />
+                        ID <b style={{ color: "#C6922E", fontWeight: "700", letterSpacing: "0.02em" }}>{patientIdLabel}</b>
+                        {patient.email ? <><br />{patient.email}</> : null}
+                      </p>
+                      <div style={{ marginTop: "18px" }}>
+                        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: "8px" }}>
+                          <span style={{ fontSize: "10.5px", color: "#71818C", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600" }}>
+                            {completedCount} of {journeySteps.length} steps
+                          </span>
+                          <span style={{ fontSize: "14px", color: "#159E91", fontWeight: "800" }}>{progressPct}%</span>
+                        </div>
+                        <div style={{ height: "8px", borderRadius: "99px", background: "#D4DEE3", overflow: "hidden" }}>
+                          <div style={{ height: "100%", borderRadius: "99px", width: `${progressPct}%`, background: "linear-gradient(90deg, #168F83, #159E91)", transition: "width 0.9s cubic-bezier(.2,.8,.3,1)" }} />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {step.key === "scanning_done" && isExpanded && (
                     <div style={{ marginLeft: 0, marginTop: "10px", background: "transparent", border: "none", borderRadius: 0, padding: 0, boxShadow: "none" }}>
                       {/* Same number of sets for both plans — only the wear duration differs */}
@@ -1226,8 +1288,8 @@ export default function PatientJourney() {
                               disabled={isLocked || savingProvisionalPlan}
                               style={{
                                 textAlign: "left", padding: "14px", borderRadius: "10px",
-                                border: isSelected ? "2px solid #b8905a" : "1px solid #e5e7eb",
-                                background: isSelected ? "#fffbeb" : "white",
+                                border: isSelected ? "2px solid #159E91" : "1px solid #e5e7eb",
+                                background: isSelected ? "#EAF7F5" : "white",
                                 cursor: isLocked ? "default" : "pointer",
                                 opacity: isLocked && !isSelected ? 0.5 : 1,
                               }}
@@ -1269,8 +1331,8 @@ export default function PatientJourney() {
                               disabled={isLocked || fullPlanPaid || payNowLoading}
                               style={{
                                 textAlign: "left", padding: "14px", borderRadius: "10px",
-                                border: fullPlanPaid ? "2px solid #16a34a" : "1px dashed #b8905a",
-                                background: fullPlanPaid ? "#f0fdf4" : "#fffbeb",
+                                border: fullPlanPaid ? "2px solid #16a34a" : "1px dashed #159E91",
+                                background: fullPlanPaid ? "#f0fdf4" : "#EAF7F5",
                                 cursor: (isLocked || fullPlanPaid || payNowLoading) ? "default" : "pointer",
                                 opacity: isLocked && !fullPlanPaid ? 0.5 : 1,
                               }}
@@ -1548,7 +1610,7 @@ export default function PatientJourney() {
                   {/* Expanded Panel — Feedback */}
                   {step.key === "feedback_submitted" && isExpanded && (
                     <div style={{ marginLeft: 0, marginTop: "10px", background: "transparent", border: "none", borderRadius: 0, padding: 0, boxShadow: "none", opacity: done ? 1 : 0.5 }}>
-                      <p style={{ margin: "0 0 8px", fontSize: "13px", fontWeight: "700", color: done ? "#92400e" : "#9ca3af" }}>🎁 Share Your Feedback</p>
+                      <p style={{ margin: "0 0 8px", fontSize: "13px", fontWeight: "700", color: done ? "#0F5F58" : "#9ca3af" }}>🎁 Share Your Feedback</p>
                       <p style={{ margin: "0 0 14px", fontSize: "13px", color: done ? "#374151" : "#9ca3af", lineHeight: "1.6" }}>
                         We would love to hear from you! Kindly submit your feedback at the end of treatment to avail your <strong>hamper worth ₹5,000</strong>.
                       </p>
@@ -1622,7 +1684,7 @@ export default function PatientJourney() {
                                     flex: 1,
                                     padding: "10px",
                                     borderRadius: "8px",
-                                    border: selectedPlan === p.value ? "2px solid #b8905a" : "1px solid #e5e7eb",
+                                    border: selectedPlan === p.value ? "2px solid #159E91" : "1px solid #e5e7eb",
                                     background: selectedPlan === p.value ? "#f8f7f5" : "white",
                                     color: "#111827",
                                     fontWeight: "700",
@@ -1715,7 +1777,7 @@ export default function PatientJourney() {
                                   flex: 1,
                                   padding: "10px",
                                   borderRadius: "8px",
-                                  border: paymentMode === "down" ? "2px solid #b8905a" : "1px solid #e5e7eb",
+                                  border: paymentMode === "down" ? "2px solid #159E91" : "1px solid #e5e7eb",
                                   background: paymentMode === "down" ? "#f8f7f5" : "white",
                                   color: "#111827",
                                   fontWeight: "700",
@@ -1731,7 +1793,7 @@ export default function PatientJourney() {
                                   flex: 1,
                                   padding: "10px",
                                   borderRadius: "8px",
-                                  border: paymentMode === "full" ? "2px solid #b8905a" : "1px solid #e5e7eb",
+                                  border: paymentMode === "full" ? "2px solid #159E91" : "1px solid #e5e7eb",
                                   background: paymentMode === "full" ? "#f8f7f5" : "white",
                                   color: "#111827",
                                   fontWeight: "700",
@@ -1815,8 +1877,8 @@ export default function PatientJourney() {
                                     )}
 
                                     {appliedCoupons.length > 0 && (
-                                      <div style={{ padding: "10px 12px", background: "#fef3c7", borderRadius: "8px" }}>
-                                        <p style={{ margin: "0 0 8px", fontSize: "11px", fontWeight: "700", color: "#92400e", textTransform: "uppercase" }}>Coupons Applied</p>
+                                      <div style={{ padding: "10px 12px", background: "#D7EFEB", borderRadius: "8px" }}>
+                                        <p style={{ margin: "0 0 8px", fontSize: "11px", fontWeight: "700", color: "#0F5F58", textTransform: "uppercase" }}>Coupons Applied</p>
                                         <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                                           {appliedCoupons.map((coupon, idx) => (
                                             <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 8px", background: "white", borderRadius: "4px" }}>
@@ -1917,7 +1979,7 @@ export default function PatientJourney() {
                               );
                             })}
                             {patient.journey_steps?.investigation_review_note && (
-                              <div style={{ padding: "12px", background: "#fffbeb", borderRadius: "10px", border: "1px solid #fde68a" }}>
+                              <div style={{ padding: "12px", background: "#EAF7F5", borderRadius: "10px", border: "1px solid #A9DCD5" }}>
                                 <p style={{ margin: "0 0 6px", fontSize: "11px", fontWeight: "700", color: "#b45309", textTransform: "uppercase" }}>Orthodontist's Review Note</p>
                                 <p style={{ margin: 0, fontSize: "13px", color: "#374151", lineHeight: "1.6", whiteSpace: "pre-wrap" }}>{patient.journey_steps.investigation_review_note}</p>
                               </div>
@@ -1983,10 +2045,10 @@ export default function PatientJourney() {
                           const batch = (patient.manufacturing_data?.batches || []).find((b) => Number(b.num) === m.num);
                           const isExpandedMonth = expandedMonth === m.num;
                           return (
-                            <div key={m.num} style={{ border: `1px solid ${isPaid ? "#bbf7d0" : isSelected ? "#f59e0b" : "#e5e7eb"}`, borderRadius: "10px", overflow: "hidden" }}>
+                            <div key={m.num} style={{ border: `1px solid ${isPaid ? "#bbf7d0" : isSelected ? "#159E91" : "#e5e7eb"}`, borderRadius: "10px", overflow: "hidden" }}>
                               <div
                                 onClick={() => (isPaid ? setExpandedMonth(isExpandedMonth ? null : m.num) : toggleSelected(m.num))}
-                                style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px", background: isPaid ? "#f0fdf4" : isSelected ? "#fffbeb" : "#f8f7f5", cursor: "pointer" }}
+                                style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px", background: isPaid ? "#f0fdf4" : isSelected ? "#EAF7F5" : "#f8f7f5", cursor: "pointer" }}
                               >
                                 <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                                   {!isPaid && (

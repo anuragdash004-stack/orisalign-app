@@ -774,7 +774,7 @@ export default function UploadStepPage() {
             </button>
 
             {existingMemberReportId && (
-              <div style={{ background: "#fffbeb", border: "1px solid #fde68a", color: "#92400e", borderRadius: 10, padding: 14, fontSize: 13, marginTop: 14, textAlign: "center" }}>
+              <div style={{ background: "#EAF7F5", border: "1px solid #A9DCD5", color: "#0F5F58", borderRadius: 10, padding: 14, fontSize: 13, marginTop: 14, textAlign: "center" }}>
                 <p style={{ margin: "0 0 10px", fontWeight: 700 }}>Already a member. Login instead.</p>
                 <button
                   onClick={() => router.push(`/report/${existingMemberReportId}`)}

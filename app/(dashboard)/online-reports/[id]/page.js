@@ -254,12 +254,12 @@ export default function OnlineReportDetailPage() {
       )}
 
       {report.edit_requested_at && (
-        <div style={{ background: "#fffbeb", border: "1px solid #fde68a", color: "#92400e", borderRadius: 10, padding: 12, fontSize: 13, marginBottom: 16 }}>
+        <div style={{ background: "#EAF7F5", border: "1px solid #A9DCD5", color: "#0F5F58", borderRadius: 10, padding: 12, fontSize: 13, marginBottom: 16 }}>
           Patient requested to edit their submitted information (requested {new Date(report.edit_requested_at).toLocaleString("en-IN")}). Please contact them.
         </div>
       )}
       {report.callback_requested_at && (
-        <div style={{ background: "#fffbeb", border: "1px solid #fde68a", color: "#92400e", borderRadius: 10, padding: 12, fontSize: 13, marginBottom: 16 }}>
+        <div style={{ background: "#EAF7F5", border: "1px solid #A9DCD5", color: "#0F5F58", borderRadius: 10, padding: 12, fontSize: 13, marginBottom: 16 }}>
           Patient requested a callback ({new Date(report.callback_requested_at).toLocaleString("en-IN")}).
         </div>
       )}
@@ -476,7 +476,7 @@ export default function OnlineReportDetailPage() {
         </div>
 
         {(unresolvedRejectedPhotos.length > 0 || hasOpenQuestion) && (
-          <div style={{ background: "#fffbeb", border: "1px solid #fde68a", color: "#92400e", borderRadius: 10, padding: 12, fontSize: 12, marginBottom: 12 }}>
+          <div style={{ background: "#EAF7F5", border: "1px solid #A9DCD5", color: "#0F5F58", borderRadius: 10, padding: 12, fontSize: 12, marginBottom: 12 }}>
             {unresolvedRejectedPhotos.length > 0 && <p style={{ margin: "0 0 4px" }}>⚠ {unresolvedRejectedPhotos.length} photo(s) still rejected — waiting on patient reupload.</p>}
             {hasOpenQuestion && <p style={{ margin: 0 }}>⚠ Waiting on the patient's answer to your question.</p>}
           </div>

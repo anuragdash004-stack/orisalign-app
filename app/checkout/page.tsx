@@ -274,7 +274,7 @@ function PaymentInner() {
         </div>
 
         {!id && (
-          <div style={{ background: "#fef3c7", border: "1px solid #fbbf24", color: "#92400e", padding: "12px 14px", borderRadius: "10px", fontSize: "13px", marginBottom: "16px" }}>
+          <div style={{ background: "#D7EFEB", border: "1px solid #fbbf24", color: "#0F5F58", padding: "12px 14px", borderRadius: "10px", fontSize: "13px", marginBottom: "16px" }}>
             ⚠️ No appointment context. Please open this page from your patient dashboard.
           </div>
         )}
@@ -331,7 +331,7 @@ function PaymentInner() {
                   <span style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
                     <span style={{ fontSize: "14px", fontWeight: "700", color: NAVY }}>{opt.name}</span>
                     {opt.comingSoon && (
-                      <span style={{ fontSize: "10px", fontWeight: "700", letterSpacing: "0.5px", padding: "2px 8px", borderRadius: "99px", background: "#fef3c7", color: "#92400e", textTransform: "uppercase" }}>
+                      <span style={{ fontSize: "10px", fontWeight: "700", letterSpacing: "0.5px", padding: "2px 8px", borderRadius: "99px", background: "#D7EFEB", color: "#0F5F58", textTransform: "uppercase" }}>
                         Coming soon
                       </span>
                     )}

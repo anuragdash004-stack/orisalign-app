@@ -31,7 +31,7 @@ function formatDateLabel(dateKey, todayKey) {
 const CATEGORY_META = {
   lead_attend:  { label: "Leads to Attend",       color: "#7c3aed", bg: "#f5f3ff", icon: "👤" },
   callback:     { label: "Callbacks Due",         color: "#0891b2", bg: "#ecfeff", icon: "📞" },
-  appointment:  { label: "Appointments Today",    color: "var(--admin-gold, #b8905a)", bg: "#fffbeb", icon: "📅" },
+  appointment:  { label: "Appointments Today",    color: "var(--admin-gold, #b8905a)", bg: "#EAF7F5", icon: "📅" },
   manufacturing:{ label: "Manufacturing",         color: "#dc2626", bg: "#fef2f2", icon: "🏭" },
   followup:     { label: "Follow-Up Visits",      color: "#16a34a", bg: "#f0fdf4", icon: "🔁" },
   custom:       { label: "Other Tasks",           color: "var(--admin-ink, #1b2a4a)", bg: "var(--admin-gold-wash, #f3f0e6)", icon: "📝" },

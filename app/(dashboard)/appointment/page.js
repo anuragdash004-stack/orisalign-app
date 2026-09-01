@@ -285,8 +285,8 @@ export default function AppointmentPage() {
                     </div>
                   </div>
                   {appointment.problem && (
-                    <div style={{ marginTop: "8px", background: "#fffbeb", borderRadius: "8px", padding: "10px 12px", border: "1px solid #fde68a" }}>
-                      <p style={{ margin: 0, fontSize: "10px", color: "#92400e", fontWeight: "700", textTransform: "uppercase", marginBottom: "4px" }}>Chief Complaint</p>
+                    <div style={{ marginTop: "8px", background: "#EAF7F5", borderRadius: "8px", padding: "10px 12px", border: "1px solid #A9DCD5" }}>
+                      <p style={{ margin: 0, fontSize: "10px", color: "#0F5F58", fontWeight: "700", textTransform: "uppercase", marginBottom: "4px" }}>Chief Complaint</p>
                       <p style={{ margin: 0, fontSize: "13px", color: "var(--admin-ink, #1b2a4a)" }}>{appointment.problem}</p>
                     </div>
                   )}

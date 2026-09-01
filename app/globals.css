@@ -38,16 +38,16 @@
  * outside the admin dashboard.
  */
 :root {
-  --admin-bg: #FAF6EC;
-  --admin-rail: #FBF8F1;
+  --admin-bg: #F1F7FC;
+  --admin-rail: #F8FBFD;
   --admin-card: #FFFFFF;
-  --admin-line: #E9E1D0;
-  --admin-line-soft: #F0E9D9;
+  --admin-line: #DCE7EF;
+  --admin-line-soft: #EAF1F7;
   --admin-ink: #1B2A4A;
-  --admin-ink2: #837A66;
+  --admin-ink2: #6E7F8A;
   --admin-gold: #B8905A;
   --admin-gold-strong: #A9762E;
-  --admin-gold-wash: #F3F0E6;
+  --admin-gold-wash: #EAF7F5;
   --admin-danger: #DC2626;
   --admin-danger-wash: #FEF2F2;
   --admin-font-display: var(--font-bricolage), var(--font-inter), ui-sans-serif, sans-serif;
@@ -85,55 +85,23 @@ input::placeholder {
   color: #999;
 }
 
-/* Pattern background at 60% opacity via pseudo-element — patient-facing
-   pages only (app/(dashboard)/layout.js's public-patient branch). */
+/* Was the tiled logo-icon field. Removed with the rest of the pattern
+   backgrounds; kept as a no-op positioning context so callers are unaffected. */
 .pattern-bg {
   position: relative;
-}
-.pattern-bg::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image: url('/pattern-icon.png');
-  background-repeat: repeat;
-  background-size: 110px;
-  opacity: 0.6;
-  pointer-events: none;
-  z-index: 0;
 }
 .pattern-bg > * {
   position: relative;
   z-index: 1;
 }
 
-/* Admin console background — "Sparse Motif Field": the same brand mark,
-   at roughly 4x the scale and under 5% opacity, rotated onto a diagonal so
-   it reads as ambient texture instead of a countable grid of icons (see
-   the picked option from the background-treatment comparison). Oversized
-   and offset on all sides so the rotation never exposes a bare edge. */
+/* The tiled logo-icon watermark is gone. The screen gradient and its flowing
+   line bands carry the background now; a repeating icon field read as texture
+   for texture’s sake against them. The classes stay as no-op positioning
+   contexts so every caller keeps its stacking behaviour. */
 .admin-pattern-bg,
 .motif-bg {
   position: relative;
-}
-.admin-pattern-bg::before,
-.motif-bg::before {
-  content: '';
-  position: absolute;
-  inset: -20%;
-  background-image: url('/pattern-icon.png');
-  background-repeat: repeat;
-  background-size: 420px;
-  transform: rotate(15deg);
-  opacity: 0.045;
-  pointer-events: none;
-  z-index: 0;
-}
-/* Patient journey screen — fainter still than the admin console's; the
-   source image's own colour content reads noticeably cooler/greyer than
-   the ivory ground even at low opacity, so this needed a bigger cut than
-   a couple of points. */
-.motif-bg::before {
-  opacity: 0.018;
 }
 .admin-pattern-bg > *,
 .motif-bg > * {

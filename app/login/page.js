@@ -48,10 +48,13 @@ export default function LoginPage() {
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: "#faf7f2",
-      backgroundImage: "url('/pattern-icon.png')",
-      backgroundRepeat: "repeat",
-      backgroundSize: "80px",
+      // The cool ground the rest of the app uses. The tiled logo-icon field
+      // that used to sit here is gone along with the other pattern backgrounds.
+      background:
+        "radial-gradient(74% 40% at 64% 36%, #FFFFFF 0%, rgba(255,255,255,0) 66%)," +
+        "radial-gradient(66% 32% at 0% 2%, #CFE4F4 0%, rgba(207,228,244,0) 74%)," +
+        "radial-gradient(78% 30% at 12% 100%, #D6E8F5 0%, rgba(214,232,245,0) 76%)," +
+        "linear-gradient(163deg, #DFEDF8 0%, #F1F8FD 30%, #FAFDFE 52%, #EEF6FC 76%, #E2EEF8 100%)",
       padding: "20px",
     }}>
       <div style={{

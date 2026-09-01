@@ -64,7 +64,7 @@ const PRIORITY_OPTIONS = [
   { value: "cold",     label: "Cold" },
 ];
 const priorityLabel = (v) => PRIORITY_OPTIONS.find((p) => p.value === v)?.label || "—";
-const priorityPillColor = (v) => v === "hot" ? ["#fee2e2", "#b91c1c"] : v === "moderate" ? ["#fef3c7", "#92400e"] : v === "cold" ? ["#dbeafe", "#1d4ed8"] : null;
+const priorityPillColor = (v) => v === "hot" ? ["#fee2e2", "#b91c1c"] : v === "moderate" ? ["#D7EFEB", "#0F5F58"] : v === "cold" ? ["#dbeafe", "#1d4ed8"] : null;
 
 const CONSULT_OPTIONS = [
   { value: "home",   label: "🏠 Home Consultation" },
@@ -396,7 +396,7 @@ export default function LeadTrackerPage() {
                         {r.phone || "—"}{r.email ? ` · ${r.email}` : ""}
                       </p>
                     </div>
-                    <span style={{ fontSize: "11px", fontWeight: "700", padding: "4px 10px", borderRadius: "99px", background: converted ? "#dcfce7" : "#fef3c7", color: converted ? "#16a34a" : "#92400e", flexShrink: 0 }}>
+                    <span style={{ fontSize: "11px", fontWeight: "700", padding: "4px 10px", borderRadius: "99px", background: converted ? "#dcfce7" : "#D7EFEB", color: converted ? "#16a34a" : "#0F5F58", flexShrink: 0 }}>
                       {converted ? "Patient →" : `${stageOf(r).charAt(0).toUpperCase()}${stageOf(r).slice(1)} Lead →`}
                     </span>
                   </button>
@@ -690,11 +690,11 @@ function PatientFollowupCard({ patient, onSave }) {
   };
 
   return (
-    <div style={{ background: "white", border: "1px solid #fde68a", borderRadius: "10px", padding: "12px 14px" }}>
+    <div style={{ background: "white", border: "1px solid #A9DCD5", borderRadius: "10px", padding: "12px 14px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", marginBottom: "10px" }}>
         <span style={{ fontSize: "14px", fontWeight: "700", color: "var(--admin-ink, #1b2a4a)" }}>{patient.name || "Unnamed"}</span>
         <span style={{ fontSize: "13px", color: "var(--admin-ink2, #837a66)" }}>{patient.phone || "—"}</span>
-        <span style={pill("#fef3c7", "#92400e")}>Set {patient.previousSetNum} → Set {patient.dueSetNum} of {patient.totalSets}</span>
+        <span style={pill("#D7EFEB", "#0F5F58")}>Set {patient.previousSetNum} → Set {patient.dueSetNum} of {patient.totalSets}</span>
         <a href={`/patients/${patient.id}`} style={{ marginLeft: "auto", padding: "6px 14px", borderRadius: "8px", border: "none", background: "var(--admin-ink, #1b2a4a)", color: "white", fontWeight: "700", fontSize: "12px", textDecoration: "none" }}>
           Open Patient
         </a>
@@ -762,7 +762,7 @@ function LeadCard({ lead, onStage, onEdit, cold, onPromote, onDelete }) {
           <span style={{ fontSize: "15px", fontWeight: "800", color: "#b45309" }}>
             {formatTime(lead.callback_time) || "Time not set"}
           </span>
-          {lead.callback_date && <span style={{ fontSize: "13px", fontWeight: "600", color: "#92400e" }}>· {formatDate(lead.callback_date)}</span>}
+          {lead.callback_date && <span style={{ fontSize: "13px", fontWeight: "600", color: "#0F5F58" }}>· {formatDate(lead.callback_date)}</span>}
           <span style={{ marginLeft: "auto", fontSize: "11px", fontWeight: "700", color: "#9a6a2f", textTransform: "uppercase", letterSpacing: "0.4px" }}>Call Back</span>
         </div>
       )}
@@ -785,7 +785,7 @@ function LeadCard({ lead, onStage, onEdit, cold, onPromote, onDelete }) {
               </span>
             )}
             {lead.lead_source === "website" && (
-              <span style={pill(lead.lead_verified ? "#dcfce7" : "#fef3c7", lead.lead_verified ? "#065f46" : "#92400e")}>
+              <span style={pill(lead.lead_verified ? "#dcfce7" : "#D7EFEB", lead.lead_verified ? "#065f46" : "#0F5F58")}>
                 {lead.lead_verified ? "✓ Verified" : "🕗 Unverified"}
               </span>
             )}

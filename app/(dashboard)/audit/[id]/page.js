@@ -101,7 +101,7 @@ export default function PatientAuditPage() {
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           <span style={{
             padding: "4px 12px", borderRadius: "99px",
-            background: "#fef3c7", color: "#92400e",
+            background: "#D7EFEB", color: "#0F5F58",
             fontSize: "12px", fontWeight: "700",
           }}>
             {logs.length} {logs.length === 1 ? "entry" : "entries"}

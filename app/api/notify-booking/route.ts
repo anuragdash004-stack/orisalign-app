@@ -145,7 +145,7 @@ export async function POST(req: Request) {
               </table>
             </div>
 
-            <div style="background:#fffbeb;border-radius:8px;padding:20px;margin-bottom:20px;border:1px solid #fde68a;">
+            <div style="background:#EAF7F5;border-radius:8px;padding:20px;margin-bottom:20px;border:1px solid #A9DCD5;">
               <h2 style="color:#1B2A4A;margin:0 0 8px;font-size:16px;">🦷 Chief Complaint</h2>
               <p style="margin:0;color:#111;font-size:14px;">${problem || "Not specified"}</p>
             </div>

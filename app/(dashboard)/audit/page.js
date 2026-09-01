@@ -127,8 +127,8 @@ export default function AuditIndexPage() {
                   {count > 0 ? (
                     <span style={{
                       display: "inline-block", padding: "4px 12px",
-                      borderRadius: "99px", background: "#fef3c7",
-                      color: "#92400e", fontSize: "12px", fontWeight: "700",
+                      borderRadius: "99px", background: "#D7EFEB",
+                      color: "#0F5F58", fontSize: "12px", fontWeight: "700",
                     }}>
                       {count} {count === 1 ? "entry" : "entries"}
                     </span>

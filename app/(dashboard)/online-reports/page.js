@@ -18,7 +18,7 @@ const STATUS_LABELS = {
 };
 
 const STATUS_COLORS = {
-  new_submission: { bg: "#fef3c7", color: "#92400e" },
+  new_submission: { bg: "#D7EFEB", color: "#0F5F58" },
   report_ready: { bg: "#dbeafe", color: "#1d4ed8" },
   impression_interested: { bg: "#ede9fe", color: "#6d28d9" },
   ready_to_pay_impression: { bg: "#fce7f3", color: "#be185d" },

@@ -59,7 +59,7 @@ function BatchRow({ batch, onSaved }) {
             : `BATCH ${local.num}${local.start && local.end ? ` — SETS ${local.start}–${local.end}` : ""}`}
         </h4>
         <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-          {local.mfg_started ? <span style={pill("#f0fdf4", "#16a34a")}>✓ Started {local.mfg_started}</span> : <span style={pill("#fef3c7", "#92400e")}>Not started</span>}
+          {local.mfg_started ? <span style={pill("#f0fdf4", "#16a34a")}>✓ Started {local.mfg_started}</span> : <span style={pill("#D7EFEB", "#0F5F58")}>Not started</span>}
           {local.mfg_done && <span style={pill("#f0fdf4", "#16a34a")}>✓ Done {local.mfg_done}</span>}
         </div>
       </div>
@@ -208,7 +208,7 @@ function PatientCard({ appt, actor, onRefresh }) {
           </p>
         </div>
         {needsFirstBatch && <span style={pill("#fee2e2", "#dc2626")}>Needs Manufacturing</span>}
-        {nextDue && <span style={pill("#fef3c7", "#92400e")}>Next Set(s) Due</span>}
+        {nextDue && <span style={pill("#D7EFEB", "#0F5F58")}>Next Set(s) Due</span>}
         {pendingNewModelBatches.length > 0 && <span style={pill("#fee2e2", "#dc2626")}>Needs Manufacturing</span>}
       </div>
 
@@ -222,8 +222,8 @@ function PatientCard({ appt, actor, onRefresh }) {
       )}
 
       {needsFirstBatch && (
-        <div style={{ padding: "14px", borderRadius: "10px", border: "1px dashed var(--admin-gold, #b8905a)", background: "#fffbeb", marginBottom: "12px" }}>
-          <p style={{ margin: "0 0 10px", fontSize: "13px", color: "#92400e", fontWeight: "600" }}>
+        <div style={{ padding: "14px", borderRadius: "10px", border: "1px dashed var(--admin-gold, #b8905a)", background: "#EAF7F5", marginBottom: "12px" }}>
+          <p style={{ margin: "0 0 10px", fontSize: "13px", color: "#0F5F58", fontWeight: "600" }}>
             Plan approved — nothing sent to manufacturing yet. Enter the first set's aligner range to start it.
           </p>
           <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
