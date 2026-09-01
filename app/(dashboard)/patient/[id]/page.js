@@ -108,6 +108,18 @@ const STEP_ICONS = {
 };
 const DEFAULT_STEP_ICON = '<circle cx="12" cy="12" r="8"/>';
 
+// Treatment-simulation stills (public/journey-stages), one per aligner stage
+// of a real completed case: crooked at stage 1, straight at stage 15. They
+// sit behind the arc and cross-fade as the rail is scrolled, so the teeth
+// visibly straighten as the patient moves through their journey. Two
+// adjacent stills are ever visible at once — the fractional part of the
+// scroll position is the cross-fade ratio between them.
+const STAGE_COUNT = 15;
+const STAGE_SRC = (n) => `/journey-stages/stage-${String(n + 1).padStart(2, "0")}.webp`;
+// How strongly the simulation shows through the ivory. Kept as one constant
+// so it's a single number to tune.
+const STAGE_OPACITY = 0.28;
+
 // All pre-aligner procedures the dentist selected on the Patient Form
 // ("Restorations", "Extraction", "Scaling", etc. — see PROCEDURE_OPTIONS in
 // app/(dashboard)/dentist/[id]/appointment/page.js), expanded to include a
@@ -210,6 +222,64 @@ export default function PatientJourney() {
   const [arcOffset, setArcOffset] = useState(0);
   const arcDrag = useRef({ active: false, lastY: 0, moved: 0 });
   const arcCentred = useRef(false);
+
+  // ── Treatment simulation ────────────────────────────────────────────────
+  // Painted onto one canvas rather than cross-faded as two stacked <img>
+  // layers: two semi-transparent copies at 50% each only add up to ~75%
+  // coverage, so the arch visibly pales halfway through every transition.
+  // Drawing frame A at (1-f) and adding frame B at f with 'lighter' is a
+  // straight linear interpolation of colour and alpha, which holds coverage
+  // constant the whole way across.
+  const stageCanvas = useRef(null);
+  const stageImgs = useRef([]);
+  const stagesReady = useRef(false);
+  const stepCount = useRef(1);
+
+  const paintStages = () => {
+    const canvas = stageCanvas.current;
+    if (!canvas || !stagesReady.current) return;
+    const imgs = stageImgs.current;
+    // A fresh canvas already reports 300x150, so compare against the real
+    // frame size rather than testing for a falsy width.
+    if (canvas.width !== imgs[0].naturalWidth) {
+      canvas.width = imgs[0].naturalWidth;
+      canvas.height = imgs[0].naturalHeight;
+    }
+    const n = stepCount.current;
+    const exact = (n > 1 ? arcOffset / (n - 1) : 0) * (STAGE_COUNT - 1);
+    const a = Math.max(0, Math.min(STAGE_COUNT - 1, Math.floor(exact)));
+    const b = Math.min(STAGE_COUNT - 1, a + 1);
+    const f = exact - a;
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.globalCompositeOperation = "source-over";
+    ctx.globalAlpha = 1 - f;
+    ctx.drawImage(imgs[a], 0, 0);
+    if (f > 0) {
+      ctx.globalCompositeOperation = "lighter";
+      ctx.globalAlpha = f;
+      ctx.drawImage(imgs[b], 0, 0);
+    }
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = "source-over";
+  };
+
+  useEffect(() => {
+    let loaded = 0;
+    stageImgs.current = Array.from({ length: STAGE_COUNT }, (_, i) => {
+      const im = new window.Image();
+      im.onload = () => {
+        if (++loaded === STAGE_COUNT) { stagesReady.current = true; paintStages(); }
+      };
+      im.src = STAGE_SRC(i);
+      return im;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Repaint after every render — that's what moves the simulation as the
+  // rail is dragged. Two drawImage calls, so cheap enough to do unguarded.
+  useEffect(() => { paintStages(); });
   const [expandedMonth, setExpandedMonth] = useState(null);
   const [selectedPackages, setSelectedPackages] = useState([]); // unpaid package nums chosen to order together
   const [approving, setApproving] = useState(false);
@@ -363,6 +433,7 @@ export default function PatientJourney() {
   // Final Plan Review generates monthly_plan — see deriveSteps for why.
   const isNewModel = isNewModelAppointment(patient);
   const journeySteps = isNewModel ? NEW_JOURNEY_STEPS : LEGACY_JOURNEY_STEPS;
+  stepCount.current = journeySteps.length;   // read by paintStages
   const shortId = id.substring(0, 8).toUpperCase();
   const patientIdLabel = patient.booking_confirmed ? shortId : "Pending";
   // Filtered against the active roadmap's own keys — `steps` always carries
@@ -658,8 +729,19 @@ export default function PatientJourney() {
         style={{
           position: "relative", minHeight: "100dvh", overflow: "hidden",
           background: "var(--admin-bg, #faf6ec)", touchAction: "none", userSelect: "none",
+          "--stage-opacity": STAGE_OPACITY,
         }}
       >
+        {/* Treatment simulation. All 15 stills are preloaded (15KB each) so
+            dragging the rail never waits on a fetch mid-fade — see
+            paintStages above for why this is one canvas, not stacked imgs. */}
+        <div style={{
+          position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
+          width: "106%", zIndex: 0, pointerEvents: "none", opacity: "var(--stage-opacity)",
+        }}>
+          <canvas ref={stageCanvas} aria-hidden="true" style={{ display: "block", width: "100%", height: "auto" }} />
+        </div>
+
         {/* Logo, centred at the top. Deliberately NOT inside a z-indexed
             wrapper: mix-blend-mode only blends within its own stacking
             context, so a positioned+z-indexed parent would leave the logo's
@@ -686,27 +768,28 @@ export default function PatientJourney() {
         <div style={{
           position: "absolute", zIndex: 3, left: "-150px", top: "50%",
           transform: "translateY(-50%)",
-          width: "400px", height: "400px", borderRadius: "50%",
-          background: "linear-gradient(150deg, #1B2A4A 0%, #14203A 70%)",
-          boxShadow: "0 22px 50px -22px rgba(27,42,74,0.55)",
+          width: "440px", height: "440px", borderRadius: "50%",
+          // Outline only — the simulation stays visible straight through it.
+          background: "transparent",
+          border: "1.5px solid rgba(27,42,74,0.28)",
           display: "flex", flexDirection: "column", justifyContent: "center",
-          padding: "0 26px 0 170px", color: "#F5F1E6",
+          padding: "0 26px 0 176px", color: "#1B2A4A",
         }}>
-          <p style={{ margin: "0 0 8px", fontSize: "11px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", color: "#C9A84C" }}>Patient</p>
+          <p style={{ margin: "0 0 8px", fontSize: "11px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", color: "#A9762E" }}>Patient</p>
           <p style={{ margin: "0 0 14px", fontSize: "29px", fontWeight: "700", lineHeight: "1.1", letterSpacing: "-0.015em" }}>{patient.name || "Patient"}</p>
-          <div style={{ height: "1px", background: "rgba(201,168,76,0.4)", margin: "0 0 14px" }} />
-          <p style={{ margin: 0, fontSize: "14px", lineHeight: "1.9", color: "#B9C2D4", fontVariantNumeric: "tabular-nums" }}>
-            <b style={{ color: "#F5F1E6", fontWeight: "600" }}>{patient.phone || "No phone"}</b><br />
-            ID <b style={{ color: "#F5F1E6", fontWeight: "600", letterSpacing: "0.04em" }}>{patientIdLabel}</b>
+          <div style={{ height: "1px", background: "rgba(169,118,46,0.35)", margin: "0 0 14px" }} />
+          <p style={{ margin: 0, fontSize: "14px", lineHeight: "1.9", color: "#6E6656", fontVariantNumeric: "tabular-nums" }}>
+            <b style={{ color: "#1B2A4A", fontWeight: "600" }}>{patient.phone || "No phone"}</b><br />
+            ID <b style={{ color: "#1B2A4A", fontWeight: "600", letterSpacing: "0.04em" }}>{patientIdLabel}</b>
           </p>
           <div style={{ marginTop: "18px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "7px" }}>
-              <span style={{ fontSize: "10.5px", color: "#B9C2D4", letterSpacing: "0.05em", textTransform: "uppercase", fontWeight: "700" }}>
+              <span style={{ fontSize: "10.5px", color: "#6E6656", letterSpacing: "0.05em", textTransform: "uppercase", fontWeight: "700" }}>
                 {completedCount} of {journeySteps.length} steps
               </span>
-              <span style={{ fontSize: "12px", color: "#6FCF9E", fontWeight: "800" }}>{progressPct}%</span>
+              <span style={{ fontSize: "12px", color: "#2E8B62", fontWeight: "800" }}>{progressPct}%</span>
             </div>
-            <div style={{ height: "9px", borderRadius: "99px", background: "rgba(255,255,255,0.22)", overflow: "hidden" }}>
+            <div style={{ height: "9px", borderRadius: "99px", background: "rgba(27,42,74,0.12)", overflow: "hidden" }}>
               <div style={{ height: "100%", borderRadius: "99px", width: `${progressPct}%`, background: "linear-gradient(90deg, #2E8B62, #4FAF7E)", transition: "width 0.8s ease" }} />
             </div>
           </div>
