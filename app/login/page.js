@@ -73,24 +73,26 @@ export default function LoginPage() {
             title="Staff login"
             style={{
               position: "absolute", top: "16px", right: "16px",
-              width: "34px", height: "34px", borderRadius: "9px",
+              display: "flex", alignItems: "center", gap: "6px",
+              padding: "8px 12px", borderRadius: "9px",
               border: "1px solid #e9e1d0", background: "#faf6ec",
-              color: "#837a66", fontSize: "15px", cursor: "pointer",
-              display: "flex", alignItems: "center", justifyContent: "center",
+              color: "#837a66", fontSize: "12px", fontWeight: "700", cursor: "pointer",
             }}
           >
-            🔒
+            <span style={{ fontSize: "14px" }}>🔒</span> Staff Login
           </button>
         ) : (
           <button
             onClick={() => setView("patient")}
             style={{
               position: "absolute", top: "16px", left: "16px",
-              background: "none", border: "none", color: "#a9762e",
-              fontSize: "13px", fontWeight: "700", cursor: "pointer", padding: 0,
+              display: "flex", alignItems: "center", gap: "6px",
+              padding: "8px 12px", borderRadius: "9px",
+              border: "1px solid #d9c9a3", background: "#faf0d9",
+              color: "#a9762e", fontSize: "12px", fontWeight: "700", cursor: "pointer",
             }}
           >
-            ← Patient login
+            ← Patient Login
           </button>
         )}
 
