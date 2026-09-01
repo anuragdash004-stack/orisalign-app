@@ -70,20 +70,25 @@ export async function POST(req: Request) {
       row = data
     } else {
       // Phone — match on the last 10 digits so formatting differences
-      // ("+91 91780 72800" vs "9178072800") don't matter.
+      // ("+91 91780 72800" vs "9178072800") don't matter. ilike alone can't
+      // do this: the stored column often has a space in the middle
+      // ("+91 90000 00001"), so a contiguous no-space search string never
+      // matches as a substring even though the digits are identical. Instead,
+      // narrow with ilike on just the last 4 digits (cheap, sargable-ish),
+      // then compare fully digit-normalized in JS.
       const digits = raw.replace(/\D/g, "")
       const last10 = digits.slice(-10)
       if (last10.length < 10) {
         return NextResponse.json({ error: "Enter a valid phone number, email, or Patient ID." }, { status: 400 })
       }
+      const last4 = last10.slice(-4)
       const { data } = await supabase
         .from("appointments_booking")
-        .select("id, name, phone, journey_steps")
-        .ilike("phone", `%${last10}%`)
+        .select("id, name, phone, journey_steps, created_at")
+        .ilike("phone", `%${last4}%`)
         .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle()
-      row = data
+        .limit(50)
+      row = (data || []).find((r) => (r.phone || "").replace(/\D/g, "").endsWith(last10)) || null
     }
 
     if (!row || !row.phone) {
