@@ -67,7 +67,7 @@ function ViewSection({ title, done, activeSection, setActiveSection, children })
   const isOpen = activeSection === title;
   return (
     <div style={{
-      background: "white", border: `1px solid ${done ? "#22c55e" : "var(--admin-line, #e9e1d0)"}`,
+      background: "white", border: `1px solid ${done ? "#3FB3A4" : "var(--admin-line, #e9e1d0)"}`,
       borderRadius: "16px", overflow: "hidden",
       boxShadow: "0 4px 12px rgba(0,0,0,0.04)",
     }}>
@@ -76,19 +76,19 @@ function ViewSection({ title, done, activeSection, setActiveSection, children })
         style={{
           padding: "18px 20px", display: "flex", justifyContent: "space-between",
           alignItems: "center", cursor: "pointer",
-          background: done ? "#f0fdf4" : "white",
+          background: done ? "#EAF7F5" : "white",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           <span style={{
             width: "24px", height: "24px", borderRadius: "50%",
-            background: done ? "#22c55e" : "var(--admin-line, #e9e1d0)",
+            background: done ? "#3FB3A4" : "var(--admin-line, #e9e1d0)",
             display: "flex", alignItems: "center", justifyContent: "center",
             color: "white", fontSize: "13px", fontWeight: "700", flexShrink: 0,
           }}>
             {done ? "✓" : ""}
           </span>
-          <span style={{ fontWeight: "600", color: done ? "#16a34a" : "var(--admin-ink, #1b2a4a)" }}>
+          <span style={{ fontWeight: "600", color: done ? "#168F83" : "var(--admin-ink, #1b2a4a)" }}>
             {title}
           </span>
         </div>
@@ -546,28 +546,28 @@ export default function OrthoCase() {
               )}
 
               {provisionalSubmitted ? (
-                <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "8px", padding: "14px", fontSize: "14px", color: "var(--admin-ink, #1b2a4a)", whiteSpace: "pre-wrap" }}>
+                <div style={{ background: "#EAF7F5", border: "1px solid #9FD8D1", borderRadius: "8px", padding: "14px", fontSize: "14px", color: "var(--admin-ink, #1b2a4a)", whiteSpace: "pre-wrap" }}>
                   {(minMonths || maxMonths) ? (() => {
                     const r = estimateRange(parseInt(minMonths, 10) || 0, parseInt(maxMonths, 10) || 0);
                     return (
-                      <div style={{ marginBottom: "12px", paddingBottom: "12px", borderBottom: "1px solid #bbf7d0" }}>
-                        <p style={{ fontSize: "11px", fontWeight: "700", color: "#16a34a", textTransform: "uppercase", letterSpacing: "0.5px", margin: "0 0 4px" }}>Estimated Duration: {minMonths}–{maxMonths} months</p>
+                      <div style={{ marginBottom: "12px", paddingBottom: "12px", borderBottom: "1px solid #9FD8D1" }}>
+                        <p style={{ fontSize: "11px", fontWeight: "700", color: "#168F83", textTransform: "uppercase", letterSpacing: "0.5px", margin: "0 0 4px" }}>Estimated Duration: {minMonths}–{maxMonths} months</p>
                         <p style={{ margin: 0, fontSize: "14px", color: "var(--admin-ink, #1b2a4a)" }}>Estimated price: {fmtRs(r.min)} – {fmtRs(r.max)}</p>
                       </div>
                     );
                   })() : patient?.provisional_sets_orispro ? (
-                    <div style={{ marginBottom: "12px", paddingBottom: "12px", borderBottom: "1px solid #bbf7d0" }}>
-                      <p style={{ fontSize: "11px", fontWeight: "700", color: "#16a34a", textTransform: "uppercase", letterSpacing: "0.5px", margin: "0 0 4px" }}>Sets Required: {patient.provisional_sets_orispro}</p>
+                    <div style={{ marginBottom: "12px", paddingBottom: "12px", borderBottom: "1px solid #9FD8D1" }}>
+                      <p style={{ fontSize: "11px", fontWeight: "700", color: "#168F83", textTransform: "uppercase", letterSpacing: "0.5px", margin: "0 0 4px" }}>Sets Required: {patient.provisional_sets_orispro}</p>
                     </div>
                   ) : null}
                   {provisionalPlan}
                   {orthoNote ? (
-                    <div style={{ marginTop: "12px", paddingTop: "12px", borderTop: "1px solid #bbf7d0" }}>
-                      <p style={{ fontSize: "11px", fontWeight: "700", color: "#16a34a", textTransform: "uppercase", letterSpacing: "0.5px", margin: "0 0 4px" }}>Notes</p>
+                    <div style={{ marginTop: "12px", paddingTop: "12px", borderTop: "1px solid #9FD8D1" }}>
+                      <p style={{ fontSize: "11px", fontWeight: "700", color: "#168F83", textTransform: "uppercase", letterSpacing: "0.5px", margin: "0 0 4px" }}>Notes</p>
                       <p style={{ margin: 0, fontSize: "14px", color: "var(--admin-ink, #1b2a4a)", whiteSpace: "pre-wrap" }}>{orthoNote}</p>
                     </div>
                   ) : null}
-                  <p style={{ margin: "10px 0 0", fontSize: "12px", color: "#16a34a", fontWeight: "600" }}>✓ Submitted to dentist</p>
+                  <p style={{ margin: "10px 0 0", fontSize: "12px", color: "#168F83", fontWeight: "600" }}>✓ Submitted to dentist</p>
                 </div>
               ) : (
                 <>
@@ -638,14 +638,14 @@ export default function OrthoCase() {
               </label>
 
               {finalReviewSubmitted ? (
-                <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "8px", padding: "14px" }}>
-                  <p style={{ fontSize: "11px", fontWeight: "700", color: "#16a34a", textTransform: "uppercase", letterSpacing: "0.5px", margin: "0 0 10px" }}>
+                <div style={{ background: "#EAF7F5", border: "1px solid #9FD8D1", borderRadius: "8px", padding: "14px" }}>
+                  <p style={{ fontSize: "11px", fontWeight: "700", color: "#168F83", textTransform: "uppercase", letterSpacing: "0.5px", margin: "0 0 10px" }}>
                     Upper: {upperSets} sets · Lower: {lowerSets} sets · {monthlyPlan?.totalMonths} months
                   </p>
                   {monthlyPlan && (
                     <div style={{ display: "grid", gap: "6px" }}>
                       {monthlyPlan.months.map((m) => (
-                        <div key={m.num} style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", padding: "6px 0", borderBottom: "1px dashed #bbf7d0" }}>
+                        <div key={m.num} style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", padding: "6px 0", borderBottom: "1px dashed #9FD8D1" }}>
                           <span style={{ color: "var(--admin-ink, #1b2a4a)" }}>
                             Package {m.num} — {monthSlotLabels(m.upper, m.lower).join(", ")}
                           </span>
@@ -697,9 +697,9 @@ export default function OrthoCase() {
               </label>
               {pdfSubmitted ? (
                 <div style={{
-                  background: "#f0fdf4", border: "1px solid #bbf7d0",
+                  background: "#EAF7F5", border: "1px solid #9FD8D1",
                   borderRadius: "8px", padding: "14px",
-                  fontSize: "14px", color: "#16a34a", fontWeight: "600",
+                  fontSize: "14px", color: "#168F83", fontWeight: "600",
                   display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px",
                 }}>
                   <span>✓ Plan PDF uploaded</span>

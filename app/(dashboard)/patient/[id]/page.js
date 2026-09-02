@@ -1085,7 +1085,7 @@ export default function PatientJourney() {
                             {step.label}
                           </p>
                           {step.key === "plan_approved" && done && (
-                            <p style={{ margin: "2px 0 0", fontSize: "11px", color: "#16a34a", lineHeight: "1.4" }}>
+                            <p style={{ margin: "2px 0 0", fontSize: "11px", color: "#168F83", lineHeight: "1.4" }}>
                               Thank you for approving your treatment plan.
                             </p>
                           )}
@@ -1101,21 +1101,21 @@ export default function PatientJourney() {
                           {step.key === "manufacturing" && done && patient.journey_steps?.manufacturing_completed_at && (() => {
                             const doneBatches = (patient.manufacturing_data?.batches || []).filter((b) => b.mfg_done).map((b) => b.num);
                             return (
-                              <p style={{ margin: "2px 0 0", fontSize: "11px", color: "#16a34a", lineHeight: "1.4" }}>
+                              <p style={{ margin: "2px 0 0", fontSize: "11px", color: "#168F83", lineHeight: "1.4" }}>
                                 {doneBatches.length > 0 ? `Batch ${doneBatches.join(", ")} — ` : ""}
                                 Completed on {new Date(patient.journey_steps.manufacturing_completed_at + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                               </p>
                             );
                           })()}
                           {step.subtext && (
-                            <p style={{ margin: "2px 0 0", fontSize: "11px", color: done ? "#16a34a" : "#9ca3af", lineHeight: "1.4" }}>
+                            <p style={{ margin: "2px 0 0", fontSize: "11px", color: done ? "#168F83" : "#9ca3af", lineHeight: "1.4" }}>
                               {step.subtext}
                             </p>
                           )}
                         </div>
                         {step.approveAction && (
                           patient.plan_approved ? (
-                            <span style={{ flexShrink: 0, padding: "4px 10px", borderRadius: "99px", background: "#dcfce7", color: "#16a34a", fontSize: "12px", fontWeight: "700", whiteSpace: "nowrap" }}>
+                            <span style={{ flexShrink: 0, padding: "4px 10px", borderRadius: "99px", background: "rgba(21,158,145,0.12)", color: "#168F83", fontSize: "12px", fontWeight: "700", whiteSpace: "nowrap" }}>
                               ✓ Approved
                             </span>
                           ) : canApprovePlan ? (
@@ -1129,7 +1129,7 @@ export default function PatientJourney() {
                           ) : (
                             <button
                               disabled
-                              style={{ flexShrink: 0, padding: "7px 14px", borderRadius: "8px", border: "none", background: "#e5e7eb", color: "#9ca3af", fontWeight: "700", fontSize: "12px", cursor: "not-allowed", whiteSpace: "nowrap" }}
+                              style={{ flexShrink: 0, padding: "7px 14px", borderRadius: "8px", border: "none", background: "rgba(23,59,87,0.14)", color: "#9ca3af", fontWeight: "700", fontSize: "12px", cursor: "not-allowed", whiteSpace: "nowrap" }}
                             >
                               Approve Plan
                             </button>
@@ -1138,7 +1138,7 @@ export default function PatientJourney() {
                         {step.key === "booked" && (
                           <button
                             onClick={(e) => { e.stopPropagation(); router.push(`/patient/${id}/details`); }}
-                            style={{ flexShrink: 0, padding: patient.age ? "4px 10px" : "7px 14px", borderRadius: "8px", border: "none", background: patient.age ? "#dcfce7" : "#b8905a", color: patient.age ? "#16a34a" : "white", fontWeight: "700", fontSize: "12px", cursor: "pointer", whiteSpace: "nowrap" }}
+                            style={{ flexShrink: 0, padding: patient.age ? "4px 10px" : "7px 14px", borderRadius: "8px", border: "none", background: patient.age ? "rgba(21,158,145,0.12)" : "#b8905a", color: patient.age ? "#168F83" : "white", fontWeight: "700", fontSize: "12px", cursor: "pointer", whiteSpace: "nowrap" }}
                           >
                             {patient.age ? "✓ Details Filled" : "Fill Your Details"}
                           </button>
@@ -1159,7 +1159,7 @@ export default function PatientJourney() {
                       {step.key === "plan_approved" && canApprovePlan && !patient.plan_approved && (
                         <label
                           onClick={(e) => e.stopPropagation()}
-                          style={{ display: "flex", alignItems: "flex-start", gap: "8px", marginTop: "12px", paddingTop: "12px", borderTop: "1px solid #e5e7eb", cursor: "pointer" }}
+                          style={{ display: "flex", alignItems: "flex-start", gap: "8px", marginTop: "12px", paddingTop: "12px", borderTop: "1px solid rgba(23,59,87,0.14)", cursor: "pointer" }}
                         >
                           <input
                             type="checkbox"
@@ -1291,8 +1291,8 @@ export default function PatientJourney() {
                               disabled={isLocked || savingProvisionalPlan}
                               style={{
                                 textAlign: "left", padding: "14px", borderRadius: "10px",
-                                border: isSelected ? "2px solid #159E91" : "1px solid #e5e7eb",
-                                background: isSelected ? "#EAF7F5" : "white",
+                                border: isSelected ? "2px solid #159E91" : "1px solid rgba(23,59,87,0.14)",
+                                background: isSelected ? "rgba(21,158,145,0.10)" : "white",
                                 cursor: isLocked ? "default" : "pointer",
                                 opacity: isLocked && !isSelected ? 0.5 : 1,
                               }}
@@ -1334,15 +1334,15 @@ export default function PatientJourney() {
                               disabled={isLocked || fullPlanPaid || payNowLoading}
                               style={{
                                 textAlign: "left", padding: "14px", borderRadius: "10px",
-                                border: fullPlanPaid ? "2px solid #16a34a" : "1px dashed #159E91",
-                                background: fullPlanPaid ? "#f0fdf4" : "#EAF7F5",
+                                border: fullPlanPaid ? "2px solid #168F83" : "1px dashed #159E91",
+                                background: fullPlanPaid ? "rgba(21,158,145,0.08)" : "rgba(21,158,145,0.10)",
                                 cursor: (isLocked || fullPlanPaid || payNowLoading) ? "default" : "pointer",
                                 opacity: isLocked && !fullPlanPaid ? 0.5 : 1,
                               }}
                             >
                               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
                                 <span style={{ fontSize: "14px", fontWeight: "800", color: "#111827" }}>Pay for Full Planning Only</span>
-                                {fullPlanPaid && <span style={{ fontSize: "11px", fontWeight: "700", color: "#16a34a" }}>✅ PAID</span>}
+                                {fullPlanPaid && <span style={{ fontSize: "11px", fontWeight: "700", color: "#168F83" }}>✓ PAID</span>}
                               </div>
                               <span style={{ fontSize: "13px", color: "#374151" }}>
                                 {fullPlanPaid
@@ -1366,11 +1366,11 @@ export default function PatientJourney() {
                         const amountPaidNow = Number(patient.amount_paid) || 0;
                         const isPaid = amountPaidNow >= cfg.monthRate && patient.payment_data?.provisional_payment_choice === "first_month";
                         return (
-                          <div style={{ marginTop: "14px", paddingTop: "14px", borderTop: "1px solid #e5e7eb" }}>
+                          <div style={{ marginTop: "14px", paddingTop: "14px", borderTop: "1px solid rgba(23,59,87,0.14)" }}>
                             <p style={{ margin: "0 0 10px", fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Payment</p>
                             {isPaid ? (
-                              <div style={{ padding: "10px 12px", background: "#f0fdf4", borderRadius: "8px", border: "1px solid #bbf7d0" }}>
-                                <p style={{ margin: 0, fontSize: "13px", fontWeight: "800", color: "#16a34a" }}>✅ Paid — First Month ({fmt(cfg.monthRate)})</p>
+                              <div style={{ padding: "10px 12px", background: "rgba(21,158,145,0.08)", borderRadius: "8px", border: "1px solid rgba(21,158,145,0.40)" }}>
+                                <p style={{ margin: 0, fontSize: "13px", fontWeight: "800", color: "#168F83" }}>✓ Paid — First Month ({fmt(cfg.monthRate)})</p>
                               </div>
                             ) : (
                               <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
@@ -1406,17 +1406,17 @@ export default function PatientJourney() {
                             {procs.map((proc) => {
                               const doneAt = doneMap[proc];
                               return (
-                                <div key={proc} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", padding: "10px 12px", background: doneAt ? "#f0fdf4" : "#f8f7f5", borderRadius: "8px", border: doneAt ? "1px solid #bbf7d0" : "1px solid transparent" }}>
+                                <div key={proc} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", padding: "10px 12px", background: doneAt ? "rgba(21,158,145,0.08)" : "rgba(255,255,255,0.28)", borderRadius: "8px", border: doneAt ? "1px solid rgba(21,158,145,0.40)" : "1px solid transparent" }}>
                                   <div>
                                     <span style={{ fontSize: "13px", fontWeight: "700", color: "#111827" }}>{proc}</span>
                                     {doneAt && (
-                                      <span style={{ display: "block", fontSize: "11px", color: "#16a34a", marginTop: "2px" }}>
+                                      <span style={{ display: "block", fontSize: "11px", color: "#168F83", marginTop: "2px" }}>
                                         Done on {new Date(doneAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                                       </span>
                                     )}
                                   </div>
                                   {doneAt ? (
-                                    <span style={{ fontSize: "12px", fontWeight: "700", color: "#16a34a" }}>✓ Done</span>
+                                    <span style={{ fontSize: "12px", fontWeight: "700", color: "#168F83" }}>✓ Done</span>
                                   ) : (
                                     <button
                                       onClick={(e) => { e.stopPropagation(); markPrealignerDone(proc); }}
@@ -1446,7 +1446,7 @@ export default function PatientJourney() {
                             ["Wear Duration per Set", `${patient.aligner_days_per_set} days`],
                             ["Total Treatment Duration", `${patient.aligner_total_sets * patient.aligner_days_per_set} days (~${Math.round((patient.aligner_total_sets * patient.aligner_days_per_set) / 30)} months)`],
                           ].map(([lbl, val]) => (
-                            <div key={lbl} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: "#f8f7f5", borderRadius: "8px" }}>
+                            <div key={lbl} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: "rgba(255,255,255,0.28)", borderRadius: "8px" }}>
                               <span style={{ fontSize: "13px", color: "#6b7280", fontWeight: "600" }}>{lbl}</span>
                               <span style={{ fontSize: "13px", color: "#111827", fontWeight: "700" }}>{val}</span>
                             </div>
@@ -1490,17 +1490,17 @@ export default function PatientJourney() {
                         <p style={{ margin: "0 0 14px", fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Manufacturing</p>
                         <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                           {rows.map((r) => (
-                            <div key={r.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", padding: "10px 12px", background: r.done ? "#f0fdf4" : "#f8f7f5", borderRadius: "8px", border: r.done ? "1px solid #bbf7d0" : "1px solid transparent" }}>
+                            <div key={r.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", padding: "10px 12px", background: r.done ? "rgba(21,158,145,0.08)" : "rgba(255,255,255,0.28)", borderRadius: "8px", border: r.done ? "1px solid rgba(21,158,145,0.40)" : "1px solid transparent" }}>
                               <div>
                                 <span style={{ fontSize: "13px", fontWeight: "700", color: "#111827" }}>{r.label}</span>
                                 {r.done && r.at && (
-                                  <span style={{ display: "block", fontSize: "11px", color: "#16a34a", marginTop: "2px" }}>
+                                  <span style={{ display: "block", fontSize: "11px", color: "#168F83", marginTop: "2px" }}>
                                     {r.batches.length > 0 ? `Batch ${r.batches.join(", ")} — ` : ""}
                                     {new Date(r.at + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                                   </span>
                                 )}
                               </div>
-                              <span style={{ fontSize: "12px", fontWeight: "700", color: r.done ? "#16a34a" : "#9ca3af" }}>{r.done ? "✓ Done" : "Pending"}</span>
+                              <span style={{ fontSize: "12px", fontWeight: "700", color: r.done ? "#168F83" : "#9ca3af" }}>{r.done ? "✓ Done" : "Pending"}</span>
                             </div>
                           ))}
                         </div>
@@ -1534,18 +1534,18 @@ export default function PatientJourney() {
                               const partnerName = batch.delivery_partner === "Other" ? (batch.delivery_partner_other || "Other") : batch.delivery_partner;
                               const range = (batch.start !== undefined && batch.start !== "" && batch.end !== undefined && batch.end !== "") ? ` · Aligners ${batch.start}–${batch.end}` : "";
                               return (
-                                <div key={batch.num} style={{ padding: "12px", background: "#f8f7f5", borderRadius: "10px" }}>
+                                <div key={batch.num} style={{ padding: "12px", background: "rgba(255,255,255,0.28)", borderRadius: "10px" }}>
                                   <p style={{ margin: "0 0 8px", fontSize: "13px", fontWeight: "700", color: "#111827" }}>
                                     Batch {batch.num}{range}{partnerName ? ` • ${partnerName}` : ""}
                                   </p>
                                   {batch.shipment_id && (
                                     <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                      <div style={{ flex: 1, padding: "8px 12px", borderRadius: "8px", background: "white", border: "1px solid #e5e7eb", fontSize: "13px", color: "#111827", fontWeight: "600", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                      <div style={{ flex: 1, padding: "8px 12px", borderRadius: "8px", background: "white", border: "1px solid rgba(23,59,87,0.14)", fontSize: "13px", color: "#111827", fontWeight: "600", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                         {batch.shipment_id}
                                       </div>
                                       <button
                                         onClick={(e) => { e.stopPropagation(); handleCopyShipmentId(batch.num, batch.shipment_id); }}
-                                        style={{ flexShrink: 0, padding: "8px 12px", borderRadius: "8px", border: "none", background: copiedNum === batch.num ? "#16a34a" : "#b8905a", color: "white", fontWeight: "700", fontSize: "12px", cursor: "pointer", whiteSpace: "nowrap" }}
+                                        style={{ flexShrink: 0, padding: "8px 12px", borderRadius: "8px", border: "none", background: copiedNum === batch.num ? "#168F83" : "#b8905a", color: "white", fontWeight: "700", fontSize: "12px", cursor: "pointer", whiteSpace: "nowrap" }}
                                       >
                                         {copiedNum === batch.num ? "Copied!" : "Copy"}
                                       </button>
@@ -1584,19 +1584,19 @@ export default function PatientJourney() {
                             {dispatchedBatches.map((batch) => {
                               const range = (batch.start !== undefined && batch.start !== "" && batch.end !== undefined && batch.end !== "") ? ` · Aligners ${batch.start}–${batch.end}` : "";
                               return (
-                                <div key={batch.num} style={{ padding: "12px", background: "#f8f7f5", borderRadius: "10px" }}>
+                                <div key={batch.num} style={{ padding: "12px", background: "rgba(255,255,255,0.28)", borderRadius: "10px" }}>
                                   <p style={{ margin: "0 0 8px", fontSize: "13px", fontWeight: "700", color: "#111827" }}>
                                     Batch {batch.num}{range}
                                   </p>
                                   {batch.aligner_received ? (
-                                    <p style={{ margin: 0, fontSize: "12px", fontWeight: "700", color: "#16a34a" }}>
+                                    <p style={{ margin: 0, fontSize: "12px", fontWeight: "700", color: "#168F83" }}>
                                       ✓ Received on {new Date(batch.aligner_received + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                                     </p>
                                   ) : (
                                     <button
                                       onClick={(e) => { e.stopPropagation(); handleMarkReceived(batch.num); }}
                                       disabled={receivingBatch === batch.num}
-                                      style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #16a34a", background: receivingBatch === batch.num ? "#f0fdf4" : "white", color: "#16a34a", fontWeight: "700", fontSize: "13px", cursor: receivingBatch === batch.num ? "not-allowed" : "pointer" }}
+                                      style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #168F83", background: receivingBatch === batch.num ? "rgba(21,158,145,0.08)" : "white", color: "#168F83", fontWeight: "700", fontSize: "13px", cursor: receivingBatch === batch.num ? "not-allowed" : "pointer" }}
                                     >
                                       {receivingBatch === batch.num ? "Saving..." : "I've Received This Batch"}
                                     </button>
@@ -1623,7 +1623,7 @@ export default function PatientJourney() {
                           ✍️ Write My Feedback
                         </a>
                       ) : (
-                        <div style={{ padding: "12px", borderRadius: "10px", background: "#e5e7eb", color: "#9ca3af", fontWeight: "700", fontSize: "14px", textAlign: "center", cursor: "not-allowed" }}>
+                        <div style={{ padding: "12px", borderRadius: "10px", background: "rgba(23,59,87,0.14)", color: "#9ca3af", fontWeight: "700", fontSize: "14px", textAlign: "center", cursor: "not-allowed" }}>
                           ✍️ Available after treatment completion
                         </div>
                       )}
@@ -1648,7 +1648,7 @@ export default function PatientJourney() {
                               ["Upper Arch Duration", formatMonthsDays((patient.final_upper_sets * (PLAN_CONFIGS[patient.payment_data?.plan] || PLAN_CONFIGS.ORISPRO).daysPerSet) / 30)],
                               ["Lower Arch Duration", formatMonthsDays((patient.final_lower_sets * (PLAN_CONFIGS[patient.payment_data?.plan] || PLAN_CONFIGS.ORISPRO).daysPerSet) / 30)],
                             ].map(([lbl, val]) => (
-                              <div key={lbl} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: "#f8f7f5", borderRadius: "8px" }}>
+                              <div key={lbl} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: "rgba(255,255,255,0.28)", borderRadius: "8px" }}>
                                 <span style={{ fontSize: "13px", color: "#6b7280", fontWeight: "600" }}>{lbl}</span>
                                 <span style={{ fontSize: "13px", color: "#111827", fontWeight: "700" }}>{val}</span>
                               </div>
@@ -1687,8 +1687,8 @@ export default function PatientJourney() {
                                     flex: 1,
                                     padding: "10px",
                                     borderRadius: "8px",
-                                    border: selectedPlan === p.value ? "2px solid #159E91" : "1px solid #e5e7eb",
-                                    background: selectedPlan === p.value ? "#f8f7f5" : "white",
+                                    border: selectedPlan === p.value ? "2px solid #159E91" : "1px solid rgba(23,59,87,0.14)",
+                                    background: selectedPlan === p.value ? "rgba(255,255,255,0.28)" : "white",
                                     color: "#111827",
                                     fontWeight: "700",
                                     fontSize: "13px",
@@ -1705,11 +1705,11 @@ export default function PatientJourney() {
                               figures (pushed from the backend or recorded automatically by
                               the gateway), so it always matches what's actually charged. */}
                           {patient.payment_status === "paid" && (
-                            <div style={{ padding: "10px 12px", background: "#f0fdf4", borderRadius: "8px", border: "1px solid #bbf7d0" }}>
-                              <p style={{ margin: 0, fontSize: "13px", fontWeight: "800", color: "#16a34a" }}>✅ Fully Paid</p>
+                            <div style={{ padding: "10px 12px", background: "rgba(21,158,145,0.08)", borderRadius: "8px", border: "1px solid rgba(21,158,145,0.40)" }}>
+                              <p style={{ margin: 0, fontSize: "13px", fontWeight: "800", color: "#168F83" }}>✓ Fully Paid</p>
                             </div>
                           )}
-                          <div style={{ padding: "14px", background: "#f8f7f5", borderRadius: "10px", border: "1px solid #e5e7eb" }}>
+                          <div style={{ padding: "14px", background: "rgba(255,255,255,0.28)", borderRadius: "10px", border: "1px solid rgba(23,59,87,0.14)" }}>
                             <ReportRow label="Plan" value={activePlanInfo.label} />
                             <ReportRow label="Down Payment" value={fmt(planDownAmt)} />
                             <ReportRow label="Full Payment" value={fmt(planGrossAmt)} />
@@ -1749,7 +1749,7 @@ export default function PatientJourney() {
                           {pd.pending_plan?.installments?.length > 0 && patient.payment_status !== "paid" && (
                             <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                               {pd.pending_plan.installments.map((inst) => (
-                                <div key={inst.num} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", padding: "10px 12px", background: inst.paid ? "#f0fdf4" : "#f8f7f5", borderRadius: "8px", border: inst.paid ? "1px solid #bbf7d0" : "1px solid #e5e7eb" }}>
+                                <div key={inst.num} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", padding: "10px 12px", background: inst.paid ? "rgba(21,158,145,0.08)" : "rgba(255,255,255,0.28)", borderRadius: "8px", border: inst.paid ? "1px solid rgba(21,158,145,0.40)" : "1px solid rgba(23,59,87,0.14)" }}>
                                   <div>
                                     <span style={{ fontSize: "13px", fontWeight: "700", color: "#111827" }}>Installment {inst.num} — {fmt(inst.amount)}</span>
                                     <span style={{ display: "block", fontSize: "11px", color: "#6b7280" }}>
@@ -1757,7 +1757,7 @@ export default function PatientJourney() {
                                     </span>
                                   </div>
                                   {inst.paid ? (
-                                    <span style={{ fontSize: "12px", fontWeight: "700", color: "#16a34a" }}>✅ Paid</span>
+                                    <span style={{ fontSize: "12px", fontWeight: "700", color: "#168F83" }}>✓ Paid</span>
                                   ) : (
                                     <button
                                       onClick={() => handlePayNow(inst.amount)}
@@ -1780,8 +1780,8 @@ export default function PatientJourney() {
                                   flex: 1,
                                   padding: "10px",
                                   borderRadius: "8px",
-                                  border: paymentMode === "down" ? "2px solid #159E91" : "1px solid #e5e7eb",
-                                  background: paymentMode === "down" ? "#f8f7f5" : "white",
+                                  border: paymentMode === "down" ? "2px solid #159E91" : "1px solid rgba(23,59,87,0.14)",
+                                  background: paymentMode === "down" ? "rgba(255,255,255,0.28)" : "white",
                                   color: "#111827",
                                   fontWeight: "700",
                                   fontSize: "13px",
@@ -1796,8 +1796,8 @@ export default function PatientJourney() {
                                   flex: 1,
                                   padding: "10px",
                                   borderRadius: "8px",
-                                  border: paymentMode === "full" ? "2px solid #159E91" : "1px solid #e5e7eb",
-                                  background: paymentMode === "full" ? "#f8f7f5" : "white",
+                                  border: paymentMode === "full" ? "2px solid #159E91" : "1px solid rgba(23,59,87,0.14)",
+                                  background: paymentMode === "full" ? "rgba(255,255,255,0.28)" : "white",
                                   color: "#111827",
                                   fontWeight: "700",
                                   fontSize: "13px",
@@ -1822,9 +1822,9 @@ export default function PatientJourney() {
                             return (
                               <>
                                 {/* Amount Display */}
-                                <div style={{ padding: "12px", background: "#f0fdf4", borderRadius: "8px", border: "1px solid #bbf7d0" }}>
-                                  <p style={{ margin: "0 0 4px", fontSize: "11px", fontWeight: "700", color: "#16a34a", textTransform: "uppercase" }}>Amount to Pay</p>
-                                  <p style={{ margin: 0, fontSize: "24px", fontWeight: "900", color: "#15803d" }}>{fmt(amountDue)}</p>
+                                <div style={{ padding: "12px", background: "rgba(21,158,145,0.08)", borderRadius: "8px", border: "1px solid rgba(21,158,145,0.40)" }}>
+                                  <p style={{ margin: "0 0 4px", fontSize: "11px", fontWeight: "700", color: "#168F83", textTransform: "uppercase" }}>Amount to Pay</p>
+                                  <p style={{ margin: 0, fontSize: "24px", fontWeight: "900", color: "#12706A" }}>{fmt(amountDue)}</p>
                                 </div>
 
                                 {/* Coupon Input Section — only before any payment has been made */}
@@ -1841,7 +1841,7 @@ export default function PatientJourney() {
                                           flex: 1,
                                           padding: "10px 12px",
                                           borderRadius: "8px",
-                                          border: "1px solid #e5e7eb",
+                                          border: "1px solid rgba(23,59,87,0.14)",
                                           fontSize: "13px",
                                           outline: "none",
                                         }}
@@ -1869,9 +1869,9 @@ export default function PatientJourney() {
                                       <div style={{
                                         padding: "10px 12px",
                                         borderRadius: "8px",
-                                        background: couponMessage.includes("✓") ? "#f0fdf4" : "#fee2e2",
-                                        border: couponMessage.includes("✓") ? "1px solid #bbf7d0" : "1px solid #fecaca",
-                                        color: couponMessage.includes("✓") ? "#16a34a" : "#dc2626",
+                                        background: couponMessage.includes("✓") ? "rgba(21,158,145,0.08)" : "#fee2e2",
+                                        border: couponMessage.includes("✓") ? "1px solid rgba(21,158,145,0.40)" : "1px solid #fecaca",
+                                        color: couponMessage.includes("✓") ? "#168F83" : "#dc2626",
                                         fontSize: "13px",
                                         fontWeight: "600",
                                       }}>
@@ -1938,8 +1938,8 @@ export default function PatientJourney() {
                         }
                         if (types.includes("NONE")) {
                           return (
-                            <div style={{ padding: "10px 12px", background: "#f0fdf4", borderRadius: "8px", border: "1px solid #bbf7d0" }}>
-                              <p style={{ margin: 0, fontSize: "13px", fontWeight: "800", color: "#16a34a" }}>✅ No investigation required</p>
+                            <div style={{ padding: "10px 12px", background: "rgba(21,158,145,0.08)", borderRadius: "8px", border: "1px solid rgba(21,158,145,0.40)" }}>
+                              <p style={{ margin: 0, fontSize: "13px", fontWeight: "800", color: "#168F83" }}>✓ No investigation required</p>
                             </div>
                           );
                         }
@@ -1950,14 +1950,14 @@ export default function PatientJourney() {
                               const file = files[t];
                               const isUploading = uploadingInvestigation === t;
                               return (
-                                <div key={t} style={{ padding: "12px", background: "#f8f7f5", borderRadius: "10px", border: "1px solid #e5e7eb" }}>
+                                <div key={t} style={{ padding: "12px", background: "rgba(255,255,255,0.28)", borderRadius: "10px", border: "1px solid rgba(23,59,87,0.14)" }}>
                                   <p style={{ margin: "0 0 8px", fontSize: "13px", fontWeight: "700", color: "#111827" }}>{typeInfo?.label || t}</p>
                                   {file?.path ? (
                                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
-                                      <span style={{ fontSize: "12px", color: "#16a34a", fontWeight: "700" }}>✅ Uploaded — {file.name}</span>
+                                      <span style={{ fontSize: "12px", color: "#168F83", fontWeight: "700" }}>✓ Uploaded — {file.name}</span>
                                       <button
                                         onClick={() => viewInvestigationFile(file.path)}
-                                        style={{ padding: "6px 12px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "white", color: "#111827", fontWeight: "700", fontSize: "12px", cursor: "pointer" }}
+                                        style={{ padding: "6px 12px", borderRadius: "8px", border: "1px solid rgba(23,59,87,0.14)", background: "white", color: "#111827", fontWeight: "700", fontSize: "12px", cursor: "pointer" }}
                                       >
                                         View
                                       </button>
@@ -1965,7 +1965,7 @@ export default function PatientJourney() {
                                   ) : (
                                     <label style={{
                                       display: "block", padding: "10px", borderRadius: "8px", textAlign: "center",
-                                      background: isUploading ? "#e5e7eb" : "#b8905a", color: isUploading ? "#9ca3af" : "white",
+                                      background: isUploading ? "rgba(23,59,87,0.14)" : "#b8905a", color: isUploading ? "#9ca3af" : "white",
                                       fontWeight: "700", fontSize: "13px", cursor: isUploading ? "not-allowed" : "pointer",
                                     }}>
                                       {isUploading ? "Uploading..." : "Upload Image or PDF"}
@@ -1982,7 +1982,7 @@ export default function PatientJourney() {
                               );
                             })}
                             {patient.journey_steps?.investigation_review_note && (
-                              <div style={{ padding: "12px", background: "#EAF7F5", borderRadius: "10px", border: "1px solid #A9DCD5" }}>
+                              <div style={{ padding: "12px", background: "rgba(21,158,145,0.10)", borderRadius: "10px", border: "1px solid #A9DCD5" }}>
                                 <p style={{ margin: "0 0 6px", fontSize: "11px", fontWeight: "700", color: "#b45309", textTransform: "uppercase" }}>Orthodontist's Review Note</p>
                                 <p style={{ margin: 0, fontSize: "13px", color: "#374151", lineHeight: "1.6", whiteSpace: "pre-wrap" }}>{patient.journey_steps.investigation_review_note}</p>
                               </div>
@@ -2016,7 +2016,7 @@ export default function PatientJourney() {
                       <p style={{ margin: "0 0 14px", fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Aligner Sets — Package by Package</p>
 
                       {unpaidNums.length > 0 && (
-                        <div style={{ marginBottom: "14px", padding: "12px", background: "#f0fdf4", borderRadius: "10px", border: "1px solid #bbf7d0" }}>
+                        <div style={{ marginBottom: "14px", padding: "12px", background: "rgba(21,158,145,0.08)", borderRadius: "10px", border: "1px solid rgba(21,158,145,0.40)" }}>
                           <p style={{ margin: "0 0 10px", fontSize: "12px", color: "#374151" }}>
                             Select one or more packages below, then place your order.
                           </p>
@@ -2025,7 +2025,7 @@ export default function PatientJourney() {
                             disabled={payNowLoading || selectedPackages.length === 0}
                             style={{
                               display: "block", width: "100%", padding: "12px", borderRadius: "10px", border: "none",
-                              background: selectedPackages.length === 0 ? "#e5e7eb" : "linear-gradient(135deg, #b8905a, #f59e0b)",
+                              background: selectedPackages.length === 0 ? "rgba(23,59,87,0.14)" : "linear-gradient(135deg, #b8905a, #f59e0b)",
                               color: selectedPackages.length === 0 ? "#9ca3af" : "white", fontWeight: "800",
                               fontSize: "14px", textAlign: "center", letterSpacing: "0.3px",
                               cursor: (payNowLoading || selectedPackages.length === 0) ? "not-allowed" : "pointer",
@@ -2048,10 +2048,10 @@ export default function PatientJourney() {
                           const batch = (patient.manufacturing_data?.batches || []).find((b) => Number(b.num) === m.num);
                           const isExpandedMonth = expandedMonth === m.num;
                           return (
-                            <div key={m.num} style={{ border: `1px solid ${isPaid ? "#bbf7d0" : isSelected ? "#159E91" : "#e5e7eb"}`, borderRadius: "10px", overflow: "hidden" }}>
+                            <div key={m.num} style={{ border: `1px solid ${isPaid ? "rgba(21,158,145,0.40)" : isSelected ? "#159E91" : "rgba(23,59,87,0.14)"}`, borderRadius: "10px", overflow: "hidden" }}>
                               <div
                                 onClick={() => (isPaid ? setExpandedMonth(isExpandedMonth ? null : m.num) : toggleSelected(m.num))}
-                                style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px", background: isPaid ? "#f0fdf4" : isSelected ? "#EAF7F5" : "#f8f7f5", cursor: "pointer" }}
+                                style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px", background: isPaid ? "rgba(21,158,145,0.08)" : isSelected ? "rgba(21,158,145,0.10)" : "rgba(255,255,255,0.28)", cursor: "pointer" }}
                               >
                                 <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                                   {!isPaid && (
@@ -2067,15 +2067,15 @@ export default function PatientJourney() {
                                     <p style={{ margin: 0, fontSize: "13px", fontWeight: "700", color: "#111827" }}>
                                       Package {m.num} — {monthSlotLabels(m.upper, m.lower).join(", ")}
                                     </p>
-                                    <p style={{ margin: "2px 0 0", fontSize: "12px", color: isPaid ? "#16a34a" : "#9ca3af" }}>
+                                    <p style={{ margin: "2px 0 0", fontSize: "12px", color: isPaid ? "#168F83" : "#9ca3af" }}>
                                       {fmt(m.payableAmount)}{isPaid ? " · Paid" : ""}
                                     </p>
                                   </div>
                                 </div>
-                                {isPaid && <span style={{ fontSize: "12px", color: "#16a34a" }}>{isExpandedMonth ? "▲" : "▼"}</span>}
+                                {isPaid && <span style={{ fontSize: "12px", color: "#168F83" }}>{isExpandedMonth ? "▲" : "▼"}</span>}
                               </div>
                               {isPaid && isExpandedMonth && (
-                                <div style={{ padding: "12px", borderTop: "1px solid #e5e7eb", display: "flex", flexDirection: "column", gap: "8px" }}>
+                                <div style={{ padding: "12px", borderTop: "1px solid rgba(23,59,87,0.14)", display: "flex", flexDirection: "column", gap: "8px" }}>
                                   {[
                                     // "Push to Production" is the active/in-progress label right
                                     // after payment — it only flips to a done "Production Completed"
@@ -2086,21 +2086,21 @@ export default function PatientJourney() {
                                     // that's the actual signal the order shipped.
                                     { label: "Dispatched", done: !!batch?.shipment_link, at: batch?.mfg_done },
                                   ].map((r) => (
-                                    <div key={r.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 10px", background: r.done ? "#f0fdf4" : "#f8f7f5", borderRadius: "8px" }}>
+                                    <div key={r.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 10px", background: r.done ? "rgba(21,158,145,0.08)" : "rgba(255,255,255,0.28)", borderRadius: "8px" }}>
                                       <span style={{ fontSize: "12px", fontWeight: "700", color: "#111827" }}>
                                         {r.label}{r.done && r.at ? ` — ${new Date(r.at + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}` : ""}
                                       </span>
-                                      <span style={{ fontSize: "11px", fontWeight: "700", color: r.done ? "#16a34a" : "#9ca3af" }}>{r.done ? "✓ Done" : "Pending"}</span>
+                                      <span style={{ fontSize: "11px", fontWeight: "700", color: r.done ? "#168F83" : "#9ca3af" }}>{r.done ? "✓ Done" : "Pending"}</span>
                                     </div>
                                   ))}
                                   {batch?.shipment_id && (
                                     <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                      <div style={{ flex: 1, padding: "8px 12px", borderRadius: "8px", background: "white", border: "1px solid #e5e7eb", fontSize: "13px", color: "#111827", fontWeight: "600", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                      <div style={{ flex: 1, padding: "8px 12px", borderRadius: "8px", background: "white", border: "1px solid rgba(23,59,87,0.14)", fontSize: "13px", color: "#111827", fontWeight: "600", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                         {batch.shipment_id}
                                       </div>
                                       <button
                                         onClick={(e) => { e.stopPropagation(); handleCopyShipmentId(m.num, batch.shipment_id); }}
-                                        style={{ flexShrink: 0, padding: "8px 12px", borderRadius: "8px", border: "none", background: copiedNum === m.num ? "#16a34a" : "#b8905a", color: "white", fontWeight: "700", fontSize: "12px", cursor: "pointer", whiteSpace: "nowrap" }}
+                                        style={{ flexShrink: 0, padding: "8px 12px", borderRadius: "8px", border: "none", background: copiedNum === m.num ? "#168F83" : "#b8905a", color: "white", fontWeight: "700", fontSize: "12px", cursor: "pointer", whiteSpace: "nowrap" }}
                                       >
                                         {copiedNum === m.num ? "Copied!" : "Copy"}
                                       </button>
@@ -2115,7 +2115,7 @@ export default function PatientJourney() {
                                     </button>
                                   )}
                                   {batch?.aligner_received && (
-                                    <p style={{ margin: 0, fontSize: "12px", fontWeight: "700", color: "#16a34a" }}>
+                                    <p style={{ margin: 0, fontSize: "12px", fontWeight: "700", color: "#168F83" }}>
                                       ✓ Received on {new Date(batch.aligner_received + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                                     </p>
                                   )}

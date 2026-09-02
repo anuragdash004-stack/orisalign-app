@@ -97,7 +97,7 @@ export default function LMCPage() {
                     {cardholderName && cardholderName !== m.name ? ` · Card: ${cardholderName}` : ""}
                   </p>
                 </div>
-                <span style={{ fontSize: "11px", fontWeight: "700", padding: "4px 10px", borderRadius: "99px", background: "#dcfce7", color: "#16a34a", flexShrink: 0 }}>
+                <span style={{ fontSize: "11px", fontWeight: "700", padding: "4px 10px", borderRadius: "99px", background: "#D7EFEB", color: "#168F83", flexShrink: 0 }}>
                   ACTIVE ✓
                 </span>
               </button>

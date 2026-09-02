@@ -49,7 +49,7 @@ export async function POST(req) {
             <p>Dear ${patientName || "Patient"},</p>
             <p>Your dentist is about to start your appointment. Please share the OTP below with them:</p>
             <div style="
-              background: #f0fdf4; border: 2px solid #22c55e;
+              background: #EAF7F5; border: 2px solid #3FB3A4;
               border-radius: 12px; padding: 24px; text-align: center; margin: 24px 0;">
               <span style="font-size: 40px; font-weight: 700; letter-spacing: 10px; color: #111827;">
                 ${otp}

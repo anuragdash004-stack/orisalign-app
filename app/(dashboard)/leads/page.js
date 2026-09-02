@@ -33,7 +33,7 @@ const SECTIONS = [
 const TRACKED_STAGES = ["fresh", "callback", "booked", "denied"];
 const TYPE_PILL_COLORS = {
   callback: ["#fff7ed", "#b45309"],
-  booked: ["#dcfce7", "#16a34a"],
+  booked: ["#D7EFEB", "#168F83"],
   denied: ["#fef2f2", "#dc2626"],
 };
 
@@ -387,7 +387,7 @@ export default function LeadTrackerPage() {
                     }}
                     style={{ display: "flex", alignItems: "center", gap: "12px", width: "100%", textAlign: "left", padding: "12px 16px", border: "none", borderBottom: "1px solid var(--admin-gold-wash, #f3f0e6)", background: "white", cursor: "pointer" }}
                   >
-                    <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: converted ? "linear-gradient(135deg, #16a34a, #22c55e)" : "var(--admin-gold-strong, #a9762e)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: "800", fontSize: "14px", flexShrink: 0 }}>
+                    <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: converted ? "linear-gradient(135deg, #168F83, #3FB3A4)" : "var(--admin-gold-strong, #a9762e)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: "800", fontSize: "14px", flexShrink: 0 }}>
                       {(r.name || "?")[0].toUpperCase()}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -396,7 +396,7 @@ export default function LeadTrackerPage() {
                         {r.phone || "—"}{r.email ? ` · ${r.email}` : ""}
                       </p>
                     </div>
-                    <span style={{ fontSize: "11px", fontWeight: "700", padding: "4px 10px", borderRadius: "99px", background: converted ? "#dcfce7" : "#D7EFEB", color: converted ? "#16a34a" : "#0F5F58", flexShrink: 0 }}>
+                    <span style={{ fontSize: "11px", fontWeight: "700", padding: "4px 10px", borderRadius: "99px", background: converted ? "#D7EFEB" : "#D7EFEB", color: converted ? "#168F83" : "#0F5F58", flexShrink: 0 }}>
                       {converted ? "Patient →" : `${stageOf(r).charAt(0).toUpperCase()}${stageOf(r).slice(1)} Lead →`}
                     </span>
                   </button>
@@ -465,7 +465,7 @@ export default function LeadTrackerPage() {
           <h2 style={{ margin: 0, fontSize: "16px", fontWeight: "800", color: "var(--admin-ink, #1b2a4a)" }}>
             {selectedDate === "all" ? "Catered" : selectedDate === dateKey(new Date()) ? "Catered Today" : "Catered"}
           </h2>
-          <span style={{ fontSize: "12px", fontWeight: "700", color: "#16a34a", background: "#dcfce7", borderRadius: "99px", padding: "2px 10px" }}>{cateredVisible.length}</span>
+          <span style={{ fontSize: "12px", fontWeight: "700", color: "#168F83", background: "#D7EFEB", borderRadius: "99px", padding: "2px 10px" }}>{cateredVisible.length}</span>
           <div style={{ flex: 1, height: "1px", background: "#eee" }} />
         </div>
         {cateredVisible.length === 0 ? (
@@ -478,12 +478,12 @@ export default function LeadTrackerPage() {
               <a
                 key={a.id}
                 href={`/patients/${a.id}`}
-                style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", background: "white", border: "1px solid #bbf7d0", borderRadius: "10px", padding: "10px 14px", textDecoration: "none" }}
+                style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", background: "white", border: "1px solid #9FD8D1", borderRadius: "10px", padding: "10px 14px", textDecoration: "none" }}
               >
                 <span style={{ fontSize: "14px", fontWeight: "700", color: "var(--admin-ink, #1b2a4a)" }}>{a.name || "Unnamed"}</span>
                 <span style={{ fontSize: "13px", color: "var(--admin-ink2, #837a66)" }}>{a.phone || "—"}</span>
                 <span style={{ fontSize: "12px", color: "var(--admin-ink2, #837a66)" }}>Dentist: {dentistMap[a.assigned_dentist] || "—"}</span>
-                <span style={{ marginLeft: "auto", fontSize: "12px", fontWeight: "700", color: "#16a34a" }}>
+                <span style={{ marginLeft: "auto", fontSize: "12px", fontWeight: "700", color: "#168F83" }}>
                   Started {a.appointment_started_at ? new Date(a.appointment_started_at).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" }) : ""}
                 </span>
               </a>
@@ -707,7 +707,7 @@ function PatientFollowupCard({ patient, onSave }) {
           style={{
             flex: 1, padding: "7px 10px", borderRadius: "8px", fontWeight: "700", fontSize: "12px", cursor: saving ? "not-allowed" : "pointer",
             border: callStatus === "received" ? "none" : "1px solid var(--admin-line, #e9e1d0)",
-            background: callStatus === "received" ? "#16a34a" : "white",
+            background: callStatus === "received" ? "#168F83" : "white",
             color: callStatus === "received" ? "white" : "var(--admin-ink, #1b2a4a)",
           }}
         >
@@ -737,11 +737,11 @@ function PatientFollowupCard({ patient, onSave }) {
 
       {sendResult && (
         <div style={{ marginTop: "8px", display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-          <span style={{ fontSize: "12px", color: sendResult.emailSent ? "#16a34a" : "var(--admin-ink2, #837a66)" }}>
+          <span style={{ fontSize: "12px", color: sendResult.emailSent ? "#168F83" : "var(--admin-ink2, #837a66)" }}>
             {sendResult.emailSent ? "✓ Nudge email sent" : "No email on file — email not sent"}
           </span>
           {sendResult.waLink && (
-            <a href={sendResult.waLink} target="_blank" rel="noopener noreferrer" style={{ fontSize: "12px", fontWeight: "700", color: "#16a34a", textDecoration: "underline" }}>
+            <a href={sendResult.waLink} target="_blank" rel="noopener noreferrer" style={{ fontSize: "12px", fontWeight: "700", color: "#168F83", textDecoration: "underline" }}>
               Send via WhatsApp too →
             </a>
           )}
@@ -770,8 +770,8 @@ function LeadCard({ lead, onStage, onEdit, cold, onPromote, onDelete }) {
         <div style={{ minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBottom: "4px" }}>
             <span style={{ fontFamily: "monospace", fontWeight: "800", color: "var(--admin-gold, #b8905a)", fontSize: "13px" }}>#{lead.lead_number || "—"}</span>
-            <span style={{ fontSize: "15px", fontWeight: "700", color: stage !== "fresh" ? "#16a34a" : "var(--admin-ink, #1b2a4a)" }}>{lead.name || "Unnamed"}</span>
-            {lead.booking_confirmed && <span style={pill("#dcfce7", "#16a34a")}>✓ Patient ID issued</span>}
+            <span style={{ fontSize: "15px", fontWeight: "700", color: stage !== "fresh" ? "#168F83" : "var(--admin-ink, #1b2a4a)" }}>{lead.name || "Unnamed"}</span>
+            {lead.booking_confirmed && <span style={pill("#D7EFEB", "#168F83")}>✓ Patient ID issued</span>}
           </div>
           <div style={{ fontSize: "13px", color: "var(--admin-ink2, #837a66)", display: "flex", gap: "14px", flexWrap: "wrap" }}>
             <span>📱 {lead.phone || "N/A"}</span>
@@ -780,12 +780,12 @@ function LeadCard({ lead, onStage, onEdit, cold, onPromote, onDelete }) {
           <div style={{ marginTop: "8px", display: "flex", gap: "6px", flexWrap: "wrap" }}>
             <span style={pill("#eef2ff", "#4338ca")}>{sourceLabel(lead.lead_source)}</span>
             {lead.call_history?.length > 0 && (
-              <span style={pill("#f0fdf4", "#15803d")}>
+              <span style={pill("#EAF7F5", "#12706A")}>
                 Last called: {formatDate(lead.call_history[lead.call_history.length - 1].date)}
               </span>
             )}
             {lead.lead_source === "website" && (
-              <span style={pill(lead.lead_verified ? "#dcfce7" : "#D7EFEB", lead.lead_verified ? "#065f46" : "#0F5F58")}>
+              <span style={pill(lead.lead_verified ? "#D7EFEB" : "#D7EFEB", lead.lead_verified ? "#0F5F58" : "#0F5F58")}>
                 {lead.lead_verified ? "✓ Verified" : "🕗 Unverified"}
               </span>
             )}
@@ -795,7 +795,7 @@ function LeadCard({ lead, onStage, onEdit, cold, onPromote, onDelete }) {
           {cold ? (
             <button
               onClick={onPromote}
-              style={{ padding: "7px 14px", borderRadius: "8px", border: "none", background: "#16a34a", color: "white", fontWeight: "700", fontSize: "12px", cursor: "pointer", whiteSpace: "nowrap" }}
+              style={{ padding: "7px 14px", borderRadius: "8px", border: "none", background: "#168F83", color: "white", fontWeight: "700", fontSize: "12px", cursor: "pointer", whiteSpace: "nowrap" }}
             >
               + Add to Lead
             </button>
@@ -901,7 +901,7 @@ function LeadRow({ lead, entry, cold, showType, isAdmin, campaigns, onEdit, onDe
       >
         <span style={{ fontSize: "11px", color: "var(--admin-ink2, #837a66)", transition: "transform 0.15s", transform: open ? "rotate(90deg)" : "none", flexShrink: 0 }}>▶</span>
         <span style={{ fontFamily: "monospace", fontWeight: 800, color: "var(--admin-gold, #b8905a)", fontSize: "12px", flexShrink: 0 }}>#{lead.lead_number || "—"}</span>
-        <span style={{ fontWeight: 700, fontSize: "14px", color: isGreen ? "#16a34a" : "var(--admin-ink, #1b2a4a)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        <span style={{ fontWeight: 700, fontSize: "14px", color: isGreen ? "#168F83" : "var(--admin-ink, #1b2a4a)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {lead.name || lead.phone || "Unnamed"}
         </span>
         {showType && (
@@ -914,7 +914,7 @@ function LeadRow({ lead, entry, cold, showType, isAdmin, campaigns, onEdit, onDe
       {open && (
         <div style={{ padding: "4px 14px 16px 34px", background: "#f8f6f2" }}>
           <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "14px" }}>
-            {cold && <button onClick={() => onPromote(lead)} style={miniBtn("#16a34a", "white")}>+ Add to Lead</button>}
+            {cold && <button onClick={() => onPromote(lead)} style={miniBtn("#168F83", "white")}>+ Add to Lead</button>}
             <button onClick={() => onEdit(lead, entry)} style={miniBtn("white", "var(--admin-ink, #1b2a4a)", "1px solid var(--admin-line, #e9e1d0)")}>Edit</button>
             {isAdmin && <button onClick={() => onDelete(lead)} style={miniBtn("#fef2f2", "#dc2626", "1px solid #fecaca")}>Delete</button>}
           </div>
@@ -1253,7 +1253,7 @@ function LeadForm({ lead, entry, actor, onClose, onSaved, onDuplicateFound, mode
           {isBooked && (
             <>
               <div>
-                <span style={{ ...label, color: "#16a34a" }}>Consultation Type</span>
+                <span style={{ ...label, color: "#168F83" }}>Consultation Type</span>
                 <Clearable show={!!form.consultationType} onClear={() => set("consultationType", "")}>
                   <select style={input} value={form.consultationType} onChange={(e) => set("consultationType", e.target.value)}>
                     <option value="">— Select —</option>
@@ -1263,7 +1263,7 @@ function LeadForm({ lead, entry, actor, onClose, onSaved, onDuplicateFound, mode
               </div>
               {form.consultationType === "clinic" && (
                 <div>
-                  <span style={{ ...label, color: "#16a34a" }}>Clinic</span>
+                  <span style={{ ...label, color: "#168F83" }}>Clinic</span>
                   <Clearable show={!!form.clinic_location} onClear={() => set("clinic_location", "")}>
                     <select style={input} value={form.clinic_location} onChange={(e) => set("clinic_location", e.target.value)}>
                       <option value="">— Select —</option>
@@ -1273,11 +1273,11 @@ function LeadForm({ lead, entry, actor, onClose, onSaved, onDuplicateFound, mode
                 </div>
               )}
               <div>
-                <span style={{ ...label, color: "#16a34a" }}>Consultation Date</span>
+                <span style={{ ...label, color: "#168F83" }}>Consultation Date</span>
                 <input style={input} type="date" value={form.date} onChange={(e) => set("date", e.target.value)} />
               </div>
               <div>
-                <span style={{ ...label, color: "#16a34a" }}>Consultation Slot</span>
+                <span style={{ ...label, color: "#168F83" }}>Consultation Slot</span>
                 <Clearable show={!!form.time} onClear={() => set("time", "")}>
                   <select style={input} value={form.time} onChange={(e) => set("time", e.target.value)}>
                     <option value="">— Select —</option>
@@ -1359,7 +1359,7 @@ function LeadForm({ lead, entry, actor, onClose, onSaved, onDuplicateFound, mode
             <button
               onClick={() => save({ confirm: true })}
               disabled={saving}
-              style={{ flex: 1, minWidth: "120px", padding: "12px", borderRadius: "10px", border: "none", background: "#16a34a", color: "white", fontWeight: "700", fontSize: "14px", cursor: saving ? "not-allowed" : "pointer" }}
+              style={{ flex: 1, minWidth: "120px", padding: "12px", borderRadius: "10px", border: "none", background: "#168F83", color: "white", fontWeight: "700", fontSize: "14px", cursor: saving ? "not-allowed" : "pointer" }}
             >
               {lead?.booking_confirmed ? "Update (Booked)" : "Confirm Lead → Booked"}
             </button>

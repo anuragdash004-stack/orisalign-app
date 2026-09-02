@@ -34,7 +34,7 @@ export async function POST(req: Request) {
             <h2 style="color: #111827;">Verify Your Booking</h2>
             <p>Dear ${name},</p>
             <p>Use the OTP below to complete your appointment booking at OrisAlign:</p>
-            <div style="background:#f0fdf4;border:2px solid #22c55e;border-radius:12px;padding:24px;text-align:center;margin:24px 0;">
+            <div style="background:#EAF7F5;border:2px solid #3FB3A4;border-radius:12px;padding:24px;text-align:center;margin:24px 0;">
               <span style="font-size:40px;font-weight:700;letter-spacing:10px;color:#111827;">${otp}</span>
             </div>
             <p style="color:#6b7280;font-size:13px;">This OTP expires in 10 minutes. Do not share it with anyone.</p>

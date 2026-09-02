@@ -9,7 +9,7 @@ const supabase = getSupabaseClient();
 const STATUS_STYLE = {
   pending:   { bg: "#fef9c3", color: "#854d0e" },
   assigned:  { bg: "#dbeafe", color: "#1e40af" },
-  confirmed: { bg: "#dcfce7", color: "#16a34a" },
+  confirmed: { bg: "#D7EFEB", color: "#168F83" },
   completed: { bg: "var(--admin-gold-wash, #f3f0e6)", color: "var(--admin-ink2, #837a66)" },
   cancelled: { bg: "#fee2e2", color: "#dc2626" },
 };

@@ -387,7 +387,7 @@ function StaffLogin() {
                 type="checkbox"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
-                style={{ width: "16px", height: "16px", accentColor: "#22c55e", cursor: "pointer", margin: 0 }}
+                style={{ width: "16px", height: "16px", accentColor: "#3FB3A4", cursor: "pointer", margin: 0 }}
               />
               Keep me logged in
             </label>
@@ -418,7 +418,7 @@ function StaffLogin() {
               </p>
               <button
                 onClick={() => { setMode("login"); setResetSent(false); }}
-                style={{ background: "none", border: "none", color: "#22c55e", fontSize: "14px", cursor: "pointer", fontWeight: "600" }}
+                style={{ background: "none", border: "none", color: "#3FB3A4", fontSize: "14px", cursor: "pointer", fontWeight: "600" }}
               >
                 ← Back to Login
               </button>
@@ -475,7 +475,7 @@ const buttonStyle = {
   padding: "14px",
   borderRadius: "10px",
   border: "none",
-  background: "#22c55e",
+  background: "#3FB3A4",
   color: "white",
   fontWeight: "600",
   fontSize: "14px",

@@ -132,7 +132,7 @@ function ToothField({ label, dentition, value, onChange }) {
                       style={{
                         padding: "8px 0", borderRadius: "7px", fontSize: "13px", fontWeight: "700", cursor: "pointer",
                         border: on ? "none" : "1px solid #d1d5db",
-                        background: on ? "#16a34a" : "white",
+                        background: on ? "#168F83" : "white",
                         color: on ? "white" : "var(--admin-ink, #1b2a4a)",
                       }}
                     >
@@ -168,19 +168,19 @@ function ToothField({ label, dentition, value, onChange }) {
 function SectionCard({ sectionKey, label, done, activeSection, setActiveSection, children }) {
   const isOpen = activeSection === sectionKey;
   return (
-    <div style={{ background: "white", border: `1px solid ${done ? "#22c55e" : "var(--admin-line, #e9e1d0)"}`, borderRadius: "16px", overflow: "hidden", boxShadow: "0 4px 12px rgba(0,0,0,0.04)" }}>
+    <div style={{ background: "white", border: `1px solid ${done ? "#3FB3A4" : "var(--admin-line, #e9e1d0)"}`, borderRadius: "16px", overflow: "hidden", boxShadow: "0 4px 12px rgba(0,0,0,0.04)" }}>
       <div
         onClick={() => !done && setActiveSection(isOpen ? null : sectionKey)}
-        style={{ padding: "18px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: done ? "default" : "pointer", background: done ? "#f0fdf4" : "white" }}
+        style={{ padding: "18px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: done ? "default" : "pointer", background: done ? "#EAF7F5" : "white" }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <span style={{ width: "24px", height: "24px", borderRadius: "50%", background: done ? "#22c55e" : "var(--admin-line, #e9e1d0)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: "13px", fontWeight: "700", flexShrink: 0 }}>
+          <span style={{ width: "24px", height: "24px", borderRadius: "50%", background: done ? "#3FB3A4" : "var(--admin-line, #e9e1d0)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: "13px", fontWeight: "700", flexShrink: 0 }}>
             {done ? "✓" : ""}
           </span>
-          <span style={{ fontWeight: "600", color: done ? "#16a34a" : "var(--admin-ink, #1b2a4a)" }}>{label}</span>
+          <span style={{ fontWeight: "600", color: done ? "#168F83" : "var(--admin-ink, #1b2a4a)" }}>{label}</span>
         </div>
         {done ? (
-          <span style={{ color: "#16a34a", fontSize: "13px", fontWeight: "600" }}>Completed</span>
+          <span style={{ color: "#168F83", fontSize: "13px", fontWeight: "600" }}>Completed</span>
         ) : (
           <span style={{ color: "gray", fontSize: "13px" }}>{isOpen ? "▲" : "▼"}</span>
         )}
@@ -613,8 +613,8 @@ export default function AppointmentWorkflow() {
                   <div
                     key={proc}
                     style={{
-                      padding: "8px 12px", borderRadius: "8px", border: "1px solid #22c55e",
-                      background: "#f0fdf4", fontSize: "13px", color: "#16a34a",
+                      padding: "8px 12px", borderRadius: "8px", border: "1px solid #3FB3A4",
+                      background: "#EAF7F5", fontSize: "13px", color: "#168F83",
                       display: "flex", justifyContent: "space-between", alignItems: "center",
                     }}
                   >
@@ -666,7 +666,7 @@ export default function AppointmentWorkflow() {
                       style={{
                         display: "flex", alignItems: "center", gap: "10px",
                         padding: "10px 12px", borderRadius: "8px", border: "1px solid var(--admin-line, #e9e1d0)",
-                        cursor: "pointer", background: selectedProcedures.includes(proc) ? "#f0fdf4" : "white",
+                        cursor: "pointer", background: selectedProcedures.includes(proc) ? "#EAF7F5" : "white",
                       }}
                     >
                       <input
@@ -778,11 +778,11 @@ export default function AppointmentWorkflow() {
           <p style={{ fontSize: "13px", color: "gray", marginBottom: "16px" }}>Upload all 9 required photos before submitting.</p>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", marginBottom: "16px" }}>
             {IMAGE_SLOTS.map((slot) => (
-              <div key={slot.key} style={{ border: `2px dashed ${images[slot.key] ? "#22c55e" : "var(--admin-line, #e9e1d0)"}`, borderRadius: "10px", padding: "10px", textAlign: "center", background: images[slot.key] ? "#f0fdf4" : "#fafafa" }}>
+              <div key={slot.key} style={{ border: `2px dashed ${images[slot.key] ? "#3FB3A4" : "var(--admin-line, #e9e1d0)"}`, borderRadius: "10px", padding: "10px", textAlign: "center", background: images[slot.key] ? "#EAF7F5" : "#fafafa" }}>
                 <p style={{ fontSize: "11px", fontWeight: "600", marginBottom: "6px", color: "var(--admin-ink, #1b2a4a)" }}>{slot.label}</p>
                 {images[slot.key] ? (
                   <div>
-                    <p style={{ fontSize: "10px", color: "#16a34a", margin: "0 0 4px" }}>✓ Selected</p>
+                    <p style={{ fontSize: "10px", color: "#168F83", margin: "0 0 4px" }}>✓ Selected</p>
                     <p style={{ fontSize: "10px", color: "gray", margin: "0 0 6px", wordBreak: "break-all" }}>{images[slot.key].name.substring(0, 16)}...</p>
                     <button
                       onClick={() => removeImage(slot.key)}
@@ -814,11 +814,11 @@ export default function AppointmentWorkflow() {
           <p style={{ fontSize: "13px", color: "gray", marginBottom: "16px" }}>Upload all 4 scan files before submitting.</p>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "16px" }}>
             {STL_SLOTS.map((slot) => (
-              <div key={slot.key} style={{ border: `2px dashed ${stls[slot.key] ? "#22c55e" : "var(--admin-line, #e9e1d0)"}`, borderRadius: "10px", padding: "14px", textAlign: "center", background: stls[slot.key] ? "#f0fdf4" : "#fafafa" }}>
+              <div key={slot.key} style={{ border: `2px dashed ${stls[slot.key] ? "#3FB3A4" : "var(--admin-line, #e9e1d0)"}`, borderRadius: "10px", padding: "14px", textAlign: "center", background: stls[slot.key] ? "#EAF7F5" : "#fafafa" }}>
                 <p style={{ fontSize: "12px", fontWeight: "600", marginBottom: "8px", color: "var(--admin-ink, #1b2a4a)" }}>{slot.label}</p>
                 {stls[slot.key] ? (
                   <div>
-                    <p style={{ fontSize: "11px", color: "#16a34a", margin: "0 0 6px" }}>✓ {stls[slot.key].name.substring(0, 18)}...</p>
+                    <p style={{ fontSize: "11px", color: "#168F83", margin: "0 0 6px" }}>✓ {stls[slot.key].name.substring(0, 18)}...</p>
                     <button
                       onClick={() => removeStl(slot.key)}
                       style={{ padding: "4px 10px", borderRadius: "6px", border: "1px solid #fecaca", background: "#fef2f2", color: "#dc2626", fontWeight: "700", fontSize: "10px", cursor: "pointer" }}
@@ -848,21 +848,21 @@ export default function AppointmentWorkflow() {
 
       {/* ── SECTION 4: PROVISIONAL PLANNING ── */}
       <div style={{ marginTop: "14px", background: "white", border: "1px solid var(--admin-line, #e9e1d0)", borderRadius: "16px", overflow: "hidden", boxShadow: "0 4px 12px rgba(0,0,0,0.04)" }}>
-        <div style={{ padding: "18px 20px", background: provisionalPlanSubmitted ? "#f0fdf4" : "#fafafa", borderBottom: "1px solid var(--admin-line, #e9e1d0)" }}>
-          <span style={{ fontWeight: "600", color: provisionalPlanSubmitted ? "#16a34a" : "var(--admin-ink, #1b2a4a)" }}>4. Provisional Planning</span>
+        <div style={{ padding: "18px 20px", background: provisionalPlanSubmitted ? "#EAF7F5" : "#fafafa", borderBottom: "1px solid var(--admin-line, #e9e1d0)" }}>
+          <span style={{ fontWeight: "600", color: provisionalPlanSubmitted ? "#168F83" : "var(--admin-ink, #1b2a4a)" }}>4. Provisional Planning</span>
           {provisionalPlanSubmitted && (
-            <span style={{ marginLeft: "10px", fontSize: "12px", color: "#16a34a", fontWeight: "600" }}>✓ Submitted by orthodontist</span>
+            <span style={{ marginLeft: "10px", fontSize: "12px", color: "#168F83", fontWeight: "600" }}>✓ Submitted by orthodontist</span>
           )}
         </div>
         <div style={{ padding: "20px" }}>
           {provisionalPlanSubmitted ? (
             <div>
-              <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "8px", padding: "14px", fontSize: "14px", color: "var(--admin-ink, #1b2a4a)", whiteSpace: "pre-wrap", lineHeight: "1.6", marginBottom: orthoNote ? "12px" : 0 }}>
+              <div style={{ background: "#EAF7F5", border: "1px solid #9FD8D1", borderRadius: "8px", padding: "14px", fontSize: "14px", color: "var(--admin-ink, #1b2a4a)", whiteSpace: "pre-wrap", lineHeight: "1.6", marginBottom: orthoNote ? "12px" : 0 }}>
                 {provisionalPlan}
               </div>
               {orthoNote ? (
-                <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "8px", padding: "14px" }}>
-                  <p style={{ fontSize: "11px", fontWeight: "700", color: "#16a34a", textTransform: "uppercase", letterSpacing: "0.5px", margin: "0 0 6px" }}>Notes from Orthodontist</p>
+                <div style={{ background: "#EAF7F5", border: "1px solid #9FD8D1", borderRadius: "8px", padding: "14px" }}>
+                  <p style={{ fontSize: "11px", fontWeight: "700", color: "#168F83", textTransform: "uppercase", letterSpacing: "0.5px", margin: "0 0 6px" }}>Notes from Orthodontist</p>
                   <p style={{ margin: 0, fontSize: "14px", color: "var(--admin-ink, #1b2a4a)", whiteSpace: "pre-wrap", lineHeight: "1.6" }}>{orthoNote}</p>
                 </div>
               ) : null}
@@ -874,7 +874,7 @@ export default function AppointmentWorkflow() {
       </div>
 
       {/* ── END APPOINTMENT ── */}
-      <div style={{ marginTop: "24px", padding: "20px", background: allDone ? "#f0fdf4" : "var(--admin-bg, #faf6ec)", borderRadius: "16px", border: `1px solid ${allDone ? "#22c55e" : "var(--admin-line, #e9e1d0)"}` }}>
+      <div style={{ marginTop: "24px", padding: "20px", background: allDone ? "#EAF7F5" : "var(--admin-bg, #faf6ec)", borderRadius: "16px", border: `1px solid ${allDone ? "#3FB3A4" : "var(--admin-line, #e9e1d0)"}` }}>
         {!allDone && (
           <p style={{ fontSize: "13px", color: "gray", marginBottom: "12px", textAlign: "center" }}>
             Complete all 3 sections above to end the appointment.

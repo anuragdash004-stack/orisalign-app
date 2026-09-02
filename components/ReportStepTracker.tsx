@@ -38,7 +38,7 @@ export default function ReportStepTracker({ current, status }: { current: 1 | 2 
               fontWeight: 800,
               flexShrink: 0,
               background: s.n === current ? GOLD : s.unlocked ? "#e0f2e9" : "#f3f4f6",
-              color: s.n === current ? "white" : s.unlocked ? "#16a34a" : "#9ca3af",
+              color: s.n === current ? "white" : s.unlocked ? "#168F83" : "#9ca3af",
               border: s.n === current ? "none" : "1px solid #e5e7eb",
             }}
             title={s.label}
@@ -48,7 +48,7 @@ export default function ReportStepTracker({ current, status }: { current: 1 | 2 
           <span style={{ fontSize: 11, color: s.unlocked || s.n === current ? NAVY : "#9ca3af", fontWeight: s.n === current ? 700 : 500 }}>
             {s.label}
           </span>
-          {i < 2 && <div style={{ flex: 1, height: 2, background: steps[i + 1].unlocked ? "#22c55e" : "#e5e7eb" }} />}
+          {i < 2 && <div style={{ flex: 1, height: 2, background: steps[i + 1].unlocked ? "#3FB3A4" : "#e5e7eb" }} />}
         </div>
       ))}
     </div>

@@ -27,7 +27,7 @@ export async function POST(req: Request) {
             <p style="color: #6b7280; font-size: 16px; margin: 0;">Your Smile Assessment is Booked!</p>
           </div>
 
-          <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+          <div style="background: #EAF7F5; border: 1px solid #9FD8D1; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
             <p style="color: #111827; font-size: 14px; margin: 0 0 15px;">Hi <strong>${name}</strong>,</p>
             <p style="color: #111827; font-size: 14px; margin: 0 0 15px;">Thank you for choosing OrisAlign! Your smile assessment scan is booked and confirmed.</p>
 

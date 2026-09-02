@@ -5,7 +5,7 @@ import { getSupabaseClient } from "@/lib/supabaseClient";
 
 const supabase = getSupabaseClient();
 
-// ✅ FIX 5 — moved outside component so it's not recreated on every render
+// ✓ FIX 5 — moved outside component so it's not recreated on every render
 const card = (color) => ({
   flex: "1",
   minWidth: "180px",
@@ -19,9 +19,9 @@ const card = (color) => ({
 
 export default function AdminDashboard() {
   const [appointments, setAppointments] = useState([]);
-  // ✅ FIX 3 — loading state so we don't flash 0s while fetching
+  // ✓ FIX 3 — loading state so we don't flash 0s while fetching
   const [loading, setLoading] = useState(true);
-  // ✅ FIX 4 — error state
+  // ✓ FIX 4 — error state
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -34,7 +34,7 @@ export default function AdminDashboard() {
 
       if (!active) return;
 
-      // ✅ FIX 4 — handle fetch errors
+      // ✓ FIX 4 — handle fetch errors
       if (error) {
         console.error("Dashboard fetch error:", error);
         setError("Failed to load appointments.");
@@ -55,10 +55,10 @@ export default function AdminDashboard() {
 
   const stats = {
     total: appointments.length,
-    // ✅ FIX 1 — was "new", your app uses "pending"
+    // ✓ FIX 1 — was "new", your app uses "pending"
     pending: appointments.filter((a) => a.status === "pending").length,
     assigned: appointments.filter((a) => a.status === "assigned").length,
-    // ✅ FIX 2 — was "completed", your app uses "confirmed"
+    // ✓ FIX 2 — was "completed", your app uses "confirmed"
     confirmed: appointments.filter((a) => a.status === "confirmed").length,
     cancelled: appointments.filter((a) => a.status === "cancelled").length,
   };
@@ -81,7 +81,7 @@ export default function AdminDashboard() {
         <StatCard color="#38bdf8" label="Total" value={stats.total} />
         <StatCard color="#facc15" label="Pending" value={stats.pending} />
         <StatCard color="#60a5fa" label="Assigned" value={stats.assigned} />
-        <StatCard color="#22c55e" label="Confirmed" value={stats.confirmed} />
+        <StatCard color="#3FB3A4" label="Confirmed" value={stats.confirmed} />
         <StatCard color="#ef4444" label="Cancelled" value={stats.cancelled} />
       </div>
     </div>

@@ -530,7 +530,7 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
     background: active ? "#f0f0f0" : "white",
     color: "var(--admin-ink, #1b2a4a)", fontWeight: active ? "700" : "600", fontSize: "14px", cursor: "pointer",
   });
-  const okBanner = { marginTop: "12px", padding: "10px 12px", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "8px", color: "#16a34a", fontWeight: "700", fontSize: "13px" };
+  const okBanner = { marginTop: "12px", padding: "10px 12px", background: "#EAF7F5", border: "1px solid #9FD8D1", borderRadius: "8px", color: "#168F83", fontWeight: "700", fontSize: "13px" };
   const changeLinkStyle = { marginTop: "10px", padding: "8px 16px", borderRadius: "8px", border: "1px solid var(--admin-line, #e9e1d0)", background: "white", color: "var(--admin-ink, #1b2a4a)", fontWeight: "600", fontSize: "12px", cursor: "pointer" };
 
   if (isNewModelAppointment(appt)) {
@@ -585,7 +585,7 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
         <button style={savingPlan ? { ...btnGold, opacity: 0.6 } : btnGold} onClick={savePlan} disabled={savingPlan}>
           {savingPlan ? "Saving..." : "Save"}
         </button>
-        {planSaved && <span style={{ marginLeft: "10px", fontSize: "13px", fontWeight: "700", color: "#16a34a" }}>✓ Saved</span>}
+        {planSaved && <span style={{ marginLeft: "10px", fontSize: "13px", fontWeight: "700", color: "#168F83" }}>✓ Saved</span>}
       </div>
 
       {/* Card 2 — To Pay */}
@@ -602,7 +602,7 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
             <div style={{ padding: "16px", background: "var(--admin-bg, #faf6ec)", borderRadius: "10px" }}>
               <PaymentSummaryRow label="Final Amount" value={inr(finalAmt)} />
               {fullyPaid ? (
-                <div style={okBanner}>✅ Paid in full — Remaining ₹0</div>
+                <div style={okBanner}>✓ Paid in full — Remaining ₹0</div>
               ) : (
                 <button
                   style={{ marginTop: "12px", ...btnGold, opacity: markingPaid === "full" ? 0.6 : 1 }}
@@ -629,7 +629,7 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
                   )}
                 </div>
                 {downPaymentPaid ? (
-                  <div style={okBanner}>✅ Down payment paid</div>
+                  <div style={okBanner}>✓ Down payment paid</div>
                 ) : (
                   <button
                     style={{ marginTop: "12px", ...btnGold, opacity: markingPaid === "down" ? 0.6 : 1 }}
@@ -645,7 +645,7 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
                 <div style={{ padding: "16px", background: "var(--admin-bg, #faf6ec)", borderRadius: "10px" }}>
                   <PaymentSummaryRow label="Pending Amount" value={inr(remainingAmt)} />
                   {remainingAmt === 0 ? (
-                    <div style={okBanner}>✅ All paid — Remaining ₹0</div>
+                    <div style={okBanner}>✓ All paid — Remaining ₹0</div>
                   ) : !isPendingLocked ? (
                     <div style={{ marginTop: "12px" }}>
                       <span style={label}>HOW WILL THE PENDING AMOUNT BE PAID?</span>
@@ -707,13 +707,13 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
                       {pendingInstallments.length > 0 && (
                         <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "12px" }}>
                           {pendingInstallments.map((inst) => (
-                            <div key={inst.num} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", padding: "10px 12px", background: inst.paid ? "#f0fdf4" : "white", borderRadius: "8px", border: inst.paid ? "1px solid #bbf7d0" : "1px solid var(--admin-line, #e9e1d0)" }}>
+                            <div key={inst.num} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", padding: "10px 12px", background: inst.paid ? "#EAF7F5" : "white", borderRadius: "8px", border: inst.paid ? "1px solid #9FD8D1" : "1px solid var(--admin-line, #e9e1d0)" }}>
                               <div>
                                 <span style={{ fontSize: "13px", fontWeight: "700", color: "var(--admin-ink, #1b2a4a)" }}>Installment {inst.num}</span>
                                 <span style={{ marginLeft: "8px", fontSize: "13px", color: "var(--admin-ink2, #837a66)" }}>{inr(inst.amount)} · {formatDate(inst.date)}</span>
                               </div>
                               {inst.paid ? (
-                                <span style={{ fontSize: "12px", fontWeight: "700", color: "#16a34a" }}>Paid ✓{inst.paid_date ? ` on ${formatDate(inst.paid_date)}` : ""}</span>
+                                <span style={{ fontSize: "12px", fontWeight: "700", color: "#168F83" }}>Paid ✓{inst.paid_date ? ` on ${formatDate(inst.paid_date)}` : ""}</span>
                               ) : (
                                 <button
                                   onClick={() => markInstallmentPaid(inst.num)}
@@ -818,7 +818,7 @@ function MonthlyBillingCards({ appointmentId, appt, setAppt, actor }) {
         ) : !provisionalChoice ? (
           <p style={{ margin: 0, fontSize: "13px", color: "var(--admin-ink2, #837a66)", fontStyle: "italic" }}>Plan picked ({planCfg.label}), payment choice not made yet.</p>
         ) : provisionalPaid ? (
-          <p style={okBannerText}>✅ Paid — {provisionalChoice === "first_month" ? `First Month (${inr(planCfg.monthRate)})` : `Full Plan Fee (${inr(PROVISIONAL_PLAN_FEE)})`}</p>
+          <p style={okBannerText}>✓ Paid — {provisionalChoice === "first_month" ? `First Month (${inr(planCfg.monthRate)})` : `Full Plan Fee (${inr(PROVISIONAL_PLAN_FEE)})`}</p>
         ) : (
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
             <span style={{ fontSize: "14px", color: "var(--admin-ink, #1b2a4a)" }}>{provisionalChoice === "first_month" ? `First Month · ${inr(planCfg.monthRate)}` : `Full Plan Fee · ${inr(PROVISIONAL_PLAN_FEE)}`} pending</span>
@@ -847,7 +847,7 @@ function MonthlyBillingCards({ appointmentId, appt, setAppt, actor }) {
             const isPaid = amountPaid >= m.discountedCumulative;
             const isNext = nextMonth && nextMonth.num === m.num;
             return (
-              <div key={m.num} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", padding: "10px 12px", background: isPaid ? "#f0fdf4" : "#fafafa", borderRadius: "8px", border: isPaid ? "1px solid #bbf7d0" : "1px solid var(--admin-line, #e9e1d0)" }}>
+              <div key={m.num} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", padding: "10px 12px", background: isPaid ? "#EAF7F5" : "#fafafa", borderRadius: "8px", border: isPaid ? "1px solid #9FD8D1" : "1px solid var(--admin-line, #e9e1d0)" }}>
                 <div>
                   <span style={{ fontSize: "13px", fontWeight: "700", color: "var(--admin-ink, #1b2a4a)" }}>
                     Package {m.num} — {monthSlotLabels(m.upper, m.lower).join(", ")}
@@ -855,7 +855,7 @@ function MonthlyBillingCards({ appointmentId, appt, setAppt, actor }) {
                   <span style={{ marginLeft: "8px", fontSize: "13px", color: "var(--admin-ink2, #837a66)" }}>{inr(m.payableAmount)}</span>
                 </div>
                 {isPaid ? (
-                  <span style={{ fontSize: "12px", fontWeight: "700", color: "#16a34a" }}>✓ Paid</span>
+                  <span style={{ fontSize: "12px", fontWeight: "700", color: "#168F83" }}>✓ Paid</span>
                 ) : isNext ? (
                   <button
                     onClick={() => markPaid(m.payableAmount, `Month ${m.num} Aligner Sets`, m.num)}
@@ -876,7 +876,7 @@ function MonthlyBillingCards({ appointmentId, appt, setAppt, actor }) {
     </div>
   );
 }
-const okBannerText = { margin: 0, fontSize: "14px", fontWeight: "800", color: "#16a34a" };
+const okBannerText = { margin: 0, fontSize: "14px", fontWeight: "800", color: "#168F83" };
 
 // ─── Derive steps ─────────────────────────────────────────────────────────────
 function deriveSteps(appt) {
@@ -1755,7 +1755,7 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
             onClick={copyPatientJourneyLink}
             style={{
               display: "flex", alignItems: "center", gap: "6px", padding: "8px 14px", borderRadius: "8px", border: "none",
-              background: linkCopied ? "#dcfce7" : "var(--admin-ink, #1b2a4a)", color: linkCopied ? "#16a34a" : "white",
+              background: linkCopied ? "#D7EFEB" : "var(--admin-ink, #1b2a4a)", color: linkCopied ? "#168F83" : "white",
               fontWeight: "700", fontSize: "13px", cursor: "pointer",
             }}
           >
@@ -1775,7 +1775,7 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
           <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
             <span style={{ fontSize: "13px", color: "var(--admin-ink2, #837a66)" }}>{doneCount} / {allSteps.length} steps done</span>
             <div style={{ height: "8px", width: "120px", borderRadius: "99px", background: "var(--admin-line, #e9e1d0)", overflow: "hidden" }}>
-              <div style={{ height: "100%", borderRadius: "99px", width: `${Math.round((doneCount / allSteps.length) * 100)}%`, background: "linear-gradient(90deg, #22c55e, #16a34a)", transition: "width 0.4s ease" }} />
+              <div style={{ height: "100%", borderRadius: "99px", width: `${Math.round((doneCount / allSteps.length) * 100)}%`, background: "linear-gradient(90deg, #3FB3A4, #168F83)", transition: "width 0.4s ease" }} />
             </div>
           </div>
         </div>
@@ -1793,21 +1793,21 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                 style={{
                   display: "flex", alignItems: "center", gap: "12px",
                   borderRadius: "12px", padding: "14px 16px",
-                  border: `1px solid ${done ? "#bbf7d0" : "var(--admin-line, #e9e1d0)"}`,
-                  background: done ? "linear-gradient(135deg, #f0fdf4, #dcfce7)" : "white",
+                  border: `1px solid ${done ? "#9FD8D1" : "var(--admin-line, #e9e1d0)"}`,
+                  background: done ? "linear-gradient(135deg, #EAF7F5, #D7EFEB)" : "white",
                   boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
                   cursor: "pointer",
                 }}
               >
                 <div style={{
                   width: "36px", height: "36px", borderRadius: "8px", flexShrink: 0,
-                  background: done ? "linear-gradient(135deg, #22c55e, #16a34a)" : "var(--admin-gold-wash, #f3f0e6)",
+                  background: done ? "linear-gradient(135deg, #3FB3A4, #168F83)" : "var(--admin-gold-wash, #f3f0e6)",
                   display: "flex", alignItems: "center", justifyContent: "center",
                   color: done ? "white" : "var(--admin-ink2, #837a66)", fontWeight: "700", fontSize: "13px",
                 }}>
                   {done ? "✓" : i + 1}
                 </div>
-                <p style={{ margin: 0, flex: 1, fontSize: "14px", fontWeight: done ? "700" : "500", color: done ? "#15803d" : "var(--admin-ink, #1b2a4a)" }}>
+                <p style={{ margin: 0, flex: 1, fontSize: "14px", fontWeight: done ? "700" : "500", color: done ? "#12706A" : "var(--admin-ink, #1b2a4a)" }}>
                   {step.label}
                 </p>
                 <div onClick={(e) => e.stopPropagation()} style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
@@ -1844,8 +1844,8 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                 {!isAdmin && step.key === "followup_appointment" && (
                   <span style={{
                     padding: "6px 12px", borderRadius: "8px", fontSize: "11px", fontWeight: "700", flexShrink: 0,
-                    background: done ? "#dcfce7" : "var(--admin-gold-wash, #f3f0e6)",
-                    color: done ? "#16a34a" : "var(--admin-ink2, #837a66)",
+                    background: done ? "#D7EFEB" : "var(--admin-gold-wash, #f3f0e6)",
+                    color: done ? "#168F83" : "var(--admin-ink2, #837a66)",
                     letterSpacing: "0.5px",
                   }}>
                     {done ? "✓ CONFIRMED" : "PENDING"}
@@ -1877,8 +1877,8 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                 {(step.key === "booked" || step.key === "confirmed" || step.key === "payment_done") && (
                   <span style={{
                     padding: "6px 12px", borderRadius: "8px", fontSize: "11px", fontWeight: "700", flexShrink: 0,
-                    background: done ? "#dcfce7" : "var(--admin-gold-wash, #f3f0e6)",
-                    color: done ? "#16a34a" : "var(--admin-ink2, #837a66)",
+                    background: done ? "#D7EFEB" : "var(--admin-gold-wash, #f3f0e6)",
+                    color: done ? "#168F83" : "var(--admin-ink2, #837a66)",
                     letterSpacing: "0.5px",
                   }}>
                     {done ? "AUTOMATIC ✓" : "PENDING"}
@@ -1887,8 +1887,8 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                 {step.key === "plan_approved" && (
                   <span style={{
                     padding: "6px 12px", borderRadius: "8px", fontSize: "11px", fontWeight: "700", flexShrink: 0,
-                    background: done ? "#dcfce7" : steps.planning_done ? "#D7EFEB" : "var(--admin-gold-wash, #f3f0e6)",
-                    color: done ? "#16a34a" : steps.planning_done ? "#0F5F58" : "var(--admin-ink2, #837a66)",
+                    background: done ? "#D7EFEB" : steps.planning_done ? "#D7EFEB" : "var(--admin-gold-wash, #f3f0e6)",
+                    color: done ? "#168F83" : steps.planning_done ? "#0F5F58" : "var(--admin-ink2, #837a66)",
                     letterSpacing: "0.5px",
                   }}>
                     {done ? "APPROVED BY PATIENT" : steps.planning_done ? "AWAITING PATIENT" : "LOCKED"}
@@ -2087,8 +2087,8 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                       <div style={{ marginTop: "12px", paddingTop: "12px", borderTop: "1px solid var(--admin-line, #e9e1d0)" }}>
                         <span style={label}>PAYMENT</span>
                         {isPaid ? (
-                          <p style={{ margin: 0, fontSize: "13px", fontWeight: "700", color: "#16a34a" }}>
-                            ✅ Paid — {choice === "first_month" ? `First Month (${inr(cfg.monthRate)})` : `Full Plan Fee (${inr(PROVISIONAL_PLAN_FEE)})`}
+                          <p style={{ margin: 0, fontSize: "13px", fontWeight: "700", color: "#168F83" }}>
+                            ✓ Paid — {choice === "first_month" ? `First Month (${inr(cfg.monthRate)})` : `Full Plan Fee (${inr(PROVISIONAL_PLAN_FEE)})`}
                           </p>
                         ) : (
                           <div style={{ display: "flex", gap: "8px" }}>
@@ -2145,7 +2145,7 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                     {savingFinalReview ? "Generating..." : appt.monthly_plan ? "Regenerate Schedule" : "Generate Schedule"}
                   </button>
                   {appt.monthly_plan && (
-                    <p style={{ margin: 0, fontSize: "12px", color: "#16a34a", fontWeight: "700" }}>
+                    <p style={{ margin: 0, fontSize: "12px", color: "#168F83", fontWeight: "700" }}>
                       Current: {appt.monthly_plan.totalMonths} months, {appt.monthly_plan.months?.length || 0} packages generated.
                     </p>
                   )}
@@ -2215,9 +2215,9 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                       onClick={() => toggleInvestigationType("NONE")}
                       style={{
                         padding: "8px 14px", borderRadius: "8px",
-                        border: investigationTypesSelection.includes("NONE") ? "2px solid #16a34a" : "1px solid var(--admin-line, #e9e1d0)",
-                        background: investigationTypesSelection.includes("NONE") ? "#f0fdf4" : "white",
-                        color: investigationTypesSelection.includes("NONE") ? "#16a34a" : "var(--admin-ink, #1b2a4a)",
+                        border: investigationTypesSelection.includes("NONE") ? "2px solid #168F83" : "1px solid var(--admin-line, #e9e1d0)",
+                        background: investigationTypesSelection.includes("NONE") ? "#EAF7F5" : "white",
+                        color: investigationTypesSelection.includes("NONE") ? "#168F83" : "var(--admin-ink, #1b2a4a)",
                         fontWeight: "700", fontSize: "13px", cursor: "pointer",
                       }}
                     >
@@ -2264,7 +2264,7 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                         const file = appt.journey_steps?.investigation_files?.[t];
                         const signedUrl = investigationSignedUrls[t];
                         return (
-                          <div key={t} style={{ padding: "10px 12px", background: file?.path ? "#f0fdf4" : "white", borderRadius: "8px", border: file?.path ? "1px solid #bbf7d0" : "1px solid var(--admin-line, #e9e1d0)" }}>
+                          <div key={t} style={{ padding: "10px 12px", background: file?.path ? "#EAF7F5" : "white", borderRadius: "8px", border: file?.path ? "1px solid #9FD8D1" : "1px solid var(--admin-line, #e9e1d0)" }}>
                             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px" }}>
                               <span style={{ fontSize: "13px", fontWeight: "700", color: "var(--admin-ink, #1b2a4a)" }}>{typeInfo?.label || t}</span>
                               {file?.path ? (
@@ -2339,7 +2339,7 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                     {savingInvestigationReviewNote ? "Saving..." : investigationReviewNoteSaved ? "Submitted ✓" : "Submit Review Note"}
                   </button>
                   {appt.journey_steps?.investigation_review_note && (
-                    <p style={{ margin: 0, fontSize: "11px", color: "#16a34a" }}>Visible to the patient on their journey page.</p>
+                    <p style={{ margin: 0, fontSize: "11px", color: "#168F83" }}>Visible to the patient on their journey page.</p>
                   )}
                 </div>
               )}
@@ -2364,10 +2364,10 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                         {procs.map((proc) => {
                           const doneAt = doneMap[proc];
                           return (
-                            <div key={proc} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", padding: "10px 12px", background: doneAt ? "#f0fdf4" : "white", borderRadius: "8px", border: doneAt ? "1px solid #bbf7d0" : "1px solid var(--admin-line, #e9e1d0)" }}>
+                            <div key={proc} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", padding: "10px 12px", background: doneAt ? "#EAF7F5" : "white", borderRadius: "8px", border: doneAt ? "1px solid #9FD8D1" : "1px solid var(--admin-line, #e9e1d0)" }}>
                               <div>
                                 <span style={{ fontSize: "13px", fontWeight: "700", color: "var(--admin-ink, #1b2a4a)" }}>{proc}</span>
-                                {doneAt && <span style={{ display: "block", fontSize: "11px", color: "#16a34a" }}>Done on {new Date(doneAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>}
+                                {doneAt && <span style={{ display: "block", fontSize: "11px", color: "#168F83" }}>Done on {new Date(doneAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>}
                               </div>
                               <button
                                 onClick={() => toggleAdminPrealignerDone(proc)}
@@ -2458,10 +2458,10 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                         {postProcs.map((proc) => {
                           const doneAt = doneMap[proc];
                           return (
-                            <div key={proc} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", padding: "10px 12px", background: doneAt ? "#f0fdf4" : "white", borderRadius: "8px", border: doneAt ? "1px solid #bbf7d0" : "1px solid var(--admin-line, #e9e1d0)" }}>
+                            <div key={proc} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", padding: "10px 12px", background: doneAt ? "#EAF7F5" : "white", borderRadius: "8px", border: doneAt ? "1px solid #9FD8D1" : "1px solid var(--admin-line, #e9e1d0)" }}>
                               <div>
                                 <span style={{ fontSize: "13px", fontWeight: "700", color: "var(--admin-ink, #1b2a4a)" }}>{proc}</span>
-                                {doneAt && <span style={{ display: "block", fontSize: "11px", color: "#16a34a" }}>Done on {new Date(doneAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>}
+                                {doneAt && <span style={{ display: "block", fontSize: "11px", color: "#168F83" }}>Done on {new Date(doneAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>}
                               </div>
                               <button
                                 onClick={() => togglePostAlignerProcDone(proc)}
@@ -2566,7 +2566,7 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                     ))}
                   </div>
                   {parseInt(alignerTotalSets, 10) > 0 && alignerDaysPerSet && (
-                    <p style={{ margin: 0, fontSize: "13px", color: "#16a34a", fontWeight: "700" }}>
+                    <p style={{ margin: 0, fontSize: "13px", color: "#168F83", fontWeight: "700" }}>
                       Total Duration: {parseInt(alignerTotalSets, 10) * alignerDaysPerSet} days (~{Math.round((parseInt(alignerTotalSets, 10) * alignerDaysPerSet) / 30)} months)
                     </p>
                   )}
@@ -2696,7 +2696,7 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                     ))}
                   </div>
                   {parseInt(smileSets, 10) > 0 && smileStart && (
-                    <p style={{ margin: 0, fontSize: "13px", color: "#16a34a", fontWeight: "700" }}>
+                    <p style={{ margin: 0, fontSize: "13px", color: "#168F83", fontWeight: "700" }}>
                       {parseInt(smileSets, 10)} sets · changes every {smileDays} days · ~{Math.round((parseInt(smileSets, 10) * (parseInt(smileDays, 10) || 15)) / 30)} months total
                     </p>
                   )}
@@ -2729,12 +2729,12 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                       const editingPrice = priceEdits[m.num] !== undefined;
                       const draft = trackingInputs[m.num] || {};
                       return (
-                        <div key={m.num} style={{ padding: "12px", borderRadius: "10px", border: `1px solid ${isPaid ? "#bbf7d0" : "var(--admin-line, #e9e1d0)"}`, background: isPaid ? "#f0fdf4" : "#fafafa", display: "flex", flexDirection: "column", gap: "8px" }}>
+                        <div key={m.num} style={{ padding: "12px", borderRadius: "10px", border: `1px solid ${isPaid ? "#9FD8D1" : "var(--admin-line, #e9e1d0)"}`, background: isPaid ? "#EAF7F5" : "#fafafa", display: "flex", flexDirection: "column", gap: "8px" }}>
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px" }}>
                             <span style={{ fontSize: "13px", fontWeight: "700", color: "var(--admin-ink, #1b2a4a)" }}>
                               Package {m.num} — {monthSlotLabels(m.upper, m.lower).join(", ")}
                             </span>
-                            <span style={{ fontSize: "11px", fontWeight: "700", color: isPaid ? "#16a34a" : "var(--admin-ink2, #837a66)" }}>{isPaid ? "PAID" : "NOT YET ORDERED"}</span>
+                            <span style={{ fontSize: "11px", fontWeight: "700", color: isPaid ? "#168F83" : "var(--admin-ink2, #837a66)" }}>{isPaid ? "PAID" : "NOT YET ORDERED"}</span>
                           </div>
 
                           {isPaid ? (
@@ -2758,7 +2758,7 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
                                 <span style={{ fontSize: "12px", fontWeight: "700", color: "var(--admin-ink, #1b2a4a)" }}>
                                   {batch?.shipment_link ? "Dispatched" : "Not yet dispatched"}
                                 </span>
-                                <span style={{ fontSize: "11px", fontWeight: "700", color: batch?.shipment_link ? "#16a34a" : "var(--admin-ink2, #837a66)" }}>{batch?.shipment_link ? "✓ Done" : "Pending"}</span>
+                                <span style={{ fontSize: "11px", fontWeight: "700", color: batch?.shipment_link ? "#168F83" : "var(--admin-ink2, #837a66)" }}>{batch?.shipment_link ? "✓ Done" : "Pending"}</span>
                               </div>
                               <div style={{ display: "flex", gap: "8px" }}>
                                 <input
@@ -3301,7 +3301,7 @@ function ReportTab({ appointmentId, appt }) {
             style={{
               ...card,
               marginBottom: 0,
-              borderLeft: `4px solid ${ev.done ? "#22c55e" : "var(--admin-line, #e9e1d0)"}`,
+              borderLeft: `4px solid ${ev.done ? "#3FB3A4" : "var(--admin-line, #e9e1d0)"}`,
               background: ev.done ? "white" : "#fafafa",
               opacity: ev.done ? 1 : 0.65,
             }}
@@ -3309,7 +3309,7 @@ function ReportTab({ appointmentId, appt }) {
             <div style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}>
               <div style={{
                 width: "28px", height: "28px", borderRadius: "50%", flexShrink: 0, marginTop: "2px",
-                background: ev.done ? "linear-gradient(135deg, #22c55e, #16a34a)" : "var(--admin-line, #e9e1d0)",
+                background: ev.done ? "linear-gradient(135deg, #3FB3A4, #168F83)" : "var(--admin-line, #e9e1d0)",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 color: ev.done ? "white" : "var(--admin-ink2, #837a66)", fontWeight: "800", fontSize: "12px",
               }}>
@@ -3320,7 +3320,7 @@ function ReportTab({ appointmentId, appt }) {
                   <h4 style={{ margin: 0, fontSize: "14px", fontWeight: "800", color: ev.done ? "var(--admin-ink, #1b2a4a)" : "var(--admin-ink2, #837a66)" }}>
                     {idx + 1}. {ev.title}
                   </h4>
-                  <span style={pillStyle(ev.done ? "#dcfce7" : "var(--admin-gold-wash, #f3f0e6)", ev.done ? "#16a34a" : "var(--admin-ink2, #837a66)")}>
+                  <span style={pillStyle(ev.done ? "#D7EFEB" : "var(--admin-gold-wash, #f3f0e6)", ev.done ? "#168F83" : "var(--admin-ink2, #837a66)")}>
                     {ev.done ? "COMPLETED" : "PENDING"}
                   </span>
                 </div>
@@ -3437,7 +3437,7 @@ function MessageTab({ appointmentId, patientEmail, patientName, actor }) {
           disabled={sending || !patientEmail}
           style={{
             ...btnPrimary,
-            background: sent ? "#16a34a" : "var(--admin-ink, #1b2a4a)",
+            background: sent ? "#168F83" : "var(--admin-ink, #1b2a4a)",
             opacity: sending || !patientEmail ? 0.6 : 1,
             cursor: sending || !patientEmail ? "not-allowed" : "pointer",
           }}
@@ -3606,7 +3606,7 @@ function LMCTab({ appointmentId, initialData, actor }) {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
           <div>
             <h3 style={{ margin: "0 0 4px", fontSize: "16px", color: "var(--admin-ink, #1b2a4a)" }}>Lifetime Membership Card</h3>
-            <span style={{ fontSize: "11px", fontWeight: "700", padding: "4px 10px", borderRadius: "99px", background: "#dcfce7", color: "#16a34a", letterSpacing: "0.5px" }}>ACTIVE ✓</span>
+            <span style={{ fontSize: "11px", fontWeight: "700", padding: "4px 10px", borderRadius: "99px", background: "#D7EFEB", color: "#168F83", letterSpacing: "0.5px" }}>ACTIVE ✓</span>
           </div>
           <button
             onClick={deactivate}
@@ -3689,7 +3689,7 @@ function LMCTab({ appointmentId, initialData, actor }) {
         )}
       </div>
 
-      <button style={saved ? { ...btnPrimary, background: "#16a34a" } : btnGold} onClick={saveDetails} disabled={saving}>
+      <button style={saved ? { ...btnPrimary, background: "#168F83" } : btnGold} onClick={saveDetails} disabled={saving}>
         {saving ? "Saving..." : saved ? "Saved ✓" : "Save LMC Details"}
       </button>
     </div>

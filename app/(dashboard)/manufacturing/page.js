@@ -59,8 +59,8 @@ function BatchRow({ batch, onSaved }) {
             : `BATCH ${local.num}${local.start && local.end ? ` — SETS ${local.start}–${local.end}` : ""}`}
         </h4>
         <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-          {local.mfg_started ? <span style={pill("#f0fdf4", "#16a34a")}>✓ Started {local.mfg_started}</span> : <span style={pill("#D7EFEB", "#0F5F58")}>Not started</span>}
-          {local.mfg_done && <span style={pill("#f0fdf4", "#16a34a")}>✓ Done {local.mfg_done}</span>}
+          {local.mfg_started ? <span style={pill("#EAF7F5", "#168F83")}>✓ Started {local.mfg_started}</span> : <span style={pill("#D7EFEB", "#0F5F58")}>Not started</span>}
+          {local.mfg_done && <span style={pill("#EAF7F5", "#168F83")}>✓ Done {local.mfg_done}</span>}
         </div>
       </div>
 

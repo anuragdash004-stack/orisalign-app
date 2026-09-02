@@ -113,7 +113,7 @@ export default function OrthoPage() {
                     style={{
                       marginTop: "14px", padding: "10px 24px",
                       borderRadius: "8px", border: "none",
-                      background: dentistStarted ? "#22c55e" : "var(--admin-ink2, #837a66)",
+                      background: dentistStarted ? "#3FB3A4" : "var(--admin-ink2, #837a66)",
                       color: "white", cursor: "pointer",
                       fontSize: "14px", fontWeight: "600",
                       transition: "background 0.2s",

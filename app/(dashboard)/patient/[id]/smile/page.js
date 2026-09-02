@@ -179,14 +179,14 @@ export default function SmileCorrectionPage() {
                 <div key={setNum} style={{
                   background: "white", borderRadius: "16px", padding: "20px",
                   marginBottom: "14px", boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
-                  border: `1px solid ${bothUploaded ? "#bbf7d0" : "#e5e7eb"}`,
+                  border: `1px solid ${bothUploaded ? "#9FD8D1" : "#e5e7eb"}`,
                 }}>
                   {/* Set header */}
                   <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "16px" }}>
                     <div style={{
                       width: "40px", height: "40px", borderRadius: "10px",
                       background: bothUploaded
-                        ? "linear-gradient(135deg, #22c55e, #16a34a)"
+                        ? "linear-gradient(135deg, #3FB3A4, #168F83)"
                         : "linear-gradient(135deg, #b8905a, #f59e0b)",
                       display: "flex", alignItems: "center", justifyContent: "center",
                       color: "white", fontWeight: "800", fontSize: "15px", flexShrink: 0,
@@ -200,7 +200,7 @@ export default function SmileCorrectionPage() {
                     {bothUploaded && (
                       <span style={{
                         fontSize: "11px", fontWeight: "700",
-                        color: "#16a34a", background: "#dcfce7",
+                        color: "#168F83", background: "#D7EFEB",
                         padding: "3px 10px", borderRadius: "99px",
                       }}>
                         Complete
@@ -228,8 +228,8 @@ export default function SmileCorrectionPage() {
                             display: "flex", flexDirection: "column",
                             alignItems: "center", justifyContent: "center",
                             borderRadius: "12px",
-                            border: `2px dashed ${imgUrl ? "#22c55e" : "#d1d5db"}`,
-                            background: imgUrl ? "#f0fdf4" : "#f9fafb",
+                            border: `2px dashed ${imgUrl ? "#3FB3A4" : "#d1d5db"}`,
+                            background: imgUrl ? "#EAF7F5" : "#f9fafb",
                             cursor: "pointer", overflow: "hidden",
                             aspectRatio: "4/3", position: "relative",
                           }}>
@@ -272,8 +272,8 @@ export default function SmileCorrectionPage() {
                 style={{
                   padding: "12px 24px", borderRadius: "12px",
                   border: js.refinement ? "none" : "1px solid #e5e7eb",
-                  background: js.refinement ? "#dcfce7" : "white",
-                  color: js.refinement ? "#16a34a" : "#374151",
+                  background: js.refinement ? "#D7EFEB" : "white",
+                  color: js.refinement ? "#168F83" : "#374151",
                   fontWeight: "700", fontSize: "14px", cursor: "pointer",
                 }}
               >

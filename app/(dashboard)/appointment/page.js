@@ -141,7 +141,7 @@ export default function AppointmentPage() {
     fetchAppointments();
   };
 
-  // ✅ CANCEL — admin and counsellor
+  // ✓ CANCEL — admin and counsellor
   const handleCancel = async (id) => {
     const confirmed = window.confirm("Cancel this appointment? This cannot be undone.");
     if (!confirmed) return;
@@ -207,8 +207,8 @@ export default function AppointmentPage() {
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", flexShrink: 0 }}>
                   <span style={{
                     fontSize: "11px", fontWeight: "700", padding: "3px 10px", borderRadius: "99px",
-                    background: appointment.status === "confirmed" ? "#dcfce7" : appointment.status === "cancelled" ? "#fee2e2" : "#fef9c3",
-                    color: appointment.status === "confirmed" ? "#16a34a" : appointment.status === "cancelled" ? "#dc2626" : "#854d0e",
+                    background: appointment.status === "confirmed" ? "#D7EFEB" : appointment.status === "cancelled" ? "#fee2e2" : "#fef9c3",
+                    color: appointment.status === "confirmed" ? "#168F83" : appointment.status === "cancelled" ? "#dc2626" : "#854d0e",
                   }}>
                     {(appointment.status || "pending").toUpperCase()}
                   </span>
@@ -249,7 +249,7 @@ export default function AppointmentPage() {
                     <textarea value={formData.address || ""} onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                       style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #d1d5db", fontSize: "14px", color: "#111", background: "white", width: "100%", boxSizing: "border-box", minHeight: "60px", resize: "vertical" }} />
                   </div>
-                  <button onClick={handleSave} style={{ padding: "10px", borderRadius: "8px", background: "#16a34a", color: "white", fontWeight: "700", border: "none", cursor: "pointer", fontSize: "14px" }}>
+                  <button onClick={handleSave} style={{ padding: "10px", borderRadius: "8px", background: "#168F83", color: "white", fontWeight: "700", border: "none", cursor: "pointer", fontSize: "14px" }}>
                     Save Changes
                   </button>
                   <button onClick={() => setEditingId(null)} style={{ padding: "8px", borderRadius: "8px", background: "var(--admin-gold-wash, #f3f0e6)", color: "var(--admin-ink, #1b2a4a)", fontWeight: "600", border: "none", cursor: "pointer", fontSize: "13px" }}>

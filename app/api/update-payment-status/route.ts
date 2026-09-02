@@ -76,7 +76,7 @@ export async function POST(req: Request) {
       paymentStatus: result.paymentStatus,
       message:
         result.paymentStatus === "paid"
-          ? "✅ Payment Complete! Full amount received."
+          ? "✓ Payment Complete! Full amount received."
           : `💳 Payment recorded. ₹${result.stillToPay} still pending.`,
     });
   } catch (err) {

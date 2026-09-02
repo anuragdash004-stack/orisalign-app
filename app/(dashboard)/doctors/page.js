@@ -124,7 +124,7 @@ export default function DoctorsPage() {
                   <span style={{ display: "inline-block", padding: "3px 10px", borderRadius: "99px", background: d.role_type === "dentist" ? "#dbeafe" : "#ede9fe", color: d.role_type === "dentist" ? "#1d4ed8" : "#6d28d9", fontSize: "11px", fontWeight: "700", textTransform: "capitalize" }}>
                     {d.role_type}
                   </span>
-                  <span style={{ display: "inline-block", padding: "3px 10px", borderRadius: "99px", background: d.active ? "#dcfce7" : "var(--admin-gold-wash, #f3f0e6)", color: d.active ? "#16a34a" : "var(--admin-ink2, #837a66)", fontSize: "11px", fontWeight: "700" }}>
+                  <span style={{ display: "inline-block", padding: "3px 10px", borderRadius: "99px", background: d.active ? "#D7EFEB" : "var(--admin-gold-wash, #f3f0e6)", color: d.active ? "#168F83" : "var(--admin-ink2, #837a66)", fontSize: "11px", fontWeight: "700" }}>
                     {d.active ? "Active" : "Inactive"}
                   </span>
                 </div>

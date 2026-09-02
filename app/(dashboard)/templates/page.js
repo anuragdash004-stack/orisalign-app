@@ -160,7 +160,7 @@ export default function MessageTemplatesPage() {
               disabled={savingKey === tmpl.step_key}
               style={{
                 padding: "10px 22px", borderRadius: "10px", border: "none",
-                background: savedKey === tmpl.step_key ? "#16a34a" : "var(--admin-ink, #1b2a4a)",
+                background: savedKey === tmpl.step_key ? "#168F83" : "var(--admin-ink, #1b2a4a)",
                 color: "white", fontWeight: "700", fontSize: "13px",
                 cursor: savingKey === tmpl.step_key ? "not-allowed" : "pointer",
                 opacity: savingKey === tmpl.step_key ? 0.6 : 1, letterSpacing: "0.5px",

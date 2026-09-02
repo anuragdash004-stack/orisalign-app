@@ -250,7 +250,7 @@ export default function OnlineReportDetailPage() {
       </div>
 
       {notice && (
-        <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#15803d", borderRadius: 10, padding: 12, fontSize: 13, marginBottom: 16 }}>{notice}</div>
+        <div style={{ background: "#EAF7F5", border: "1px solid #9FD8D1", color: "#12706A", borderRadius: 10, padding: 12, fontSize: 13, marginBottom: 16 }}>{notice}</div>
       )}
 
       {report.edit_requested_at && (
@@ -302,14 +302,14 @@ export default function OnlineReportDetailPage() {
             const status = review?.status;
             const isBusy = reviewingSlot === slotKey;
             return (
-              <div key={slotKey} style={{ border: `1.5px solid ${status === "approved" ? "#bbf7d0" : status === "rejected" ? "#fecaca" : "var(--admin-line, #e9e1d0)"}`, borderRadius: 10, padding: 10, background: status === "approved" ? "#f0fdf4" : status === "rejected" ? "#fef2f2" : "white" }}>
+              <div key={slotKey} style={{ border: `1.5px solid ${status === "approved" ? "#9FD8D1" : status === "rejected" ? "#fecaca" : "var(--admin-line, #e9e1d0)"}`, borderRadius: 10, padding: 10, background: status === "approved" ? "#EAF7F5" : status === "rejected" ? "#fef2f2" : "white" }}>
                 <a href={url} target="_blank" rel="noopener noreferrer">
                   <img src={url} alt={PHOTO_SLOT_LABELS[slotKey] || slotKey} style={{ width: "100%", height: 120, objectFit: "contain", background: "#fafafa", borderRadius: 8, border: "1px solid var(--admin-line, #e9e1d0)" }} />
                 </a>
                 <p style={{ margin: "6px 0 8px", fontSize: 11, color: "var(--admin-ink2, #837a66)", textAlign: "center", fontWeight: 700 }}>{PHOTO_SLOT_LABELS[slotKey] || slotKey}</p>
 
                 {status === "approved" && (
-                  <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "#16a34a", textAlign: "center" }}>✓ Approved</p>
+                  <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "#168F83", textAlign: "center" }}>✓ Approved</p>
                 )}
 
                 {status === "rejected" && (
@@ -321,7 +321,7 @@ export default function OnlineReportDetailPage() {
 
                 {(!status || status === "pending") && rejectingSlot !== slotKey && (
                   <div style={{ display: "flex", gap: 6 }}>
-                    <button onClick={() => reviewPhoto(slotKey, "approved")} disabled={isBusy} style={{ flex: 1, padding: "6px 8px", borderRadius: 8, border: "none", background: "#16a34a", color: "white", fontWeight: 700, fontSize: 11, cursor: isBusy ? "wait" : "pointer" }}>
+                    <button onClick={() => reviewPhoto(slotKey, "approved")} disabled={isBusy} style={{ flex: 1, padding: "6px 8px", borderRadius: 8, border: "none", background: "#168F83", color: "white", fontWeight: 700, fontSize: 11, cursor: isBusy ? "wait" : "pointer" }}>
                       Approve
                     </button>
                     <button onClick={() => setRejectingSlot(slotKey)} disabled={isBusy} style={{ flex: 1, padding: "6px 8px", borderRadius: 8, border: "none", background: "#dc2626", color: "white", fontWeight: 700, fontSize: 11, cursor: isBusy ? "wait" : "pointer" }}>
@@ -371,7 +371,7 @@ export default function OnlineReportDetailPage() {
             <p style={{ margin: "0 0 10px", fontSize: 13, color: "var(--admin-ink, #1b2a4a)" }}>{report.reviewer_question}</p>
             {report.patient_answer ? (
               <>
-                <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#16a34a", textTransform: "uppercase" }}>Patient answered</p>
+                <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#168F83", textTransform: "uppercase" }}>Patient answered</p>
                 <p style={{ margin: 0, fontSize: 13, color: "var(--admin-ink, #1b2a4a)" }}>{report.patient_answer}</p>
               </>
             ) : (

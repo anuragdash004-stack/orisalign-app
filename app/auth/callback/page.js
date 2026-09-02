@@ -94,7 +94,7 @@ export default function Callback() {
           style={{
             width: "100%", marginTop: "18px", padding: "14px",
             borderRadius: "10px", border: "none",
-            background: "#22c55e", color: "white",
+            background: "#3FB3A4", color: "white",
             fontWeight: "600", fontSize: "14px",
             opacity: loading ? 0.7 : 1,
             cursor: loading ? "not-allowed" : "pointer",

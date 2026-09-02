@@ -22,10 +22,10 @@ const STATUS_COLORS = {
   report_ready: { bg: "#dbeafe", color: "#1d4ed8" },
   impression_interested: { bg: "#ede9fe", color: "#6d28d9" },
   ready_to_pay_impression: { bg: "#fce7f3", color: "#be185d" },
-  impression_paid: { bg: "#dcfce7", color: "#16a34a" },
-  impression_taken: { bg: "#dcfce7", color: "#16a34a" },
-  plan_paid: { bg: "#dcfce7", color: "#15803d" },
-  treatment_started: { bg: "#052e16", color: "#bbf7d0" },
+  impression_paid: { bg: "#D7EFEB", color: "#168F83" },
+  impression_taken: { bg: "#D7EFEB", color: "#168F83" },
+  plan_paid: { bg: "#D7EFEB", color: "#12706A" },
+  treatment_started: { bg: "#052e16", color: "#9FD8D1" },
 };
 
 // Three sections:

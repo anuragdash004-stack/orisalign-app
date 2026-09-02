@@ -273,7 +273,7 @@ export default function PatientDetailsPage() {
             {pincodeLoading && <p style={{ fontSize: "12px", color: "#b8905a", margin: "6px 0 0" }}>Fetching area details...</p>}
 
             {(city || district || areaState) && (
-              <div style={{ marginTop: "8px", padding: "10px 12px", borderRadius: "10px", background: "#f0fdf4", border: "1px solid #bbf7d0", fontSize: "13px", color: "#15803d" }}>
+              <div style={{ marginTop: "8px", padding: "10px 12px", borderRadius: "10px", background: "#EAF7F5", border: "1px solid #9FD8D1", fontSize: "13px", color: "#12706A" }}>
                 📍 {[city, district, areaState].filter(Boolean).join(", ")}
               </div>
             )}
@@ -372,9 +372,9 @@ export default function PatientDetailsPage() {
                   type="button"
                   onClick={detectLocation}
                   className="input mt-3 text-left"
-                  style={{ color: mapsLink ? "#16a34a" : "#9ca3af", cursor: "pointer" }}
+                  style={{ color: mapsLink ? "#168F83" : "#9ca3af", cursor: "pointer" }}
                 >
-                  {locLoading ? "📍 Detecting location..." : mapsLink ? "✅ GPS location detected (tap to refresh)" : "📍 Tap to detect your GPS location (optional)"}
+                  {locLoading ? "📍 Detecting location..." : mapsLink ? "✓ GPS location detected (tap to refresh)" : "📍 Tap to detect your GPS location (optional)"}
                 </button>
 
                 <input
@@ -458,8 +458,8 @@ const styles = `
   margin-bottom: 8px;
 }
 .patient-info {
-  background: #f0fdf4;
-  border: 1px solid #bbf7d0;
+  background: #EAF7F5;
+  border: 1px solid #9FD8D1;
   padding: 12px;
   border-radius: 10px;
   margin-top: 16px;
@@ -469,7 +469,7 @@ const styles = `
   margin: 0;
   font-size: 14px;
   font-weight: 700;
-  color: #15803d;
+  color: #12706A;
 }
 .patient-phone {
   margin: 4px 0 0;
@@ -527,23 +527,23 @@ const styles = `
 .mt-4 { margin-top: 16px; }
 .slot {
   padding: 12px 14px;
-  background: #f0fdf4;
-  border: 2px solid #bbf7d0;
+  background: #EAF7F5;
+  border: 2px solid #9FD8D1;
   border-radius: 10px;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
-  color: #15803d;
+  color: #12706A;
 }
 .slot:hover:not(.slot-disabled) {
-  border-color: #16a34a;
-  background: #dcfce7;
+  border-color: #168F83;
+  background: #D7EFEB;
 }
 .slot-active {
-  background: #16a34a;
+  background: #168F83;
   color: white;
-  border-color: #16a34a;
+  border-color: #168F83;
 }
 .slot-disabled {
   opacity: 0.4;

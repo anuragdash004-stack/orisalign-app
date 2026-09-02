@@ -135,7 +135,7 @@ export default function StartAppointment() {
           disabled={verifying}
           style={{
             width: "100%", padding: "14px", borderRadius: "10px",
-            border: "none", background: "#22c55e", color: "white",
+            border: "none", background: "#3FB3A4", color: "white",
             fontWeight: "600", fontSize: "15px", cursor: "pointer",
             opacity: verifying ? 0.7 : 1,
           }}

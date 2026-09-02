@@ -33,7 +33,7 @@ const CATEGORY_META = {
   callback:     { label: "Callbacks Due",         color: "#0891b2", bg: "#ecfeff", icon: "📞" },
   appointment:  { label: "Appointments Today",    color: "var(--admin-gold, #b8905a)", bg: "#EAF7F5", icon: "📅" },
   manufacturing:{ label: "Manufacturing",         color: "#dc2626", bg: "#fef2f2", icon: "🏭" },
-  followup:     { label: "Follow-Up Visits",      color: "#16a34a", bg: "#f0fdf4", icon: "🔁" },
+  followup:     { label: "Follow-Up Visits",      color: "#168F83", bg: "#EAF7F5", icon: "🔁" },
   custom:       { label: "Other Tasks",           color: "var(--admin-ink, #1b2a4a)", bg: "var(--admin-gold-wash, #f3f0e6)", icon: "📝" },
 };
 const CATEGORY_ORDER = ["lead_attend", "callback", "appointment", "manufacturing", "followup", "custom"];
@@ -258,8 +258,8 @@ export default function DTDReportPage() {
       <div
         style={{
           display: "flex", alignItems: "center", gap: "12px", padding: "12px 14px",
-          borderRadius: "10px", border: `1px solid ${task.done ? "#bbf7d0" : "var(--admin-line, #e9e1d0)"}`,
-          background: task.done ? "#f0fdf4" : "white", marginBottom: "8px",
+          borderRadius: "10px", border: `1px solid ${task.done ? "#9FD8D1" : "var(--admin-line, #e9e1d0)"}`,
+          background: task.done ? "#EAF7F5" : "white", marginBottom: "8px",
         }}
       >
         <button
@@ -268,7 +268,7 @@ export default function DTDReportPage() {
           style={{
             width: "26px", height: "26px", borderRadius: "50%", flexShrink: 0, cursor: busyId === task.id ? "not-allowed" : "pointer",
             border: task.done ? "none" : "2px solid #d1d5db",
-            background: task.done ? "linear-gradient(135deg, #22c55e, #16a34a)" : "white",
+            background: task.done ? "linear-gradient(135deg, #3FB3A4, #168F83)" : "white",
             color: "white", fontSize: "13px", fontWeight: "700",
             display: "flex", alignItems: "center", justifyContent: "center",
           }}
@@ -280,7 +280,7 @@ export default function DTDReportPage() {
         </span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-            <span style={{ fontSize: "13px", fontWeight: "700", color: task.done ? "#15803d" : "var(--admin-ink, #1b2a4a)", textDecoration: task.done ? "line-through" : "none" }}>
+            <span style={{ fontSize: "13px", fontWeight: "700", color: task.done ? "#12706A" : "var(--admin-ink, #1b2a4a)", textDecoration: task.done ? "line-through" : "none" }}>
               {task.title}
             </span>
             {carried && <span style={{ fontSize: "10px", fontWeight: "700", padding: "2px 8px", borderRadius: "99px", background: "#fee2e2", color: "#dc2626", letterSpacing: "0.3px" }}>CARRIED FROM {task.task_date}</span>}
@@ -347,7 +347,7 @@ export default function DTDReportPage() {
       {totalCount > 0 && (
         <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "18px" }}>
           <div style={{ flex: 1, height: "8px", borderRadius: "99px", background: "var(--admin-line, #e9e1d0)", overflow: "hidden" }}>
-            <div style={{ height: "100%", width: `${pct}%`, background: "linear-gradient(90deg, #22c55e, #16a34a)", transition: "width 0.4s ease" }} />
+            <div style={{ height: "100%", width: `${pct}%`, background: "linear-gradient(90deg, #3FB3A4, #168F83)", transition: "width 0.4s ease" }} />
           </div>
           <span style={{ fontSize: "12px", color: "var(--admin-ink2, #837a66)", fontWeight: "700", flexShrink: 0 }}>{doneCount}/{totalCount} done</span>
         </div>

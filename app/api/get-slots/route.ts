@@ -25,7 +25,7 @@ export async function POST(req: Request) {
     })
   }
 
-  // ✅ INSERT NEW BOOKING
+  // ✓ INSERT NEW BOOKING
   const { error } = await supabase.from("appointments_booking").insert([
     {
       name,

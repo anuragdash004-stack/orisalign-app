@@ -242,13 +242,13 @@ function FormStepTracker({ current }: { current: 0 | 1 | 2 | 3 | 4 }) {
               fontWeight: 800,
               flexShrink: 0,
               background: s.n === current ? GOLD : s.n < current ? "#e0f2e9" : "#f3f4f6",
-              color: s.n === current ? "white" : s.n < current ? "#16a34a" : "#9ca3af",
+              color: s.n === current ? "white" : s.n < current ? "#168F83" : "#9ca3af",
             }}
             title={s.label}
           >
             {s.n < current ? "✓" : s.n}
           </div>
-          {i < FORM_STEPS.length - 1 && <div style={{ flex: 1, height: 2, background: s.n < current ? "#22c55e" : "#e5e7eb" }} />}
+          {i < FORM_STEPS.length - 1 && <div style={{ flex: 1, height: 2, background: s.n < current ? "#3FB3A4" : "#e5e7eb" }} />}
         </div>
       ))}
     </div>
@@ -764,7 +764,7 @@ export default function UploadStepPage() {
             </Section>
 
             {resumedDraft && (
-              <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#15803d", borderRadius: 10, padding: 12, fontSize: 13, marginBottom: 16 }}>
+              <div style={{ background: "#EAF7F5", border: "1px solid #9FD8D1", color: "#12706A", borderRadius: 10, padding: 12, fontSize: 13, marginBottom: 16 }}>
                 Welcome back! We've restored your previous progress — pick up where you left off.
               </div>
             )}
@@ -884,7 +884,7 @@ export default function UploadStepPage() {
                 const uploadedUrl = photoUrls[slot.key]
                 const isUploading = photoUploading[slot.key]
                 const uploadError = photoUploadError[slot.key]
-                const borderColor = uploadError ? "#f87171" : uploadedUrl ? "#22c55e" : isUploading ? GOLD : "#e5e7eb"
+                const borderColor = uploadError ? "#f87171" : uploadedUrl ? "#3FB3A4" : isUploading ? GOLD : "#e5e7eb"
                 return (
                   <div key={slot.key} style={{ background: "white", border: `2px solid ${borderColor}`, borderRadius: 16, padding: 16 }}>
                     <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
@@ -924,7 +924,7 @@ export default function UploadStepPage() {
                           </label>
                         </div>
                       ) : uploadedUrl ? (
-                        <p style={{ margin: 0, fontSize: 12, color: "#16a34a" }}>✓ Uploaded</p>
+                        <p style={{ margin: 0, fontSize: 12, color: "#168F83" }}>✓ Uploaded</p>
                       ) : (
                         <label style={{ display: "inline-block", fontSize: 13, color: "white", fontWeight: 700, cursor: "pointer", background: GOLD, padding: "10px 18px", borderRadius: 8 }}>
                           Upload Photo
@@ -981,7 +981,7 @@ export default function UploadStepPage() {
                 </button>
               </div>
               {couponError && <p style={{ color: "#dc2626", fontSize: 12, marginTop: 6 }}>{couponError}</p>}
-              {couponApplied && <p style={{ color: "#16a34a", fontSize: 12, marginTop: 6 }}>Coupon "{couponApplied.code}" applied — ₹{couponApplied.discountedAmount} payable.</p>}
+              {couponApplied && <p style={{ color: "#168F83", fontSize: 12, marginTop: 6 }}>Coupon "{couponApplied.code}" applied — ₹{couponApplied.discountedAmount} payable.</p>}
             </Section>
 
             <button onClick={handleSubmit} disabled={submitting} style={{ ...primaryBtn, opacity: submitting ? 0.7 : 1, cursor: submitting ? "wait" : "pointer" }}>

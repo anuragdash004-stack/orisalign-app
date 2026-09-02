@@ -343,7 +343,7 @@ export default function ReportDashboardPage() {
               </>
             ) : (
               <>
-                <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#16a34a", textTransform: "uppercase" }}>Your answer</p>
+                <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#168F83", textTransform: "uppercase" }}>Your answer</p>
                 <p style={{ margin: 0, fontSize: 14, color: "#374151" }}>{report.patient_answer}</p>
               </>
             )}

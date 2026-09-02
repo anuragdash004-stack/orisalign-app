@@ -108,7 +108,7 @@ export default function CouponsPage() {
               <div style={{ flex: 1, minWidth: "160px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
                   <span style={{ fontFamily: "monospace", fontSize: "16px", fontWeight: "800", letterSpacing: "1px", color: "var(--admin-ink, #1b2a4a)" }}>{coupon.code}</span>
-                  <span style={{ display: "inline-block", padding: "3px 10px", borderRadius: "99px", background: coupon.is_active ? "#dcfce7" : "var(--admin-gold-wash, #f3f0e6)", color: coupon.is_active ? "#16a34a" : "var(--admin-ink2, #837a66)", fontSize: "11px", fontWeight: "700" }}>
+                  <span style={{ display: "inline-block", padding: "3px 10px", borderRadius: "99px", background: coupon.is_active ? "#D7EFEB" : "var(--admin-gold-wash, #f3f0e6)", color: coupon.is_active ? "#168F83" : "var(--admin-ink2, #837a66)", fontSize: "11px", fontWeight: "700" }}>
                     {coupon.is_active ? "Active" : "Inactive"}
                   </span>
                 </div>

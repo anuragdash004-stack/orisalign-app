@@ -137,8 +137,8 @@ export default function DentistDashboard() {
                   </div>
                   <span style={{
                     fontSize: "12px", fontWeight: "600", padding: "4px 10px", borderRadius: "99px",
-                    background: isCompleted ? "var(--admin-gold-wash, #f3f0e6)" : appt.status === "confirmed" ? "#dcfce7" : "#fef9c3",
-                    color: isCompleted ? "var(--admin-ink2, #837a66)" : appt.status === "confirmed" ? "#16a34a" : "#854d0e",
+                    background: isCompleted ? "var(--admin-gold-wash, #f3f0e6)" : appt.status === "confirmed" ? "#D7EFEB" : "#fef9c3",
+                    color: isCompleted ? "var(--admin-ink2, #837a66)" : appt.status === "confirmed" ? "#168F83" : "#854d0e",
                   }}>
                     {isCompleted ? "COMPLETED" : (appt.status?.toUpperCase() || "ASSIGNED")}
                   </span>
@@ -149,7 +149,7 @@ export default function DentistDashboard() {
                   disabled={isCompleted || sendingOtp === appt.id}
                   style={{
                     marginTop: "14px", padding: "10px 20px", borderRadius: "8px", border: "none",
-                    background: isCompleted ? "var(--admin-line, #e9e1d0)" : "#22c55e",
+                    background: isCompleted ? "var(--admin-line, #e9e1d0)" : "#3FB3A4",
                     color: isCompleted ? "var(--admin-ink2, #837a66)" : "white",
                     cursor: isCompleted ? "not-allowed" : "pointer",
                     fontSize: "14px", fontWeight: "600",
