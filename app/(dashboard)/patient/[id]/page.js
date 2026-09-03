@@ -982,9 +982,6 @@ export default function PatientJourney() {
             step, so there is no separate patient card any more. */}
         <div style={{ position: "absolute", top: "148px", right: "18px", zIndex: 7, textAlign: "right", pointerEvents: "none" }}>
           <p style={{ margin: 0, fontSize: "15px", fontWeight: "800", letterSpacing: "-0.015em", color: "#0D2945" }}>{patient.name || "Patient"}</p>
-          <p style={{ margin: "2px 0 0", fontSize: "10.5px", fontWeight: "600", letterSpacing: "0.08em", textTransform: "uppercase", color: "#71818C", fontVariantNumeric: "tabular-nums" }}>
-            ID <b style={{ color: "#C6922E", fontWeight: "800" }}>{patientIdLabel}</b>
-          </p>
         </div>
 
         {/* The handle that pulls the card out. It is a SIBLING of the card, not
