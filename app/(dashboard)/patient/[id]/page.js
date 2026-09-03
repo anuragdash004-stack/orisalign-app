@@ -7,6 +7,10 @@ import Image from "next/image";
 import { PROVISIONAL_PLAN_FEE, estimateRange, estimateRangeForPlan, formatMonthsDays, applyCouponDiscount, totalCost, monthSlotLabels, PLAN_CONFIGS } from "@/lib/monthlyPlan";
 import { INVESTIGATION_TYPES, MAX_INVESTIGATION_FILE_SIZE, isInvestigationDone } from "@/lib/investigations";
 import { isNewModelAppointment } from "@/lib/appointmentModel";
+import {
+  isNativeApp, getNotifPermission, requestNotifPermission, openAppNotificationSettings,
+  hasSeenNotifOnboarding, markNotifOnboardingSeen,
+} from "@/lib/pushPermission";
 
 const supabase = getSupabaseClient();
 
@@ -118,7 +122,7 @@ const STAGE_COUNT = 15;
 const STAGE_SRC = (n) => `/journey-stages/stage-${String(n + 1).padStart(2, "0")}.webp`;
 // How strongly the simulation shows through the background. Kept as one
 // constant so it's a single number to tune.
-const STAGE_OPACITY = 0.50;
+const STAGE_OPACITY = 0.21;
 // ── Screen background ───────────────────────────────────────────────────────
 // A supplied wave/contour photo, sized to the phone's own aspect ratio so it
 // fills the screen edge to edge without cropping. Replaces the earlier
@@ -231,6 +235,41 @@ export default function PatientJourney() {
   const [patient, setPatient] = useState(null);
   const [loading, setLoading] = useState(true);
   const [expandedStep, setExpandedStep] = useState(null);
+
+  // ── Notification permission ─────────────────────────────────────────────
+  // "granted"/"denied" once the OS has answered, "prompt" before it has,
+  // "unsupported" on the web (no native permission to ask for there).
+  const [notifPermission, setNotifPermission] = useState("unsupported");
+  const [showNotifOnboarding, setShowNotifOnboarding] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+
+  useEffect(() => {
+    if (!isNativeApp()) return;
+    (async () => {
+      const state = await getNotifPermission();
+      setNotifPermission(state);
+      // Ask once, the first time the app is opened on a device where the OS
+      // hasn't been asked yet. After that the toggle in Settings is the only
+      // way to change it — Android refuses a second in-app prompt once denied.
+      if (state === "prompt" && !hasSeenNotifOnboarding()) setShowNotifOnboarding(true);
+    })();
+  }, []);
+
+  const handleEnableNotifications = async () => {
+    markNotifOnboardingSeen();
+    const state = await requestNotifPermission();
+    setNotifPermission(state);
+    setShowNotifOnboarding(false);
+  };
+  const handleDismissNotifOnboarding = () => {
+    markNotifOnboardingSeen();
+    setShowNotifOnboarding(false);
+  };
+  const handleToggleNotifications = async () => {
+    if (notifPermission === "denied") { await openAppNotificationSettings(); return; }
+    const state = await requestNotifPermission();
+    setNotifPermission(state);
+  };
   // Journey arc — how far the rail of step icons has been rotated, measured
   // in steps (fractional while a drag is in progress). See ARC_* below.
   const [arcOffset, setArcOffset] = useState(0);
@@ -783,11 +822,28 @@ export default function PatientJourney() {
         }}
         style={{
           position: "relative", minHeight: "100dvh", overflow: "hidden",
-          backgroundImage: `url(${SCREEN_BG_IMAGE})`, backgroundSize: "cover", backgroundPosition: "center",
           touchAction: "none", userSelect: "none",
           "--stage-opacity": STAGE_OPACITY,
         }}
       >
+        {/* The background image lives in its own layer so a filter can boost
+            it without also saturating the cards, teeth and text stacked on
+            top of it — the image is already fully opaque, so "more present"
+            means richer, not more alpha. */}
+        <div style={{
+          position: "absolute", inset: 0, zIndex: 0,
+          backgroundImage: `url(${SCREEN_BG_IMAGE})`, backgroundSize: "cover", backgroundPosition: "center",
+          filter: "saturate(1.3) contrast(1.08)",
+        }} />
+        {/* A blue wash on multiply, on its own layer above the image — this
+            deepens specifically the icy blue rather than boosting every
+            colour in the photo the way raising saturation further would. */}
+        <div style={{
+          position: "absolute", inset: 0, zIndex: 0, pointerEvents: "none",
+          background: "linear-gradient(160deg, rgba(120,175,225,0.28) 0%, rgba(140,190,230,0.20) 45%, rgba(110,165,220,0.30) 100%)",
+          mixBlendMode: "multiply",
+        }} />
+
         {/* Treatment simulation. All 15 stills are preloaded (15KB each) so
             dragging the rail never waits on a fetch mid-fade — see
             paintStages above for why this is one canvas, not stacked imgs. */}
@@ -832,6 +888,16 @@ export default function PatientJourney() {
           style={{ position: "absolute", top: "20px", right: "16px", zIndex: 6, background: "none", border: "none", color: "#A9A395", fontSize: "10.5px", fontWeight: "700", letterSpacing: "0.06em", cursor: "pointer", padding: "4px" }}
         >
           LOGOUT
+        </button>
+        <button
+          onClick={() => setShowSettings(true)}
+          aria-label="Settings"
+          style={{ position: "absolute", top: "17px", right: "78px", zIndex: 6, background: "none", border: "none", color: "#A9A395", cursor: "pointer", padding: "4px", display: "grid", placeItems: "center" }}
+        >
+          <svg viewBox="0 0 24 24" width="17" height="17" style={{ fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round" }}>
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
+          </svg>
         </button>
 
         {/* The rail the step nodes ride on. Drawn as its own arc now that the
@@ -953,8 +1019,14 @@ export default function PatientJourney() {
               <div style={{
                 position: "relative", width: "72px", height: "72px", borderRadius: "50%", flexShrink: 0,
                 display: "grid", placeItems: "center", border: "2px solid rgba(255,255,255,0.85)",
-                background: isDone
-                  ? "linear-gradient(145deg, #35B7A8 0%, #159F91 55%, #078F82 100%)"
+                // The current step is the one actually in progress — it should
+                // read exactly as solid as a completed step, with only the
+                // stronger glow below marking it out. The faded gradient is
+                // reserved for steps that haven't started yet.
+                // Denser teal — pushed darker and more saturated at the edges
+                // than the original, so it reads heavier and more pigmented.
+                background: (isDone || isCurrent)
+                  ? "linear-gradient(145deg, #2BAE9C 0%, #0E8C7E 55%, #04564D 100%)"
                   : "linear-gradient(145deg, #B0DAD3 0%, #7FC7BE 60%, #68B9AF 100%)",
                 boxShadow: isCurrent
                   ? "0 0 0 5px rgba(255,255,255,0.30), 0 0 25px rgba(21,159,145,0.36), 0 12px 30px rgba(8,80,90,0.22)"
@@ -964,6 +1036,12 @@ export default function PatientJourney() {
               }}>
                 {/* Lit from the upper left, like polished glass. */}
                 <div style={{ position: "absolute", inset: 0, borderRadius: "inherit", pointerEvents: "none", background: "linear-gradient(135deg, rgba(255,255,255,0.34), transparent 45%)" }} />
+                {/* A soft brushed-metal sweep, on the completed/current buttons
+                    only — an upcoming button is meant to look quieter, not
+                    like a finished object yet. */}
+                {(isDone || isCurrent) && (
+                  <div style={{ position: "absolute", inset: 0, borderRadius: "inherit", pointerEvents: "none", background: "linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.30) 46%, rgba(255,255,255,0.06) 54%, transparent 68%)" }} />
+                )}
                 <svg viewBox="0 0 24 24" width="30" height="30" style={{ position: "relative", fill: "none", stroke: "#fff", strokeWidth: 1.7, strokeLinecap: "round", strokeLinejoin: "round" }}
                   dangerouslySetInnerHTML={{ __html: STEP_ICONS[step.key] || DEFAULT_STEP_ICON }} />
               </div>
@@ -2135,6 +2213,95 @@ export default function PatientJourney() {
                 </div>
               );
             })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ───── NOTIFICATION ONBOARDING — shown once, the first time the app
+          opens on a device the OS hasn't been asked on yet. ───── */}
+      {showNotifOnboarding && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 90, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+          <div onClick={handleDismissNotifOnboarding} style={{ position: "absolute", inset: 0, background: "rgba(13,41,68,0.35)" }} />
+          <div style={{
+            position: "relative", width: "100%", maxWidth: "460px", margin: "0 12px 12px",
+            padding: "26px 22px 22px", borderRadius: "22px",
+            background: "rgba(255,255,255,0.94)", backdropFilter: "blur(18px)", WebkitBackdropFilter: "blur(18px)",
+            border: "1px solid rgba(255,255,255,0.9)", boxShadow: "0 24px 60px rgba(26,76,100,0.22)",
+          }}>
+            <div style={{ width: "48px", height: "48px", borderRadius: "50%", marginBottom: "14px", display: "grid", placeItems: "center", background: "linear-gradient(145deg, #35B7A8 0%, #159F91 55%, #078F82 100%)" }}>
+              <svg viewBox="0 0 24 24" width="22" height="22" style={{ fill: "none", stroke: "#fff", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round" }}>
+                <path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+              </svg>
+            </div>
+            <p style={{ margin: "0 0 6px", fontSize: "17px", fontWeight: "800", color: "#0D2945" }}>Stay updated on your treatment</p>
+            <p style={{ margin: "0 0 20px", fontSize: "13.5px", lineHeight: "1.6", color: "#71818C" }}>
+              Get notified the moment your plan is approved, your aligners are ready, or a new step needs your attention — instead of having to check back.
+            </p>
+            <button
+              onClick={handleEnableNotifications}
+              style={{ display: "block", width: "100%", padding: "13px", marginBottom: "10px", borderRadius: "12px", border: "none", cursor: "pointer", background: "linear-gradient(145deg, #35B7A8, #078F82)", color: "#fff", fontWeight: "800", fontSize: "14px", boxShadow: "0 8px 20px rgba(8,90,90,0.16)" }}
+            >
+              Enable Notifications
+            </button>
+            <button
+              onClick={handleDismissNotifOnboarding}
+              style={{ display: "block", width: "100%", padding: "10px", borderRadius: "12px", border: "none", cursor: "pointer", background: "none", color: "#71818C", fontWeight: "700", fontSize: "13px" }}
+            >
+              Not now
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ───── SETTINGS ───── */}
+      {showSettings && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 90, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+          <div onClick={() => setShowSettings(false)} style={{ position: "absolute", inset: 0, background: "rgba(13,41,68,0.35)" }} />
+          <div style={{
+            position: "relative", width: "100%", maxWidth: "460px", margin: "0 12px 12px",
+            padding: "22px 20px 24px", borderRadius: "22px",
+            background: "rgba(255,255,255,0.94)", backdropFilter: "blur(18px)", WebkitBackdropFilter: "blur(18px)",
+            border: "1px solid rgba(255,255,255,0.9)", boxShadow: "0 24px 60px rgba(26,76,100,0.22)",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "18px" }}>
+              <p style={{ margin: 0, fontSize: "16px", fontWeight: "800", color: "#0D2945" }}>Settings</p>
+              <button onClick={() => setShowSettings(false)} aria-label="Close" style={{ background: "none", border: "none", color: "#71818C", fontSize: "22px", cursor: "pointer", lineHeight: 1 }}>×</button>
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "14px", padding: "14px 4px" }}>
+              <div style={{ flex: 1 }}>
+                <p style={{ margin: "0 0 3px", fontSize: "14px", fontWeight: "700", color: "#0D2945" }}>Push Notifications</p>
+                <p style={{ margin: 0, fontSize: "12px", lineHeight: "1.5", color: "#71818C" }}>
+                  {notifPermission === "unsupported"
+                    ? "Available in the OrisAlign app — install it to turn this on."
+                    : notifPermission === "granted"
+                      ? "You'll be notified about updates to your treatment."
+                      : notifPermission === "denied"
+                        ? "Turned off in your phone's Settings. Tap to open it."
+                        : "Get notified about updates to your treatment."}
+                </p>
+              </div>
+              {notifPermission !== "unsupported" && (
+                <button
+                  onClick={handleToggleNotifications}
+                  role="switch"
+                  aria-checked={notifPermission === "granted"}
+                  aria-label="Toggle push notifications"
+                  style={{
+                    position: "relative", flexShrink: 0, width: "46px", height: "27px", borderRadius: "99px", border: "none", cursor: "pointer", padding: "3px",
+                    background: notifPermission === "granted" ? "linear-gradient(90deg, #168F83, #159E91)" : "#D4DEE3",
+                    transition: "background 0.2s ease",
+                  }}
+                >
+                  <span style={{
+                    display: "block", width: "21px", height: "21px", borderRadius: "50%", background: "#fff",
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.25)", transform: notifPermission === "granted" ? "translateX(19px)" : "translateX(0)",
+                    transition: "transform 0.2s ease",
+                  }} />
+                </button>
+              )}
             </div>
           </div>
         </div>

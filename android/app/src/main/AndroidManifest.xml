@@ -32,4 +32,8 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Android 13+ requires this to be requested at runtime before a
+         notification can be shown; @capacitor/push-notifications' requestPermissions()
+         triggers that system dialog. Below Android 13 it's granted automatically. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 </manifest>
