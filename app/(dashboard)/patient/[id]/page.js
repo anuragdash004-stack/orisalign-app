@@ -118,56 +118,21 @@ const STAGE_COUNT = 15;
 const STAGE_SRC = (n) => `/journey-stages/stage-${String(n + 1).padStart(2, "0")}.webp`;
 // How strongly the simulation shows through the background. Kept as one
 // constant so it's a single number to tune.
-const STAGE_OPACITY = 0.30;
+const STAGE_OPACITY = 0.50;
 // ── Screen background ───────────────────────────────────────────────────────
-// The gradient deepens to blue in the corners and clears to white through the
-// middle; WAVES lays the flowing line bands over it. Each band is one curve
-// drawn several times, stepped along itself, which is what gives the ribbon of
-// parallel lines its shape, and each fades out at its outer end rather than
-// stopping dead.
-const SCREEN_BG =
-  "radial-gradient(74% 40% at 64% 36%, #FFFFFF 0%, rgba(255,255,255,0) 66%)," +
-  "radial-gradient(66% 32% at 0% 2%, #CFE4F4 0%, rgba(207,228,244,0) 74%)," +
-  "radial-gradient(48% 24% at 100% 54%, #D6E8F5 0%, rgba(214,232,245,0) 70%)," +
-  "radial-gradient(78% 30% at 12% 100%, #D6E8F5 0%, rgba(214,232,245,0) 76%)," +
-  "linear-gradient(163deg, #DFEDF8 0%, #F1F8FD 30%, #FAFDFE 52%, #EEF6FC 76%, #E2EEF8 100%)";
-
-function waveBand(d, n, dx, dy, from, to, w) {
-  const out = [];
-  for (let i = 0; i < n; i++) {
-    const t = n > 1 ? i / (n - 1) : 0;
-    out.push(
-      <path
-        key={`${d}-${i}`}
-        d={d}
-        transform={`translate(${(dx * i).toFixed(1)} ${(dy * i).toFixed(1)})`}
-        fill="none"
-        stroke="#ffffff"
-        strokeWidth={w}
-        opacity={(from + (to - from) * t).toFixed(3)}
-      />
-    );
-  }
-  return out;
-}
-
-const WAVE_BANDS = [
-  // Top-left: the tightest, brightest group, sweeping in from the left edge.
-  ["M-50 96 C 60 34, 150 130, 250 74 S 390 6, 470 44", 9, 0, -11, 0.95, 0.14, 1.5],
-  ["M-50 112 C 60 50, 150 146, 250 90 S 390 22, 470 60", 5, 0, 13, 0.5, 0.06, 1.1],
-  // The long soft sweep across the upper third.
-  ["M-50 210 C 90 150, 210 268, 330 214 S 450 150, 480 176", 4, 0, 16, 0.42, 0.08, 1.2],
-  // Right edge: a slim band bulging inwards past the arc.
-  ["M444 286 C 344 400, 340 560, 432 700 S 470 806, 464 862", 8, 15, 0, 0.8, 0.1, 1.3],
-  // Bottom: the widest, calmest group, then the dense run at the very edge.
-  ["M-50 778 C 90 700, 220 848, 350 772 S 460 712, 480 740", 10, 0, 16, 1, 0.14, 1.6],
-  ["M-50 866 C 100 800, 230 922, 360 858 S 470 812, 486 834", 7, 0, 14, 0.9, 0.12, 1.4],
-];
+// A supplied wave/contour photo, sized to the phone's own aspect ratio so it
+// fills the screen edge to edge without cropping. Replaces the earlier
+// generated gradient-plus-SVG-lines background.
+const SCREEN_BG_IMAGE = "/journey-bg.webp";
 
 // Feathers all four edges of the simulation (see where it's applied below).
+// The model is cut off flat at the top and bottom of every render, so the fade
+// has to start inside the gums rather than at the canvas edge — otherwise the
+// cut reads as a hard horizontal line. It ramps across the gum and is fully
+// opaque by the time it reaches the teeth in the middle.
 const STAGE_MASK =
-  "linear-gradient(to bottom, transparent 0%, #000 22%, #000 74%, transparent 100%)," +
-  "linear-gradient(to right, transparent 0%, #000 12%, #000 88%, transparent 100%)";
+  "linear-gradient(to bottom, transparent 14%, #000 36%, #000 66%, transparent 88%)," +
+  "linear-gradient(to right, transparent 0%, #000 14%, #000 86%, transparent 100%)";
 
 // All pre-aligner procedures the dentist selected on the Patient Form
 // ("Restorations", "Extraction", "Scaling", etc. — see PROCEDURE_OPTIONS in
@@ -818,33 +783,21 @@ export default function PatientJourney() {
         }}
         style={{
           position: "relative", minHeight: "100dvh", overflow: "hidden",
-          background: SCREEN_BG,
+          backgroundImage: `url(${SCREEN_BG_IMAGE})`, backgroundSize: "cover", backgroundPosition: "center",
           touchAction: "none", userSelect: "none",
           "--stage-opacity": STAGE_OPACITY,
         }}
       >
-        {/* The flowing line bands the background is built from. */}
-        <svg
-          viewBox="0 0 420 932"
-          preserveAspectRatio="none"
-          aria-hidden="true"
-          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", zIndex: 0, pointerEvents: "none" }}
-        >
-          {WAVE_BANDS.map(([d, n, dx, dy, from, to, w]) => waveBand(d, n, dx, dy, from, to, w))}
-        </svg>
-
         {/* Treatment simulation. All 15 stills are preloaded (15KB each) so
             dragging the rail never waits on a fetch mid-fade — see
             paintStages above for why this is one canvas, not stacked imgs. */}
         <div style={{
           position: "absolute", top: "52%", left: "5%", transform: "translateY(-50%)",
           width: "78%", zIndex: 1, pointerEvents: "none", opacity: "var(--stage-opacity)",
-          // Desaturated to a cool blue-grey and multiplied into the page: the
-          // renders are near-white, so blending them normally over a pale
-          // background made the teeth vanish. Multiply keeps only the shading
-          // and edges, which is what makes the straightening readable.
-          filter: "grayscale(1) sepia(0.55) hue-rotate(172deg) saturate(1.5) brightness(1.02)",
-          mixBlendMode: "multiply",
+          // Shown in the render's own colour. The previous set was near-white
+          // and had to be tinted and multiplied to survive the pale background;
+          // these renders carry their own pink gums and shaded teeth, so they
+          // read as a real mouth at plain opacity and need neither.
           // The frames are cropped tight, so the gums end in flat lines on every
           // side — feather all four edges so it dissolves into the background.
           WebkitMaskImage: STAGE_MASK, maskImage: STAGE_MASK,
@@ -887,20 +840,37 @@ export default function PatientJourney() {
           aria-hidden="true"
           style={{ position: "absolute", inset: 0, width: "100%", height: "100%", zIndex: 2, pointerEvents: "none" }}
         >
-          <path
-            d={(() => {
-              let d = "";
-              for (let a = -98; a <= 98; a += 3) {
-                const r = (a * Math.PI) / 180;
-                d += (d ? " L" : "M") + (ARC_CX + ARC_R * Math.cos(r)).toFixed(1) + " " + (ARC_R * Math.sin(r)).toFixed(1);
-              }
-              return d;
-            })()}
-            fill="none"
-            stroke={expandedStep ? "rgba(21,158,145,0.18)" : "rgba(21,158,145,0.45)"}
-            strokeWidth="1.5"
-            style={{ transform: "translateY(50%)" }}
-          />
+          <g style={{ transform: "translateY(50%)" }}>
+            <path
+              d={(() => {
+                let d = "";
+                for (let a = -98; a <= 98; a += 3) {
+                  const r = (a * Math.PI) / 180;
+                  d += (d ? " L" : "M") + (ARC_CX + ARC_R * Math.cos(r)).toFixed(1) + " " + (ARC_R * Math.sin(r)).toFixed(1);
+                }
+                return d;
+              })()}
+              fill="none"
+              stroke={expandedStep ? "rgba(53,184,172,0.30)" : "#35B8AC"}
+              strokeWidth="2"
+              style={{ filter: "drop-shadow(0 0 5px rgba(21,159,145,0.22))", transition: "stroke 0.3s ease" }}
+            />
+            {/* A few small glowing points riding the path, between the nodes —
+                a suggestion of flow along the journey, not a particle effect. */}
+            {!expandedStep && [-1.55, -0.6, 0.6, 1.55].map((rel) => {
+              const ang = (rel * ARC_STEP_ANGLE * Math.PI) / 180;
+              return (
+                <circle
+                  key={rel}
+                  cx={ARC_CX + ARC_R * Math.cos(ang)}
+                  cy={ARC_R * Math.sin(ang)}
+                  r="3"
+                  fill="#fff"
+                  style={{ filter: "drop-shadow(0 0 8px rgba(255,255,255,1)) drop-shadow(0 0 14px rgba(48,190,175,0.36))" }}
+                />
+              );
+            })}
+          </g>
         </svg>
 
         {/* Who this is, kept on screen under the logo whether or not a card is
@@ -981,18 +951,20 @@ export default function PatientJourney() {
               }}
             >
               <div style={{
-                width: "72px", height: "72px", borderRadius: "50%", flexShrink: 0,
-                display: "grid", placeItems: "center",
+                position: "relative", width: "72px", height: "72px", borderRadius: "50%", flexShrink: 0,
+                display: "grid", placeItems: "center", border: "2px solid rgba(255,255,255,0.85)",
                 background: isDone
-                  ? "linear-gradient(155deg, #3FB3A4 0%, #159E91 45%, #168F83 100%)"
-                  : "linear-gradient(155deg, #B9DFD8 0%, #8CCFC7 100%)",
+                  ? "linear-gradient(145deg, #35B7A8 0%, #159F91 55%, #078F82 100%)"
+                  : "linear-gradient(145deg, #B0DAD3 0%, #7FC7BE 60%, #68B9AF 100%)",
                 boxShadow: isCurrent
-                  ? "0 0 0 4px rgba(255,255,255,0.92), 0 0 0 7px rgba(21,158,145,0.18), 0 10px 22px -8px rgba(21,110,100,0.55)"
+                  ? "0 0 0 5px rgba(255,255,255,0.30), 0 0 25px rgba(21,159,145,0.36), 0 12px 30px rgba(8,80,90,0.22)"
                   : isDone
-                    ? "0 0 0 4px rgba(255,255,255,0.92), 0 10px 20px -8px rgba(21,110,100,0.55)"
-                    : "0 0 0 4px rgba(255,255,255,0.9), 0 8px 16px -8px rgba(90,150,140,0.4)",
+                    ? "0 0 0 5px rgba(255,255,255,0.34), 0 10px 25px rgba(8,90,90,0.19), 0 0 20px rgba(21,159,145,0.14)"
+                    : "0 0 0 5px rgba(255,255,255,0.29), 0 8px 20px rgba(8,90,90,0.12)",
               }}>
-                <svg viewBox="0 0 24 24" width="30" height="30" style={{ fill: "none", stroke: "#fff", strokeWidth: 1.7, strokeLinecap: "round", strokeLinejoin: "round" }}
+                {/* Lit from the upper left, like polished glass. */}
+                <div style={{ position: "absolute", inset: 0, borderRadius: "inherit", pointerEvents: "none", background: "linear-gradient(135deg, rgba(255,255,255,0.34), transparent 45%)" }} />
+                <svg viewBox="0 0 24 24" width="30" height="30" style={{ position: "relative", fill: "none", stroke: "#fff", strokeWidth: 1.7, strokeLinecap: "round", strokeLinejoin: "round" }}
                   dangerouslySetInnerHTML={{ __html: STEP_ICONS[step.key] || DEFAULT_STEP_ICON }} />
               </div>
               {dist <= 1.6 && (
@@ -1014,8 +986,19 @@ export default function PatientJourney() {
           <span style={{ fontSize: "12px" }}>▲</span>
           <span>Scroll</span>
         </div>
-        <p style={{ position: "absolute", left: 0, right: 0, bottom: "16px", zIndex: 5, textAlign: "center", margin: 0, fontSize: "11px", color: "#A9A395" }}>
-          Questions? <a href="mailto:hello@orisalign.com" style={{ color: "#A9762E", fontWeight: "600", textDecoration: "none" }}>hello@orisalign.com</a>
+        <p style={{
+          position: "absolute", left: "50%", transform: "translateX(-50%)", bottom: "18px", zIndex: 5,
+          margin: 0, display: "flex", alignItems: "center", gap: "9px", whiteSpace: "nowrap",
+          padding: "10px 18px", borderRadius: "99px",
+          background: "rgba(255,255,255,0.55)", border: "1px solid rgba(255,255,255,0.75)",
+          backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
+          boxShadow: "0 10px 30px rgba(25,80,100,0.08), inset 0 1px 0 rgba(255,255,255,0.8)",
+          fontSize: "11.5px", color: "#71818C",
+        }}>
+          <svg viewBox="0 0 24 24" width="14" height="14" style={{ stroke: "#159E91", fill: "none", strokeWidth: 1.8, flexShrink: 0 }}>
+            <path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9.9 9.9 0 0 1-2.8-.4L3 21l1.5-4.6A8.3 8.3 0 0 1 3 11.5 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5Z" />
+          </svg>
+          Questions? <a href="mailto:hello@orisalign.com" style={{ color: "#A9762E", fontWeight: "700", textDecoration: "none" }}>hello@orisalign.com</a>
         </p>
       </div>
 
@@ -1036,16 +1019,31 @@ export default function PatientJourney() {
               // scrolls inside itself.
               maxHeight: "calc(100dvh - 37% - 76px)",
               overflowY: "auto", pointerEvents: "auto",
-              // Exactly the patient card: an outline holding text, with the
-              // background showing straight through. No backdrop blur — that
-              // milked the panel so it read as a different surface.
-              background: "rgba(255,255,255,0.05)",
-              border: "1px solid rgba(255,255,255,0.75)",
+              // Near-transparent glass: an outline holding the content, with
+              // the background image and dental simulation showing straight
+              // through. A hair of blur keeps text legible over them without
+              // milking the panel into looking like a solid surface.
+              background: "rgba(255,255,255,0)",
+              backdropFilter: "blur(1px) saturate(112%)", WebkitBackdropFilter: "blur(1px) saturate(112%)",
+              border: "1px solid rgba(255,255,255,0.85)",
               borderRadius: "20px",
-              boxShadow: "0 18px 40px -30px rgba(23,59,87,0.25)",
+              boxShadow:
+                "0 24px 60px rgba(26,76,100,0.10), 0 8px 24px rgba(26,76,100,0.07), " +
+                "inset 0 1px 0 rgba(255,255,255,0.55), inset 0 -1px 0 rgba(255,255,255,0.10), " +
+                "inset 12px 0 30px rgba(255,255,255,0.05), inset -12px 0 30px rgba(120,190,210,0.03)",
               padding: "30px 0 18px",
             }}
           >
+            {/* A luminous 1px edge, brighter toward the upper-left — light
+                catching the rim of the glass, not a glow. */}
+            <div style={{
+              position: "absolute", inset: 0, borderRadius: "inherit", pointerEvents: "none",
+              padding: "1.5px",
+              background: "linear-gradient(135deg, rgba(255,255,255,0.95), rgba(255,255,255,0.30) 40%, rgba(255,255,255,0.65) 100%)",
+              WebkitMask: "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
+              WebkitMaskComposite: "xor", maskComposite: "exclude",
+            }} />
+            <div className="journey-panel-shine" style={{ position: "absolute", inset: 0, borderRadius: "inherit", pointerEvents: "none", overflow: "hidden" }} />
             <button
               onClick={() => setExpandedStep(null)}
               aria-label="Back to patient details"
@@ -1053,7 +1051,10 @@ export default function PatientJourney() {
             >
               ×
             </button>
-            <div style={{ padding: "0 14px" }}>
+            {/* position:relative lifts this above the edge-highlight and shine
+                overlays, which are positioned absolute with no z-index — the
+                content would otherwise paint underneath them and disappear. */}
+            <div style={{ position: "relative", padding: "0 14px" }}>
             {journeySteps.map((step, index) => {
               // Only the step the patient tapped renders here — the arc above
               // is the navigation now, and the sheet shows one step at a time.
@@ -1192,7 +1193,10 @@ export default function PatientJourney() {
                   {step.key === "booked" && (
                     <div style={{ marginTop: "10px" }}>
                       <p style={{ margin: "0 0 8px", fontSize: "11px", fontWeight: "700", letterSpacing: "0.08em", textTransform: "uppercase", color: "#71818C" }}>Your details</p>
-                      <div style={{ height: "1.5px", width: "82%", borderRadius: "2px", background: "linear-gradient(90deg, #C6922E 0%, rgba(198,146,46,0.18) 100%)", margin: "0 0 12px" }} />
+                      <div style={{ position: "relative", height: "1.5px", width: "82%", borderRadius: "2px", background: "linear-gradient(90deg, #C6922E 0%, rgba(198,146,46,0.18) 100%)", margin: "0 0 12px" }}>
+                        {/* A tiny softly-glowing point near the bright end — light catching the gold line. */}
+                        <div style={{ position: "absolute", left: "14%", top: "50%", width: "3px", height: "3px", borderRadius: "50%", transform: "translateY(-50%)", background: "#fff", boxShadow: "0 0 4px rgba(255,255,255,0.9), 0 0 7px rgba(198,146,47,0.55)" }} />
+                      </div>
                       <p style={{ margin: 0, fontSize: "13.5px", lineHeight: "1.9", color: "#71818C", fontVariantNumeric: "tabular-nums" }}>
                         <b style={{ color: "#0D2945", fontWeight: "600" }}>{patient.phone || "No phone"}</b><br />
                         ID <b style={{ color: "#C6922E", fontWeight: "700", letterSpacing: "0.02em" }}>{patientIdLabel}</b>

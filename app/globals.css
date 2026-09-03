@@ -112,3 +112,23 @@ input::placeholder {
 select {
   color: #000;
 }
+
+/* Patient journey glass card — a slow diagonal reflection drifting across the
+   card, like light moving across a real pane of glass rather than a static
+   stripe. React inline styles can't declare keyframes, so this lives here. */
+@keyframes journeyPanelShine {
+  0%, 100% { background-position: 0% 0%; }
+  50% { background-position: 100% 40%; }
+}
+.journey-panel-shine {
+  background-image: linear-gradient(
+    115deg,
+    transparent 20%, rgba(255,255,255,0.04) 35%, rgba(255,255,255,0.32) 48%,
+    rgba(255,255,255,0.08) 55%, transparent 70%
+  );
+  background-size: 220% 220%;
+  animation: journeyPanelShine 9s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .journey-panel-shine { animation: none; }
+}
