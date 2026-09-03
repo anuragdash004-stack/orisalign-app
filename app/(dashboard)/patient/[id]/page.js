@@ -122,7 +122,7 @@ const STAGE_COUNT = 15;
 const STAGE_SRC = (n) => `/journey-stages/stage-${String(n + 1).padStart(2, "0")}.webp`;
 // How strongly the simulation shows through the background. Kept as one
 // constant so it's a single number to tune.
-const STAGE_OPACITY = 0.21;
+const STAGE_OPACITY = 0.168;
 // ── Screen background ───────────────────────────────────────────────────────
 // A supplied wave/contour photo, sized to the phone's own aspect ratio so it
 // fills the screen edge to edge without cropping. Replaces the earlier
@@ -826,30 +826,18 @@ export default function PatientJourney() {
           "--stage-opacity": STAGE_OPACITY,
         }}
       >
-        {/* The background image lives in its own layer so a filter can boost
-            it without also saturating the cards, teeth and text stacked on
-            top of it — the image is already fully opaque, so "more present"
-            means richer, not more alpha. */}
+        {/* The background image, shown exactly as supplied — no filter, no tint. */}
         <div style={{
           position: "absolute", inset: 0, zIndex: 0,
           backgroundImage: `url(${SCREEN_BG_IMAGE})`, backgroundSize: "cover", backgroundPosition: "center",
-          filter: "saturate(1.55) contrast(1.14)",
-        }} />
-        {/* A blue wash on multiply, on its own layer above the image — this
-            deepens specifically the icy blue rather than boosting every
-            colour in the photo the way raising saturation further would. */}
-        <div style={{
-          position: "absolute", inset: 0, zIndex: 0, pointerEvents: "none",
-          background: "linear-gradient(160deg, rgba(110,168,222,0.36) 0%, rgba(132,185,228,0.27) 45%, rgba(100,158,216,0.38) 100%)",
-          mixBlendMode: "multiply",
         }} />
 
         {/* Treatment simulation. All 15 stills are preloaded (15KB each) so
             dragging the rail never waits on a fetch mid-fade — see
             paintStages above for why this is one canvas, not stacked imgs. */}
         <div style={{
-          position: "absolute", top: "52%", left: "5%", transform: "translateY(-50%)",
-          width: "78%", zIndex: 1, pointerEvents: "none", opacity: "var(--stage-opacity)",
+          position: "absolute", top: "47%", left: "1%", transform: "translateY(-50%)",
+          width: "93.6%", zIndex: 1, pointerEvents: "none", opacity: "var(--stage-opacity)",
           // Shown in the render's own colour. The previous set was near-white
           // and had to be tinted and multiplied to survive the pale background;
           // these renders carry their own pink gums and shaded teeth, so they
