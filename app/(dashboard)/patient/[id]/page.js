@@ -48,7 +48,7 @@ const LEGACY_JOURNEY_STEPS = [
   { key: "aligners_received",       label: "Aligners Received", expandable: true },
   { key: "followup_appointment",    label: "Appointment Book" },
   { key: "aligners_delivered",      label: "Aligners Delivered" },
-  { key: "smile_correction",        label: "Smile Correction Started",   smileLink: true },
+  { key: "smile_correction",        label: "Smile Correction Started",   expandable: true, smileLink: true },
   { key: "treatment_completed",     label: "Treatment Completed" },
   { key: "post_aligner_treatment",  label: "Post Aligner Treatment" },
   { key: "feedback_submitted",      label: "Feedback Form Submitted",    expandable: true },
@@ -73,7 +73,7 @@ const NEW_JOURNEY_STEPS = [
   { key: "aligner_sets",            label: "Aligner Sets",                expandable: true },
   { key: "followup_appointment",    label: "Appointment Book" },
   { key: "aligners_delivered",      label: "Aligners Delivered" },
-  { key: "smile_correction",        label: "Smile Correction Started",   smileLink: true },
+  { key: "smile_correction",        label: "Smile Correction Started",   expandable: true, smileLink: true },
   { key: "treatment_completed",     label: "Treatment Completed" },
   { key: "post_aligner_treatment",  label: "Post Aligner Treatment" },
   { key: "feedback_submitted",      label: "Feedback Form Submitted",    expandable: true },
@@ -377,6 +377,7 @@ export default function PatientJourney() {
   const [copiedNum, setCopiedNum] = useState(null);
   const [receivingBatch, setReceivingBatch] = useState(null);
   const [markingProcedureDone, setMarkingProcedureDone] = useState(null);
+  const [uploadingSmileImage, setUploadingSmileImage] = useState(null); // "<setNum>-<type>" currently uploading
   const [paymentMode, setPaymentMode] = useState("down"); // "down" or "full"
   const [appliedCoupons, setAppliedCoupons] = useState([]); // Array of {code, discount}
   const [couponInput, setCouponInput] = useState("");
@@ -644,6 +645,55 @@ export default function PatientJourney() {
     window.open(data.signedUrl, "_blank", "noopener,noreferrer");
   };
 
+  // Smile Correction — one edge-to-edge + one complete-bite bite photo per
+  // aligner set, uploaded as the patient goes through the program.
+  const uploadSmileSetImage = async (setNum, type, file) => {
+    if (!file) return;
+    const uploadKey = `${setNum}-${type}`;
+    setUploadingSmileImage(uploadKey);
+    try {
+      const ext = file.name.split(".").pop();
+      const path = `smile-correction/${id}/set-${setNum}/${type}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("case-files").upload(path, file, { upsert: true });
+      if (upErr) { alert("Failed to upload: " + upErr.message); return; }
+      const { data: { publicUrl } } = supabase.storage.from("case-files").getPublicUrl(path);
+      const setImages = patient.journey_steps?.smile_set_images || {};
+      const newJourneySteps = {
+        ...(patient.journey_steps || {}),
+        smile_set_images: { ...setImages, [setNum]: { ...(setImages[setNum] || {}), [type]: publicUrl } },
+      };
+      const { error } = await supabase.from("appointments_booking").update({ journey_steps: newJourneySteps }).eq("id", id);
+      if (error) { alert("Failed to save: " + error.message); return; }
+      setPatient((prev) => prev && { ...prev, journey_steps: newJourneySteps });
+    } catch {
+      alert("Network error. Please try again.");
+    } finally {
+      setUploadingSmileImage(null);
+    }
+  };
+
+  const handleSmileRefinement = async () => {
+    if (!window.confirm("Mark refinement as done?")) return;
+    const newJourneySteps = { ...(patient.journey_steps || {}), refinement: true };
+    const { error } = await supabase.from("appointments_booking").update({ journey_steps: newJourneySteps }).eq("id", id);
+    if (error) { alert("Couldn't save: " + error.message); return; }
+    setPatient((prev) => prev && { ...prev, journey_steps: newJourneySteps });
+  };
+
+  const handleEndSmileJourney = async () => {
+    if (!window.confirm("End the patient journey? Treatment will be marked as completed.")) return;
+    const newJourneySteps = { ...(patient.journey_steps || {}), journey_ended: true };
+    const { error } = await supabase.from("appointments_booking").update({ journey_steps: newJourneySteps, status: "completed" }).eq("id", id);
+    if (error) { alert("Couldn't save: " + error.message); return; }
+    setPatient((prev) => prev && { ...prev, journey_steps: newJourneySteps, status: "completed" });
+  };
+
+  const getSmileSetDate = (index, startDateStr, daysPerSet) => {
+    const d = new Date(startDateStr);
+    d.setDate(d.getDate() + index * (daysPerSet || 15));
+    return d.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+  };
+
   // planning_done is a legacy-only step (not part of the new per-arch
   // roadmap at all) — requiring it here blocked new-model patients from ever
   // reaching Plan Approval, since nothing in their flow ever sets it.
@@ -693,11 +743,7 @@ export default function PatientJourney() {
   };
 
   const handleStepClick = (step) => {
-    if (step.smileLink) {
-      if (!steps.smile_correction) return; // only accessible when admin marks it done
-      router.push(`/patient/${id}/smile`);
-      return;
-    }
+    if (step.smileLink && !steps[step.key]) return; // only accessible when admin marks it done
     if (step.expandable) { setExpandedStep(expandedStep === step.key ? null : step.key); }
   };
 
@@ -984,7 +1030,7 @@ export default function PatientJourney() {
           const opacity = dist > ARC_VISIBLE ? 0 : Math.max(0, 1 - Math.pow(dist / (ARC_VISIBLE + 0.2), 2.2));
           const isDone = !!steps[step.key];
           const isCurrent = !isDone && i > 0 && !!steps[journeySteps[i - 1]?.key];
-          const isClickable = step.expandable || (step.smileLink && steps[step.key]);
+          const isClickable = step.expandable && (!step.smileLink || steps[step.key]);
           return (
             <div
               key={step.key}
@@ -993,7 +1039,7 @@ export default function PatientJourney() {
                 // never opens a step by accident.
                 if (arcDrag.current.moved > 6) { arcDrag.current.moved = 0; return; }
                 setArcOffset(i);
-                if (step.smileLink) { handleStepClick(step); return; }
+                if (step.smileLink && !steps[step.key]) return; // only accessible when admin marks it done
                 setExpandedStep(step.key);
               }}
               style={{
@@ -1131,7 +1177,7 @@ export default function PatientJourney() {
               if (step.key !== expandedStep) return null;
               const done = steps[step.key];
               const isNext = !done && index > 0 && steps[journeySteps[index - 1]?.key];
-              const isClickable = step.expandable || (step.smileLink && steps[step.key]);
+              const isClickable = step.expandable && (!step.smileLink || steps[step.key]);
               const isExpanded = true;
 
               return (
@@ -2200,6 +2246,119 @@ export default function PatientJourney() {
                         })}
                       </div>
                     </div>
+                    );
+                  })()}
+
+                  {/* Expanded Panel — Smile Correction (set-by-set bite photos) */}
+                  {step.key === "smile_correction" && isExpanded && (() => {
+                    const js = patient.journey_steps || {};
+                    const isSetup = js.smile_sets_count && js.smile_start_date;
+                    const daysPerSet = js.smile_days_per_set || patient.aligner_days_per_set || 15;
+
+                    if (!isSetup) {
+                      return (
+                        <div style={{ marginLeft: 0, marginTop: "10px", padding: "16px", background: "rgba(255,255,255,0.28)", borderRadius: "12px", border: "1px solid rgba(23,59,87,0.14)", textAlign: "center" }}>
+                          <p style={{ margin: 0, fontSize: "13px", color: "#374151", lineHeight: "1.6" }}>
+                            Our team is finalising your aligner schedule. Once it&apos;s ready, your set-by-set plan and photo uploads will appear here.
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div style={{ marginLeft: 0, marginTop: "10px", background: "transparent", border: "none", borderRadius: 0, padding: 0, boxShadow: "none" }}>
+                        <div style={{ display: "flex", gap: "10px", marginBottom: "14px" }}>
+                          {[
+                            ["Total Sets", js.smile_sets_count],
+                            ["Start Date", new Date(js.smile_start_date + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })],
+                            ["Days / Set", String(daysPerSet)],
+                          ].map(([label, val]) => (
+                            <div key={label} style={{ flex: 1, background: "rgba(255,255,255,0.28)", borderRadius: "10px", padding: "10px 8px", textAlign: "center", border: "1px solid rgba(23,59,87,0.14)" }}>
+                              <p style={{ margin: 0, fontSize: "9.5px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>{label}</p>
+                              <p style={{ margin: "4px 0 0", fontSize: "14px", fontWeight: "800", color: "#111827" }}>{val}</p>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                          {Array.from({ length: js.smile_sets_count }, (_, i) => {
+                            const setNum = i + 1;
+                            const setDate = getSmileSetDate(i, js.smile_start_date, daysPerSet);
+                            const setImages = js.smile_set_images?.[setNum] || {};
+                            const bothUploaded = setImages.edge_to_edge && setImages.complete_bite;
+
+                            return (
+                              <div key={setNum} style={{ border: `1px solid ${bothUploaded ? "rgba(21,158,145,0.40)" : "rgba(23,59,87,0.14)"}`, borderRadius: "10px", padding: "12px", background: bothUploaded ? "rgba(21,158,145,0.08)" : "rgba(255,255,255,0.28)" }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
+                                  <div style={{ width: "30px", height: "30px", borderRadius: "8px", flexShrink: 0, background: bothUploaded ? "linear-gradient(135deg, #3FB3A4, #168F83)" : "linear-gradient(135deg, #b8905a, #f59e0b)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: "800", fontSize: "13px" }}>
+                                    {bothUploaded ? "✓" : setNum}
+                                  </div>
+                                  <div style={{ flex: 1 }}>
+                                    <p style={{ margin: 0, fontSize: "13px", fontWeight: "700", color: "#111827" }}>Set {setNum}</p>
+                                    <p style={{ margin: 0, fontSize: "11px", color: "#6b7280" }}>Start: {setDate}</p>
+                                  </div>
+                                  {bothUploaded && (
+                                    <span style={{ fontSize: "10px", fontWeight: "700", color: "#168F83", background: "rgba(21,158,145,0.15)", padding: "3px 8px", borderRadius: "99px", whiteSpace: "nowrap" }}>
+                                      Complete
+                                    </span>
+                                  )}
+                                </div>
+                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                                  {[
+                                    { type: "edge_to_edge", label: "Edge to Edge Bite" },
+                                    { type: "complete_bite", label: "Complete Bite" },
+                                  ].map(({ type, label }) => {
+                                    const imgUrl = setImages[type];
+                                    const isUploading = uploadingSmileImage === `${setNum}-${type}`;
+                                    return (
+                                      <div key={type}>
+                                        <p style={{ margin: "0 0 5px", fontSize: "9.5px", fontWeight: "700", color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.4px" }}>{label}</p>
+                                        <label
+                                          onClick={(e) => e.stopPropagation()}
+                                          style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", borderRadius: "10px", border: `2px dashed ${imgUrl ? "#3FB3A4" : "rgba(23,59,87,0.25)"}`, background: imgUrl ? "rgba(21,158,145,0.10)" : "rgba(255,255,255,0.35)", cursor: "pointer", overflow: "hidden", aspectRatio: "4/3", position: "relative" }}
+                                        >
+                                          {imgUrl ? (
+                                            <img src={imgUrl} alt={label} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                                          ) : isUploading ? (
+                                            <p style={{ margin: 0, fontSize: "11px", color: "#6b7280" }}>Uploading...</p>
+                                          ) : (
+                                            <>
+                                              <span style={{ fontSize: "18px", marginBottom: "3px" }}>📷</span>
+                                              <p style={{ margin: 0, fontSize: "9.5px", color: "#9ca3af", textAlign: "center", padding: "0 6px" }}>Tap to upload</p>
+                                            </>
+                                          )}
+                                          <input
+                                            type="file"
+                                            accept="image/*"
+                                            style={{ display: "none" }}
+                                            disabled={isUploading}
+                                            onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) uploadSmileSetImage(setNum, type, f); }}
+                                          />
+                                        </label>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "14px" }}>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleSmileRefinement(); }}
+                            style={{ padding: "10px 16px", borderRadius: "10px", border: js.refinement ? "none" : "1px solid rgba(23,59,87,0.14)", background: js.refinement ? "rgba(21,158,145,0.15)" : "rgba(255,255,255,0.35)", color: js.refinement ? "#168F83" : "#374151", fontWeight: "700", fontSize: "12px", cursor: "pointer" }}
+                          >
+                            {js.refinement ? "✓ Refinement" : "Refinement"}
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleEndSmileJourney(); }}
+                            style={{ padding: "10px 16px", borderRadius: "10px", background: "#173B57", color: "white", fontWeight: "700", fontSize: "12px", border: "none", cursor: "pointer" }}
+                          >
+                            End Journey
+                          </button>
+                        </div>
+                      </div>
                     );
                   })()}
                 </div>
