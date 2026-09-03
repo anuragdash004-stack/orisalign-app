@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
-import { getSupabaseClient } from "@/lib/supabaseClient";
+import { getSupabaseClient, restoreStaffSession } from "@/lib/supabaseClient";
 
 const supabase = getSupabaseClient();
 
@@ -50,6 +50,7 @@ export default function DashboardLayout({ children }) {
   useEffect(() => {
     if (isPublicPage) return;
     const check = async () => {
+      await restoreStaffSession(supabase);
       const { data: sessionData } = await supabase.auth.getSession();
       const user = sessionData?.session?.user;
       if (!user) { router.replace("/login"); return; }
