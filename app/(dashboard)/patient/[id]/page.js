@@ -833,14 +833,14 @@ export default function PatientJourney() {
         <div style={{
           position: "absolute", inset: 0, zIndex: 0,
           backgroundImage: `url(${SCREEN_BG_IMAGE})`, backgroundSize: "cover", backgroundPosition: "center",
-          filter: "saturate(1.3) contrast(1.08)",
+          filter: "saturate(1.55) contrast(1.14)",
         }} />
         {/* A blue wash on multiply, on its own layer above the image — this
             deepens specifically the icy blue rather than boosting every
             colour in the photo the way raising saturation further would. */}
         <div style={{
           position: "absolute", inset: 0, zIndex: 0, pointerEvents: "none",
-          background: "linear-gradient(160deg, rgba(120,175,225,0.28) 0%, rgba(140,190,230,0.20) 45%, rgba(110,165,220,0.30) 100%)",
+          background: "linear-gradient(160deg, rgba(110,168,222,0.36) 0%, rgba(132,185,228,0.27) 45%, rgba(100,158,216,0.38) 100%)",
           mixBlendMode: "multiply",
         }} />
 
@@ -858,6 +858,10 @@ export default function PatientJourney() {
           // side — feather all four edges so it dissolves into the background.
           WebkitMaskImage: STAGE_MASK, maskImage: STAGE_MASK,
           WebkitMaskComposite: "source-in", maskComposite: "intersect",
+          // Richer colour depth at the same opacity — the pink of the gums and
+          // the shading on the teeth read more vivid within their faint
+          // presence, rather than looking pastel/washed at low opacity.
+          filter: "saturate(1.35) contrast(1.12)",
         }}>
           <canvas ref={stageCanvas} aria-hidden="true" style={{ display: "block", width: "100%", height: "auto" }} />
         </div>
