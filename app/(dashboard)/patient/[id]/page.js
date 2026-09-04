@@ -1103,8 +1103,6 @@ export default function PatientJourney() {
     };
   })();
 
-  const followupAt = patient.journey_steps?.followup_appointment_at || null;
-
   return (
     <div style={{ position: "relative", minHeight: "100vh", fontFamily: "'Inter', system-ui, sans-serif", colorScheme: "light", background: NEU.ivory }}>
 
@@ -1142,17 +1140,6 @@ export default function PatientJourney() {
           display: "flex", flexDirection: "column", background: NEU.ivory,
         }}
       >
-        {/* Treatment simulation — background art now, held to the right at
-            half strength and feathered so it dissolves into the ivory. */}
-        <div style={{
-          position: "absolute", right: "-34px", bottom: "52px", width: "300px", zIndex: 0,
-          opacity: 0.4, pointerEvents: "none",
-          WebkitMaskImage: "radial-gradient(78% 72% at 44% 50%, #000 44%, transparent 82%)",
-          maskImage: "radial-gradient(78% 72% at 44% 50%, #000 44%, transparent 82%)",
-        }}>
-          <canvas ref={stageCanvas} aria-hidden="true" style={{ display: "block", width: "100%", height: "auto" }} />
-        </div>
-
         {/* Top navigation */}
         <div style={{ position: "relative", zIndex: 6, flex: "0 0 auto", display: "flex", alignItems: "flex-start", justifyContent: "space-between", padding: "16px 20px 0" }}>
           <button
@@ -1292,25 +1279,20 @@ export default function PatientJourney() {
           </div>
         </div>
 
-        {/* What's next — only the rows that actually apply */}
-        {(followupAt || wearPlan?.nextSet || nextKit) && (
-          <div style={{ position: "relative", zIndex: 4, display: "flex", flexDirection: "column", gap: "9px", margin: "18px 20px auto" }}>
-            {followupAt && (
-              <button onClick={() => setShowCalendar(true)} style={NEU_INFO_CARD}>
-                <span style={NEU_INFO_ICON}>
-                  <svg viewBox="0 0 24 24" width="20" height="20" style={{ fill: "none", stroke: NEU.gold, strokeWidth: 1.7, strokeLinecap: "round", strokeLinejoin: "round" }}>
-                    <rect x="3.5" y="5" width="17" height="15.5" rx="3.5" /><path d="M3.5 10h17M8 3v4M16 3v4" />
-                  </svg>
-                </span>
-                <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={NEU_INFO_LABEL}>Next appointment</span>
-                  <span style={NEU_INFO_VALUE}>{formatDayLabel(followupAt)}</span>
-                  <span style={NEU_INFO_SUB}>Follow-up consultation</span>
-                </span>
-                <span style={NEU_INFO_CHEV} />
-              </button>
-            )}
+        {/* Treatment simulation — sits in the gap the rail leaves above the
+            status cards, feathered so it dissolves into the ivory. */}
+        <div style={{
+          position: "relative", zIndex: 1, flex: "1 1 auto", minHeight: 0, overflow: "hidden",
+          display: "grid", placeItems: "center", opacity: 0.3, pointerEvents: "none",
+          WebkitMaskImage: "radial-gradient(70% 78% at 50% 52%, #000 38%, transparent 86%)",
+          maskImage: "radial-gradient(70% 78% at 50% 52%, #000 38%, transparent 86%)",
+        }}>
+          <canvas ref={stageCanvas} aria-hidden="true" style={{ display: "block", maxWidth: "84%", maxHeight: "100%" }} />
+        </div>
 
+        {/* What's next — only the rows that actually apply */}
+        {(wearPlan?.nextSet || nextKit) && (
+          <div style={{ position: "relative", zIndex: 4, display: "flex", flexDirection: "column", gap: "9px", margin: "0 20px 18px" }}>
             {wearPlan?.nextSet && (
               <button
                 onClick={() => { if (steps.smile_correction) setExpandedStep("smile_correction"); }}
@@ -1343,7 +1325,7 @@ export default function PatientJourney() {
                   </svg>
                 </span>
                 <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={NEU_INFO_LABEL}>Next kit to order</span>
+                  <span style={NEU_INFO_LABEL}>Next kit</span>
                   <span style={{ ...NEU_INFO_VALUE, color: nextKit.overdue ? "#A0603F" : NEU.navy }}>
                     {nextKit.overdue ? "Order now" : "Order by " + formatDayLabel(nextKit.orderBy)}
                   </span>
@@ -1363,7 +1345,7 @@ export default function PatientJourney() {
           href="mailto:hello@orisalign.com"
           aria-label="Email OrisAlign"
           style={{
-            position: "absolute", right: "18px", bottom: "20px", zIndex: 5, width: "54px", height: "54px",
+            position: "absolute", right: "16px", bottom: "198px", zIndex: 5, width: "50px", height: "50px",
             borderRadius: "50%", display: "grid", placeItems: "center", textDecoration: "none",
             background: "linear-gradient(140deg, #CBA164, #B8893F 60%, #966E2E)",
             boxShadow: "-3px -3px 8px rgba(255,255,255,0.5), 5px 5px 14px rgba(150,110,46,0.5)",
