@@ -135,11 +135,11 @@ const NEU_NOTE = { margin: "12px 2px 0", fontSize: "11.5px", lineHeight: "1.55",
 const NEU_OK = { padding: "22px 16px", borderRadius: "22px", background: NEU.surface, boxShadow: NEU.upSm, textAlign: "center" };
 const NEU_TICK = { display: "grid", placeItems: "center", width: "44px", height: "44px", margin: "0 auto 12px", borderRadius: "50%", fontSize: "20px", color: "#fff", background: "linear-gradient(135deg, #CBA164, #B8893F)" };
 
-const NEU_INFO_CARD = { display: "flex", alignItems: "center", gap: "14px", width: "100%", padding: "13px 15px", borderRadius: "22px", border: "none", background: NEU.surface, boxShadow: NEU.up, textAlign: "left", font: "inherit", color: NEU.navy, cursor: "pointer" };
-const NEU_INFO_ICON = { width: "44px", height: "44px", borderRadius: "15px", display: "grid", placeItems: "center", flexShrink: 0, background: NEU.surface, boxShadow: NEU.upSm };
+const NEU_INFO_CARD = { display: "flex", alignItems: "center", gap: "12px", width: "100%", padding: "10px 14px", borderRadius: "20px", border: "none", background: NEU.surface, boxShadow: NEU.up, textAlign: "left", font: "inherit", color: NEU.navy, cursor: "pointer" };
+const NEU_INFO_ICON = { width: "38px", height: "38px", borderRadius: "13px", display: "grid", placeItems: "center", flexShrink: 0, background: NEU.surface, boxShadow: NEU.upSm };
 const NEU_INFO_LABEL = { display: "block", marginBottom: "3px", fontSize: "9.5px", fontWeight: "700", letterSpacing: "0.2em", textTransform: "uppercase", color: NEU.slate2 };
-const NEU_INFO_VALUE = { display: "block", fontSize: "15px", fontWeight: "800", letterSpacing: "-0.01em", color: NEU.navy };
-const NEU_INFO_SUB = { display: "block", marginTop: "2px", fontSize: "11.5px", lineHeight: "1.45", color: NEU.slate };
+const NEU_INFO_VALUE = { display: "block", fontSize: "14.5px", fontWeight: "800", letterSpacing: "-0.01em", color: NEU.navy };
+const NEU_INFO_SUB = { display: "block", marginTop: "1px", fontSize: "11px", lineHeight: "1.45", color: NEU.slate };
 const NEU_INFO_CHEV = { width: "7px", height: "7px", flexShrink: 0, borderRight: "1.8px solid " + NEU.slate2, borderBottom: "1.8px solid " + NEU.slate2, transform: "rotate(-45deg)" };
 
 // A kit has to be in the patient's hands before the first set it contains is
@@ -159,7 +159,7 @@ function formatDayLabel(value) {
 }
 
 // Distance between card centres on the rail, in px.
-const CARD_SPACING = 178;
+const CARD_SPACING = 190;
 
 // One plain line per step, so a card says what that step is about.
 const STEP_BLURB = {
@@ -1213,27 +1213,11 @@ export default function PatientJourney() {
           </button>
         </div>
 
-        <img src="/logo.png" alt="OrisAlign" style={{ position: "absolute", top: "18px", left: "50%", transform: "translateX(-50%)", width: "122px", zIndex: 5, mixBlendMode: "multiply", pointerEvents: "none" }} />
-
-        {/* Fifteen steps, one dot each */}
-        <div style={{ position: "relative", zIndex: 5, flex: "0 0 auto", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", padding: "40px 20px 0" }}>
-          {journeySteps.map((s, i) => {
-            const c = Math.max(0, Math.min(journeySteps.length - 1, Math.round(arcOffset)));
-            const on = i === c;
-            return (
-              <span key={s.key} style={{
-                width: on ? "8px" : "5px", height: on ? "8px" : "5px", borderRadius: "50%",
-                background: on ? NEU.gold : i < c ? "#C3BCA8" : "#CFCBBC",
-                boxShadow: on ? "0 0 0 3px rgba(184,137,63,0.14)" : "none",
-                transition: "all 0.3s ease",
-              }} />
-            );
-          })}
-        </div>
+        <img src="/logo-trimmed.webp" alt="OrisAlign" style={{ position: "absolute", top: "12px", left: "50%", transform: "translateX(-50%)", width: "148px", zIndex: 5, mixBlendMode: "multiply", pointerEvents: "none" }} />
 
         {/* The rail */}
-        <div style={{ flex: "0 0 auto", margin: "18px 0 0" }}>
-          <div style={{ position: "relative", zIndex: 3, isolation: "isolate", height: "250px" }}>
+        <div style={{ flex: "0 0 auto", margin: "52px 0 0" }}>
+          <div style={{ position: "relative", zIndex: 3, isolation: "isolate", height: "302px" }}>
             {journeySteps.map((step, i) => {
               const rel = i - arcOffset;
               const dist = Math.abs(rel);
@@ -1255,7 +1239,7 @@ export default function PatientJourney() {
                   }}
                   aria-label={`Step ${i + 1}: ${step.label}`}
                   style={{
-                    position: "absolute", left: "50%", top: "50%", width: "200px", margin: "-124px 0 0 -100px",
+                    position: "absolute", left: "50%", top: "50%", width: "214px", margin: "-150px 0 0 -107px",
                     padding: 0, border: "none", background: "none", cursor: "pointer", font: "inherit", color: "inherit",
                     transformOrigin: "center center",
                     transform: `translateX(${rel * CARD_SPACING}px) scale(${scale.toFixed(3)})`,
@@ -1266,7 +1250,7 @@ export default function PatientJourney() {
                 >
                   <span style={{
                     position: "relative", display: "flex", flexDirection: "column", alignItems: "center",
-                    width: "200px", height: "248px", padding: "60px 14px 18px", borderRadius: "30px",
+                    width: "214px", height: "300px", padding: "76px 16px 24px", borderRadius: "30px",
                     background: NEU.surface,
                     boxShadow: isCurrent
                       ? "-7px -7px 16px rgba(255,255,255,0.95), 9px 9px 20px rgba(163,155,134,0.34), 0 0 0 1px rgba(184,137,63,0.16)"
@@ -1281,7 +1265,7 @@ export default function PatientJourney() {
                       {String(i + 1).padStart(2, "0")}
                     </span>
                     <span style={{ marginTop: "auto", marginBottom: "auto", display: "flex", flexDirection: "column", gap: "9px", width: "100%" }}>
-                      <span style={{ fontSize: isCurrent ? "20px" : "16.5px", fontWeight: "800", letterSpacing: "-0.025em", lineHeight: "1.16", textAlign: "center", color: isCurrent ? NEU.navy : NEU.navy2 }}>
+                      <span style={{ fontSize: isCurrent ? "21px" : "17px", fontWeight: "800", letterSpacing: "-0.025em", lineHeight: "1.16", textAlign: "center", color: isCurrent ? NEU.navy : NEU.navy2 }}>
                         {step.label}
                       </span>
                       <span style={{ fontSize: isCurrent ? "12.5px" : "11.5px", lineHeight: "1.55", textAlign: "center", color: isCurrent ? NEU.slate : NEU.slate2 }}>
@@ -1332,7 +1316,7 @@ export default function PatientJourney() {
 
         {/* What's next — only the rows that actually apply */}
         {(wearPlan?.nextSet || nextKit) && (
-          <div style={{ position: "relative", zIndex: 4, display: "flex", flexDirection: "column", gap: "9px", margin: "16px 20px 0" }}>
+          <div style={{ position: "relative", zIndex: 4, display: "flex", flexDirection: "column", gap: "8px", margin: "14px 20px 0" }}>
             {wearPlan?.nextSet && (
               <button
                 onClick={() => { if (steps.smile_correction) setExpandedStep("smile_correction"); }}
@@ -1383,7 +1367,7 @@ export default function PatientJourney() {
         <button
           onClick={() => { setDrawerView("refer"); setShowDrawer(true); }}
           style={{
-            position: "relative", zIndex: 4, display: "block", width: "auto", margin: "12px 20px auto",
+            position: "relative", zIndex: 4, display: "block", width: "auto", margin: "10px 20px auto",
             padding: 0, borderRadius: "26px", border: "none", cursor: "pointer", overflow: "hidden",
             background: NEU.surface, boxShadow: NEU.up, textAlign: "left", font: "inherit", color: NEU.navy,
           }}
@@ -1395,17 +1379,17 @@ export default function PatientJourney() {
             src="/refer-friend.webp"
             alt=""
             aria-hidden="true"
-            style={{ position: "absolute", right: "-18px", bottom: 0, height: "104%", width: "auto", pointerEvents: "none" }}
+            style={{ position: "absolute", right: "-18px", bottom: 0, height: "100%", width: "auto", pointerEvents: "none" }}
           />
           {/* Fades the illustration out under the copy, so the text always
               sits on a clean field however the artwork is positioned. */}
           <span aria-hidden="true" style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "linear-gradient(90deg, " + NEU.surface + " 30%, rgba(247,245,238,0.72) 48%, rgba(247,245,238,0) 66%)" }} />
-          <span style={{ position: "relative", zIndex: 1, display: "block", padding: "15px 0 15px 18px", maxWidth: "55%" }}>
+          <span style={{ position: "relative", zIndex: 1, display: "block", padding: "12px 0 12px 16px", maxWidth: "55%" }}>
             <span style={NEU_INFO_LABEL}>Refer and earn</span>
-            <span style={{ display: "block", fontSize: "19.5px", fontWeight: "800", letterSpacing: "-0.03em", lineHeight: "1.12", color: NEU.navy }}>
+            <span style={{ display: "block", fontSize: "17.5px", fontWeight: "800", letterSpacing: "-0.03em", lineHeight: "1.12", color: NEU.navy }}>
               Refer a friend
             </span>
-            <span style={{ display: "block", marginTop: "5px", fontSize: "12.5px", lineHeight: "1.45", color: NEU.slate }}>
+            <span style={{ display: "block", marginTop: "4px", fontSize: "11.5px", lineHeight: "1.4", color: NEU.slate }}>
               and get ₹500 discount on your next kit.
             </span>
             <span style={{
