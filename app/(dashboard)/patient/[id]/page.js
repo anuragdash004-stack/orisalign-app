@@ -112,6 +112,55 @@ const STEP_ICONS = {
 };
 const DEFAULT_STEP_ICON = '<circle cx="12" cy="12" r="8"/>';
 
+// ── Neumorphic surface tokens ────────────────────────────────────────────
+// One raised value and one sunken value, reused everywhere, so the screen
+// reads as a single moulded material rather than a pile of separate shadows.
+const NEU = {
+  ivory: "#F3F1E8", surface: "#F7F5EE", surface2: "#EFEDE3",
+  navy: "#102A43", navy2: "#33506B", slate: "#7B8A99", slate2: "#9BA7B3",
+  gold: "#B8893F", goldL: "#CBA164", goldD: "#966E2E",
+  up: "-6px -6px 14px rgba(255,255,255,0.95), 7px 7px 16px rgba(163,155,134,0.34)",
+  upSm: "-3px -3px 7px rgba(255,255,255,0.95), 4px 4px 9px rgba(163,155,134,0.34)",
+  insetSm: "inset -2px -2px 5px rgba(255,255,255,0.9), inset 3px 3px 6px rgba(163,155,134,0.34)",
+};
+const NEU_BTN = { width: "44px", height: "44px", borderRadius: "15px", border: "none", cursor: "pointer", background: NEU.surface, display: "grid", placeItems: "center", boxShadow: NEU.up };
+const NEU_ICON = { fill: "none", stroke: "#41576D", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round" };
+const NEU_ROW = { display: "flex", alignItems: "center", gap: "13px", width: "100%", padding: "13px", marginBottom: "10px", borderRadius: "20px", border: "none", cursor: "pointer", background: NEU.surface, boxShadow: NEU.upSm, textAlign: "left", font: "inherit", color: NEU.navy };
+const NEU_ROW_ICON = { width: "36px", height: "36px", borderRadius: "13px", display: "grid", placeItems: "center", flexShrink: 0, background: NEU.surface2, boxShadow: NEU.insetSm };
+const NEU_FIELD = { width: "100%", padding: "12px 14px", borderRadius: "16px", fontSize: "13.5px", fontFamily: "inherit", color: NEU.navy, background: NEU.surface2, border: "none", boxShadow: NEU.insetSm, outline: "none", boxSizing: "border-box" };
+const NEU_LABEL = { display: "block", marginBottom: "6px", fontSize: "10.5px", fontWeight: "700", letterSpacing: "0.14em", textTransform: "uppercase", color: NEU.slate2 };
+const NEU_PRIMARY = { display: "block", width: "100%", padding: "15px", borderRadius: "16px", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: "700", fontSize: "13.5px", background: "linear-gradient(135deg, #CBA164, #B8893F)", color: "#fff", boxShadow: "-2px -2px 6px rgba(255,255,255,0.5), 4px 4px 12px rgba(150,110,46,0.45)" };
+const NEU_VTITLE = { margin: "4px 2px 15px", fontSize: "16px", fontWeight: "800", color: NEU.navy };
+const NEU_NOTE = { margin: "12px 2px 0", fontSize: "11.5px", lineHeight: "1.55", color: NEU.slate };
+const NEU_OK = { padding: "22px 16px", borderRadius: "22px", background: NEU.surface, boxShadow: NEU.upSm, textAlign: "center" };
+const NEU_TICK = { display: "grid", placeItems: "center", width: "44px", height: "44px", margin: "0 auto 12px", borderRadius: "50%", fontSize: "20px", color: "#fff", background: "linear-gradient(135deg, #CBA164, #B8893F)" };
+
+// Distance between card centres on the rail, in px.
+const CARD_SPACING = 178;
+
+// One plain line per step, so a card says what that step is about.
+const STEP_BLURB = {
+  booked: "Your consultation is booked.",
+  confirmed: "Your appointment is confirmed.",
+  scanning_done: "Your scan has been captured.",
+  provisional_planning: "Choose your plan and get started.",
+  payment_done: "Your full treatment plan.",
+  planning_done: "Your treatment plan is ready.",
+  investigation_required: "Extra records your orthodontist needs.",
+  plan_approved: "Authorise fabrication to begin.",
+  prealigner_treatment: "Groundwork before the aligners.",
+  aligner_sets: "Order your aligners package by package.",
+  manufacturing: "Your aligners are being made.",
+  aligners_dispatched: "Your aligners are on the way.",
+  aligners_received: "Nearly at your door.",
+  followup_appointment: "Your progress review.",
+  aligners_delivered: "Wear them 20-22 hours a day.",
+  smile_correction: "Photograph each set as you go.",
+  treatment_completed: "Final records at the last set.",
+  post_aligner_treatment: "Retainers to hold the result.",
+  feedback_submitted: "Tell us how it went.",
+};
+
 // Treatment-simulation stills (public/journey-stages), one per aligner stage
 // of a real completed case: crooked at stage 1, straight at stage 15. They
 // sit behind the arc and cross-fade as the rail is scrolled, so the teeth
@@ -243,6 +292,25 @@ export default function PatientJourney() {
   const [showNotifOnboarding, setShowNotifOnboarding] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
 
+  // ── Menu drawer and calendar ────────────────────────────────────────
+  const [showDrawer, setShowDrawer] = useState(false);
+  const [drawerView, setDrawerView] = useState("root");
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [infoForm, setInfoForm] = useState({ name: "", age: "", sex: "", address: "" });
+  const [infoSaving, setInfoSaving] = useState(false);
+  const [infoMsg, setInfoMsg] = useState("");
+  const [callbackReason, setCallbackReason] = useState("");
+  const [callbackSending, setCallbackSending] = useState(false);
+  const [callbackSent, setCallbackSent] = useState(false);
+  const [feedbackRating, setFeedbackRating] = useState(5);
+  const [feedbackComment, setFeedbackComment] = useState("");
+  const [feedbackSending, setFeedbackSending] = useState(false);
+  const [feedbackSent, setFeedbackSent] = useState(false);
+  const [referName, setReferName] = useState("");
+  const [referPhone, setReferPhone] = useState("");
+  const [referSending, setReferSending] = useState(false);
+  const [referSent, setReferSent] = useState(false);
+
   // Turns a granted permission into an actual FCM token and saves it against
   // this appointment — safe to call repeatedly (a stale/rotated token just
   // overwrites the saved one), so every path that lands on "granted" below
@@ -292,6 +360,102 @@ export default function PatientJourney() {
     setNotifPermission(state);
     if (state === "granted") registerPushToken();
   };
+  // The stored address is a composed "street | city, district, state | PIN: x
+  // | Maps: y" string. Only the first segment is the patient's to edit here,
+  // so the rest is carried through untouched on save.
+  const openInfoForm = () => {
+    const parts = String(patient?.address || "").split(" | ");
+    setInfoForm({
+      name: patient?.name || "",
+      age: patient?.age === null || patient?.age === undefined ? "" : String(patient.age),
+      sex: patient?.sex || "",
+      address: parts[0] || "",
+    });
+    setInfoMsg("");
+    setDrawerView("info");
+  };
+
+  const saveInfoForm = async () => {
+    setInfoSaving(true);
+    setInfoMsg("");
+    try {
+      const rest = String(patient?.address || "").split(" | ").slice(1);
+      const address = [infoForm.address.trim(), ...rest].filter(Boolean).join(" | ");
+      const patch = {
+        name: infoForm.name.trim(),
+        age: infoForm.age === "" ? null : Number(infoForm.age),
+        sex: infoForm.sex || null,
+        address,
+      };
+      const { error } = await supabase.from("appointments_booking").update(patch).eq("id", id);
+      if (error) { setInfoMsg("Couldn't save: " + error.message); return; }
+      setPatient((prev) => prev && { ...prev, ...patch });
+      setInfoMsg("Saved.");
+    } catch {
+      setInfoMsg("Network error. Please try again.");
+    } finally {
+      setInfoSaving(false);
+    }
+  };
+
+  const sendCallbackRequest = async () => {
+    setCallbackSending(true);
+    try {
+      const res = await fetch("/api/request-callback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ appointmentId: id, reason: callbackReason }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || json.error) { alert("Couldn't send that: " + (json.error || "Please try again.")); return; }
+      setCallbackSent(true);
+    } catch {
+      alert("Network error. Please try again.");
+    } finally {
+      setCallbackSending(false);
+    }
+  };
+
+  const sendFeedback = async () => {
+    setFeedbackSending(true);
+    try {
+      const res = await fetch("/api/submit-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ appointmentId: id, rating: feedbackRating, comment: feedbackComment }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || json.error) { alert("Couldn't send that: " + (json.error || "Please try again.")); return; }
+      setFeedbackSent(true);
+    } catch {
+      alert("Network error. Please try again.");
+    } finally {
+      setFeedbackSending(false);
+    }
+  };
+
+  const sendReferral = async () => {
+    if (!referName.trim() || !referPhone.trim()) {
+      alert("Please add their name and phone number.");
+      return;
+    }
+    setReferSending(true);
+    try {
+      const res = await fetch("/api/refer-friend", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ appointmentId: id, friendName: referName, friendPhone: referPhone }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || json.error) { alert("Couldn't send that: " + (json.error || "Please try again.")); return; }
+      setReferSent(true);
+    } catch {
+      alert("Network error. Please try again.");
+    } finally {
+      setReferSending(false);
+    }
+  };
+
   // Journey arc — how far the rail of step icons has been rotated, measured
   // in steps (fractional while a drag is in progress). See ARC_* below.
   const [arcOffset, setArcOffset] = useState(0);
@@ -550,6 +714,11 @@ export default function PatientJourney() {
   // Final Plan Review generates monthly_plan — see deriveSteps for why.
   const isNewModel = isNewModelAppointment(patient);
   const journeySteps = isNewModel ? NEW_JOURNEY_STEPS : LEGACY_JOURNEY_STEPS;
+  // The step actually in progress: the first one not yet marked done.
+  const currentStepIndex = (() => {
+    const idx = journeySteps.findIndex((s) => !steps[s.key]);
+    return idx === -1 ? journeySteps.length - 1 : idx;
+  })();
   stepCount.current = journeySteps.length;   // read by paintStages
   const shortId = id.substring(0, 8).toUpperCase();
   const patientIdLabel = patient.booking_confirmed ? shortId : "Pending";
@@ -859,25 +1028,25 @@ export default function PatientJourney() {
   };
 
   return (
-    <div style={{ position: "relative", minHeight: "100vh", paddingBottom: "60px", fontFamily: "'Inter', system-ui, sans-serif", colorScheme: "light" }}>
+    <div style={{ position: "relative", minHeight: "100vh", fontFamily: "'Inter', system-ui, sans-serif", colorScheme: "light", background: NEU.ivory }}>
 
-      {/* ───── JOURNEY ARC ─────────────────────────────────────────────
-          Patient details sit in the navy circle; every treatment step is a
-          node riding an arc whose centre is off the left edge of the screen.
-          Dragging vertically rotates the rail (see ARC_* at the top of this
-          file); tapping a node opens that step's full panel in the sheet
-          below — the same panels as before, just no longer all stacked. */}
+      {/* ───── JOURNEY CAROUSEL ─────────────────────────────────────────
+          Every treatment step is a raised ceramic card on a horizontal rail.
+          Dragging sideways moves the rail; the centred card is the live one,
+          and tapping it opens that step's full panel. arcDrag.current.lastY
+          carries the last clientX here — the rail turned horizontal, the ref
+          did not get renamed. */}
       <div
-        className="motif-bg"
         onPointerDown={(e) => {
-          arcDrag.current = { active: true, lastY: e.clientY, moved: 0 };
+          if (e.target.closest && e.target.closest("[data-nodrag]")) return;
+          arcDrag.current = { active: true, lastY: e.clientX, moved: 0 };
         }}
         onPointerMove={(e) => {
           if (!arcDrag.current.active) return;
-          const dy = e.clientY - arcDrag.current.lastY;
-          arcDrag.current.lastY = e.clientY;
-          arcDrag.current.moved += Math.abs(dy);
-          setArcOffset((prev) => Math.max(0, Math.min(journeySteps.length - 1, prev - dy / 58)));
+          const dx = e.clientX - arcDrag.current.lastY;
+          arcDrag.current.lastY = e.clientX;
+          arcDrag.current.moved += Math.abs(dx);
+          setArcOffset((prev) => Math.max(0, Math.min(journeySteps.length - 1, prev - dx / CARD_SPACING)));
         }}
         onPointerUp={() => {
           if (!arcDrag.current.active) return;
@@ -886,310 +1055,207 @@ export default function PatientJourney() {
         }}
         onPointerCancel={() => { arcDrag.current.active = false; }}
         onWheel={(e) => {
-          setArcOffset((prev) => Math.max(0, Math.min(journeySteps.length - 1, Math.round(prev + (e.deltaY > 0 ? 1 : -1)))));
+          const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+          setArcOffset((prev) => Math.max(0, Math.min(journeySteps.length - 1, Math.round(prev + (d > 0 ? 1 : -1)))));
         }}
         style={{
-          position: "relative", minHeight: "100dvh", overflow: "hidden",
+          position: "relative", height: "100dvh", overflow: "hidden",
           touchAction: "none", userSelect: "none",
-          "--stage-opacity": STAGE_OPACITY,
+          display: "flex", flexDirection: "column", background: NEU.ivory,
         }}
       >
-        {/* The background image, shown exactly as supplied — no filter, no tint. */}
+        {/* Treatment simulation — background art now, held to the right at
+            half strength and feathered so it dissolves into the ivory. */}
         <div style={{
-          position: "absolute", inset: 0, zIndex: 0,
-          backgroundImage: `url(${SCREEN_BG_IMAGE})`, backgroundSize: "cover", backgroundPosition: "center",
-        }} />
-
-        {/* Treatment simulation. All 15 stills are preloaded (15KB each) so
-            dragging the rail never waits on a fetch mid-fade — see
-            paintStages above for why this is one canvas, not stacked imgs. */}
-        <div style={{
-          position: "absolute", top: "47%", left: "1%", transform: "translateY(-50%)",
-          width: "93.6%", zIndex: 1, pointerEvents: "none", opacity: "var(--stage-opacity)",
-          // Shown in the render's own colour. The previous set was near-white
-          // and had to be tinted and multiplied to survive the pale background;
-          // these renders carry their own pink gums and shaded teeth, so they
-          // read as a real mouth at plain opacity and need neither.
-          // The frames are cropped tight, so the gums end in flat lines on every
-          // side — feather all four edges so it dissolves into the background.
-          WebkitMaskImage: STAGE_MASK, maskImage: STAGE_MASK,
-          WebkitMaskComposite: "source-in", maskComposite: "intersect",
-          // Richer colour depth at the same opacity — the pink of the gums and
-          // the shading on the teeth read more vivid within their faint
-          // presence, rather than looking pastel/washed at low opacity.
-          filter: "saturate(1.35) contrast(1.12)",
+          position: "absolute", right: "-34px", bottom: "52px", width: "300px", zIndex: 0,
+          opacity: 0.4, pointerEvents: "none",
+          WebkitMaskImage: "radial-gradient(78% 72% at 44% 50%, #000 44%, transparent 82%)",
+          maskImage: "radial-gradient(78% 72% at 44% 50%, #000 44%, transparent 82%)",
         }}>
           <canvas ref={stageCanvas} aria-hidden="true" style={{ display: "block", width: "100%", height: "auto" }} />
         </div>
 
-        {/* Logo, centred at the top. Deliberately NOT inside a z-indexed
-            wrapper: mix-blend-mode only blends within its own stacking
-            context, so a positioned+z-indexed parent would leave the logo's
-            white plate sitting on the ivory instead of dissolving into it. */}
-        <img
-          src="/logo.png"
-          alt="OrisAlign"
-          style={{
-            position: "absolute", top: "18px", left: "50%", transform: "translateX(-50%)",
-            width: "184px", height: "auto", objectFit: "contain", mixBlendMode: "multiply",
-          }}
-        />
-        <button
-          onClick={() => {
-            // Clear both halves of the saved session, then tell the login page
-            // this was a deliberate logout. Without that flag it looks for a
-            // saved session on mount and, if either store survived the clear —
-            // a cookie the WebView holds on a different path, say — sends the
-            // patient straight back here.
-            try { window.localStorage.removeItem("orisalign_patient_id"); } catch {}
-            try { document.cookie = "orisalign_patient_id=;path=/;max-age=0;samesite=lax"; } catch {}
-            window.location.href = "/login?logout=1";
-          }}
-          style={{ position: "absolute", top: "20px", right: "16px", zIndex: 6, background: "none", border: "none", color: "#A9A395", fontSize: "10.5px", fontWeight: "700", letterSpacing: "0.06em", cursor: "pointer", padding: "4px" }}
-        >
-          LOGOUT
-        </button>
-        <button
-          onClick={() => setShowSettings(true)}
-          aria-label="Settings"
-          style={{ position: "absolute", top: "17px", right: "78px", zIndex: 6, background: "none", border: "none", color: "#A9A395", cursor: "pointer", padding: "4px", display: "grid", placeItems: "center" }}
-        >
-          <svg viewBox="0 0 24 24" width="17" height="17" style={{ fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round" }}>
-            <circle cx="12" cy="12" r="3" />
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
-          </svg>
-        </button>
+        {/* Top navigation */}
+        <div style={{ position: "relative", zIndex: 6, flex: "0 0 auto", display: "flex", alignItems: "flex-start", justifyContent: "space-between", padding: "16px 20px 0" }}>
+          <button
+            data-nodrag
+            onClick={() => { setDrawerView("root"); setShowDrawer(true); }}
+            aria-label="Open menu"
+            style={NEU_BTN}
+          >
+            <svg viewBox="0 0 24 24" width="20" height="20" style={NEU_ICON}><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+          </button>
+          <button
+            data-nodrag
+            onClick={() => setShowCalendar(true)}
+            aria-label="Appointments calendar"
+            style={NEU_BTN}
+          >
+            <svg viewBox="0 0 24 24" width="20" height="20" style={NEU_ICON}>
+              <rect x="3.5" y="5" width="17" height="15.5" rx="3.5" /><path d="M3.5 10h17M8 3v4M16 3v4" />
+            </svg>
+          </button>
+        </div>
 
-        {/* The rail the step nodes ride on. Drawn as its own arc now that the
-            card is a rectangle — it used to be the hero circle's border. */}
-        <svg
-          aria-hidden="true"
-          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", zIndex: 2, pointerEvents: "none" }}
-        >
-          <g style={{ transform: "translateY(50%)" }}>
-            <path
-              d={(() => {
-                let d = "";
-                for (let a = -98; a <= 98; a += 3) {
-                  const r = (a * Math.PI) / 180;
-                  d += (d ? " L" : "M") + (ARC_CX + ARC_R * Math.cos(r)).toFixed(1) + " " + (ARC_R * Math.sin(r)).toFixed(1);
-                }
-                return d;
-              })()}
-              fill="none"
-              stroke={expandedStep ? "rgba(53,184,172,0.30)" : "#35B8AC"}
-              strokeWidth="2"
-              style={{ filter: "drop-shadow(0 0 5px rgba(21,159,145,0.22))", transition: "stroke 0.3s ease" }}
-            />
-            {/* A few small glowing points riding the path, between the nodes —
-                a suggestion of flow along the journey, not a particle effect. */}
-            {!expandedStep && [-1.55, -0.6, 0.6, 1.55].map((rel) => {
-              const ang = (rel * ARC_STEP_ANGLE * Math.PI) / 180;
+        <img src="/logo.png" alt="OrisAlign" style={{ position: "absolute", top: "18px", left: "50%", transform: "translateX(-50%)", width: "122px", zIndex: 5, mixBlendMode: "multiply", pointerEvents: "none" }} />
+
+        {/* Fifteen steps, one dot each */}
+        <div style={{ position: "relative", zIndex: 5, flex: "0 0 auto", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", padding: "58px 20px 0" }}>
+          {journeySteps.map((s, i) => {
+            const c = Math.max(0, Math.min(journeySteps.length - 1, Math.round(arcOffset)));
+            const on = i === c;
+            return (
+              <span key={s.key} style={{
+                width: on ? "8px" : "5px", height: on ? "8px" : "5px", borderRadius: "50%",
+                background: on ? NEU.gold : i < c ? "#C3BCA8" : "#CFCBBC",
+                boxShadow: on ? "0 0 0 3px rgba(184,137,63,0.14)" : "none",
+                transition: "all 0.3s ease",
+              }} />
+            );
+          })}
+        </div>
+
+        {/* The rail */}
+        <div style={{ flex: "0 0 auto", margin: "34px 0 auto" }}>
+          <div style={{ position: "relative", zIndex: 3, isolation: "isolate", height: "300px" }}>
+            {journeySteps.map((step, i) => {
+              const rel = i - arcOffset;
+              const dist = Math.abs(rel);
+              const scale = Math.max(0.6, 1 - dist * 0.2);
+              const opacity = dist >= 2.2 ? 0 : Math.max(0, 1 - Math.pow(dist / 2.2, 1.05));
+              const done = !!steps[step.key];
+              const isCurrent = i === currentStepIndex;
+              // Smile Correction stays shut until an admin marks it started.
+              const locked = !!step.smileLink && !steps[step.key];
+              const label = done ? "Completed" : isCurrent ? "In progress" : "Upcoming";
               return (
-                <circle
-                  key={rel}
-                  cx={ARC_CX + ARC_R * Math.cos(ang)}
-                  cy={ARC_R * Math.sin(ang)}
-                  r="3"
-                  fill="#fff"
-                  style={{ filter: "drop-shadow(0 0 8px rgba(255,255,255,1)) drop-shadow(0 0 14px rgba(48,190,175,0.36))" }}
-                />
+                <button
+                  key={step.key}
+                  onClick={() => {
+                    if (arcDrag.current.moved > 6) { arcDrag.current.moved = 0; return; }
+                    if (Math.abs(i - arcOffset) > 0.5) { setArcOffset(i); return; }
+                    if (locked || !step.expandable) return;
+                    setExpandedStep(step.key);
+                  }}
+                  aria-label={`Step ${i + 1}: ${step.label}`}
+                  style={{
+                    position: "absolute", left: "50%", top: "50%", width: "200px", margin: "-143px 0 0 -100px",
+                    padding: 0, border: "none", background: "none", cursor: "pointer", font: "inherit", color: "inherit",
+                    transformOrigin: "center center",
+                    transform: `translateX(${rel * CARD_SPACING}px) scale(${scale.toFixed(3)})`,
+                    opacity, zIndex: 20 - Math.round(dist),
+                    pointerEvents: opacity < 0.35 ? "none" : "auto",
+                    transition: arcDrag.current.active ? "none" : "transform 0.34s cubic-bezier(.2,.8,.3,1), opacity 0.3s ease",
+                  }}
+                >
+                  <span style={{
+                    position: "relative", display: "flex", flexDirection: "column", alignItems: "center",
+                    width: "200px", height: "286px", padding: "74px 16px 22px", borderRadius: "30px",
+                    background: NEU.surface,
+                    boxShadow: isCurrent
+                      ? "-7px -7px 16px rgba(255,255,255,0.95), 9px 9px 20px rgba(163,155,134,0.34), 0 0 0 1px rgba(184,137,63,0.16)"
+                      : NEU.up,
+                  }}>
+                    <span style={{ position: "absolute", top: "18px", left: "18px", width: "46px", height: "46px", borderRadius: "15px", display: "grid", placeItems: "center", background: NEU.surface, boxShadow: NEU.upSm }}>
+                      <svg viewBox="0 0 24 24" width="21" height="21"
+                        style={{ fill: "none", stroke: isCurrent ? NEU.gold : done ? NEU.slate : NEU.slate2, strokeWidth: 1.7, strokeLinecap: "round", strokeLinejoin: "round" }}
+                        dangerouslySetInnerHTML={{ __html: STEP_ICONS[step.key] || DEFAULT_STEP_ICON }} />
+                    </span>
+                    <span style={{ position: "absolute", top: "22px", right: "20px", fontSize: "21px", fontWeight: "800", letterSpacing: "-0.02em", color: isCurrent ? NEU.gold : NEU.slate2, fontVariantNumeric: "tabular-nums" }}>
+                      {String(i + 1).padStart(2, "0")}
+                    </span>
+                    <span style={{ marginTop: "auto", marginBottom: "auto", display: "flex", flexDirection: "column", gap: "9px", width: "100%" }}>
+                      <span style={{ fontSize: isCurrent ? "20px" : "16.5px", fontWeight: "800", letterSpacing: "-0.025em", lineHeight: "1.16", textAlign: "center", color: isCurrent ? NEU.navy : NEU.navy2 }}>
+                        {step.label}
+                      </span>
+                      <span style={{ fontSize: isCurrent ? "12.5px" : "11.5px", lineHeight: "1.55", textAlign: "center", color: isCurrent ? NEU.slate : NEU.slate2 }}>
+                        {STEP_BLURB[step.key] || ""}
+                      </span>
+                    </span>
+                    <span style={{
+                      marginTop: "11px", padding: "8px 17px", borderRadius: "99px", fontSize: "11.5px", fontWeight: "700",
+                      letterSpacing: "0.07em", textTransform: "uppercase",
+                      background: isCurrent ? "linear-gradient(135deg, #CBA164, #B8893F)" : NEU.surface2,
+                      color: isCurrent ? "#fff" : NEU.slate,
+                      boxShadow: isCurrent ? "-2px -2px 5px rgba(255,255,255,0.5), 3px 3px 8px rgba(150,110,46,0.42)" : NEU.insetSm,
+                    }}>
+                      {label}
+                    </span>
+                  </span>
+                </button>
               );
             })}
-          </g>
-        </svg>
+          </div>
 
-        {/* Who this is, kept on screen under the logo whether or not a card is
-            open. The patient's own details now live in the Appointment Booked
-            step, so there is no separate patient card any more. */}
-        <div style={{ position: "absolute", top: "148px", right: "18px", zIndex: 7, textAlign: "right", pointerEvents: "none" }}>
-          <p style={{ margin: 0, fontSize: "15px", fontWeight: "800", letterSpacing: "-0.015em", color: "#0D2945" }}>{patient.name || "Patient"}</p>
+          {/* Arrows */}
+          <div style={{ position: "relative", zIndex: 4, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 36px", marginTop: "18px" }}>
+            {[-1, 1].map((dir) => {
+              const at = Math.max(0, Math.min(journeySteps.length - 1, Math.round(arcOffset)));
+              const off = dir < 0 ? at === 0 : at === journeySteps.length - 1;
+              return (
+                <button
+                  key={dir}
+                  data-nodrag
+                  disabled={off}
+                  onClick={() => setArcOffset(Math.max(0, Math.min(journeySteps.length - 1, at + dir)))}
+                  aria-label={dir < 0 ? "Previous step" : "Next step"}
+                  style={{
+                    width: "38px", height: "38px", borderRadius: "50%", border: "none", flexShrink: 0,
+                    display: "grid", placeItems: "center", background: NEU.surface, boxShadow: NEU.upSm,
+                    cursor: off ? "default" : "pointer", opacity: off ? 0.4 : 1,
+                  }}
+                >
+                  <svg viewBox="0 0 24 24" width="15" height="15" style={{ fill: "none", stroke: "#4E6274", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round" }}>
+                    <path d={dir < 0 ? "M15 18l-6-6 6-6" : "M9 18l6-6-6-6"} />
+                  </svg>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        {/* The handle that pulls the card out. It is a SIBLING of the card, not
-            a child: step nodes are painted above the card on purpose, and a
-            handle inside it would sit underneath whichever node happens to be
-            beside it and never receive the tap. */}
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            // Collapsed, the arrow opens whichever step the rail is centred on.
-            setExpandedStep((prev) => (prev ? null : journeySteps[Math.round(arcOffset)]?.key || journeySteps[0].key));
-          }}
-          onPointerDown={(e) => e.stopPropagation()}
-          aria-label={expandedStep ? "Hide details" : "Show details"}
-          aria-expanded={!!expandedStep}
+        {/* Ask us */}
+        <a
+          data-nodrag
+          href="mailto:hello@orisalign.com"
+          aria-label="Email OrisAlign"
           style={{
-            position: "absolute", zIndex: 30,
-            left: `${cardBox.left}px`, top: expandedStep && cardBox.mid ? `${cardBox.mid}px` : "50%",
-            width: "26px", height: "54px", padding: 0, border: "none",
-            borderRadius: "0 13px 13px 0", cursor: "pointer",
-            display: "grid", placeItems: "center",
-            background: "rgba(255,255,255,0.92)",
-            boxShadow: "2px 4px 14px -6px rgba(23,59,87,0.45)",
-            color: "#168F83",
-            transform: `translate(${expandedStep ? 0 : -cardSlide}px, -50%)`,
-            transition: "transform 0.42s cubic-bezier(.2,.8,.3,1)",
+            position: "absolute", right: "18px", bottom: "20px", zIndex: 5, width: "54px", height: "54px",
+            borderRadius: "50%", display: "grid", placeItems: "center", textDecoration: "none",
+            background: "linear-gradient(140deg, #CBA164, #B8893F 60%, #966E2E)",
+            boxShadow: "-3px -3px 8px rgba(255,255,255,0.5), 5px 5px 14px rgba(150,110,46,0.5)",
           }}
         >
-          <svg viewBox="0 0 24 24" width="15" height="15" style={{ fill: "none", stroke: "currentColor", strokeWidth: 2.2, strokeLinecap: "round", strokeLinejoin: "round", transform: expandedStep ? "none" : "scaleX(-1)", transition: "transform 0.42s cubic-bezier(.2,.8,.3,1)" }}>
-            <path d="M15 5l-7 7 7 7" />
+          <svg viewBox="0 0 24 24" width="22" height="22" style={{ fill: "none", stroke: "#fff", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round" }}>
+            <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z" />
+            <path d="M18.5 15.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z" />
           </svg>
-        </button>
-
-        {/* Step nodes on the arc */}
-        {journeySteps.map((step, i) => {
-          const rel = i - arcOffset;
-          const ang = (rel * ARC_STEP_ANGLE) * Math.PI / 180;
-          const x = ARC_CX + ARC_R * Math.cos(ang);
-          const y = ARC_R * Math.sin(ang);
-          const dist = Math.abs(rel);
-          const scale = Math.max(0.62, 1 - dist * 0.09);
-          const opacity = dist > ARC_VISIBLE ? 0 : Math.max(0, 1 - Math.pow(dist / (ARC_VISIBLE + 0.2), 2.2));
-          const isDone = !!steps[step.key];
-          const isCurrent = !isDone && i > 0 && !!steps[journeySteps[i - 1]?.key];
-          const isClickable = step.expandable && (!step.smileLink || steps[step.key]);
-          return (
-            <div
-              key={step.key}
-              onClick={() => {
-                // Ignore the click that ends a drag, so scrolling the rail
-                // never opens a step by accident.
-                if (arcDrag.current.moved > 6) { arcDrag.current.moved = 0; return; }
-                setArcOffset(i);
-                if (step.smileLink && !steps[step.key]) return; // only accessible when admin marks it done
-                setExpandedStep(step.key);
-              }}
-              style={{
-                position: "absolute", top: "50%", left: 0, zIndex: 20 - Math.round(dist),
-                width: "128px", marginLeft: "-64px",
-                display: "flex", flexDirection: "column", alignItems: "center", gap: "7px",
-                transform: `translate(${x}px, ${y + 5}px) scale(${scale})`,
-                transformOrigin: "center top",
-                opacity: expandedStep ? opacity * 0.34 : opacity,
-                pointerEvents: opacity < 0.25 || expandedStep ? "none" : "auto",
-                cursor: "pointer",
-                transition: arcDrag.current.active ? "none" : "transform 0.28s cubic-bezier(.22,.8,.3,1), opacity 0.3s ease",
-              }}
-            >
-              <div style={{
-                position: "relative", width: "72px", height: "72px", borderRadius: "50%", flexShrink: 0,
-                display: "grid", placeItems: "center", border: "2px solid rgba(255,255,255,0.85)",
-                // The current step is the one actually in progress — it should
-                // read exactly as solid as a completed step, with only the
-                // stronger glow below marking it out. The faded gradient is
-                // reserved for steps that haven't started yet.
-                // Denser teal — pushed darker and more saturated at the edges
-                // than the original, so it reads heavier and more pigmented.
-                background: (isDone || isCurrent)
-                  ? "linear-gradient(145deg, #2BAE9C 0%, #0E8C7E 55%, #04564D 100%)"
-                  : "linear-gradient(145deg, #B0DAD3 0%, #7FC7BE 60%, #68B9AF 100%)",
-                boxShadow: isCurrent
-                  ? "0 0 0 5px rgba(255,255,255,0.30), 0 0 25px rgba(21,159,145,0.36), 0 12px 30px rgba(8,80,90,0.22)"
-                  : isDone
-                    ? "0 0 0 5px rgba(255,255,255,0.34), 0 10px 25px rgba(8,90,90,0.19), 0 0 20px rgba(21,159,145,0.14)"
-                    : "0 0 0 5px rgba(255,255,255,0.29), 0 8px 20px rgba(8,90,90,0.12)",
-              }}>
-                {/* Lit from the upper left, like polished glass. */}
-                <div style={{ position: "absolute", inset: 0, borderRadius: "inherit", pointerEvents: "none", background: "linear-gradient(135deg, rgba(255,255,255,0.34), transparent 45%)" }} />
-                {/* A soft brushed-metal sweep, on the completed/current buttons
-                    only — an upcoming button is meant to look quieter, not
-                    like a finished object yet. */}
-                {(isDone || isCurrent) && (
-                  <div style={{ position: "absolute", inset: 0, borderRadius: "inherit", pointerEvents: "none", background: "linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.30) 46%, rgba(255,255,255,0.06) 54%, transparent 68%)" }} />
-                )}
-                <svg viewBox="0 0 24 24" width="30" height="30" style={{ position: "relative", fill: "none", stroke: "#fff", strokeWidth: 1.7, strokeLinecap: "round", strokeLinejoin: "round" }}
-                  dangerouslySetInnerHTML={{ __html: STEP_ICONS[step.key] || DEFAULT_STEP_ICON }} />
-              </div>
-              {dist <= 1.6 && (
-                <span style={{
-                  fontSize: "10.5px", fontWeight: "700", letterSpacing: "0.05em", textTransform: "uppercase",
-                  lineHeight: "1.35", textAlign: "center",
-                  color: "#173B57",
-                  display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
-                }}>
-                  {step.label}
-                </span>
-              )}
-            </div>
-          );
-        })}
-
-        {/* Scroll affordance + contact line */}
-        <div style={{ position: "absolute", right: "16px", bottom: "56px", zIndex: 5, display: "flex", flexDirection: "column", alignItems: "center", gap: "3px", fontSize: "9px", fontWeight: "700", letterSpacing: "0.1em", textTransform: "uppercase", color: "#A9A395", pointerEvents: "none" }}>
-          <span style={{ fontSize: "12px" }}>▲</span>
-          <span>Scroll</span>
-        </div>
-        <p style={{
-          position: "absolute", left: "50%", transform: "translateX(-50%)", bottom: "18px", zIndex: 5,
-          margin: 0, display: "flex", alignItems: "center", gap: "9px", whiteSpace: "nowrap",
-          padding: "10px 18px", borderRadius: "99px",
-          background: "rgba(255,255,255,0.55)", border: "1px solid rgba(255,255,255,0.75)",
-          backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
-          boxShadow: "0 10px 30px rgba(25,80,100,0.08), inset 0 1px 0 rgba(255,255,255,0.8)",
-          fontSize: "11.5px", color: "#71818C",
-        }}>
-          <svg viewBox="0 0 24 24" width="14" height="14" style={{ stroke: "#159E91", fill: "none", strokeWidth: 1.8, flexShrink: 0 }}>
-            <path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9.9 9.9 0 0 1-2.8-.4L3 21l1.5-4.6A8.3 8.3 0 0 1 3 11.5 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5Z" />
-          </svg>
-          Questions? <a href="mailto:hello@orisalign.com" style={{ color: "#A9762E", fontWeight: "700", textDecoration: "none" }}>hello@orisalign.com</a>
-        </p>
+        </a>
       </div>
 
-      {/* ───── STEP PANEL — the opened step, shown as the card itself ─────
-          This is the same card the patient's name sits in: opening a step
-          grows it in place rather than sliding a separate sheet over the
-          screen, so the journey behind it stays visible. */}
+      {/* ───── STEP PANEL — the opened step, raised off the ivory ───── */}
       {expandedStep && (
-        <div style={{ position: "absolute", inset: 0, zIndex: 60, pointerEvents: "none" }}>
+        <div style={{ position: "fixed", inset: 0, zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 16px" }}>
+          <div onClick={() => setExpandedStep(null)} style={{ position: "absolute", inset: 0, background: "rgba(30,44,58,0.34)" }} />
           <div
             ref={cardRef}
             onPointerDown={(e) => e.stopPropagation()}
             style={{
-              position: "absolute", left: "10px", top: "37%",
-              width: "72%", maxWidth: "460px",
-              // Height follows the content — a short step stays a small card,
-              // a long one grows until it would reach the contact line, then
-              // scrolls inside itself.
-              maxHeight: "calc(100dvh - 37% - 76px)",
-              overflowY: "auto", pointerEvents: "auto",
-              // Near-transparent glass: an outline holding the content, with
-              // the background image and dental simulation showing straight
-              // through. A hair of blur keeps text legible over them without
-              // milking the panel into looking like a solid surface.
-              background: "rgba(255,255,255,0)",
-              backdropFilter: "blur(1px) saturate(112%)", WebkitBackdropFilter: "blur(1px) saturate(112%)",
-              border: "1px solid rgba(255,255,255,0.85)",
-              borderRadius: "20px",
-              boxShadow:
-                "0 24px 60px rgba(26,76,100,0.10), 0 8px 24px rgba(26,76,100,0.07), " +
-                "inset 0 1px 0 rgba(255,255,255,0.55), inset 0 -1px 0 rgba(255,255,255,0.10), " +
-                "inset 12px 0 30px rgba(255,255,255,0.05), inset -12px 0 30px rgba(120,190,210,0.03)",
-              padding: "30px 0 18px",
+              position: "relative", width: "100%", maxWidth: "420px",
+              maxHeight: "calc(100dvh - 120px)", overflowY: "auto",
+              borderRadius: "32px", background: NEU.surface,
+              boxShadow: "-8px -8px 20px rgba(255,255,255,0.7), 12px 12px 34px rgba(120,112,94,0.45)",
+              padding: "26px 18px 24px",
             }}
           >
-            {/* A luminous 1px edge, brighter toward the upper-left — light
-                catching the rim of the glass, not a glow. */}
-            <div style={{
-              position: "absolute", inset: 0, borderRadius: "inherit", pointerEvents: "none",
-              padding: "1.5px",
-              background: "linear-gradient(135deg, rgba(255,255,255,0.95), rgba(255,255,255,0.30) 40%, rgba(255,255,255,0.65) 100%)",
-              WebkitMask: "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
-              WebkitMaskComposite: "xor", maskComposite: "exclude",
-            }} />
-            <div className="journey-panel-shine" style={{ position: "absolute", inset: 0, borderRadius: "inherit", pointerEvents: "none", overflow: "hidden" }} />
             <button
               onClick={() => setExpandedStep(null)}
-              aria-label="Back to patient details"
-              style={{ position: "absolute", top: "12px", right: "14px", background: "none", border: "none", color: "#71818C", fontSize: "20px", cursor: "pointer", lineHeight: 1, zIndex: 2 }}
+              aria-label="Close"
+              style={{ position: "absolute", top: "16px", right: "16px", zIndex: 3, width: "34px", height: "34px", borderRadius: "50%", border: "none", cursor: "pointer", background: NEU.surface, boxShadow: NEU.upSm, display: "grid", placeItems: "center", color: NEU.navy2, fontSize: "19px", lineHeight: 1 }}
             >
               ×
             </button>
-            {/* position:relative lifts this above the edge-highlight and shine
-                overlays, which are positioned absolute with no z-index — the
-                content would otherwise paint underneath them and disappear. */}
-            <div style={{ position: "relative", padding: "0 14px" }}>
+            <div style={{ position: "relative" }}>
             {journeySteps.map((step, index) => {
               // Only the step the patient tapped renders here — the arc above
               // is the navigation now, and the sheet shows one step at a time.
@@ -2425,55 +2491,329 @@ export default function PatientJourney() {
         </div>
       )}
 
-      {/* ───── SETTINGS ───── */}
-      {showSettings && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 90, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
-          <div onClick={() => setShowSettings(false)} style={{ position: "absolute", inset: 0, background: "rgba(13,41,68,0.35)" }} />
+      {/* ───── APPOINTMENTS CALENDAR ───── */}
+      {showCalendar && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 95, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 18px" }}>
+          <div onClick={() => setShowCalendar(false)} style={{ position: "absolute", inset: 0, background: "rgba(30,44,58,0.34)" }} />
           <div style={{
-            position: "relative", width: "100%", maxWidth: "460px", margin: "0 12px 12px",
-            padding: "22px 20px 24px", borderRadius: "22px",
-            background: "rgba(255,255,255,0.94)", backdropFilter: "blur(18px)", WebkitBackdropFilter: "blur(18px)",
-            border: "1px solid rgba(255,255,255,0.9)", boxShadow: "0 24px 60px rgba(26,76,100,0.22)",
+            position: "relative", width: "100%", maxWidth: "420px", padding: "26px 20px 22px",
+            borderRadius: "32px", background: NEU.surface,
+            boxShadow: "-8px -8px 20px rgba(255,255,255,0.7), 12px 12px 34px rgba(120,112,94,0.45)",
           }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "18px" }}>
-              <p style={{ margin: 0, fontSize: "16px", fontWeight: "800", color: "#0D2945" }}>Settings</p>
-              <button onClick={() => setShowSettings(false)} aria-label="Close" style={{ background: "none", border: "none", color: "#71818C", fontSize: "22px", cursor: "pointer", lineHeight: 1 }}>×</button>
+            <button
+              onClick={() => setShowCalendar(false)}
+              aria-label="Close"
+              style={{ position: "absolute", top: "16px", right: "16px", width: "34px", height: "34px", borderRadius: "50%", border: "none", cursor: "pointer", background: NEU.surface, boxShadow: NEU.upSm, display: "grid", placeItems: "center", color: NEU.navy2, fontSize: "19px", lineHeight: 1 }}
+            >
+              ×
+            </button>
+            <p style={{ margin: "0 0 18px", fontSize: "20px", fontWeight: "800", letterSpacing: "-0.025em", color: NEU.navy }}>
+              {new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" })}
+            </p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "5px", marginBottom: "8px" }}>
+              {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
+                <span key={i} style={{ textAlign: "center", fontSize: "10px", fontWeight: "700", letterSpacing: "0.1em", color: NEU.slate2 }}>{d}</span>
+              ))}
             </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "5px" }}>
+              {(() => {
+                const now = new Date();
+                const first = new Date(now.getFullYear(), now.getMonth(), 1);
+                const days = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+                const cells = [];
+                for (let i = 0; i < first.getDay(); i++) cells.push(<span key={`b${i}`} />);
+                for (let d = 1; d <= days; d++) {
+                  const today = d === now.getDate();
+                  cells.push(
+                    <span key={d} style={{
+                      display: "grid", placeItems: "center", aspectRatio: "1", borderRadius: "11px",
+                      fontSize: "12.5px", fontWeight: "600", fontVariantNumeric: "tabular-nums",
+                      color: today ? "#fff" : NEU.navy2,
+                      background: today ? "linear-gradient(135deg, #CBA164, #B8893F)" : "transparent",
+                      boxShadow: today ? "-2px -2px 5px rgba(255,255,255,0.5), 3px 3px 8px rgba(150,110,46,0.4)" : "none",
+                    }}>{d}</span>
+                  );
+                }
+                return cells;
+              })()}
+            </div>
+            <p style={{ margin: "18px 2px 0", fontSize: "11.5px", lineHeight: "1.55", color: NEU.slate }}>
+              Your appointments will show up here once they&apos;re scheduled.
+            </p>
+          </div>
+        </div>
+      )}
 
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "14px", padding: "14px 4px" }}>
-              <div style={{ flex: 1 }}>
-                <p style={{ margin: "0 0 3px", fontSize: "14px", fontWeight: "700", color: "#0D2945" }}>Push Notifications</p>
-                <p style={{ margin: 0, fontSize: "12px", lineHeight: "1.5", color: "#71818C" }}>
-                  {notifPermission === "unsupported"
-                    ? "Available in the OrisAlign app — install it to turn this on."
-                    : notifPermission === "granted"
-                      ? "You'll be notified about updates to your treatment."
-                      : notifPermission === "denied"
-                        ? "Turned off in your phone's Settings. Tap to open it."
-                        : "Get notified about updates to your treatment."}
-                </p>
-              </div>
-              {notifPermission !== "unsupported" && (
+      {/* ───── MENU ───── */}
+      {showDrawer && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 100 }}>
+          <div onClick={() => { setShowDrawer(false); setDrawerView("root"); }} style={{ position: "absolute", inset: 0, background: "rgba(30,44,58,0.36)" }} />
+          <aside style={{
+            position: "absolute", top: 0, left: 0, bottom: 0, width: "296px", maxWidth: "86%",
+            display: "flex", flexDirection: "column", background: NEU.ivory,
+            boxShadow: "14px 0 40px -14px rgba(120,112,94,0.55)",
+          }}>
+            <div style={{ position: "relative", flex: "0 0 auto", padding: "62px 20px 20px" }}>
+              {drawerView !== "root" && (
                 <button
-                  onClick={handleToggleNotifications}
-                  role="switch"
-                  aria-checked={notifPermission === "granted"}
-                  aria-label="Toggle push notifications"
-                  style={{
-                    position: "relative", flexShrink: 0, width: "46px", height: "27px", borderRadius: "99px", border: "none", cursor: "pointer", padding: "3px",
-                    background: notifPermission === "granted" ? "linear-gradient(90deg, #168F83, #159E91)" : "#D4DEE3",
-                    transition: "background 0.2s ease",
-                  }}
+                  onClick={() => setDrawerView("root")}
+                  aria-label="Back"
+                  style={{ position: "absolute", top: "16px", left: "18px", width: "34px", height: "34px", borderRadius: "50%", border: "none", cursor: "pointer", background: NEU.surface, boxShadow: NEU.upSm, display: "grid", placeItems: "center" }}
                 >
-                  <span style={{
-                    display: "block", width: "21px", height: "21px", borderRadius: "50%", background: "#fff",
-                    boxShadow: "0 1px 3px rgba(0,0,0,0.25)", transform: notifPermission === "granted" ? "translateX(19px)" : "translateX(0)",
-                    transition: "transform 0.2s ease",
-                  }} />
+                  <svg viewBox="0 0 24 24" width="14" height="14" style={{ fill: "none", stroke: "#4E6274", strokeWidth: 2.2, strokeLinecap: "round", strokeLinejoin: "round" }}><path d="M15 18l-6-6 6-6" /></svg>
                 </button>
               )}
+              <button
+                onClick={() => { setShowDrawer(false); setDrawerView("root"); }}
+                aria-label="Close menu"
+                style={{ position: "absolute", top: "16px", right: "18px", width: "34px", height: "34px", borderRadius: "50%", border: "none", cursor: "pointer", background: NEU.surface, boxShadow: NEU.upSm, display: "grid", placeItems: "center", color: NEU.navy2, fontSize: "18px", lineHeight: 1 }}
+              >
+                ×
+              </button>
+              <p style={{ margin: 0, fontSize: "21px", fontWeight: "800", letterSpacing: "-0.025em", color: NEU.navy }}>
+                Hi, {patient.name || "there"}
+              </p>
+              <p style={{ margin: "5px 0 0", fontSize: "10.5px", fontWeight: "700", letterSpacing: "0.18em", textTransform: "uppercase", color: NEU.goldD }}>
+                {patientIdLabel}
+              </p>
             </div>
-          </div>
+
+            <div style={{ flex: 1, overflowY: "auto", padding: "4px 16px 18px" }}>
+              {drawerView === "root" && (
+                <div>
+                  {[
+                    { key: "info", title: "Info", sub: "Name, age, gender, address", icon: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/>' },
+                    { key: "callback", title: "Request a Callback", sub: "We'll ring you back", icon: '<path d="M22 16.9v3a2 2 0 01-2.2 2 19.8 19.8 0 01-8.6-3.1 19.5 19.5 0 01-6-6A19.8 19.8 0 012.1 4.2 2 2 0 014.1 2h3a2 2 0 012 1.7c.1.9.3 1.8.6 2.6a2 2 0 01-.5 2.1L8.1 9.5a16 16 0 006 6l1.1-1.1a2 2 0 012.1-.5c.8.3 1.7.5 2.6.6a2 2 0 011.7 2z"/>' },
+                    { key: "feedback", title: "Feedback", sub: "Tell us how it's going", icon: '<path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>' },
+                    { key: "refer", title: "Refer a Friend", sub: "Share OrisAlign with someone", icon: '<path d="M16 20v-1.5a3.5 3.5 0 00-3.5-3.5h-5A3.5 3.5 0 004 18.5V20"/><circle cx="10" cy="8" r="3.2"/><path d="M18 8.5v5M20.5 11h-5"/>' },
+                  ].map((item) => (
+                    <button
+                      key={item.key}
+                      onClick={() => { if (item.key === "info") openInfoForm(); else setDrawerView(item.key); }}
+                      style={NEU_ROW}
+                    >
+                      <span style={NEU_ROW_ICON}>
+                        <svg viewBox="0 0 24 24" width="17" height="17" style={{ fill: "none", stroke: NEU.gold, strokeWidth: 1.7, strokeLinecap: "round", strokeLinejoin: "round" }} dangerouslySetInnerHTML={{ __html: item.icon }} />
+                      </span>
+                      <span style={{ flex: 1, minWidth: 0, fontSize: "14px", fontWeight: "700" }}>
+                        {item.title}
+                        <small style={{ display: "block", marginTop: "2px", fontSize: "11.5px", fontWeight: "400", color: NEU.slate }}>{item.sub}</small>
+                      </span>
+                      <span style={{ width: "7px", height: "7px", flexShrink: 0, borderRight: `1.8px solid ${NEU.slate2}`, borderBottom: `1.8px solid ${NEU.slate2}`, transform: "rotate(-45deg)" }} />
+                    </button>
+                  ))}
+
+                  {/* Push notifications — the OS grant, toggled in place */}
+                  <div style={{ ...NEU_ROW, cursor: "default" }}>
+                    <span style={NEU_ROW_ICON}>
+                      <svg viewBox="0 0 24 24" width="17" height="17" style={{ fill: "none", stroke: NEU.gold, strokeWidth: 1.7, strokeLinecap: "round", strokeLinejoin: "round" }}>
+                        <path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 01-3.4 0" />
+                      </svg>
+                    </span>
+                    <span style={{ flex: 1, minWidth: 0, fontSize: "14px", fontWeight: "700" }}>
+                      Push Notifications
+                      <small style={{ display: "block", marginTop: "2px", fontSize: "11.5px", fontWeight: "400", color: NEU.slate }}>
+                        {notifPermission === "unsupported"
+                          ? "Available in the OrisAlign app."
+                          : notifPermission === "granted"
+                            ? "On — you'll hear about every step."
+                            : notifPermission === "denied"
+                              ? "Off. Tap to open phone settings."
+                              : "Get updates on every step."}
+                      </small>
+                    </span>
+                    {notifPermission !== "unsupported" && (
+                      <button
+                        onClick={handleToggleNotifications}
+                        role="switch"
+                        aria-checked={notifPermission === "granted"}
+                        aria-label="Toggle push notifications"
+                        style={{
+                          position: "relative", flexShrink: 0, width: "46px", height: "26px", borderRadius: "99px",
+                          border: "none", cursor: "pointer", padding: 0,
+                          background: notifPermission === "granted" ? "linear-gradient(135deg, #CBA164, #B8893F)" : NEU.surface2,
+                          boxShadow: NEU.insetSm, transition: "background 0.25s ease",
+                        }}
+                      >
+                        <span style={{
+                          position: "absolute", top: "3px", left: "3px", width: "20px", height: "20px", borderRadius: "50%",
+                          background: NEU.surface, boxShadow: NEU.upSm,
+                          transform: notifPermission === "granted" ? "translateX(20px)" : "translateX(0)",
+                          transition: "transform 0.25s cubic-bezier(.2,.8,.3,1)",
+                        }} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {drawerView === "info" && (
+                <div>
+                  <p style={NEU_VTITLE}>Your information</p>
+                  <div style={{ marginBottom: "13px" }}>
+                    <label style={NEU_LABEL} htmlFor="i-name">Full name</label>
+                    <input id="i-name" style={NEU_FIELD} value={infoForm.name} onChange={(e) => setInfoForm({ ...infoForm, name: e.target.value })} />
+                  </div>
+                  <div style={{ marginBottom: "13px" }}>
+                    <label style={NEU_LABEL} htmlFor="i-age">Age</label>
+                    <input id="i-age" type="number" min="1" max="120" style={NEU_FIELD} value={infoForm.age} onChange={(e) => setInfoForm({ ...infoForm, age: e.target.value })} />
+                  </div>
+                  <div style={{ marginBottom: "13px" }}>
+                    <label style={NEU_LABEL} htmlFor="i-sex">Gender</label>
+                    <select id="i-sex" style={NEU_FIELD} value={infoForm.sex} onChange={(e) => setInfoForm({ ...infoForm, sex: e.target.value })}>
+                      <option value="">Select</option>
+                      <option value="Female">Female</option>
+                      <option value="Male">Male</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  <div style={{ marginBottom: "13px" }}>
+                    <label style={NEU_LABEL} htmlFor="i-addr">Address</label>
+                    <textarea id="i-addr" rows={3} style={{ ...NEU_FIELD, resize: "none", lineHeight: "1.5" }} value={infoForm.address} onChange={(e) => setInfoForm({ ...infoForm, address: e.target.value })} />
+                  </div>
+                  <button onClick={saveInfoForm} disabled={infoSaving} style={{ ...NEU_PRIMARY, opacity: infoSaving ? 0.7 : 1 }}>
+                    {infoSaving ? "Saving..." : "Save Changes"}
+                  </button>
+                  {infoMsg && <p style={NEU_NOTE}>{infoMsg}</p>}
+                </div>
+              )}
+
+              {drawerView === "callback" && (
+                <div>
+                  {callbackSent ? (
+                    <div style={NEU_OK}>
+                      <span style={NEU_TICK}>✓</span>
+                      <p style={{ margin: "0 0 6px", fontSize: "17px", fontWeight: "800", color: NEU.navy }}>You&apos;ll be contacted soon</p>
+                      <p style={{ margin: 0, fontSize: "12.5px", lineHeight: "1.6", color: "#65788A" }}>
+                        Your request has reached the care team. Someone will call you on {patient.phone || "your number"}.
+                      </p>
+                    </div>
+                  ) : (
+                    <div>
+                      <p style={NEU_VTITLE}>Request a callback</p>
+                      <div style={{ marginBottom: "13px" }}>
+                        <label style={NEU_LABEL} htmlFor="i-why">What would you like to discuss?</label>
+                        <textarea
+                          id="i-why" rows={4}
+                          placeholder="e.g. My aligner feels tight and I want to check it's tracking correctly."
+                          style={{ ...NEU_FIELD, resize: "none", lineHeight: "1.5" }}
+                          value={callbackReason}
+                          onChange={(e) => setCallbackReason(e.target.value)}
+                        />
+                      </div>
+                      <button onClick={sendCallbackRequest} disabled={callbackSending} style={{ ...NEU_PRIMARY, opacity: callbackSending ? 0.7 : 1 }}>
+                        {callbackSending ? "Sending..." : "Request a Callback"}
+                      </button>
+                      <p style={NEU_NOTE}>Your request goes straight to the OrisAlign care team, along with your name and number.</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {drawerView === "feedback" && (
+                <div>
+                  {feedbackSent ? (
+                    <div style={NEU_OK}>
+                      <span style={NEU_TICK}>✓</span>
+                      <p style={{ margin: "0 0 6px", fontSize: "17px", fontWeight: "800", color: NEU.navy }}>Thank you</p>
+                      <p style={{ margin: 0, fontSize: "12.5px", lineHeight: "1.6", color: "#65788A" }}>
+                        Your feedback has reached the care team.
+                      </p>
+                    </div>
+                  ) : (
+                    <div>
+                      <p style={NEU_VTITLE}>How is it going?</p>
+                      <div style={{ marginBottom: "13px" }}>
+                        <label style={NEU_LABEL}>Your rating</label>
+                        <div style={{ display: "flex", gap: "8px" }}>
+                          {[1, 2, 3, 4, 5].map((n) => (
+                            <button
+                              key={n}
+                              onClick={() => setFeedbackRating(n)}
+                              aria-label={`${n} star${n > 1 ? "s" : ""}`}
+                              style={{
+                                width: "40px", height: "40px", borderRadius: "14px", border: "none", cursor: "pointer",
+                                fontSize: "19px", lineHeight: 1, background: NEU.surface, boxShadow: NEU.upSm,
+                                color: n <= feedbackRating ? NEU.gold : "#CFCBBC",
+                              }}
+                            >
+                              ★
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div style={{ marginBottom: "13px" }}>
+                        <label style={NEU_LABEL} htmlFor="i-fb">What would you like us to know?</label>
+                        <textarea
+                          id="i-fb" rows={4}
+                          placeholder="Comfort, fit, the app, how the clinic visits went — anything."
+                          style={{ ...NEU_FIELD, resize: "none", lineHeight: "1.5" }}
+                          value={feedbackComment}
+                          onChange={(e) => setFeedbackComment(e.target.value)}
+                        />
+                      </div>
+                      <button onClick={sendFeedback} disabled={feedbackSending} style={{ ...NEU_PRIMARY, opacity: feedbackSending ? 0.7 : 1 }}>
+                        {feedbackSending ? "Sending..." : "Send Feedback"}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {drawerView === "refer" && (
+                <div>
+                  {referSent ? (
+                    <div style={NEU_OK}>
+                      <span style={NEU_TICK}>✓</span>
+                      <p style={{ margin: "0 0 6px", fontSize: "17px", fontWeight: "800", color: NEU.navy }}>Referral sent</p>
+                      <p style={{ margin: 0, fontSize: "12.5px", lineHeight: "1.6", color: "#65788A" }}>
+                        Our team will reach out to them directly.
+                      </p>
+                    </div>
+                  ) : (
+                    <div>
+                      <p style={NEU_VTITLE}>Refer a friend</p>
+                      <p style={{ margin: "0 2px 14px", fontSize: "11.5px", lineHeight: "1.55", color: NEU.slate }}>
+                        Pass on someone who might want a consultation. We&apos;ll reach out to them — they won&apos;t be messaged automatically.
+                      </p>
+                      <div style={{ marginBottom: "13px" }}>
+                        <label style={NEU_LABEL} htmlFor="i-rname">Their name</label>
+                        <input id="i-rname" style={NEU_FIELD} placeholder="e.g. Ananya" value={referName} onChange={(e) => setReferName(e.target.value)} />
+                      </div>
+                      <div style={{ marginBottom: "13px" }}>
+                        <label style={NEU_LABEL} htmlFor="i-rphone">Their phone number</label>
+                        <input id="i-rphone" type="tel" style={NEU_FIELD} placeholder="+91" value={referPhone} onChange={(e) => setReferPhone(e.target.value)} />
+                      </div>
+                      <button onClick={sendReferral} disabled={referSending} style={{ ...NEU_PRIMARY, opacity: referSending ? 0.7 : 1 }}>
+                        {referSending ? "Sending..." : "Send Referral"}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div style={{ flex: "0 0 auto", padding: "14px 16px 18px" }}>
+              <button
+                onClick={() => {
+                  try { window.localStorage.removeItem("orisalign_patient_id"); } catch {}
+                  try { document.cookie = "orisalign_patient_id=;path=/;max-age=0;samesite=lax"; } catch {}
+                  window.location.href = "/login?logout=1";
+                }}
+                style={{
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: "9px", width: "100%",
+                  padding: "14px", borderRadius: "18px", border: "none", cursor: "pointer",
+                  background: NEU.surface, boxShadow: NEU.upSm, color: "#A0603F",
+                  fontFamily: "inherit", fontWeight: "700", fontSize: "13.5px",
+                }}
+              >
+                <svg viewBox="0 0 24 24" width="15" height="15" style={{ fill: "none", stroke: "#A0603F", strokeWidth: 1.9, strokeLinecap: "round", strokeLinejoin: "round" }}>
+                  <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" /><path d="M16 17l5-5-5-5M21 12H9" />
+                </svg>
+                Log Out
+              </button>
+            </div>
+          </aside>
         </div>
       )}
     </div>
