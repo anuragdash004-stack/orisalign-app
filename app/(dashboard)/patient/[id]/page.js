@@ -1213,10 +1213,10 @@ export default function PatientJourney() {
           </button>
         </div>
 
-        <img src="/logo-trimmed.webp" alt="OrisAlign" style={{ position: "absolute", top: "12px", left: "50%", transform: "translateX(-50%)", width: "148px", zIndex: 5, mixBlendMode: "multiply", pointerEvents: "none" }} />
+        <img src="/logo-mark.webp" alt="OrisAlign" style={{ position: "absolute", top: "16px", left: "50%", transform: "translateX(-50%)", width: "132px", zIndex: 5, mixBlendMode: "multiply", pointerEvents: "none" }} />
 
         {/* The rail */}
-        <div style={{ flex: "0 0 auto", margin: "52px 0 0" }}>
+        <div style={{ flex: "0 0 auto", margin: "26px 0 0" }}>
           <div style={{ position: "relative", zIndex: 3, isolation: "isolate", height: "302px" }}>
             {journeySteps.map((step, i) => {
               const rel = i - arcOffset;
