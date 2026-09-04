@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "971553886492",
+    "project_id": "orisalign-126c9",
+    "storage_bucket": "orisalign-126c9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:971553886492:android:6078b66b82b0375177aad9",
+        "android_client_info": {
+          "package_name": "com.orisalign.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCBy6s3EHyVdEH8WQ5hf9vZ2NLgVdLroLA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

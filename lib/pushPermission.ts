@@ -1,15 +1,6 @@
 // Native notification permission — the OS-level "allow OrisAlign to send you
-// notifications" grant, not the actual sending of push notifications. That
-// second half needs Firebase Cloud Messaging configured (google-services.json
-// + a service-account key), which isn't in place yet; this file exists so the
-// permission prompt and the in-app settings toggle work today, and the send
-// side can be added later without touching this.
-//
-// Deliberately calls only requestPermissions()/checkPermissions() — never
-// register(). register() is what initializes Firebase Cloud Messaging on
-// Android, and without google-services.json present that would throw. The
-// permission APIs are plain Android runtime-permission calls and don't touch
-// Firebase at all.
+// notifications" grant — plus registerForPush() below, which turns that
+// permission into an actual FCM device token the server can send to.
 import { Capacitor } from "@capacitor/core";
 
 const ONBOARDING_SEEN_KEY = "orisalign_notif_prompt_seen";
@@ -43,6 +34,33 @@ export async function requestNotifPermission(): Promise<NotifPermissionState> {
     return receive === "granted" || receive === "denied" ? receive : "prompt";
   } catch {
     return "unsupported";
+  }
+}
+
+// Turns a granted permission into an actual FCM device token, so the server
+// has somewhere to send a push. Safe to call every time the app opens with
+// permission already granted — it's how a stale/rotated token gets refreshed,
+// and register() itself is a no-op if already registered.
+export async function registerForPush(): Promise<string | null> {
+  if (!isNativeApp()) return null;
+  try {
+    const { PushNotifications } = await import("@capacitor/push-notifications");
+    return await new Promise((resolve) => {
+      let settled = false;
+      const finish = (value: string | null) => {
+        if (settled) return;
+        settled = true;
+        resolve(value);
+      };
+      PushNotifications.addListener("registration", (token) => finish(token.value));
+      PushNotifications.addListener("registrationError", () => finish(null));
+      PushNotifications.register();
+      // Don't hang the caller forever if Google Play Services is unavailable
+      // and neither event ever fires.
+      setTimeout(() => finish(null), 10000);
+    });
+  } catch {
+    return null;
   }
 }
 

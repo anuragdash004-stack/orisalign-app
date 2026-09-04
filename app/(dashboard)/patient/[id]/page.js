@@ -9,7 +9,7 @@ import { INVESTIGATION_TYPES, MAX_INVESTIGATION_FILE_SIZE, isInvestigationDone }
 import { isNewModelAppointment } from "@/lib/appointmentModel";
 import {
   isNativeApp, getNotifPermission, requestNotifPermission, openAppNotificationSettings,
-  hasSeenNotifOnboarding, markNotifOnboardingSeen,
+  hasSeenNotifOnboarding, markNotifOnboardingSeen, registerForPush,
 } from "@/lib/pushPermission";
 
 const supabase = getSupabaseClient();
@@ -243,6 +243,25 @@ export default function PatientJourney() {
   const [showNotifOnboarding, setShowNotifOnboarding] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
 
+  // Turns a granted permission into an actual FCM token and saves it against
+  // this appointment — safe to call repeatedly (a stale/rotated token just
+  // overwrites the saved one), so every path that lands on "granted" below
+  // calls it.
+  const registerPushToken = async () => {
+    const token = await registerForPush();
+    if (!token) return;
+    try {
+      await fetch("/api/push/register-token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ appointmentId: id, token }),
+      });
+    } catch {
+      // best-effort — a failed save here just means this device won't get
+      // pushes until the next time this runs (app reopen, toggle, etc.)
+    }
+  };
+
   useEffect(() => {
     if (!isNativeApp()) return;
     (async () => {
@@ -252,6 +271,7 @@ export default function PatientJourney() {
       // hasn't been asked yet. After that the toggle in Settings is the only
       // way to change it — Android refuses a second in-app prompt once denied.
       if (state === "prompt" && !hasSeenNotifOnboarding()) setShowNotifOnboarding(true);
+      else if (state === "granted") registerPushToken();
     })();
   }, []);
 
@@ -260,6 +280,7 @@ export default function PatientJourney() {
     const state = await requestNotifPermission();
     setNotifPermission(state);
     setShowNotifOnboarding(false);
+    if (state === "granted") registerPushToken();
   };
   const handleDismissNotifOnboarding = () => {
     markNotifOnboardingSeen();
@@ -269,6 +290,7 @@ export default function PatientJourney() {
     if (notifPermission === "denied") { await openAppNotificationSettings(); return; }
     const state = await requestNotifPermission();
     setNotifPermission(state);
+    if (state === "granted") registerPushToken();
   };
   // Journey arc — how far the rail of step icons has been rotated, measured
   // in steps (fractional while a drag is in progress). See ARC_* below.

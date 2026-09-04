@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js"
 import { sendWhatsApp } from "./notifications/aisensy"
+import { sendPushForStep } from "./pushSend"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -497,6 +498,15 @@ export async function sendStepNotification(params: SendStepNotificationParams): 
     } catch {
       // best-effort — never let a WhatsApp/logging failure fail the caller
     }
+  }
+
+  // Push fires alongside email/WhatsApp, same best-effort, never-block
+  // contract — a patient who's never enabled notifications (no push_tokens
+  // on record) or a Firebase error should never fail the caller.
+  try {
+    await sendPushForStep(appointmentId, mergedContent.headline, mergedContent.body, { stepKey })
+  } catch {
+    // best-effort
   }
 
   if (res && !res.ok) {
