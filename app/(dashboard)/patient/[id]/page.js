@@ -135,6 +135,29 @@ const NEU_NOTE = { margin: "12px 2px 0", fontSize: "11.5px", lineHeight: "1.55",
 const NEU_OK = { padding: "22px 16px", borderRadius: "22px", background: NEU.surface, boxShadow: NEU.upSm, textAlign: "center" };
 const NEU_TICK = { display: "grid", placeItems: "center", width: "44px", height: "44px", margin: "0 auto 12px", borderRadius: "50%", fontSize: "20px", color: "#fff", background: "linear-gradient(135deg, #CBA164, #B8893F)" };
 
+const NEU_INFO_CARD = { display: "flex", alignItems: "center", gap: "14px", width: "100%", padding: "13px 15px", borderRadius: "22px", border: "none", background: NEU.surface, boxShadow: NEU.up, textAlign: "left", font: "inherit", color: NEU.navy, cursor: "pointer" };
+const NEU_INFO_ICON = { width: "44px", height: "44px", borderRadius: "15px", display: "grid", placeItems: "center", flexShrink: 0, background: NEU.surface, boxShadow: NEU.upSm };
+const NEU_INFO_LABEL = { display: "block", marginBottom: "3px", fontSize: "9.5px", fontWeight: "700", letterSpacing: "0.2em", textTransform: "uppercase", color: NEU.slate2 };
+const NEU_INFO_VALUE = { display: "block", fontSize: "15px", fontWeight: "800", letterSpacing: "-0.01em", color: NEU.navy };
+const NEU_INFO_SUB = { display: "block", marginTop: "2px", fontSize: "11.5px", lineHeight: "1.45", color: NEU.slate };
+const NEU_INFO_CHEV = { width: "7px", height: "7px", flexShrink: 0, borderRight: "1.8px solid " + NEU.slate2, borderBottom: "1.8px solid " + NEU.slate2, transform: "rotate(-45deg)" };
+
+// A kit has to be in the patient's hands before the first set it contains is
+// due to go in — this is how many days ahead the order is prompted.
+const KIT_LEAD_DAYS = 10;
+
+function formatShortDay(value) {
+  const d = value instanceof Date ? new Date(value) : new Date(String(value) + "T00:00:00");
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+}
+
+function formatDayLabel(value) {
+  const d = value instanceof Date ? new Date(value) : new Date(String(value) + "T00:00:00");
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
+
 // Distance between card centres on the rail, in px.
 const CARD_SPACING = 178;
 
@@ -1027,6 +1050,61 @@ export default function PatientJourney() {
     }
   };
 
+  // ── Wear schedule ──────────────────────────────────────────────────
+  // Set k goes in on smile_start_date + (k-1) x daysPerSet. Everything below
+  // is derived from the Smile Correction setup, so it stays in step with what
+  // the clinic actually entered rather than a second source of truth.
+  const wearPlan = (() => {
+    const js = patient.journey_steps || {};
+    const total = Number(js.smile_sets_count) || 0;
+    if (!js.smile_start_date || !total) return null;
+    const start = new Date(String(js.smile_start_date) + "T00:00:00");
+    if (Number.isNaN(start.getTime())) return null;
+    const daysPerSet = Number(js.smile_days_per_set) || Number(patient.aligner_days_per_set) || 15;
+    const setStart = (n) => {
+      const d = new Date(start);
+      d.setDate(d.getDate() + (n - 1) * daysPerSet);
+      return d;
+    };
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    // Whole set-lengths elapsed since the first set went in; negative before
+    // the schedule starts, which clamps to set 1.
+    const elapsed = Math.floor((today.getTime() - start.getTime()) / (daysPerSet * 86400000));
+    const currentSet = Math.min(total, Math.max(1, elapsed + 1));
+    const nextSet = currentSet < total ? currentSet + 1 : null;
+    return { daysPerSet, total, setStart, currentSet, nextSet };
+  })();
+
+  // ── Next kit to order ──────────────────────────────────────────────
+  // The first package the payments haven't covered yet, and the date its
+  // earliest set is due — the order has to be placed KIT_LEAD_DAYS before it.
+  const nextKit = (() => {
+    if (!wearPlan || !discountedMonthlyPlan) return null;
+    const paid = Number(patient.amount_paid) || 0;
+    const pending = discountedMonthlyPlan.months.find((m) => paid < m.discountedCumulative);
+    if (!pending) return null;
+    const sets = [...(pending.upper || []), ...(pending.lower || [])]
+      .map(Number)
+      .filter((n) => Number.isFinite(n) && n > 0);
+    if (!sets.length) return null;
+    const firstSet = Math.min(...sets);
+    const wearFrom = wearPlan.setStart(firstSet);
+    const orderBy = new Date(wearFrom);
+    orderBy.setDate(orderBy.getDate() - KIT_LEAD_DAYS);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return {
+      num: pending.num,
+      slots: monthSlotLabels(pending.upper || [], pending.lower || []).join(", "),
+      wearFrom,
+      orderBy,
+      overdue: orderBy.getTime() < today.getTime(),
+    };
+  })();
+
+  const followupAt = patient.journey_steps?.followup_appointment_at || null;
+
   return (
     <div style={{ position: "relative", minHeight: "100vh", fontFamily: "'Inter', system-ui, sans-serif", colorScheme: "light", background: NEU.ivory }}>
 
@@ -1100,7 +1178,7 @@ export default function PatientJourney() {
         <img src="/logo.png" alt="OrisAlign" style={{ position: "absolute", top: "18px", left: "50%", transform: "translateX(-50%)", width: "122px", zIndex: 5, mixBlendMode: "multiply", pointerEvents: "none" }} />
 
         {/* Fifteen steps, one dot each */}
-        <div style={{ position: "relative", zIndex: 5, flex: "0 0 auto", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", padding: "58px 20px 0" }}>
+        <div style={{ position: "relative", zIndex: 5, flex: "0 0 auto", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", padding: "52px 20px 0" }}>
           {journeySteps.map((s, i) => {
             const c = Math.max(0, Math.min(journeySteps.length - 1, Math.round(arcOffset)));
             const on = i === c;
@@ -1116,8 +1194,8 @@ export default function PatientJourney() {
         </div>
 
         {/* The rail */}
-        <div style={{ flex: "0 0 auto", margin: "34px 0 auto" }}>
-          <div style={{ position: "relative", zIndex: 3, isolation: "isolate", height: "300px" }}>
+        <div style={{ flex: "0 0 auto", margin: "22px 0 0" }}>
+          <div style={{ position: "relative", zIndex: 3, isolation: "isolate", height: "288px" }}>
             {journeySteps.map((step, i) => {
               const rel = i - arcOffset;
               const dist = Math.abs(rel);
@@ -1213,6 +1291,71 @@ export default function PatientJourney() {
             })}
           </div>
         </div>
+
+        {/* What's next — only the rows that actually apply */}
+        {(followupAt || wearPlan?.nextSet || nextKit) && (
+          <div style={{ position: "relative", zIndex: 4, display: "flex", flexDirection: "column", gap: "9px", margin: "18px 20px auto" }}>
+            {followupAt && (
+              <button onClick={() => setShowCalendar(true)} style={NEU_INFO_CARD}>
+                <span style={NEU_INFO_ICON}>
+                  <svg viewBox="0 0 24 24" width="20" height="20" style={{ fill: "none", stroke: NEU.gold, strokeWidth: 1.7, strokeLinecap: "round", strokeLinejoin: "round" }}>
+                    <rect x="3.5" y="5" width="17" height="15.5" rx="3.5" /><path d="M3.5 10h17M8 3v4M16 3v4" />
+                  </svg>
+                </span>
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={NEU_INFO_LABEL}>Next appointment</span>
+                  <span style={NEU_INFO_VALUE}>{formatDayLabel(followupAt)}</span>
+                  <span style={NEU_INFO_SUB}>Follow-up consultation</span>
+                </span>
+                <span style={NEU_INFO_CHEV} />
+              </button>
+            )}
+
+            {wearPlan?.nextSet && (
+              <button
+                onClick={() => { if (steps.smile_correction) setExpandedStep("smile_correction"); }}
+                style={NEU_INFO_CARD}
+              >
+                <span style={NEU_INFO_ICON}>
+                  <svg viewBox="0 0 24 24" width="20" height="20" style={{ fill: "none", stroke: NEU.gold, strokeWidth: 1.7, strokeLinecap: "round", strokeLinejoin: "round" }}>
+                    <path d="M20 7l-8-4-8 4 8 4 8-4z" /><path d="M4 7v10l8 4 8-4V7" />
+                  </svg>
+                </span>
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={NEU_INFO_LABEL}>Next set</span>
+                  <span style={NEU_INFO_VALUE}>Change to Set {wearPlan.nextSet}</span>
+                  <span style={NEU_INFO_SUB}>
+                    On {formatDayLabel(wearPlan.setStart(wearPlan.nextSet))} &middot; you&apos;re on Set {wearPlan.currentSet} of {wearPlan.total}
+                  </span>
+                </span>
+                <span style={NEU_INFO_CHEV} />
+              </button>
+            )}
+
+            {nextKit && (
+              <button
+                onClick={() => setExpandedStep(isNewModel ? "aligner_sets" : "manufacturing")}
+                style={NEU_INFO_CARD}
+              >
+                <span style={NEU_INFO_ICON}>
+                  <svg viewBox="0 0 24 24" width="20" height="20" style={{ fill: "none", stroke: nextKit.overdue ? "#A0603F" : NEU.gold, strokeWidth: 1.7, strokeLinecap: "round", strokeLinejoin: "round" }}>
+                    <path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z" /><circle cx="7" cy="18" r="1.6" /><circle cx="17.5" cy="18" r="1.6" />
+                  </svg>
+                </span>
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={NEU_INFO_LABEL}>Next kit to order</span>
+                  <span style={{ ...NEU_INFO_VALUE, color: nextKit.overdue ? "#A0603F" : NEU.navy }}>
+                    {nextKit.overdue ? "Order now" : "Order by " + formatDayLabel(nextKit.orderBy)}
+                  </span>
+                  <span style={NEU_INFO_SUB}>
+                    Package {nextKit.num}{nextKit.slots ? " · " + nextKit.slots : ""} &middot; in wear {formatShortDay(nextKit.wearFrom)}
+                  </span>
+                </span>
+                <span style={NEU_INFO_CHEV} />
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Ask us */}
         <a
