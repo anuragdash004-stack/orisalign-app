@@ -9,6 +9,7 @@ import { sendWhatsApp } from "./notifications/aisensy";
 import { sendStepNotification } from "./notifyStep";
 import { applyCouponDiscount, alignerRangeLabel, monthSlotLabels, FINAL_PLAN_FEE, PROVISIONAL_PLAN_FEE, provisionalPaymentBaseline, PLAN_CONFIGS, type MonthlyPlan, type PlanKey, type ProvisionalPaymentChoice } from "./monthlyPlan";
 import { isNewModelAppointment } from "./appointmentModel";
+import { qualifyReferralOnPayment } from "./referrals";
 
 export type PaymentType = "down_payment" | "pending" | "full" | "others";
 
@@ -357,6 +358,11 @@ export async function recordPaymentReceived(params: RecordPaymentParams): Promis
       // has already been committed above; admin can add a batch manually.
     }
   }
+
+  // If this patient came in on someone's referral code, paying for a real
+  // aligner package is what unlocks the referrer's ₹500. Never throws — the
+  // payment is already committed and must not fail on bookkeeping.
+  await qualifyReferralOnPayment(supabase, appointmentId, newTotalPaid);
 
   await logAuditEntry({
     appointmentId,

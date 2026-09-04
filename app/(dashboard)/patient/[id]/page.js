@@ -333,6 +333,9 @@ export default function PatientJourney() {
   const [referPhone, setReferPhone] = useState("");
   const [referSending, setReferSending] = useState(false);
   const [referSent, setReferSent] = useState(false);
+  const [referral, setReferral] = useState(null); // { code, shared, qualified, earned, cap, reward }
+  const [referralLoading, setReferralLoading] = useState(false);
+  const [referralCopied, setReferralCopied] = useState(false);
 
   // Turns a granted permission into an actual FCM token and saves it against
   // this appointment — safe to call repeatedly (a stale/rotated token just
@@ -454,6 +457,36 @@ export default function PatientJourney() {
       alert("Network error. Please try again.");
     } finally {
       setFeedbackSending(false);
+    }
+  };
+
+  // Minted on the server the first time a patient opens this screen.
+  const loadReferral = async () => {
+    if (referral || referralLoading) return;
+    setReferralLoading(true);
+    try {
+      const res = await fetch("/api/referral", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ appointmentId: id, action: "code" }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (res.ok && json.code) setReferral(json);
+    } catch {
+      // leave it unloaded; reopening the view tries again
+    } finally {
+      setReferralLoading(false);
+    }
+  };
+
+  const copyReferralCode = async () => {
+    if (!referral?.code) return;
+    try {
+      await navigator.clipboard.writeText(referral.code);
+      setReferralCopied(true);
+      setTimeout(() => setReferralCopied(false), 2000);
+    } catch {
+      // clipboard blocked — the code is on screen to read off anyway
     }
   };
 
@@ -651,7 +684,34 @@ export default function PatientJourney() {
         .single();
 
       if (error || !data) {
-        setCouponMessage("No valid coupon found with this code.");
+        // Not a coupon — it may be another patient's referral code. The server
+        // validates that (self-referral, already redeemed, already paid) and
+        // applies it, so those rules can't be worked around from here.
+        try {
+          const res = await fetch("/api/referral", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ appointmentId: id, action: "redeem", code: couponInput.trim().toUpperCase() }),
+          });
+          const json = await res.json().catch(() => ({}));
+          if (res.ok && json.success) {
+            const { data: fresh } = await supabase
+              .from("appointments_booking")
+              .select("payment_data")
+              .eq("id", id)
+              .single();
+            const updated = fresh?.payment_data?.applied_coupons || [];
+            setAppliedCoupons(updated);
+            setPatient((prev) => prev && { ...prev, payment_data: fresh?.payment_data || prev.payment_data });
+            setCouponMessage("✓ Referral code applied! Discount: " + fmt(json.discount));
+            setCouponInput("");
+            setApplyingCoupon(false);
+            return;
+          }
+          setCouponMessage(json.error || "No valid coupon found with this code.");
+        } catch {
+          setCouponMessage("No valid coupon found with this code.");
+        }
         setApplyingCoupon(false);
         return;
       }
@@ -2737,7 +2797,11 @@ export default function PatientJourney() {
                   ].map((item) => (
                     <button
                       key={item.key}
-                      onClick={() => { if (item.key === "info") openInfoForm(); else setDrawerView(item.key); }}
+                      onClick={() => {
+                        if (item.key === "info") { openInfoForm(); return; }
+                        if (item.key === "refer") loadReferral();
+                        setDrawerView(item.key);
+                      }}
                       style={NEU_ROW}
                     >
                       <span style={NEU_ROW_ICON}>
@@ -2922,7 +2986,30 @@ export default function PatientJourney() {
                     <div>
                       <p style={NEU_VTITLE}>Refer a friend</p>
                       <p style={{ margin: "0 2px 14px", fontSize: "11.5px", lineHeight: "1.55", color: NEU.slate }}>
-                        Pass on someone who might want a consultation. We&apos;ll reach out to them — they won&apos;t be messaged automatically.
+                        Share your code. When they order their first aligner package with it, they get ₹{referral?.reward || 500} off — and so do you, on your plan.
+                      </p>
+
+                      <div style={{ padding: "16px", borderRadius: "20px", background: NEU.surface2, boxShadow: NEU.insetSm, textAlign: "center", marginBottom: "12px" }}>
+                        <span style={{ ...NEU_LABEL, marginBottom: "8px" }}>Your code</span>
+                        <span style={{ display: "block", fontSize: "23px", fontWeight: "800", letterSpacing: "0.14em", color: NEU.navy }}>
+                          {referral?.code || (referralLoading ? "…" : "—")}
+                        </span>
+                      </div>
+
+                      <button onClick={copyReferralCode} disabled={!referral?.code} style={{ ...NEU_PRIMARY, opacity: referral?.code ? 1 : 0.6, marginBottom: "10px" }}>
+                        {referralCopied ? "Copied" : "Copy Code"}
+                      </button>
+
+                      {referral && (
+                        <p style={{ margin: "0 2px 16px", fontSize: "11.5px", lineHeight: "1.55", color: NEU.slate }}>
+                          {referral.qualified} of {referral.cap} rewards earned
+                          {referral.earned > 0 ? " · ₹" + referral.earned + " credited to your plan" : ""}
+                          {referral.shared > referral.qualified ? " · " + (referral.shared - referral.qualified) + " waiting on their first package" : ""}
+                        </p>
+                      )}
+
+                      <p style={{ margin: "0 2px 12px", fontSize: "10.5px", fontWeight: "700", letterSpacing: "0.14em", textTransform: "uppercase", color: NEU.slate2 }}>
+                        Or let us reach out
                       </p>
                       <div style={{ marginBottom: "13px" }}>
                         <label style={NEU_LABEL} htmlFor="i-rname">Their name</label>
