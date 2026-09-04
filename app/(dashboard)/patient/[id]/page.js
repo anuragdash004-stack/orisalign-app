@@ -319,6 +319,11 @@ export default function PatientJourney() {
   const [showDrawer, setShowDrawer] = useState(false);
   const [drawerView, setDrawerView] = useState("root");
   const [showCalendar, setShowCalendar] = useState(false);
+  // Android can't have its notification permission revoked from inside the
+  // app, so "off" is our own per-device switch: the token is dropped and not
+  // re-registered until the patient turns it back on.
+  const [pushOff, setPushOff] = useState(false);
+  const [showDisableConfirm, setShowDisableConfirm] = useState(false);
   const [infoForm, setInfoForm] = useState({ name: "", age: "", sex: "", address: "" });
   const [infoSaving, setInfoSaving] = useState(false);
   const [infoMsg, setInfoMsg] = useState("");
@@ -344,6 +349,7 @@ export default function PatientJourney() {
   const registerPushToken = async () => {
     const token = await registerForPush();
     if (!token) return;
+    try { window.localStorage.setItem("orisalign_push_token", token); } catch {}
     try {
       await fetch("/api/push/register-token", {
         method: "POST",
@@ -357,6 +363,9 @@ export default function PatientJourney() {
   };
 
   useEffect(() => {
+    let off = false;
+    try { off = window.localStorage.getItem("orisalign_push_off") === "1"; } catch {}
+    setPushOff(off);
     if (!isNativeApp()) return;
     (async () => {
       const state = await getNotifPermission();
@@ -365,7 +374,7 @@ export default function PatientJourney() {
       // hasn't been asked yet. After that the toggle in Settings is the only
       // way to change it — Android refuses a second in-app prompt once denied.
       if (state === "prompt" && !hasSeenNotifOnboarding()) setShowNotifOnboarding(true);
-      else if (state === "granted") registerPushToken();
+      else if (state === "granted" && !off) registerPushToken();
     })();
   }, []);
 
@@ -380,6 +389,35 @@ export default function PatientJourney() {
     markNotifOnboardingSeen();
     setShowNotifOnboarding(false);
   };
+  // Switching on clears our own flag first, then makes sure the OS has
+  // actually granted permission before re-registering the device.
+  const enableNotifications = async () => {
+    try { window.localStorage.removeItem("orisalign_push_off"); } catch {}
+    setPushOff(false);
+    if (notifPermission === "denied") { await openAppNotificationSettings(); return; }
+    const state = notifPermission === "granted" ? "granted" : await requestNotifPermission();
+    setNotifPermission(state);
+    if (state === "granted") registerPushToken();
+  };
+
+  const disableNotifications = async () => {
+    setShowDisableConfirm(false);
+    try { window.localStorage.setItem("orisalign_push_off", "1"); } catch {}
+    setPushOff(true);
+    let token = null;
+    try { token = window.localStorage.getItem("orisalign_push_token"); } catch {}
+    if (!token) return;
+    try {
+      await fetch("/api/push/register-token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ appointmentId: id, token, action: "remove" }),
+      });
+    } catch {
+      // the local flag already stopped this device asking for more
+    }
+  };
+
   const handleToggleNotifications = async () => {
     if (notifPermission === "denied") { await openAppNotificationSettings(); return; }
     const state = await requestNotifPermission();
@@ -789,6 +827,9 @@ export default function PatientJourney() {
   const isNewModel = isNewModelAppointment(patient);
   const journeySteps = isNewModel ? NEW_JOURNEY_STEPS : LEGACY_JOURNEY_STEPS;
   // The step actually in progress: the first one not yet marked done.
+  // On means the OS granted it and the patient hasn't switched it off here.
+  const notifOn = notifPermission === "granted" && !pushOff;
+
   const currentStepIndex = (() => {
     const idx = journeySteps.findIndex((s) => !steps[s.key]);
     return idx === -1 ? journeySteps.length - 1 : idx;
@@ -2736,6 +2777,47 @@ export default function PatientJourney() {
         </div>
       )}
 
+      {/* Turning notifications off is a real setback for the patient, so it
+          asks first. Android won't let an app revoke its own OS permission,
+          so "off" means this device stops being sent to — its token is
+          dropped and not re-registered until they switch it back on. */}
+      {showDisableConfirm && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 120, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 22px" }}>
+          <div onClick={() => setShowDisableConfirm(false)} style={{ position: "absolute", inset: 0, background: "rgba(30,44,58,0.4)" }} />
+          <div style={{
+            position: "relative", width: "100%", maxWidth: "380px", padding: "26px 22px 22px",
+            borderRadius: "30px", background: NEU.surface,
+            boxShadow: "-8px -8px 20px rgba(255,255,255,0.7), 12px 12px 34px rgba(120,112,94,0.45)",
+          }}>
+            <div style={{ width: "48px", height: "48px", borderRadius: "16px", marginBottom: "14px", display: "grid", placeItems: "center", background: NEU.surface, boxShadow: NEU.upSm }}>
+              <svg viewBox="0 0 24 24" width="22" height="22" style={{ fill: "none", stroke: "#A0603F", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round" }}>
+                <path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 01-3.4 0" /><path d="M3 3l18 18" />
+              </svg>
+            </div>
+            <p style={{ margin: "0 0 8px", fontSize: "18px", fontWeight: "800", letterSpacing: "-0.02em", color: NEU.navy }}>
+              Turn off notifications?
+            </p>
+            <p style={{ margin: "0 0 20px", fontSize: "13.5px", lineHeight: "1.6", color: NEU.slate }}>
+              Disabling notifications might affect the progress of your treatment, since updates about your aligners will reach you late. Are you sure you want to disable them?
+            </p>
+            <div style={{ display: "flex", gap: "10px" }}>
+              <button
+                onClick={() => setShowDisableConfirm(false)}
+                style={{ flex: 1, padding: "14px", borderRadius: "16px", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: "700", fontSize: "13.5px", background: NEU.surface, boxShadow: NEU.upSm, color: NEU.navy }}
+              >
+                No, keep them on
+              </button>
+              <button
+                onClick={disableNotifications}
+                style={{ flex: "0 0 auto", padding: "14px 22px", borderRadius: "16px", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: "700", fontSize: "13.5px", background: NEU.surface2, boxShadow: NEU.insetSm, color: "#A0603F" }}
+              >
+                Yes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ───── MENU ───── */}
       {showDrawer && (
         <div style={{ position: "fixed", inset: 0, zIndex: 100 }}>
@@ -2775,71 +2857,73 @@ export default function PatientJourney() {
                 <div>
                   {[
                     { key: "info", title: "Info", sub: "Name, age, gender, address", icon: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/>' },
+                    { key: "push" },
                     { key: "callback", title: "Request a Callback", sub: "We'll ring you back", icon: '<path d="M22 16.9v3a2 2 0 01-2.2 2 19.8 19.8 0 01-8.6-3.1 19.5 19.5 0 01-6-6A19.8 19.8 0 012.1 4.2 2 2 0 014.1 2h3a2 2 0 012 1.7c.1.9.3 1.8.6 2.6a2 2 0 01-.5 2.1L8.1 9.5a16 16 0 006 6l1.1-1.1a2 2 0 012.1-.5c.8.3 1.7.5 2.6.6a2 2 0 011.7 2z"/>' },
                     { key: "feedback", title: "Feedback", sub: "Tell us how it's going", icon: '<path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>' },
                     { key: "refer", title: "Refer a Friend", sub: "Share OrisAlign with someone", icon: '<path d="M16 20v-1.5a3.5 3.5 0 00-3.5-3.5h-5A3.5 3.5 0 004 18.5V20"/><circle cx="10" cy="8" r="3.2"/><path d="M18 8.5v5M20.5 11h-5"/>' },
-                  ].map((item) => (
-                    <button
-                      key={item.key}
-                      onClick={() => {
-                        if (item.key === "info") { openInfoForm(); return; }
-                        if (item.key === "refer") loadReferral();
-                        setDrawerView(item.key);
-                      }}
-                      style={NEU_ROW}
-                    >
-                      <span style={NEU_ROW_ICON}>
-                        <svg viewBox="0 0 24 24" width="17" height="17" style={{ fill: "none", stroke: NEU.gold, strokeWidth: 1.7, strokeLinecap: "round", strokeLinejoin: "round" }} dangerouslySetInnerHTML={{ __html: item.icon }} />
-                      </span>
-                      <span style={{ flex: 1, minWidth: 0, fontSize: "14px", fontWeight: "700" }}>
-                        {item.title}
-                        <small style={{ display: "block", marginTop: "2px", fontSize: "11.5px", fontWeight: "400", color: NEU.slate }}>{item.sub}</small>
-                      </span>
-                      <span style={{ width: "7px", height: "7px", flexShrink: 0, borderRight: `1.8px solid ${NEU.slate2}`, borderBottom: `1.8px solid ${NEU.slate2}`, transform: "rotate(-45deg)" }} />
-                    </button>
-                  ))}
-
-                  {/* Push notifications — the OS grant, toggled in place */}
-                  <div style={{ ...NEU_ROW, cursor: "default" }}>
-                    <span style={NEU_ROW_ICON}>
-                      <svg viewBox="0 0 24 24" width="17" height="17" style={{ fill: "none", stroke: NEU.gold, strokeWidth: 1.7, strokeLinecap: "round", strokeLinejoin: "round" }}>
-                        <path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 01-3.4 0" />
-                      </svg>
-                    </span>
-                    <span style={{ flex: 1, minWidth: 0, fontSize: "14px", fontWeight: "700" }}>
-                      Push Notifications
-                      <small style={{ display: "block", marginTop: "2px", fontSize: "11.5px", fontWeight: "400", color: NEU.slate }}>
-                        {notifPermission === "unsupported"
-                          ? "Available in the OrisAlign app."
-                          : notifPermission === "granted"
-                            ? "On — you'll hear about every step."
-                            : notifPermission === "denied"
-                              ? "Off. Tap to open phone settings."
-                              : "Get updates on every step."}
-                      </small>
-                    </span>
-                    {notifPermission !== "unsupported" && (
+                  ].map((item) =>
+                    item.key === "push" ? (
+                      <div key="push" style={{ ...NEU_ROW, cursor: "default" }}>
+                        <span style={NEU_ROW_ICON}>
+                          <svg viewBox="0 0 24 24" width="17" height="17" style={{ fill: "none", stroke: NEU.gold, strokeWidth: 1.7, strokeLinecap: "round", strokeLinejoin: "round" }}>
+                            <path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 01-3.4 0" />
+                          </svg>
+                        </span>
+                        <span style={{ flex: 1, minWidth: 0, fontSize: "14px", fontWeight: "700" }}>
+                          Push Notifications
+                          <small style={{ display: "block", marginTop: "2px", fontSize: "11.5px", fontWeight: "400", color: NEU.slate }}>
+                            {notifPermission === "unsupported"
+                              ? "Available in the OrisAlign app."
+                              : notifOn
+                                ? "On — you'll hear about every step."
+                                : notifPermission === "denied"
+                                  ? "Turned off in your phone's settings."
+                                  : "Off — turn on for treatment updates."}
+                          </small>
+                        </span>
+                        {notifPermission !== "unsupported" && (
+                          <button
+                            onClick={() => (notifOn ? setShowDisableConfirm(true) : enableNotifications())}
+                            role="switch"
+                            aria-checked={notifOn}
+                            aria-label="Toggle push notifications"
+                            style={{
+                              position: "relative", flexShrink: 0, width: "46px", height: "26px", borderRadius: "99px",
+                              border: "none", cursor: "pointer", padding: 0,
+                              background: notifOn ? "linear-gradient(135deg, #CBA164, #B8893F)" : NEU.surface2,
+                              boxShadow: NEU.insetSm, transition: "background 0.25s ease",
+                            }}
+                          >
+                            <span style={{
+                              position: "absolute", top: "3px", left: "3px", width: "20px", height: "20px", borderRadius: "50%",
+                              background: NEU.surface, boxShadow: NEU.upSm,
+                              transform: notifOn ? "translateX(20px)" : "translateX(0)",
+                              transition: "transform 0.25s cubic-bezier(.2,.8,.3,1)",
+                            }} />
+                          </button>
+                        )}
+                      </div>
+                    ) : (
                       <button
-                        onClick={handleToggleNotifications}
-                        role="switch"
-                        aria-checked={notifPermission === "granted"}
-                        aria-label="Toggle push notifications"
-                        style={{
-                          position: "relative", flexShrink: 0, width: "46px", height: "26px", borderRadius: "99px",
-                          border: "none", cursor: "pointer", padding: 0,
-                          background: notifPermission === "granted" ? "linear-gradient(135deg, #CBA164, #B8893F)" : NEU.surface2,
-                          boxShadow: NEU.insetSm, transition: "background 0.25s ease",
+                        key={item.key}
+                        onClick={() => {
+                          if (item.key === "info") { openInfoForm(); return; }
+                          if (item.key === "refer") loadReferral();
+                          setDrawerView(item.key);
                         }}
+                        style={NEU_ROW}
                       >
-                        <span style={{
-                          position: "absolute", top: "3px", left: "3px", width: "20px", height: "20px", borderRadius: "50%",
-                          background: NEU.surface, boxShadow: NEU.upSm,
-                          transform: notifPermission === "granted" ? "translateX(20px)" : "translateX(0)",
-                          transition: "transform 0.25s cubic-bezier(.2,.8,.3,1)",
-                        }} />
+                        <span style={NEU_ROW_ICON}>
+                          <svg viewBox="0 0 24 24" width="17" height="17" style={{ fill: "none", stroke: NEU.gold, strokeWidth: 1.7, strokeLinecap: "round", strokeLinejoin: "round" }} dangerouslySetInnerHTML={{ __html: item.icon }} />
+                        </span>
+                        <span style={{ flex: 1, minWidth: 0, fontSize: "14px", fontWeight: "700" }}>
+                          {item.title}
+                          <small style={{ display: "block", marginTop: "2px", fontSize: "11.5px", fontWeight: "400", color: NEU.slate }}>{item.sub}</small>
+                        </span>
+                        <span style={{ width: "7px", height: "7px", flexShrink: 0, borderRight: `1.8px solid ${NEU.slate2}`, borderBottom: `1.8px solid ${NEU.slate2}`, transform: "rotate(-45deg)" }} />
                       </button>
-                    )}
-                  </div>
+                    )
+                  )}
                 </div>
               )}
 

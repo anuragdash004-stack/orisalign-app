@@ -23,7 +23,7 @@ const MAX_TOKENS_PER_PATIENT = 5;
  */
 export async function POST(req: Request) {
   try {
-    const { appointmentId, token } = await req.json();
+    const { appointmentId, token, action } = await req.json();
     if (!appointmentId || !token) {
       return NextResponse.json({ error: "appointmentId and token required" }, { status: 400 });
     }
@@ -39,7 +39,12 @@ export async function POST(req: Request) {
     }
 
     const existing: string[] = Array.isArray(appt.push_tokens) ? appt.push_tokens : [];
-    const updated = [token, ...existing.filter((t) => t !== token)].slice(0, MAX_TOKENS_PER_PATIENT);
+    // "remove" is how a patient turns notifications off for this device: the
+    // OS grant stays, but nothing is sent here any more.
+    const updated =
+      action === "remove"
+        ? existing.filter((t) => t !== token)
+        : [token, ...existing.filter((t) => t !== token)].slice(0, MAX_TOKENS_PER_PATIENT);
 
     const { error: updateErr } = await supabase
       .from("appointments_booking")
