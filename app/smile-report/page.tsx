@@ -35,7 +35,7 @@ export default function ChooseConsultationPage() {
             }}
           >
             <p style={{ margin: "0 0 4px", fontSize: "11px", fontWeight: 700, letterSpacing: "0.5px", color: GOLD, textTransform: "uppercase" }}>
-              From anywhere · ₹399
+              From anywhere · <span style={{ textDecoration: "line-through", opacity: 0.65 }}>₹999</span> FREE
             </p>
             <h2 style={{ margin: "0 0 8px", fontSize: "20px", fontWeight: 800, color: NAVY }}>Get Your Online Smile Report</h2>
             <p style={{ margin: 0, fontSize: "13px", color: "#6b7280", lineHeight: 1.6 }}>

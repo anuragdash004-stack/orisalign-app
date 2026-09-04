@@ -52,6 +52,12 @@ export async function POST(req: Request) {
     let amountRupees = BASE_PRICES_RUPEES[amountType as AmountType]
     let couponId: string | null = null
 
+    // Nothing to charge — the gateway would reject a ₹0 order anyway. A
+    // client on a stale bundle can still land here now the report is free.
+    if (amountRupees <= 0) {
+      return NextResponse.json({ error: "Nothing to pay — submit through the free flow instead" }, { status: 400 })
+    }
+
     if (couponCode) {
       const result = await validateAndApplyCoupon(supabase, couponCode, amountType as AmountType)
       if (!result.valid) {

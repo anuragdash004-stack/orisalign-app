@@ -13,7 +13,9 @@ export type AmountType = "report" | "impression" | "plan_only" | "plan_treatment
 
 /** Base prices in rupees — never trust a client-supplied amount instead of these. */
 export const BASE_PRICES_RUPEES: Record<AmountType, number> = {
-  report: 399,
+  // The report is free — the 999 below is what it used to cost and is only
+  // ever shown struck through.
+  report: 0,
   impression: 999,
   plan_only: 2499,
   plan_treatment: 4999,
