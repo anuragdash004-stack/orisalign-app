@@ -1156,7 +1156,7 @@ export default function PatientJourney() {
         <img src="/logo.png" alt="OrisAlign" style={{ position: "absolute", top: "18px", left: "50%", transform: "translateX(-50%)", width: "122px", zIndex: 5, mixBlendMode: "multiply", pointerEvents: "none" }} />
 
         {/* Fifteen steps, one dot each */}
-        <div style={{ position: "relative", zIndex: 5, flex: "0 0 auto", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", padding: "52px 20px 0" }}>
+        <div style={{ position: "relative", zIndex: 5, flex: "0 0 auto", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", padding: "40px 20px 0" }}>
           {journeySteps.map((s, i) => {
             const c = Math.max(0, Math.min(journeySteps.length - 1, Math.round(arcOffset)));
             const on = i === c;
@@ -1172,8 +1172,8 @@ export default function PatientJourney() {
         </div>
 
         {/* The rail */}
-        <div style={{ flex: "0 0 auto", margin: "44px 0 0" }}>
-          <div style={{ position: "relative", zIndex: 3, isolation: "isolate", height: "288px" }}>
+        <div style={{ flex: "0 0 auto", margin: "18px 0 0" }}>
+          <div style={{ position: "relative", zIndex: 3, isolation: "isolate", height: "250px" }}>
             {journeySteps.map((step, i) => {
               const rel = i - arcOffset;
               const dist = Math.abs(rel);
@@ -1195,7 +1195,7 @@ export default function PatientJourney() {
                   }}
                   aria-label={`Step ${i + 1}: ${step.label}`}
                   style={{
-                    position: "absolute", left: "50%", top: "50%", width: "200px", margin: "-143px 0 0 -100px",
+                    position: "absolute", left: "50%", top: "50%", width: "200px", margin: "-124px 0 0 -100px",
                     padding: 0, border: "none", background: "none", cursor: "pointer", font: "inherit", color: "inherit",
                     transformOrigin: "center center",
                     transform: `translateX(${rel * CARD_SPACING}px) scale(${scale.toFixed(3)})`,
@@ -1206,7 +1206,7 @@ export default function PatientJourney() {
                 >
                   <span style={{
                     position: "relative", display: "flex", flexDirection: "column", alignItems: "center",
-                    width: "200px", height: "286px", padding: "74px 16px 22px", borderRadius: "30px",
+                    width: "200px", height: "248px", padding: "60px 14px 18px", borderRadius: "30px",
                     background: NEU.surface,
                     boxShadow: isCurrent
                       ? "-7px -7px 16px rgba(255,255,255,0.95), 9px 9px 20px rgba(163,155,134,0.34), 0 0 0 1px rgba(184,137,63,0.16)"
@@ -1244,7 +1244,7 @@ export default function PatientJourney() {
           </div>
 
           {/* Arrows */}
-          <div style={{ position: "relative", zIndex: 4, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 36px", marginTop: "18px" }}>
+          <div style={{ position: "relative", zIndex: 4, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 36px", marginTop: "14px" }}>
             {[-1, 1].map((dir) => {
               const at = Math.max(0, Math.min(journeySteps.length - 1, Math.round(arcOffset)));
               const off = dir < 0 ? at === 0 : at === journeySteps.length - 1;
@@ -1272,7 +1272,7 @@ export default function PatientJourney() {
 
         {/* What's next — only the rows that actually apply */}
         {(wearPlan?.nextSet || nextKit) && (
-          <div style={{ position: "relative", zIndex: 4, display: "flex", flexDirection: "column", gap: "9px", margin: "22px 20px auto" }}>
+          <div style={{ position: "relative", zIndex: 4, display: "flex", flexDirection: "column", gap: "9px", margin: "16px 20px 0" }}>
             {wearPlan?.nextSet && (
               <button
                 onClick={() => { if (steps.smile_correction) setExpandedStep("smile_correction"); }}
@@ -1318,6 +1318,49 @@ export default function PatientJourney() {
             )}
           </div>
         )}
+
+        {/* Refer and earn — fills the bottom of the column */}
+        <button
+          onClick={() => { setDrawerView("refer"); setShowDrawer(true); }}
+          style={{
+            position: "relative", zIndex: 4, display: "block", width: "auto", margin: "12px 20px auto",
+            padding: 0, borderRadius: "26px", border: "none", cursor: "pointer", overflow: "hidden",
+            background: NEU.surface, boxShadow: NEU.up, textAlign: "left", font: "inherit", color: NEU.navy,
+          }}
+        >
+          {/* The illustration's own ground is rgb(249,246,238) — the card
+              surface is within a couple of values of it, so it seams in
+              without any cut-out. */}
+          <img
+            src="/refer-friend.webp"
+            alt=""
+            aria-hidden="true"
+            style={{ position: "absolute", right: "-18px", bottom: 0, height: "104%", width: "auto", pointerEvents: "none" }}
+          />
+          {/* Fades the illustration out under the copy, so the text always
+              sits on a clean field however the artwork is positioned. */}
+          <span aria-hidden="true" style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "linear-gradient(90deg, " + NEU.surface + " 30%, rgba(247,245,238,0.72) 48%, rgba(247,245,238,0) 66%)" }} />
+          <span style={{ position: "relative", zIndex: 1, display: "block", padding: "15px 0 15px 18px", maxWidth: "55%" }}>
+            <span style={NEU_INFO_LABEL}>Refer and earn</span>
+            <span style={{ display: "block", fontSize: "19.5px", fontWeight: "800", letterSpacing: "-0.03em", lineHeight: "1.12", color: NEU.navy }}>
+              Refer a friend
+            </span>
+            <span style={{ display: "block", marginTop: "5px", fontSize: "12.5px", lineHeight: "1.45", color: NEU.slate }}>
+              and get ₹500 discount on your next kit.
+            </span>
+            <span style={{
+              display: "inline-flex", alignItems: "center", gap: "7px", marginTop: "13px",
+              padding: "10px 16px", borderRadius: "99px", fontSize: "13px", fontWeight: "700", color: "#fff",
+              background: "linear-gradient(135deg, #CBA164, #B8893F)",
+              boxShadow: "-2px -2px 5px rgba(255,255,255,0.45), 3px 3px 9px rgba(150,110,46,0.42)",
+            }}>
+              Refer Now
+              <svg viewBox="0 0 24 24" width="13" height="13" style={{ fill: "none", stroke: "#fff", strokeWidth: 2.4, strokeLinecap: "round", strokeLinejoin: "round" }}>
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+            </span>
+          </span>
+        </button>
 
         {/* Ask us */}
         <a
