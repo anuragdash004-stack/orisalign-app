@@ -560,22 +560,13 @@ export default function PatientJourney() {
     ctx.globalCompositeOperation = "source-over";
   };
 
-  useEffect(() => {
-    let loaded = 0;
-    stageImgs.current = Array.from({ length: STAGE_COUNT }, (_, i) => {
-      const im = new window.Image();
-      im.onload = () => {
-        if (++loaded === STAGE_COUNT) { stagesReady.current = true; paintStages(); }
-      };
-      im.src = STAGE_SRC(i);
-      return im;
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // The treatment simulation was dropped from this screen, so the fifteen
+  // stage frames are no longer preloaded — that was roughly half a megabyte
+  // fetched on every open for something nothing draws any more. paintStages
+  // and its refs stay put, harmless behind their null-canvas guard, ready if
+  // the render is ever brought back.
 
-  // Repaint after every render — that's what moves the simulation as the
-  // rail is dragged. Two drawImage calls, so cheap enough to do unguarded.
-  useEffect(() => { paintStages(); });
+
   const [expandedMonth, setExpandedMonth] = useState(null);
   const [selectedPackages, setSelectedPackages] = useState([]); // unpaid package nums chosen to order together
   const [approving, setApproving] = useState(false);
@@ -1181,7 +1172,7 @@ export default function PatientJourney() {
         </div>
 
         {/* The rail */}
-        <div style={{ flex: "0 0 auto", margin: "22px 0 0" }}>
+        <div style={{ flex: "0 0 auto", margin: "44px 0 0" }}>
           <div style={{ position: "relative", zIndex: 3, isolation: "isolate", height: "288px" }}>
             {journeySteps.map((step, i) => {
               const rel = i - arcOffset;
@@ -1279,20 +1270,9 @@ export default function PatientJourney() {
           </div>
         </div>
 
-        {/* Treatment simulation — sits in the gap the rail leaves above the
-            status cards, feathered so it dissolves into the ivory. */}
-        <div style={{
-          position: "relative", zIndex: 1, flex: "1 1 auto", minHeight: 0, overflow: "hidden",
-          display: "grid", placeItems: "center", opacity: 0.3, pointerEvents: "none",
-          WebkitMaskImage: "radial-gradient(70% 78% at 50% 52%, #000 38%, transparent 86%)",
-          maskImage: "radial-gradient(70% 78% at 50% 52%, #000 38%, transparent 86%)",
-        }}>
-          <canvas ref={stageCanvas} aria-hidden="true" style={{ display: "block", maxWidth: "84%", maxHeight: "100%" }} />
-        </div>
-
         {/* What's next — only the rows that actually apply */}
         {(wearPlan?.nextSet || nextKit) && (
-          <div style={{ position: "relative", zIndex: 4, display: "flex", flexDirection: "column", gap: "9px", margin: "0 20px 18px" }}>
+          <div style={{ position: "relative", zIndex: 4, display: "flex", flexDirection: "column", gap: "9px", margin: "22px 20px auto" }}>
             {wearPlan?.nextSet && (
               <button
                 onClick={() => { if (steps.smile_correction) setExpandedStep("smile_correction"); }}
@@ -1345,7 +1325,7 @@ export default function PatientJourney() {
           href="mailto:hello@orisalign.com"
           aria-label="Email OrisAlign"
           style={{
-            position: "absolute", right: "16px", bottom: "198px", zIndex: 5, width: "50px", height: "50px",
+            position: "absolute", right: "18px", bottom: "22px", zIndex: 5, width: "54px", height: "54px",
             borderRadius: "50%", display: "grid", placeItems: "center", textDecoration: "none",
             background: "linear-gradient(140deg, #CBA164, #B8893F 60%, #966E2E)",
             boxShadow: "-3px -3px 8px rgba(255,255,255,0.5), 5px 5px 14px rgba(150,110,46,0.5)",
