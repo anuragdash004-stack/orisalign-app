@@ -1408,7 +1408,7 @@ export default function PatientJourney() {
         <button
           onClick={() => { setDrawerView("refer"); setShowDrawer(true); }}
           style={{
-            position: "relative", zIndex: 4, display: "block", width: "auto", margin: "10px 20px auto",
+            position: "relative", zIndex: 4, display: "block", width: "auto", margin: "10px 20px 22px",
             padding: 0, borderRadius: "26px", border: "none", cursor: "pointer", overflow: "hidden",
             background: NEU.surface, boxShadow: NEU.up, textAlign: "left", font: "inherit", color: NEU.navy,
           }}
@@ -1447,23 +1447,6 @@ export default function PatientJourney() {
           </span>
         </button>
 
-        {/* Ask us */}
-        <a
-          data-nodrag
-          href="mailto:hello@orisalign.com"
-          aria-label="Email OrisAlign"
-          style={{
-            position: "absolute", right: "18px", bottom: "22px", zIndex: 5, width: "54px", height: "54px",
-            borderRadius: "50%", display: "grid", placeItems: "center", textDecoration: "none",
-            background: "linear-gradient(140deg, #CBA164, #B8893F 60%, #966E2E)",
-            boxShadow: "-3px -3px 8px rgba(255,255,255,0.5), 5px 5px 14px rgba(150,110,46,0.5)",
-          }}
-        >
-          <svg viewBox="0 0 24 24" width="22" height="22" style={{ fill: "none", stroke: "#fff", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round" }}>
-            <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z" />
-            <path d="M18.5 15.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z" />
-          </svg>
-        </a>
       </div>
 
       {/* ───── STEP PANEL — the opened step, raised off the ivory ───── */}
