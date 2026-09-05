@@ -13,19 +13,19 @@ export type AmountType = "report" | "impression" | "plan_only" | "plan_treatment
 
 /** Base prices in rupees — never trust a client-supplied amount instead of these. */
 export const BASE_PRICES_RUPEES: Record<AmountType, number> = {
-  report: 399,
+  report: 599,
   impression: 999,
   plan_only: 2499,
   plan_treatment: 4999,
 };
 
-/** Struck-through "was" price shown next to the discounted price in the UI. */
+/** Struck-through "was" price shown next to the discounted price in the UI.
+ *  Report has no strikethrough — its plain price is 599; SMIREP26 takes it to free. */
 export const STRUCK_PRICES_RUPEES: Record<AmountType, number> = {
-  report: 999,
   impression: 1999,
   plan_only: 3499,
   plan_treatment: 4999, // no strikethrough shown for this option
-};
+} as Record<AmountType, number>;
 
 export type CouponRow = {
   id: string;

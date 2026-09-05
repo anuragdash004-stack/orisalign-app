@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 
 // ── Clinical health-tech palette ──
@@ -146,6 +146,20 @@ export default function LandingPage() {
   const [callbackLoading, setCallbackLoading] = useState(false)
   const [pincode, setPincode] = useState('')
   const [pincodeResult, setPincodeResult] = useState(null) // null | 'available' | 'unavailable'
+  const [couponPromoOpen, setCouponPromoOpen] = useState(false)
+
+  useEffect(() => {
+    // Shows once per browser session — reopening the site in a fresh tab
+    // shows it again, but it won't nag on every internal navigation.
+    let seen = false
+    try { seen = sessionStorage.getItem('oris_seen_smirep26') === '1' } catch (_) {}
+    if (!seen) setCouponPromoOpen(true)
+  }, [])
+
+  const dismissCouponPromo = () => {
+    setCouponPromoOpen(false)
+    try { sessionStorage.setItem('oris_seen_smirep26', '1') } catch (_) {}
+  }
 
   const handlePincodeCheck = (e) => {
     e.preventDefault()
@@ -172,6 +186,48 @@ export default function LandingPage() {
     <div className="min-h-screen font-sans" style={{ background: '#FAFBFB', color: INK }}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceSchema) }} />
+
+      {couponPromoOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center px-4" role="dialog" aria-modal="true">
+          <div className="absolute inset-0" style={{ background: 'rgba(19,24,27,.55)' }} onClick={dismissCouponPromo} />
+          <div className="relative w-full max-w-sm rounded-2xl overflow-hidden" style={{ background: '#fff', boxShadow: '0 40px 80px -30px rgba(19,24,27,.5)' }}>
+            <button
+              onClick={dismissCouponPromo}
+              aria-label="Close"
+              className="absolute top-3 right-3 w-8 h-8 rounded-full inline-flex items-center justify-center text-lg font-bold"
+              style={{ background: '#fff', color: INK2, border: `1px solid ${LINE}` }}
+            >
+              ×
+            </button>
+            <div className="px-6 pt-8 pb-7 text-center">
+              <div className="inline-flex items-center justify-center rounded-xl px-4 py-2.5 mb-4" style={{ background: INK }}>
+                <span className="font-display text-sm font-extrabold uppercase tracking-wide" style={{ color: GOLD }}>
+                  Online Smile Report
+                </span>
+              </div>
+              <h3 className="text-xl font-extrabold font-display mb-2" style={{ color: INK }}>
+                Get it absolutely FREE
+              </h3>
+              <p className="text-sm mb-5" style={{ color: INK2 }}>
+                Upload your teeth images and get your estimated treatment duration and price — worth ₹599, free with a coupon.
+              </p>
+              <div className="mb-5 rounded-xl px-4 py-3" style={{ background: MINT, border: `1px dashed ${MINTD}` }}>
+                <p className="text-[11px] font-semibold uppercase tracking-wide mb-1" style={{ color: MINTD }}>Use coupon</p>
+                <p className="text-lg font-extrabold font-display tracking-widest" style={{ color: INK }}>SMIREP26</p>
+              </div>
+              <a
+                href="/smile-report/upload"
+                onClick={dismissCouponPromo}
+                className="inline-flex items-center justify-center gap-2 text-sm font-bold px-7 py-3 rounded-full w-full mb-3 transition-colors"
+                style={{ background: GOLD, color: '#fff' }}
+              >
+                Claim Offer
+              </a>
+              <p className="text-xs" style={{ color: INK2 }}>Offer valid until end of month</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── NAV ── */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur" style={{ borderBottom: `1px solid ${LINE}` }}>
@@ -359,8 +415,7 @@ export default function LandingPage() {
                 </h3>
               </div>
               <div className="flex items-center justify-center gap-2 mb-3">
-                <span className="text-2xl sm:text-3xl font-extrabold font-display" style={{ color: GOLD }}>₹399</span>
-                <span className="text-base sm:text-lg font-semibold" style={{ color: INK2, textDecoration: 'line-through' }}>₹999</span>
+                <span className="text-2xl sm:text-3xl font-extrabold font-display" style={{ color: GOLD }}>₹599</span>
               </div>
               <p className="text-sm mb-5" style={{ color: INK2 }}>
                 Upload teeth images and get your personalised provisional plan from our smile expert within 24 hours.
