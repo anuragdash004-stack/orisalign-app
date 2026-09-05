@@ -155,16 +155,6 @@ async function handleEvent(payload: CashfreeWebhookPayload) {
 
   const pd = (appt.payment_data as Record<string, unknown>) || {};
 
-  // Idempotency: if we already recorded this exact Cashfree order, skip.
-  // Checked on order id alone (not also requiring status === "PAID") so this
-  // and /api/cashfree/verify — which can both fire for the same order, one
-  // via the gateway's server-to-server webhook and one via the customer's
-  // browser redirect — can't both slip past the check and double-record the
-  // same payment against amount_paid.
-  if (pd.cashfree_order_id === orderId) {
-    return;
-  }
-
   const currentPending = Number(pd.pending_amount) || 0;
   const newPaymentData: Record<string, unknown> = {
     ...pd,
@@ -181,10 +171,20 @@ async function handleEvent(payload: CashfreeWebhookPayload) {
     delete newPaymentData.pending_cashfree_order_created_at;
   }
 
-  const { error: updateError } = await supabase
+  // Idempotency, done atomically at the database level: this UPDATE only
+  // matches a row whose cashfree_order_id ISN'T already this order — a plain
+  // "read pd, compare in JS, then write" has a race window where this route
+  // and /api/cashfree/verify (customer's browser redirect) can both read the
+  // pre-update value and both pass the check, double-recording the same
+  // payment. Folding the check into the UPDATE's WHERE clause makes Postgres
+  // serialize the two writes: whichever commits first wins, and the second
+  // one's WHERE re-evaluates against the now-updated row and matches nothing.
+  const { data: updatedRows, error: updateError } = await supabase
     .from("appointments_booking")
     .update({ payment_data: newPaymentData })
-    .eq("id", appointmentId);
+    .eq("id", appointmentId)
+    .or(`payment_data->>cashfree_order_id.is.null,payment_data->>cashfree_order_id.neq.${orderId}`)
+    .select("id");
 
   if (updateError) {
     console.error(
@@ -192,6 +192,10 @@ async function handleEvent(payload: CashfreeWebhookPayload) {
       updateError,
       appointmentId,
     );
+  } else if (!updatedRows || updatedRows.length === 0) {
+    // Lost the race to /api/cashfree/verify (or a retried webhook delivery)
+    // — this order was already recorded, so amount_paid must not move again.
+    console.info("[cashfree/webhook] order already recorded, skipping", orderId);
   } else {
     // 📋 LOG PAYMENT STATUS CHANGE
     await logAuditEntry({

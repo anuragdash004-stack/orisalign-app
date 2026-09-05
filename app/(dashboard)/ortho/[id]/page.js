@@ -253,13 +253,22 @@ export default function OrthoCase() {
     const choice = patient?.payment_data?.provisional_payment_choice === "first_month" ? "first_month" : "full_plan";
     const plan = buildMonthlyPlan(upper, lower, selectedPlan, choice);
     setFinalReviewSaving(true);
+    // journey_steps is also written by staff (patients/[id]/page.js) and the
+    // patient's own actions — this form can stay open for minutes while the
+    // component's in-memory `patient` state goes stale, so merge onto a
+    // fresh read instead of clobbering whatever changed underneath it.
+    const { data: freshAppt } = await supabase
+      .from("appointments_booking")
+      .select("journey_steps")
+      .eq("id", id)
+      .single();
     const { error } = await supabase
       .from("appointments_booking")
       .update({
         final_upper_sets: upper,
         final_lower_sets: lower,
         monthly_plan: plan,
-        journey_steps: { ...(patient?.journey_steps || {}), final_plan_review: true },
+        journey_steps: { ...(freshAppt?.journey_steps || patient?.journey_steps || {}), final_plan_review: true },
       })
       .eq("id", id);
     setFinalReviewSaving(false);

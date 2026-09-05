@@ -72,34 +72,43 @@ export async function GET(req: Request) {
     const pd =
       (appt?.payment_data as Record<string, unknown> | undefined) || {};
 
-    // Idempotency: if we've already recorded this exact order, skip the
-    // update. Checked on order id alone — this and the webhook can both
-    // fire for the same order (one via the customer's browser redirect,
-    // one server-to-server), and both mustn't slip past and double-record
-    // the same payment against amount_paid.
-    if (pd.cashfree_order_id === orderId) {
+    const currentPending = Number(pd.pending_amount) || 0;
+    const newPaymentData: Record<string, unknown> = {
+      ...pd,
+      cashfree_order_id: orderId,
+      cashfree_status: status,
+      cashfree_paid_amount: orderAmount,
+      cashfree_paid_at: new Date().toISOString(),
+      cashfree_source: "verify_redirect",
+      pending_amount: Math.max(0, currentPending - orderAmount),
+    };
+    // Resolved here — the reconciliation cron doesn't need to poll this order.
+    if (pd.pending_cashfree_order_id === orderId) {
+      delete newPaymentData.pending_cashfree_order_id;
+      delete newPaymentData.pending_cashfree_order_created_at;
+    }
+
+    // Idempotency, done atomically at the database level: this UPDATE only
+    // matches a row whose cashfree_order_id ISN'T already this order — a
+    // plain "read pd, compare in JS, then write" has a race window where
+    // this route and the webhook (server-to-server, for the same order) can
+    // both read the pre-update value and both pass the check, double-
+    // recording the same payment. Folding the check into the UPDATE's WHERE
+    // clause makes Postgres serialize the two writes: whichever commits
+    // first wins, and the second's WHERE re-evaluates against the
+    // now-updated row and matches nothing.
+    const { data: updatedRows } = await supabase
+      .from("appointments_booking")
+      .update({ payment_data: newPaymentData })
+      .eq("id", appointmentId)
+      .or(`payment_data->>cashfree_order_id.is.null,payment_data->>cashfree_order_id.neq.${orderId}`)
+      .select("id");
+
+    if (!updatedRows || updatedRows.length === 0) {
+      // Lost the race to the webhook (or a duplicate redirect) — this order
+      // was already recorded, so amount_paid must not move again.
       alreadyApplied = true;
     } else {
-      const currentPending = Number(pd.pending_amount) || 0;
-      const newPaymentData: Record<string, unknown> = {
-        ...pd,
-        cashfree_order_id: orderId,
-        cashfree_status: status,
-        cashfree_paid_amount: orderAmount,
-        cashfree_paid_at: new Date().toISOString(),
-        cashfree_source: "verify_redirect",
-        pending_amount: Math.max(0, currentPending - orderAmount),
-      };
-      // Resolved here — the reconciliation cron doesn't need to poll this order.
-      if (pd.pending_cashfree_order_id === orderId) {
-        delete newPaymentData.pending_cashfree_order_id;
-        delete newPaymentData.pending_cashfree_order_created_at;
-      }
-      await supabase
-        .from("appointments_booking")
-        .update({ payment_data: newPaymentData })
-        .eq("id", appointmentId);
-
       await logAuditEntry({
         appointmentId,
         actorEmail: "cashfree",

@@ -9,6 +9,21 @@ import { isNewModelAppointment } from "@/lib/appointmentModel";
 
 const supabase = getSupabaseClient();
 
+// /api/update-payment-status now requires a real staff session (it can mark
+// money as received, so a client-claimed actorEmail/actorRole is no longer
+// enough) — this attaches the caller's own access token to every call.
+async function postPaymentUpdate(body) {
+  const { data: { session } } = await supabase.auth.getSession();
+  return fetch("/api/update-payment-status", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+}
+
 const TABS = ["Payment", "Journey", "LMC", "Message", "Patient Page", "Report"];
 
 const LMC_TREATMENT_TYPES = ["Aligners", "RCT", "Implant", "Extraction", "Restoration", "Scaling", "Polishing", "Checkup"];
@@ -379,18 +394,14 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
     if (amount <= 0) return;
     setMarkingPaid(markKey);
     try {
-      const res = await fetch("/api/update-payment-status", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const res = await postPaymentUpdate({
           appointmentId,
           amountPaid: amount,
           paymentMethod: "Manual",
           notes: label,
           actorEmail: actor?.email,
           actorRole: actor?.role,
-        }),
-      });
+        });
       const json = await res.json();
       if (!res.ok || json.error) {
         alert("Failed to record payment: " + (json.error || "Unknown error"));
@@ -477,18 +488,14 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
     if (!inst || inst.paid) return;
     setMarkingInstallmentPaid(num);
     try {
-      const res = await fetch("/api/update-payment-status", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const res = await postPaymentUpdate({
           appointmentId,
           amountPaid: inst.amount,
           paymentMethod: "Manual",
           notes: `Installment ${num} of ${pendingInstallments.length}`,
           actorEmail: actor?.email,
           actorRole: actor?.role,
-        }),
-      });
+        });
       const json = await res.json();
       if (!res.ok || json.error) {
         alert("Failed to record payment: " + (json.error || "Unknown error"));
@@ -760,18 +767,14 @@ function MonthlyBillingCards({ appointmentId, appt, setAppt, actor }) {
     if (amount <= 0) return;
     setMarkingPaid(markKey);
     try {
-      const res = await fetch("/api/update-payment-status", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const res = await postPaymentUpdate({
           appointmentId,
           amountPaid: amount,
           paymentMethod: "Manual",
           notes: label,
           actorEmail: actor?.email,
           actorRole: actor?.role,
-        }),
-      });
+        });
       const json = await res.json();
       if (!res.ok || json.error) {
         alert("Failed to record payment: " + (json.error || "Unknown error"));
@@ -1322,11 +1325,7 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
     try {
       const newPaymentData = { ...(appt.payment_data || {}), provisional_payment_choice: choice };
       await supabase.from("appointments_booking").update({ payment_data: newPaymentData }).eq("id", appointmentId);
-      const res = await fetch("/api/update-payment-status", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ appointmentId, amountPaid: amount, paymentMethod: "Manual", notes: choice === "first_month" ? "Provisional Planning — First Month" : "Provisional Planning — Full Plan Fee", actorEmail: actor?.email, actorRole: actor?.role }),
-      });
+      const res = await postPaymentUpdate({ appointmentId, amountPaid: amount, paymentMethod: "Manual", notes: choice === "first_month" ? "Provisional Planning — First Month" : "Provisional Planning — Full Plan Fee", actorEmail: actor?.email, actorRole: actor?.role });
       const json = await res.json();
       if (!res.ok || json.error) { alert("Failed to record payment: " + (json.error || "Unknown error")); return; }
       logAudit({ appointmentId, actor, action: "Provisional Planning Payment Marked Paid", entity: "payment_status", newData: { choice, amount, totalPaid: json.totalPaid } });

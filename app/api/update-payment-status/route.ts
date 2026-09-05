@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getClientInfo } from "@/lib/auditLog";
 import { recordPaymentReceived } from "@/lib/paymentHelper";
+import { requireStaffRole } from "@/lib/requireStaffRole";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -36,14 +37,22 @@ interface UpdatePaymentStatusRequest {
  */
 export async function POST(req: Request) {
   try {
+    // This route can mark real money as received (and can auto-trigger
+    // manufacturing batches once a threshold is crossed) — it must never
+    // trust a client-supplied actorEmail/actorRole as proof of who's
+    // calling, since appointment UUIDs aren't secret. Only admins can
+    // record manual payments from the patients dashboard.
+    const auth = await requireStaffRole(req, ["admin"]);
+    if (!auth.ok) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
+    }
+
     const {
       appointmentId,
       amountPaid,
       transactionId,
       paymentMethod,
       notes,
-      actorEmail,
-      actorRole,
     } = (await req.json()) as UpdatePaymentStatusRequest;
 
     const { ip, userAgent } = getClientInfo(req);
@@ -55,8 +64,8 @@ export async function POST(req: Request) {
       transactionId,
       paymentMethod,
       notes,
-      actorEmail,
-      actorRole,
+      actorEmail: auth.email || auth.userId,
+      actorRole: auth.role,
       ipAddress: ip,
       userAgent,
     });

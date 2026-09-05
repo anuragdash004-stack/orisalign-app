@@ -173,7 +173,8 @@ export function buildMonthlyPlan(
  * Recomputed on every read, not persisted.
  */
 export function applyCouponDiscount(plan: MonthlyPlan, couponsTotal: number): DiscountedMonthlyPlan {
-  let remaining = Math.max(0, couponsTotal) || 0;
+  const couponsAvailable = Math.max(0, couponsTotal) || 0;
+  let remaining = couponsAvailable;
   const reversed = [...plan.months].reverse().map((month) => {
     const reduceBy = Math.min(month.amount, remaining);
     remaining -= reduceBy;
@@ -197,7 +198,11 @@ export function applyCouponDiscount(plan: MonthlyPlan, couponsTotal: number): Di
     totalMonths: plan.totalMonths,
     generatedAt: plan.generatedAt,
     months: months as DiscountedMonthEntry[],
-    totalDiscount: Math.max(0, couponsTotal) || 0,
+    // The amount actually absorbed by the plan — a coupon larger than the
+    // remaining balance can't discount more than that balance, so this is
+    // couponsAvailable minus whatever was left over unused, not the raw
+    // coupon total (which would overstate the discount actually applied).
+    totalDiscount: Math.round((couponsAvailable - remaining) * 100) / 100,
   };
 }
 

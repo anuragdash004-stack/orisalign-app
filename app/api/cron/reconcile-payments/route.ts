@@ -40,7 +40,15 @@ const CF_SECRET = (process.env.CASHFREE_SECRET_KEY || "").trim();
 
 const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
 
-export async function GET() {
+export async function GET(req: Request) {
+  const secret = process.env.CRON_SECRET;
+  if (secret) {
+    const auth = req.headers.get("authorization");
+    if (auth !== `Bearer ${secret}`) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+  }
+
   if (!CF_APP_ID || !CF_SECRET) {
     return NextResponse.json({ error: "Payment gateway not configured" }, { status: 500 });
   }

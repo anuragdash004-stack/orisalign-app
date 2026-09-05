@@ -185,15 +185,23 @@ export async function qualifyReferralOnPayment(
     // Qualifies only once at least the first aligner package is covered.
     if (amountPaid < firstPackage.discountedCumulative) return;
 
-    const { count } = await supabase
+    await supabase
       .from("referrals")
-      .select("id", { count: "exact", head: true })
-      .eq("referrer_id", referral.referrer_id)
-      .not("reward_credited_at", "is", null);
+      .update({ qualified_at: new Date().toISOString() })
+      .eq("id", referral.id)
+      .is("qualified_at", null);
 
-    await supabase.from("referrals").update({ qualified_at: new Date().toISOString() }).eq("id", referral.id);
-
-    if ((count || 0) >= REFERRAL_REWARD_CAP) return; // earned, but past the cap
+    // Count-then-credit here would race: two referred patients paying for
+    // their first package at nearly the same moment could both read
+    // count < cap and both get credited, exceeding REFERRAL_REWARD_CAP. The
+    // count check and the reservation happen atomically in one transaction,
+    // serialized per-referrer by claim_referral_reward_slot's advisory lock.
+    const { data: claimed } = await supabase.rpc("claim_referral_reward_slot", {
+      p_referral_id: referral.id,
+      p_referrer_id: referral.referrer_id,
+      p_cap: REFERRAL_REWARD_CAP,
+    });
+    if (!claimed) return; // earned, but past the cap (or already credited)
 
     const amount = Number(referral.reward_amount) || REFERRAL_REWARD;
     const ok = await creditCoupon(
@@ -202,11 +210,10 @@ export async function qualifyReferralOnPayment(
       `REFERRAL-${String(referral.id).slice(0, 8).toUpperCase()}`,
       amount
     );
-    if (ok) {
-      await supabase
-        .from("referrals")
-        .update({ reward_credited_at: new Date().toISOString() })
-        .eq("id", referral.id);
+    if (!ok) {
+      // The slot was reserved but no coupon actually got created — release
+      // it so this patient's reward isn't silently lost to the cap.
+      await supabase.from("referrals").update({ reward_credited_at: null }).eq("id", referral.id);
     }
   } catch {
     // bookkeeping only — never let this fail the payment

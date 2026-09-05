@@ -99,11 +99,16 @@ export async function GET(req: Request) {
         templateParams: [String(daysLeft)],
       })
 
-      const newJourneySteps = {
-        ...js,
-        next_batch_reminder: { month: nextMonth.num, last_sent: todayKey },
+      // Only mark today as "sent" if the WhatsApp actually went out — on a
+      // provider outage/failure, leaving the flag untouched lets the very
+      // next off-cadence day retry instead of silently skipping this cycle.
+      if (waResult.success) {
+        const newJourneySteps = {
+          ...js,
+          next_batch_reminder: { month: nextMonth.num, last_sent: todayKey },
+        }
+        await supabase.from("appointments_booking").update({ journey_steps: newJourneySteps }).eq("id", appt.id)
       }
-      await supabase.from("appointments_booking").update({ journey_steps: newJourneySteps }).eq("id", appt.id)
 
       try {
         await supabase.from("message_history").insert({
