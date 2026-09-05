@@ -4,7 +4,6 @@ import type React from "react"
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { getSupabaseClient } from "@/lib/supabaseClient"
-import { BASE_PRICES_RUPEES } from "@/lib/onlineReportPricing"
 import { startOnlineReportCheckout, type ReportFormData } from "@/lib/onlineReportCheckout"
 
 const supabase = getSupabaseClient()
@@ -445,7 +444,7 @@ export default function UploadStepPage() {
 
   const allPhotosUploaded = PHOTO_SLOTS.every((s) => photoUrls[s.key])
   const anyPhotoUploading = PHOTO_SLOTS.some((s) => photoUploading[s.key])
-  const displayAmount = couponApplied ? couponApplied.discountedAmount : BASE_PRICES_RUPEES.report
+  const displayAmount = couponApplied ? couponApplied.discountedAmount : 399
 
   const goToStep2 = async () => {
     setError(null)
@@ -656,13 +655,11 @@ export default function UploadStepPage() {
         photoUrls: photoUrls as Record<string, string>,
       }
 
-      // Free either because the report itself is free now, or because a coupon
-      // covers it in full — both skip the gateway.
-      if (displayAmount === 0) {
+      if (couponApplied && couponApplied.discountedAmount === 0) {
         const res = await fetch("/api/online-report/free-submit", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ reportId, couponCode: couponApplied?.code, formData }),
+          body: JSON.stringify({ reportId, couponCode: couponApplied.code, formData }),
         })
         const data = await res.json()
         if (!res.ok || !data.success) {
@@ -713,7 +710,7 @@ export default function UploadStepPage() {
         {step === 0 && (
           <>
             <h1 style={{ fontSize: 24, fontWeight: 900, color: NAVY, margin: "20px 0 4px" }}>Your Online Smile Report</h1>
-            <p style={{ fontSize: 13, color: "#6b7280", margin: "0 0 24px" }}>Here's what you get, free.</p>
+            <p style={{ fontSize: 13, color: "#6b7280", margin: "0 0 24px" }}>Here's what you get for ₹399.</p>
 
             <Section title="Your Online Smile Report Includes:">
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -952,7 +949,7 @@ export default function UploadStepPage() {
             <BackLink onClick={() => backTo(3)} disabled={submitting} />
             <h1 style={{ fontSize: 24, fontWeight: 900, color: NAVY, margin: "10px 0 4px" }}>Review & Pay</h1>
             <p style={{ fontSize: 13, color: "#6b7280", margin: "0 0 24px" }}>
-              Step 4 of 4 — <span style={{ textDecoration: "line-through", color: "#9ca3af" }}>₹999</span> FREE
+              Step 4 of 4 — ₹399 <span style={{ textDecoration: "line-through", color: "#9ca3af" }}>₹999</span>
             </p>
 
             <Section title="Please Read & Accept">
@@ -961,7 +958,7 @@ export default function UploadStepPage() {
                   We implement industry-standard security safeguards to protect your data in accordance with the DPDP
                   Act, 2023.
                 </p>
-                <p style={{ margin: 0 }}>Your report is free — there is nothing to pay.</p>
+                <p style={{ margin: 0 }}>₹399 is non-refundable.</p>
               </div>
               <label style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 13, marginTop: 10, cursor: "pointer" }}>
                 <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} style={{ marginTop: 2 }} />

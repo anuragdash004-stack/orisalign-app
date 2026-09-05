@@ -359,7 +359,7 @@ export default function LandingPage() {
                 </h3>
               </div>
               <div className="flex items-center justify-center gap-2 mb-3">
-                <span className="text-2xl sm:text-3xl font-extrabold font-display" style={{ color: GOLD }}>FREE</span>
+                <span className="text-2xl sm:text-3xl font-extrabold font-display" style={{ color: GOLD }}>₹399</span>
                 <span className="text-base sm:text-lg font-semibold" style={{ color: INK2, textDecoration: 'line-through' }}>₹999</span>
               </div>
               <p className="text-sm mb-5" style={{ color: INK2 }}>
