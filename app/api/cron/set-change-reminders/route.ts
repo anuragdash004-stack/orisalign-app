@@ -20,7 +20,7 @@ function dateKeyIST(d: Date | string) {
  * Runs once a day at 8 AM IST (see vercel.json). For every patient in active
  * smile correction (aligners_delivered → journey not yet ended), checks
  * whether *today* is the day they're due to move to their next aligner set —
- * computed the same way app/(dashboard)/patient/[id]/smile/page.js derives
+ * computed the same way app/(dashboard)/patient/[id]/page.js derives
  * each set's start date (smile_start_date + (setNum-1) * daysPerSet).
  *
  * If so, emails the patient telling them which set they've been wearing and
@@ -92,7 +92,7 @@ export async function GET(req: Request) {
               this set yet, please reach out to us right away.
             </p>
             <div style="text-align:center;margin:22px 0;">
-              <a href="https://orisalign.com/patient/${appt.id}/smile" style="display:inline-block;background:#1B2A4A;color:#C9A84C;font-weight:700;font-size:14px;padding:13px 30px;border-radius:8px;text-decoration:none;letter-spacing:0.5px;">
+              <a href="https://orisalign.com/patient/${appt.id}" style="display:inline-block;background:#1B2A4A;color:#C9A84C;font-weight:700;font-size:14px;padding:13px 30px;border-radius:8px;text-decoration:none;letter-spacing:0.5px;">
                 View My Smile Journey →
               </a>
             </div>

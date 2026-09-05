@@ -955,13 +955,21 @@ export default function PatientJourney() {
   // aligner set, uploaded as the patient goes through the program.
   const uploadSmileSetImage = async (setNum, type, file) => {
     if (!file) return;
+    if (file.size > MAX_INVESTIGATION_FILE_SIZE) {
+      alert("That photo is too large — please upload an image under 15MB (try switching your camera app to a smaller/normal photo size, not the largest RAW/HEIC setting).");
+      return;
+    }
+    if (!file.type.startsWith("image/")) {
+      alert("Please upload an image file (JPG or PNG).");
+      return;
+    }
     const uploadKey = `${setNum}-${type}`;
     setUploadingSmileImage(uploadKey);
     try {
       const ext = file.name.split(".").pop();
       const path = `smile-correction/${id}/set-${setNum}/${type}.${ext}`;
       const { error: upErr } = await supabase.storage.from("case-files").upload(path, file, { upsert: true });
-      if (upErr) { alert("Failed to upload: " + upErr.message); return; }
+      if (upErr) { alert("Failed to upload: " + upErr.message + " — please try again, or use a different photo."); return; }
       const { data: { publicUrl } } = supabase.storage.from("case-files").getPublicUrl(path);
       const setImages = patient.journey_steps?.smile_set_images || {};
       const newJourneySteps = {
@@ -969,10 +977,10 @@ export default function PatientJourney() {
         smile_set_images: { ...setImages, [setNum]: { ...(setImages[setNum] || {}), [type]: publicUrl } },
       };
       const { error } = await supabase.from("appointments_booking").update({ journey_steps: newJourneySteps }).eq("id", id);
-      if (error) { alert("Failed to save: " + error.message); return; }
+      if (error) { alert("Photo uploaded, but saving it to your record failed: " + error.message + " — please try again."); return; }
       setPatient((prev) => prev && { ...prev, journey_steps: newJourneySteps });
     } catch {
-      alert("Network error. Please try again.");
+      alert("Network error while uploading — please check your connection and try again.");
     } finally {
       setUploadingSmileImage(null);
     }
@@ -1329,7 +1337,7 @@ export default function PatientJourney() {
           </div>
 
           {/* Arrows */}
-          <div style={{ position: "relative", zIndex: 4, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 36px", marginTop: "14px" }}>
+          <div style={{ position: "relative", zIndex: 4, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 36px", marginTop: "20px" }}>
             {[-1, 1].map((dir) => {
               const at = Math.max(0, Math.min(journeySteps.length - 1, Math.round(arcOffset)));
               const off = dir < 0 ? at === 0 : at === journeySteps.length - 1;
@@ -1357,7 +1365,7 @@ export default function PatientJourney() {
 
         {/* What's next — only the rows that actually apply */}
         {(wearPlan?.nextSet || nextKit) && (
-          <div style={{ position: "relative", zIndex: 4, display: "flex", flexDirection: "column", gap: "8px", margin: "14px 20px 0" }}>
+          <div style={{ position: "relative", zIndex: 4, display: "flex", flexDirection: "column", gap: "8px", margin: "24px 20px 0" }}>
             {wearPlan?.nextSet && (
               <button
                 onClick={() => { if (steps.smile_correction) setExpandedStep("smile_correction"); }}
@@ -1408,7 +1416,7 @@ export default function PatientJourney() {
         <button
           onClick={() => { setDrawerView("refer"); setShowDrawer(true); }}
           style={{
-            position: "relative", zIndex: 4, display: "block", width: "auto", margin: "10px 20px 22px",
+            position: "relative", zIndex: 4, display: "block", width: "auto", margin: "20px 20px 28px",
             padding: 0, borderRadius: "26px", border: "none", cursor: "pointer", overflow: "hidden",
             background: NEU.surface, boxShadow: NEU.up, textAlign: "left", font: "inherit", color: NEU.navy,
           }}

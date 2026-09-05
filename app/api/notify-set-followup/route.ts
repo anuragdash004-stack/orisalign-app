@@ -54,7 +54,7 @@ export async function POST(req: Request) {
               </div>
               <p style="color:#374151;font-size:14px;line-height:1.8;">${message}</p>
               <div style="text-align:center;margin:22px 0;">
-                <a href="https://orisalign.com/patient/${appt.id}/smile" style="display:inline-block;background:#1B2A4A;color:#C9A84C;font-weight:700;font-size:14px;padding:13px 30px;border-radius:8px;text-decoration:none;letter-spacing:0.5px;">
+                <a href="https://orisalign.com/patient/${appt.id}" style="display:inline-block;background:#1B2A4A;color:#C9A84C;font-weight:700;font-size:14px;padding:13px 30px;border-radius:8px;text-decoration:none;letter-spacing:0.5px;">
                   View My Smile Journey →
                 </a>
               </div>
