@@ -951,6 +951,49 @@ export default function PatientJourney() {
     window.open(data.signedUrl, "_blank", "noopener,noreferrer");
   };
 
+  // Shrinks a phone photo (often 3-8MB straight off the camera) down to a
+  // few hundred KB before it ever hits the network — the smaller the body,
+  // the less likely an upload is to stall or silently die, which matters a
+  // lot inside WhatsApp's/Instagram's built-in browser (where patients open
+  // these reminder links from) — its embedded WebView is known to hang or
+  // drop larger uploads that a real browser handles fine. Falls back to the
+  // original file untouched if the image can't be decoded (e.g. some HEIC
+  // variants Chrome's <img> won't render) rather than blocking the upload.
+  const compressPhoto = (file, maxDim = 1600, quality = 0.82) =>
+    new Promise((resolve) => {
+      const objectUrl = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxDim || height > maxDim) {
+          const scale = maxDim / Math.max(width, height);
+          width = Math.round(width * scale);
+          height = Math.round(height * scale);
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(
+          (blob) => {
+            URL.revokeObjectURL(objectUrl);
+            resolve(blob ? new File([blob], file.name.replace(/\.\w+$/, ".jpg"), { type: "image/jpeg" }) : file);
+          },
+          "image/jpeg",
+          quality
+        );
+      };
+      img.onerror = () => { URL.revokeObjectURL(objectUrl); resolve(file); };
+      img.src = objectUrl;
+    });
+
+  const withTimeout = (promise, ms) =>
+    Promise.race([
+      promise,
+      new Promise((_, reject) => setTimeout(() => reject(new Error("upload_timeout")), ms)),
+    ]);
+
   // Smile Correction — one edge-to-edge + one complete-bite bite photo per
   // aligner set, uploaded as the patient goes through the program.
   const uploadSmileSetImage = async (setNum, type, file) => {
@@ -966,9 +1009,13 @@ export default function PatientJourney() {
     const uploadKey = `${setNum}-${type}`;
     setUploadingSmileImage(uploadKey);
     try {
-      const ext = file.name.split(".").pop();
+      const upload = file.size > 400 * 1024 ? await compressPhoto(file).catch(() => file) : file;
+      const ext = upload.name.split(".").pop();
       const path = `smile-correction/${id}/set-${setNum}/${type}.${ext}`;
-      const { error: upErr } = await supabase.storage.from("case-files").upload(path, file, { upsert: true });
+      const { error: upErr } = await withTimeout(
+        supabase.storage.from("case-files").upload(path, upload, { upsert: true, contentType: upload.type }),
+        25000
+      );
       if (upErr) { alert("Failed to upload: " + upErr.message + " — please try again, or use a different photo."); return; }
       const { data: { publicUrl } } = supabase.storage.from("case-files").getPublicUrl(path);
       const setImages = patient.journey_steps?.smile_set_images || {};
@@ -979,8 +1026,12 @@ export default function PatientJourney() {
       const { error } = await supabase.from("appointments_booking").update({ journey_steps: newJourneySteps }).eq("id", id);
       if (error) { alert("Photo uploaded, but saving it to your record failed: " + error.message + " — please try again."); return; }
       setPatient((prev) => prev && { ...prev, journey_steps: newJourneySteps });
-    } catch {
-      alert("Network error while uploading — please check your connection and try again.");
+    } catch (e) {
+      if (e?.message === "upload_timeout") {
+        alert("The upload is taking too long — this often happens inside WhatsApp's built-in browser. Please try again, and if it keeps happening, tap the ⋮ menu at the top of the screen and choose \"Open in Chrome\" (or your regular browser) instead of uploading from inside WhatsApp.");
+      } else {
+        alert("Network error while uploading — please check your connection and try again.");
+      }
     } finally {
       setUploadingSmileImage(null);
     }
@@ -2574,8 +2625,22 @@ export default function PatientJourney() {
                       );
                     }
 
+                    // WhatsApp's/Instagram's built-in browser is known to
+                    // stall or silently drop photo uploads that a real
+                    // browser (Chrome, Safari) handles fine — patients open
+                    // these reminder links straight from WhatsApp, so warn
+                    // them upfront instead of only after an upload fails.
+                    const inAppBrowser = typeof navigator !== "undefined" && /(WhatsApp|Instagram|FBAN|FBAV|Line\/)/i.test(navigator.userAgent);
+
                     return (
                       <div style={{ marginLeft: 0, marginTop: "10px", background: "transparent", border: "none", borderRadius: 0, padding: 0, boxShadow: "none" }}>
+                        {inAppBrowser && (
+                          <div style={{ marginBottom: "12px", padding: "10px 12px", borderRadius: "10px", background: "rgba(198,146,47,0.12)", border: "1px solid rgba(198,146,47,0.3)" }}>
+                            <p style={{ margin: 0, fontSize: "11.5px", color: "#7a5a1e", lineHeight: "1.5" }}>
+                              If photo uploads fail or hang here, tap the ⋮ menu above and choose &quot;Open in Chrome&quot; (or your regular browser) — this often works better than uploading from inside WhatsApp.
+                            </p>
+                          </div>
+                        )}
                         <div style={{ display: "flex", gap: "10px", marginBottom: "14px" }}>
                           {[
                             ["Total Sets", js.smile_sets_count],
