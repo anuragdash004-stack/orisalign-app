@@ -195,6 +195,14 @@ function PatientLogin() {
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error || "Incorrect code."); return; }
+      // A patient who's only ever submitted an Online Smile Report (never
+      // actually booked a scan) has nothing to see on the aligner journey
+      // page — request-otp already checked for this and says where to send
+      // them instead.
+      if (session.routeTo === "report" && session.reportId) {
+        window.location.href = `/report/${session.reportId}`;
+        return;
+      }
       saveSession(session.appointmentId);
       window.location.href = `/patient/${session.appointmentId}`;
     } catch {

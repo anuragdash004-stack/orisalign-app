@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import crypto from "crypto"
 import { createClient } from "@supabase/supabase-js"
 import { sendWhatsApp } from "@/lib/notifications/aisensy"
+import { onlineReportStageLabel } from "@/lib/onlineReportStatus"
 
 /**
  * POST /api/patient-login/request-otp
@@ -38,13 +39,21 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Enter your phone number, email, or Patient ID." }, { status: 400 })
     }
 
-    let row: { id: string; name: string | null; phone: string | null; journey_steps: Record<string, unknown> | null } | null = null
+    let row: {
+      id: string
+      name: string | null
+      phone: string | null
+      journey_steps: Record<string, unknown> | null
+      status: string | null
+      booking_confirmed: boolean | null
+      online_report_id: string | null
+    } | null = null
 
     if (raw.includes("@")) {
       // Email lookup.
       const { data } = await supabase
         .from("appointments_booking")
-        .select("id, name, phone, journey_steps")
+        .select("id, name, phone, journey_steps, status, booking_confirmed, online_report_id")
         .ilike("email", raw)
         .order("created_at", { ascending: false })
         .limit(1)
@@ -61,7 +70,7 @@ export async function POST(req: Request) {
       const nextHex = (parseInt(lower, 16) + 1).toString(16).padStart(8, "0")
       const { data } = await supabase
         .from("appointments_booking")
-        .select("id, name, phone, journey_steps")
+        .select("id, name, phone, journey_steps, status, booking_confirmed, online_report_id")
         .gte("id", `${lower}-0000-0000-0000-000000000000`)
         .lt("id", `${nextHex}-0000-0000-0000-000000000000`)
         .order("created_at", { ascending: false })
@@ -84,7 +93,7 @@ export async function POST(req: Request) {
       const last4 = last10.slice(-4)
       const { data } = await supabase
         .from("appointments_booking")
-        .select("id, name, phone, journey_steps, created_at")
+        .select("id, name, phone, journey_steps, status, booking_confirmed, online_report_id, created_at")
         .ilike("phone", `%${last4}%`)
         .order("created_at", { ascending: false })
         .limit(50)
@@ -96,6 +105,31 @@ export async function POST(req: Request) {
         { error: "We couldn't find an account with those details. Please check and try again, or contact us." },
         { status: 404 }
       )
+    }
+
+    // Every Online Smile Report submission auto-creates a linked
+    // appointments_booking row (status "lead") purely for the staff Lead
+    // Tracker — it's never a real booking. A patient who's only ever done a
+    // report and never actually booked a scan would otherwise land on an
+    // empty aligner journey with none of their real content. If this match
+    // isn't a real booking but does have a paid report linked, route there
+    // instead; a booked/confirmed patient always goes to their journey.
+    const hasRealBooking = !!row.booking_confirmed || ["confirmed", "completed"].includes(row.status || "")
+    let routeTo: "patient" | "report" = "patient"
+    let reportId: string | null = null
+    let reportStage: string | null = null
+
+    if (!hasRealBooking && row.online_report_id) {
+      const { data: reportRow } = await supabase
+        .from("online_reports")
+        .select("id, status, payment_status")
+        .eq("id", row.online_report_id)
+        .maybeSingle()
+      if (reportRow && ["paid", "free_coupon"].includes(reportRow.payment_status || "")) {
+        routeTo = "report"
+        reportId = reportRow.id
+        reportStage = onlineReportStageLabel(reportRow.status)
+      }
     }
 
     // The demo case (journey_steps.demo_account) is handed to people outside
@@ -126,6 +160,9 @@ export async function POST(req: Request) {
       appointmentId: row.id,
       phoneHint: isDemo ? "demo" : maskPhone(row.phone),
       demo: isDemo,
+      routeTo,
+      reportId,
+      reportStage,
     })
   } catch (err) {
     console.error("[patient-login/request-otp]", err)
