@@ -254,7 +254,7 @@ export default function LandingPage() {
             ))}
           </div>
           <div className="flex items-center gap-3">
-            <a href="/patient" className="hidden sm:inline-flex items-center text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors" style={{ background: GOLD, color: '#fff' }}
+            <a href="/login" className="hidden sm:inline-flex items-center text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors" style={{ background: GOLD, color: '#fff' }}
               onMouseEnter={e => e.currentTarget.style.background = GOLDD}
               onMouseLeave={e => e.currentTarget.style.background = GOLD}>
               Patient Login
@@ -271,7 +271,7 @@ export default function LandingPage() {
             {NAV_LINKS.map(l => (
               <a key={l.label} href={l.href} onClick={() => setMenuOpen(false)} className="block py-3 text-sm" style={{ color: INK, borderBottom: `1px solid ${LINE}` }}>{l.label}</a>
             ))}
-            <a href="/patient" onClick={() => setMenuOpen(false)} className="block mt-3 text-center text-sm font-semibold px-4 py-3 rounded-xl" style={{ background: GOLD, color: '#fff' }}>
+            <a href="/login" onClick={() => setMenuOpen(false)} className="block mt-3 text-center text-sm font-semibold px-4 py-3 rounded-xl" style={{ background: GOLD, color: '#fff' }}>
               Patient Login
             </a>
           </div>
