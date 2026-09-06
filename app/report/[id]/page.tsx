@@ -55,8 +55,10 @@ type OnlineReport = {
   dental_concerns: string[] | null
   objectives: string[] | null
   estimated_duration: string | null
+  estimated_price: string | null
   reviewer_notes: string | null
   simulated_plan_url: string | null
+  provisional_video_url: string | null
   doctor_id: string | null
   plan_choice: string | null
   reviewer_question: string | null
@@ -409,7 +411,21 @@ export default function ReportDashboardPage() {
               {report.estimated_duration && (
                 <Field label="Estimated Treatment Duration" value={report.estimated_duration} />
               )}
+              {report.estimated_price && (
+                <Field label="Estimated Price" value={report.estimated_price} />
+              )}
               {report.reviewer_notes && <Field label="Additional Notes" value={report.reviewer_notes} />}
+              {report.provisional_video_url && (
+                <div style={{ marginTop: 14, marginBottom: report.simulated_plan_url ? 10 : 0 }}>
+                  <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 700, color: "#9ca3af", textTransform: "uppercase" }}>Provisional Planning Video</p>
+                  <video
+                    src={report.provisional_video_url}
+                    controls
+                    playsInline
+                    style={{ width: "100%", maxWidth: 420, borderRadius: 10, display: "block", background: "#000" }}
+                  />
+                </div>
+              )}
               {report.simulated_plan_url && (
                 <a
                   href={report.simulated_plan_url}

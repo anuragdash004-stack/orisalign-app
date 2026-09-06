@@ -29,6 +29,25 @@ const label = { display: "block", fontSize: 11, fontWeight: 700, color: "var(--a
 const input = { width: "100%", padding: "11px 12px", borderRadius: 10, border: "1px solid var(--admin-line, #e9e1d0)", fontSize: 14, outline: "none", background: "white", color: "var(--admin-ink, #1b2a4a)", boxSizing: "border-box" };
 const cardStyle = { background: "white", border: "1px solid var(--admin-line, #e9e1d0)", borderRadius: 16, padding: 20, marginBottom: 16, boxShadow: "0 2px 8px rgba(0,0,0,0.04)" };
 
+const MONTHLY_RATE = 4999;
+
+/**
+ * Estimated Treatment Duration is free text (reviewers type things like
+ * "6-9", "5-7 months", or just "8") — pulls every number out of it and
+ * prices the low/high ends at MONTHLY_RATE/month. Returns null when the
+ * field has no parseable number yet, so the price only appears once a
+ * duration has actually been entered.
+ */
+function computeEstimatedPrice(durationText) {
+  const numbers = (durationText || "").match(/\d+(\.\d+)?/g);
+  if (!numbers || numbers.length === 0) return null;
+  const values = numbers.map(Number);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const fmt = (n) => `₹${Math.round(n * MONTHLY_RATE).toLocaleString("en-IN")}`;
+  return min === max ? fmt(min) : `${fmt(min)} – ${fmt(max)}`;
+}
+
 export default function OnlineReportDetailPage() {
   const { id } = useParams();
   const router = useRouter();
@@ -48,6 +67,8 @@ export default function OnlineReportDetailPage() {
   const [doctorId, setDoctorId] = useState("");
   const [additionalPhotos, setAdditionalPhotos] = useState([]);
   const [addingPhoto, setAddingPhoto] = useState(false);
+  const [provisionalVideoUrl, setProvisionalVideoUrl] = useState("");
+  const [uploadingVideo, setUploadingVideo] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
   const [statusBusy, setStatusBusy] = useState(false);
@@ -74,6 +95,7 @@ export default function OnlineReportDetailPage() {
       setSimulatedPlanUrl(data.simulated_plan_url || "");
       setDoctorId(data.doctor_id || "");
       setAdditionalPhotos(data.additional_photo_urls || []);
+      setProvisionalVideoUrl(data.provisional_video_url || "");
     }
     const { data: docs } = await supabase.from("doctors").select("*").eq("active", true).order("name");
     setDoctors(docs || []);
@@ -110,6 +132,19 @@ export default function OnlineReportDetailPage() {
       setDeleting(false);
       alert("Network error. Please try again.");
     }
+  };
+
+  const uploadProvisionalVideo = async (file) => {
+    if (!file) return;
+    if (!file.type.startsWith("video/")) { alert("Please upload a video file."); return; }
+    if (file.size > 80 * 1024 * 1024) { alert("That video is too large — please upload one under 80MB."); return; }
+    setUploadingVideo(true);
+    const path = `${id}/provisional_video_${Date.now()}_${file.name}`;
+    const { error } = await supabase.storage.from("online-report-photos").upload(path, file, { upsert: true, contentType: file.type });
+    if (error) { alert("Upload failed: " + error.message); setUploadingVideo(false); return; }
+    const { data } = supabase.storage.from("online-report-photos").getPublicUrl(path);
+    setProvisionalVideoUrl(data.publicUrl);
+    setUploadingVideo(false);
   };
 
   const uploadAdditionalPhoto = async (file) => {
@@ -159,6 +194,8 @@ export default function OnlineReportDetailPage() {
     }
   };
 
+  const estimatedPrice = computeEstimatedPrice(estimatedDuration);
+
   const unresolvedRejectedPhotos = Object.entries(report?.photo_review || {}).filter(([, r]) => r?.status === "rejected");
   const hasOpenQuestion = report?.reviewer_question && !report?.patient_answer;
 
@@ -183,8 +220,10 @@ export default function OnlineReportDetailPage() {
           dental_concerns: dentalConcernsText.split("\n").map((s) => s.trim()).filter(Boolean),
           objectives: objectivesText.split("\n").map((s) => s.trim()).filter(Boolean),
           estimated_duration: estimatedDuration || null,
+          estimated_price: estimatedPrice,
           reviewer_notes: reviewerNotes || null,
           simulated_plan_url: simulatedPlanUrl || null,
+          provisional_video_url: provisionalVideoUrl || null,
           doctor_id: doctorId,
           additional_photo_urls: additionalPhotos,
           reviewed_at: new Date().toISOString(),
@@ -437,6 +476,14 @@ export default function OnlineReportDetailPage() {
         <div style={{ marginBottom: 12 }}>
           <span style={label}>4. Estimated Treatment Duration (in months)</span>
           <input style={input} placeholder="e.g. 6-9 months" value={estimatedDuration} onChange={(e) => setEstimatedDuration(e.target.value)} />
+          {estimatedPrice && (
+            <p style={{ margin: "8px 0 0", fontSize: 13, fontWeight: 700, color: "var(--admin-gold-strong, #a9762e)" }}>
+              Estimated Price: {estimatedPrice}
+              <span style={{ marginLeft: 6, fontSize: 11, fontWeight: 400, color: "var(--admin-ink2, #837a66)" }}>
+                (auto-calculated at ₹{MONTHLY_RATE.toLocaleString("en-IN")}/month)
+              </span>
+            </p>
+          )}
         </div>
 
         <div style={{ marginBottom: 12 }}>
@@ -447,6 +494,36 @@ export default function OnlineReportDetailPage() {
         <div style={{ marginBottom: 12 }}>
           <span style={label}>Simulated Plan Link (external URL)</span>
           <input style={input} placeholder="https://..." value={simulatedPlanUrl} onChange={(e) => setSimulatedPlanUrl(e.target.value)} />
+        </div>
+
+        <div style={{ marginBottom: 12 }}>
+          <span style={label}>Provisional Planning Video (optional)</span>
+          {provisionalVideoUrl ? (
+            <div>
+              <video src={provisionalVideoUrl} controls style={{ width: "100%", maxWidth: 320, borderRadius: 10, display: "block", marginBottom: 8 }} />
+              <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+                <label style={{ fontSize: 12, color: "var(--admin-gold, #b8905a)", fontWeight: 700, cursor: "pointer" }}>
+                  {uploadingVideo ? "Uploading…" : "Replace video"}
+                  <input type="file" accept="video/*" style={{ display: "none" }} disabled={uploadingVideo} onChange={(e) => uploadProvisionalVideo(e.target.files?.[0])} />
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setProvisionalVideoUrl("")}
+                  style={{ background: "none", border: "none", color: "#dc2626", fontSize: 12, fontWeight: 700, cursor: "pointer", padding: 0 }}
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+          ) : (
+            <label style={{ fontSize: 12, color: "var(--admin-gold, #b8905a)", fontWeight: 700, cursor: "pointer" }}>
+              {uploadingVideo ? "Uploading…" : "+ Add video"}
+              <input type="file" accept="video/*" style={{ display: "none" }} disabled={uploadingVideo} onChange={(e) => uploadProvisionalVideo(e.target.files?.[0])} />
+            </label>
+          )}
+          <p style={{ margin: "6px 0 0", fontSize: 11, color: "var(--admin-ink2, #837a66)" }}>
+            If uploaded, the patient can play this directly on their report page as their provisional planning video.
+          </p>
         </div>
 
         <div style={{ marginBottom: 12 }}>
