@@ -266,7 +266,12 @@ function deriveSteps(appt) {
     followup_appointment:    !!js.followup_appointment,
     aligners_delivered:      !!js.aligners_delivered,
     smile_correction:        !!js.smile_correction,
-    treatment_completed:     js.treatment_completed  !== undefined ? !!js.treatment_completed  : appt.status === "completed",
+    // `status === "completed"` only means the dentist ended the INITIAL
+    // scan/consultation appointment — it flips months before treatment even
+    // starts and never changes again, so it must never be trusted as a
+    // stand-in for treatment_completed (that footgun is exactly what showed
+    // an actively-in-treatment patient as "Treatment Completed").
+    treatment_completed:     !!js.treatment_completed,
     post_aligner_treatment:  !!js.post_aligner_treatment,
     feedback_submitted:      !!js.feedback_submitted,
   };

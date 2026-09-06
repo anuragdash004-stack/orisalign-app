@@ -923,7 +923,12 @@ function deriveSteps(appt) {
     followup_appointment:    js.followup_appointment !== undefined ? !!js.followup_appointment : false,
     aligners_delivered:      js.aligners_delivered   !== undefined ? !!js.aligners_delivered   : false,
     smile_correction:        js.smile_correction     !== undefined ? !!js.smile_correction     : false,
-    treatment_completed:     js.treatment_completed  !== undefined ? !!js.treatment_completed  : appt.status === "completed",
+    // `status === "completed"` only means the dentist ended the INITIAL
+    // scan/consultation appointment — it flips months before treatment even
+    // starts and never changes again, so it must never be trusted as a
+    // stand-in for treatment_completed (that footgun is exactly what showed
+    // an actively-in-treatment patient as "Treatment Completed").
+    treatment_completed:     !!js.treatment_completed,
     post_aligner_treatment:  !!js.post_aligner_treatment,
     feedback_submitted:      js.feedback_submitted   !== undefined ? !!js.feedback_submitted   : false,
   };
@@ -3802,7 +3807,14 @@ export default function PatientDetailPage() {
             </p>
           </div>
           <div style={{ padding: "6px 14px", borderRadius: "99px", background: "var(--admin-gold-wash, #f3f0e6)", fontSize: "11px", fontWeight: "700", color: "var(--admin-gold-strong, #a9762e)", letterSpacing: "0.7px" }}>
-            {appt.status?.toUpperCase() || "PENDING"}
+            {/* appt.status flips to "completed" the moment the dentist ends
+                the INITIAL scan/consultation visit — months before treatment
+                starts — and never changes again, so it isn't proof the
+                treatment itself is done. */}
+            {(appt.status === "completed" && !(appt.journey_steps?.journey_ended || appt.journey_steps?.treatment_completed)
+              ? "confirmed"
+              : appt.status
+            )?.toUpperCase() || "PENDING"}
           </div>
         </div>
       </div>

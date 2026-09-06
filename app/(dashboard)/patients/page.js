@@ -81,7 +81,17 @@ export default function PatientsPage() {
         <div style={{ display: "grid", gap: "12px" }}>
           {filtered.map((appt) => {
             const shortId = appt.id.substring(0, 8).toUpperCase();
-            const statusStyle = STATUS_STYLE[appt.status] || STATUS_STYLE.pending;
+            // `status` only tracks the INITIAL appointment's lifecycle — the
+            // dentist sets it to "completed" the moment that first scan/
+            // consultation visit ends, months before treatment even starts,
+            // and it never changes again unless someone explicitly ends the
+            // whole journey. A patient actively on set 7 of 11 would
+            // otherwise show a "COMPLETED" badge that reads as "treatment
+            // finished." Only trust "completed" here if the journey itself
+            // was actually ended.
+            const treatmentActuallyDone = !!(appt.journey_steps?.journey_ended || appt.journey_steps?.treatment_completed);
+            const displayStatus = appt.status === "completed" && !treatmentActuallyDone ? "confirmed" : appt.status;
+            const statusStyle = STATUS_STYLE[displayStatus] || STATUS_STYLE.pending;
 
             return (
               <div
@@ -123,7 +133,7 @@ export default function PatientsPage() {
                       fontSize: "11px", fontWeight: "700", padding: "2px 8px",
                       borderRadius: "99px", background: statusStyle.bg, color: statusStyle.color,
                     }}>
-                      {appt.status?.toUpperCase() || "PENDING"}
+                      {displayStatus?.toUpperCase() || "PENDING"}
                     </span>
                   </div>
                   <p style={{ margin: 0, fontSize: "13px", color: "var(--admin-ink2, #837a66)" }}>
