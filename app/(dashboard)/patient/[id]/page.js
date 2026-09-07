@@ -1316,8 +1316,8 @@ export default function PatientJourney() {
                 fixed "virtual" position above index 0), so it scrolls away
                 with everything else instead of sitting pinned in place. */}
             {[
-              { virtualIndex: -1, text: `${journeySteps.length} Steps to a Beautiful Smile`, size: "16px", weight: "800", baseOpacity: 0.55 },
-              { virtualIndex: -0.5, text: "Scroll down ↓", size: "12px", weight: "700", baseOpacity: 0.3 },
+              { virtualIndex: -1.2, text: `${journeySteps.length} Steps to a Beautiful Smile`, size: "16px", weight: "800", baseOpacity: 0.55 },
+              { virtualIndex: -0.7, text: "Scroll down ↓", size: "12px", weight: "700", baseOpacity: 0.3 },
             ].map(({ virtualIndex, text, size, weight, baseOpacity }) => {
               const rel = virtualIndex - arcOffset;
               const dist = Math.abs(rel);
@@ -1506,22 +1506,22 @@ export default function PatientJourney() {
           {/* Fades the illustration out under the copy, so the text always
               sits on a clean field however the artwork is positioned. */}
           <span aria-hidden="true" style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "linear-gradient(90deg, " + NEU.surface + " 30%, rgba(247,245,238,0.72) 48%, rgba(247,245,238,0) 66%)" }} />
-          <span style={{ position: "relative", zIndex: 1, display: "block", padding: "12px 0 12px 16px", maxWidth: "55%" }}>
+          <span style={{ position: "relative", zIndex: 1, display: "block", padding: "9px 0 9px 16px", maxWidth: "55%" }}>
             <span style={NEU_INFO_LABEL}>Refer and earn</span>
-            <span style={{ display: "block", fontSize: "17.5px", fontWeight: "800", letterSpacing: "-0.03em", lineHeight: "1.12", color: NEU.navy }}>
+            <span style={{ display: "block", fontSize: "14.5px", fontWeight: "800", letterSpacing: "-0.02em", lineHeight: "1.12", color: NEU.navy }}>
               Refer a friend
             </span>
-            <span style={{ display: "block", marginTop: "4px", fontSize: "11.5px", lineHeight: "1.4", color: NEU.slate }}>
+            <span style={{ display: "block", marginTop: "3px", fontSize: "10px", lineHeight: "1.35", color: NEU.slate }}>
               and get ₹500 discount on your next kit.
             </span>
             <span style={{
-              display: "inline-flex", alignItems: "center", gap: "7px", marginTop: "13px",
-              padding: "10px 16px", borderRadius: "99px", fontSize: "13px", fontWeight: "700", color: "#fff",
+              display: "inline-flex", alignItems: "center", gap: "6px", marginTop: "8px",
+              padding: "7px 13px", borderRadius: "99px", fontSize: "11px", fontWeight: "700", color: "#fff",
               background: "linear-gradient(135deg, #CBA164, #B8893F)",
               boxShadow: "-2px -2px 5px rgba(255,255,255,0.45), 3px 3px 9px rgba(150,110,46,0.42)",
             }}>
               Refer Now
-              <svg viewBox="0 0 24 24" width="13" height="13" style={{ fill: "none", stroke: "#fff", strokeWidth: 2.4, strokeLinecap: "round", strokeLinejoin: "round" }}>
+              <svg viewBox="0 0 24 24" width="11" height="11" style={{ fill: "none", stroke: "#fff", strokeWidth: 2.4, strokeLinecap: "round", strokeLinejoin: "round" }}>
                 <path d="M9 18l6-6-6-6" />
               </svg>
             </span>
