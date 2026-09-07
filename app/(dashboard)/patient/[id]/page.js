@@ -1309,8 +1309,8 @@ export default function PatientJourney() {
         <img src="/logo-mark.webp" alt="OrisAlign" style={{ position: "absolute", top: "16px", left: "50%", transform: "translateX(-50%)", width: "132px", zIndex: 25, mixBlendMode: "multiply", pointerEvents: "none" }} />
 
         {/* The rail */}
-        <div style={{ flex: "0 0 auto", margin: "90px 16px 0", display: "flex", flexDirection: "row", alignItems: "center", gap: "10px" }}>
-          <div style={{ flex: 1, position: "relative", zIndex: 3, isolation: "isolate", height: "360px", overflow: "hidden" }}>
+        <div style={{ flex: "0 0 auto", margin: "90px 16px 0" }}>
+          <div style={{ position: "relative", zIndex: 3, isolation: "isolate", height: "360px", overflow: "hidden" }}>
             {/* Fills the space above step 1 — rides the same rail as the
                 cards (same translateY/fade math, just fainter and at a
                 fixed "virtual" position above index 0), so it scrolls away
@@ -1327,7 +1327,7 @@ export default function PatientJourney() {
                 <p
                   key={virtualIndex}
                   style={{
-                    position: "absolute", left: "50%", top: "50%", width: "280px", margin: "-10px 0 0 -140px",
+                    position: "absolute", left: "50%", top: "50%", width: "320px", margin: "-10px 0 0 -160px",
                     textAlign: "center", fontSize: size, fontWeight: weight, letterSpacing: "-0.01em", color: NEU.navy,
                     transformOrigin: "center center",
                     transform: `translateY(${rel * CARD_SPACING}px) scale(${scale.toFixed(3)})`,
@@ -1360,7 +1360,7 @@ export default function PatientJourney() {
                   }}
                   aria-label={`Step ${i + 1}: ${step.label}`}
                   style={{
-                    position: "absolute", left: "50%", top: "50%", width: "280px", margin: "-58px 0 0 -140px",
+                    position: "absolute", left: "50%", top: "50%", width: "320px", margin: "-64px 0 0 -160px",
                     padding: 0, border: "none", background: "none", cursor: "pointer", font: "inherit", color: "inherit",
                     transformOrigin: "center center",
                     transform: `translateY(${rel * CARD_SPACING}px) scale(${scale.toFixed(3)})`,
@@ -1371,30 +1371,30 @@ export default function PatientJourney() {
                 >
                   <span style={{
                     position: "relative", display: "flex", flexDirection: "column", alignItems: "center",
-                    width: "280px", height: "116px", padding: "38px 16px 10px", borderRadius: "24px",
+                    width: "320px", height: "128px", padding: "42px 18px 12px", borderRadius: "26px",
                     background: NEU.surface,
                     boxShadow: isCurrent
                       ? "-7px -7px 16px rgba(255,255,255,0.95), 9px 9px 20px rgba(163,155,134,0.34), 0 0 0 1px rgba(184,137,63,0.16)"
                       : NEU.up,
                   }}>
-                    <span style={{ position: "absolute", top: "12px", left: "14px", width: "34px", height: "34px", borderRadius: "12px", display: "grid", placeItems: "center", background: NEU.surface, boxShadow: NEU.upSm }}>
-                      <svg viewBox="0 0 24 24" width="16" height="16"
+                    <span style={{ position: "absolute", top: "13px", left: "16px", width: "36px", height: "36px", borderRadius: "13px", display: "grid", placeItems: "center", background: NEU.surface, boxShadow: NEU.upSm }}>
+                      <svg viewBox="0 0 24 24" width="17" height="17"
                         style={{ fill: "none", stroke: isCurrent ? NEU.gold : done ? NEU.slate : NEU.slate2, strokeWidth: 1.7, strokeLinecap: "round", strokeLinejoin: "round" }}
                         dangerouslySetInnerHTML={{ __html: STEP_ICONS[step.key] || DEFAULT_STEP_ICON }} />
                     </span>
-                    <span style={{ position: "absolute", top: "15px", right: "16px", fontSize: "15px", fontWeight: "800", letterSpacing: "-0.02em", color: isCurrent ? NEU.gold : NEU.slate2, fontVariantNumeric: "tabular-nums" }}>
+                    <span style={{ position: "absolute", top: "16px", right: "18px", fontSize: "16px", fontWeight: "800", letterSpacing: "-0.02em", color: isCurrent ? NEU.gold : NEU.slate2, fontVariantNumeric: "tabular-nums" }}>
                       {String(i + 1).padStart(2, "0")}
                     </span>
-                    <span style={{ display: "flex", flexDirection: "column", gap: "3px", width: "100%", minWidth: 0 }}>
-                      <span style={{ fontSize: isCurrent ? "15px" : "13.5px", fontWeight: "800", letterSpacing: "-0.02em", lineHeight: "1.16", textAlign: "center", color: isCurrent ? NEU.navy : NEU.navy2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <span style={{ display: "flex", flexDirection: "column", gap: "4px", width: "100%", minWidth: 0 }}>
+                      <span style={{ fontSize: isCurrent ? "16px" : "14.5px", fontWeight: "800", letterSpacing: "-0.02em", lineHeight: "1.16", textAlign: "center", color: isCurrent ? NEU.navy : NEU.navy2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {step.label}
                       </span>
-                      <span style={{ fontSize: isCurrent ? "10.5px" : "9.5px", lineHeight: "1.3", textAlign: "center", color: isCurrent ? NEU.slate : NEU.slate2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <span style={{ fontSize: isCurrent ? "11px" : "10px", lineHeight: "1.3", textAlign: "center", color: isCurrent ? NEU.slate : NEU.slate2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {STEP_BLURB[step.key] || ""}
                       </span>
                     </span>
                     <span style={{
-                      marginTop: "7px", padding: "5px 14px", borderRadius: "99px", fontSize: "9.5px", fontWeight: "700",
+                      marginTop: "8px", padding: "6px 16px", borderRadius: "99px", fontSize: "10px", fontWeight: "700",
                       letterSpacing: "0.06em", textTransform: "uppercase",
                       background: isCurrent ? "linear-gradient(135deg, #CBA164, #B8893F)" : NEU.surface2,
                       color: isCurrent ? "#fff" : NEU.slate,
@@ -1403,33 +1403,6 @@ export default function PatientJourney() {
                       {label}
                     </span>
                   </span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Arrows — a vertical pair (up/down) beside the rail, now that
-              the cards move up/down instead of side to side. */}
-          <div style={{ position: "relative", zIndex: 4, flex: "0 0 auto", display: "flex", flexDirection: "column", gap: "10px" }}>
-            {[-1, 1].map((dir) => {
-              const at = Math.max(0, Math.min(journeySteps.length - 1, Math.round(arcOffset)));
-              const off = dir < 0 ? at === 0 : at === journeySteps.length - 1;
-              return (
-                <button
-                  key={dir}
-                  data-nodrag
-                  disabled={off}
-                  onClick={() => setArcOffset(Math.max(0, Math.min(journeySteps.length - 1, at + dir)))}
-                  aria-label={dir < 0 ? "Previous step" : "Next step"}
-                  style={{
-                    width: "38px", height: "38px", borderRadius: "50%", border: "none", flexShrink: 0,
-                    display: "grid", placeItems: "center", background: NEU.surface, boxShadow: NEU.upSm,
-                    cursor: off ? "default" : "pointer", opacity: off ? 0.4 : 1,
-                  }}
-                >
-                  <svg viewBox="0 0 24 24" width="15" height="15" style={{ fill: "none", stroke: "#4E6274", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round" }}>
-                    <path d={dir < 0 ? "M18 15l-6-6-6 6" : "M6 9l6 6 6-6"} />
-                  </svg>
                 </button>
               );
             })}
