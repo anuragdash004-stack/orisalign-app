@@ -1310,7 +1310,35 @@ export default function PatientJourney() {
 
         {/* The rail */}
         <div style={{ flex: "0 0 auto", margin: "90px 16px 0", display: "flex", flexDirection: "row", alignItems: "center", gap: "10px" }}>
-          <div style={{ flex: 1, position: "relative", zIndex: 3, isolation: "isolate", height: "360px" }}>
+          <div style={{ flex: 1, position: "relative", zIndex: 3, isolation: "isolate", height: "360px", overflow: "hidden" }}>
+            {/* Fills the space above step 1 — rides the same rail as the
+                cards (same translateY/fade math, just fainter and at a
+                fixed "virtual" position above index 0), so it scrolls away
+                with everything else instead of sitting pinned in place. */}
+            {[
+              { virtualIndex: -1, text: `${journeySteps.length} Steps to a Beautiful Smile`, size: "16px", weight: "800", baseOpacity: 0.55 },
+              { virtualIndex: -0.5, text: "Scroll down ↓", size: "12px", weight: "700", baseOpacity: 0.3 },
+            ].map(({ virtualIndex, text, size, weight, baseOpacity }) => {
+              const rel = virtualIndex - arcOffset;
+              const dist = Math.abs(rel);
+              const scale = Math.max(0.6, 1 - dist * 0.2);
+              const fade = dist >= 3.2 ? 0 : Math.max(0, 1 - Math.pow(dist / 3.2, 1.05));
+              return (
+                <p
+                  key={virtualIndex}
+                  style={{
+                    position: "absolute", left: "50%", top: "50%", width: "280px", margin: "-10px 0 0 -140px",
+                    textAlign: "center", fontSize: size, fontWeight: weight, letterSpacing: "-0.01em", color: NEU.navy,
+                    transformOrigin: "center center",
+                    transform: `translateY(${rel * CARD_SPACING}px) scale(${scale.toFixed(3)})`,
+                    opacity: baseOpacity * fade,
+                    pointerEvents: "none",
+                  }}
+                >
+                  {text}
+                </p>
+              );
+            })}
             {journeySteps.map((step, i) => {
               const rel = i - arcOffset;
               const dist = Math.abs(rel);
