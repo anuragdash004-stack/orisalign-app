@@ -159,7 +159,7 @@ function formatDayLabel(value) {
 }
 
 // Distance between card centres on the rail, in px.
-const CARD_SPACING = 190;
+const CARD_SPACING = 130;
 
 // One plain line per step, so a card says what that step is about.
 const STEP_BLURB = {
@@ -556,10 +556,11 @@ export default function PatientJourney() {
   };
 
   // Journey arc — how far the rail of step icons has been rotated, measured
-  // in steps (fractional while a drag is in progress). See ARC_* below.
+  // in steps (fractional while a drag is in progress). Always opens on step
+  // 1 (index 0) regardless of the patient's actual progress — they scroll
+  // down to find their current step themselves.
   const [arcOffset, setArcOffset] = useState(0);
   const arcDrag = useRef({ active: false, lastY: 0, moved: 0 });
-  const arcCentred = useRef(false);
 
   // The open card tracks whichever step the rail is centred on.
   useEffect(() => {
@@ -794,17 +795,6 @@ export default function PatientJourney() {
       setApplyingCoupon(false);
     }
   };
-
-  // Open the arc on whichever step the patient is actually up to, rather than
-  // always at step 1 — done once, so it never fights a drag afterwards.
-  useEffect(() => {
-    if (!patient || arcCentred.current) return;
-    arcCentred.current = true;
-    const list = isNewModelAppointment(patient) ? NEW_JOURNEY_STEPS : LEGACY_JOURNEY_STEPS;
-    const done = deriveSteps(patient);
-    const firstOpen = list.findIndex((s) => !done[s.key]);
-    setArcOffset(firstOpen === -1 ? list.length - 1 : firstOpen);
-  }, [patient]);
 
   if (loading) return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
@@ -1263,22 +1253,20 @@ export default function PatientJourney() {
     <div style={{ position: "relative", minHeight: "100vh", fontFamily: "'Inter', system-ui, sans-serif", colorScheme: "light", background: NEU.ivory }}>
 
       {/* ───── JOURNEY CAROUSEL ─────────────────────────────────────────
-          Every treatment step is a raised ceramic card on a horizontal rail.
-          Dragging sideways moves the rail; the centred card is the live one,
-          and tapping it opens that step's full panel. arcDrag.current.lastY
-          carries the last clientX here — the rail turned horizontal, the ref
-          did not get renamed. */}
+          Every treatment step is a raised ceramic card on a vertical rail.
+          Dragging up/down moves the rail; the centred card is the live one,
+          and tapping it opens that step's full panel. */}
       <div
         onPointerDown={(e) => {
           if (e.target.closest && e.target.closest("[data-nodrag]")) return;
-          arcDrag.current = { active: true, lastY: e.clientX, moved: 0 };
+          arcDrag.current = { active: true, lastY: e.clientY, moved: 0 };
         }}
         onPointerMove={(e) => {
           if (!arcDrag.current.active) return;
-          const dx = e.clientX - arcDrag.current.lastY;
-          arcDrag.current.lastY = e.clientX;
-          arcDrag.current.moved += Math.abs(dx);
-          setArcOffset((prev) => Math.max(0, Math.min(journeySteps.length - 1, prev - dx / CARD_SPACING)));
+          const dy = e.clientY - arcDrag.current.lastY;
+          arcDrag.current.lastY = e.clientY;
+          arcDrag.current.moved += Math.abs(dy);
+          setArcOffset((prev) => Math.max(0, Math.min(journeySteps.length - 1, prev - dy / CARD_SPACING)));
         }}
         onPointerUp={() => {
           if (!arcDrag.current.active) return;
@@ -1287,7 +1275,7 @@ export default function PatientJourney() {
         }}
         onPointerCancel={() => { arcDrag.current.active = false; }}
         onWheel={(e) => {
-          const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+          const d = Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
           setArcOffset((prev) => Math.max(0, Math.min(journeySteps.length - 1, Math.round(prev + (d > 0 ? 1 : -1)))));
         }}
         style={{
@@ -1318,16 +1306,16 @@ export default function PatientJourney() {
           </button>
         </div>
 
-        <img src="/logo-mark.webp" alt="OrisAlign" style={{ position: "absolute", top: "16px", left: "50%", transform: "translateX(-50%)", width: "132px", zIndex: 5, mixBlendMode: "multiply", pointerEvents: "none" }} />
+        <img src="/logo-mark.webp" alt="OrisAlign" style={{ position: "absolute", top: "16px", left: "50%", transform: "translateX(-50%)", width: "132px", zIndex: 25, mixBlendMode: "multiply", pointerEvents: "none" }} />
 
         {/* The rail */}
-        <div style={{ flex: "0 0 auto", margin: "26px 0 0" }}>
-          <div style={{ position: "relative", zIndex: 3, isolation: "isolate", height: "302px" }}>
+        <div style={{ flex: "0 0 auto", margin: "90px 16px 0", display: "flex", flexDirection: "row", alignItems: "center", gap: "10px" }}>
+          <div style={{ flex: 1, position: "relative", zIndex: 3, isolation: "isolate", height: "360px" }}>
             {journeySteps.map((step, i) => {
               const rel = i - arcOffset;
               const dist = Math.abs(rel);
               const scale = Math.max(0.6, 1 - dist * 0.2);
-              const opacity = dist >= 2.2 ? 0 : Math.max(0, 1 - Math.pow(dist / 2.2, 1.05));
+              const opacity = dist >= 3.2 ? 0 : Math.max(0, 1 - Math.pow(dist / 3.2, 1.05));
               const done = !!steps[step.key];
               const isCurrent = i === currentStepIndex;
               // Smile Correction stays shut until an admin marks it started.
@@ -1344,10 +1332,10 @@ export default function PatientJourney() {
                   }}
                   aria-label={`Step ${i + 1}: ${step.label}`}
                   style={{
-                    position: "absolute", left: "50%", top: "50%", width: "214px", margin: "-150px 0 0 -107px",
+                    position: "absolute", left: "50%", top: "50%", width: "280px", margin: "-58px 0 0 -140px",
                     padding: 0, border: "none", background: "none", cursor: "pointer", font: "inherit", color: "inherit",
                     transformOrigin: "center center",
-                    transform: `translateX(${rel * CARD_SPACING}px) scale(${scale.toFixed(3)})`,
+                    transform: `translateY(${rel * CARD_SPACING}px) scale(${scale.toFixed(3)})`,
                     opacity, zIndex: 20 - Math.round(dist),
                     pointerEvents: opacity < 0.35 ? "none" : "auto",
                     transition: arcDrag.current.active ? "none" : "transform 0.34s cubic-bezier(.2,.8,.3,1), opacity 0.3s ease",
@@ -1355,31 +1343,31 @@ export default function PatientJourney() {
                 >
                   <span style={{
                     position: "relative", display: "flex", flexDirection: "column", alignItems: "center",
-                    width: "214px", height: "300px", padding: "76px 16px 24px", borderRadius: "30px",
+                    width: "280px", height: "116px", padding: "38px 16px 10px", borderRadius: "24px",
                     background: NEU.surface,
                     boxShadow: isCurrent
                       ? "-7px -7px 16px rgba(255,255,255,0.95), 9px 9px 20px rgba(163,155,134,0.34), 0 0 0 1px rgba(184,137,63,0.16)"
                       : NEU.up,
                   }}>
-                    <span style={{ position: "absolute", top: "18px", left: "18px", width: "46px", height: "46px", borderRadius: "15px", display: "grid", placeItems: "center", background: NEU.surface, boxShadow: NEU.upSm }}>
-                      <svg viewBox="0 0 24 24" width="21" height="21"
+                    <span style={{ position: "absolute", top: "12px", left: "14px", width: "34px", height: "34px", borderRadius: "12px", display: "grid", placeItems: "center", background: NEU.surface, boxShadow: NEU.upSm }}>
+                      <svg viewBox="0 0 24 24" width="16" height="16"
                         style={{ fill: "none", stroke: isCurrent ? NEU.gold : done ? NEU.slate : NEU.slate2, strokeWidth: 1.7, strokeLinecap: "round", strokeLinejoin: "round" }}
                         dangerouslySetInnerHTML={{ __html: STEP_ICONS[step.key] || DEFAULT_STEP_ICON }} />
                     </span>
-                    <span style={{ position: "absolute", top: "22px", right: "20px", fontSize: "21px", fontWeight: "800", letterSpacing: "-0.02em", color: isCurrent ? NEU.gold : NEU.slate2, fontVariantNumeric: "tabular-nums" }}>
+                    <span style={{ position: "absolute", top: "15px", right: "16px", fontSize: "15px", fontWeight: "800", letterSpacing: "-0.02em", color: isCurrent ? NEU.gold : NEU.slate2, fontVariantNumeric: "tabular-nums" }}>
                       {String(i + 1).padStart(2, "0")}
                     </span>
-                    <span style={{ marginTop: "auto", marginBottom: "auto", display: "flex", flexDirection: "column", gap: "9px", width: "100%" }}>
-                      <span style={{ fontSize: isCurrent ? "21px" : "17px", fontWeight: "800", letterSpacing: "-0.025em", lineHeight: "1.16", textAlign: "center", color: isCurrent ? NEU.navy : NEU.navy2 }}>
+                    <span style={{ display: "flex", flexDirection: "column", gap: "3px", width: "100%", minWidth: 0 }}>
+                      <span style={{ fontSize: isCurrent ? "15px" : "13.5px", fontWeight: "800", letterSpacing: "-0.02em", lineHeight: "1.16", textAlign: "center", color: isCurrent ? NEU.navy : NEU.navy2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {step.label}
                       </span>
-                      <span style={{ fontSize: isCurrent ? "12.5px" : "11.5px", lineHeight: "1.55", textAlign: "center", color: isCurrent ? NEU.slate : NEU.slate2 }}>
+                      <span style={{ fontSize: isCurrent ? "10.5px" : "9.5px", lineHeight: "1.3", textAlign: "center", color: isCurrent ? NEU.slate : NEU.slate2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {STEP_BLURB[step.key] || ""}
                       </span>
                     </span>
                     <span style={{
-                      marginTop: "11px", padding: "8px 17px", borderRadius: "99px", fontSize: "11.5px", fontWeight: "700",
-                      letterSpacing: "0.07em", textTransform: "uppercase",
+                      marginTop: "7px", padding: "5px 14px", borderRadius: "99px", fontSize: "9.5px", fontWeight: "700",
+                      letterSpacing: "0.06em", textTransform: "uppercase",
                       background: isCurrent ? "linear-gradient(135deg, #CBA164, #B8893F)" : NEU.surface2,
                       color: isCurrent ? "#fff" : NEU.slate,
                       boxShadow: isCurrent ? "-2px -2px 5px rgba(255,255,255,0.5), 3px 3px 8px rgba(150,110,46,0.42)" : NEU.insetSm,
@@ -1392,8 +1380,9 @@ export default function PatientJourney() {
             })}
           </div>
 
-          {/* Arrows */}
-          <div style={{ position: "relative", zIndex: 4, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 36px", marginTop: "20px" }}>
+          {/* Arrows — a vertical pair (up/down) beside the rail, now that
+              the cards move up/down instead of side to side. */}
+          <div style={{ position: "relative", zIndex: 4, flex: "0 0 auto", display: "flex", flexDirection: "column", gap: "10px" }}>
             {[-1, 1].map((dir) => {
               const at = Math.max(0, Math.min(journeySteps.length - 1, Math.round(arcOffset)));
               const off = dir < 0 ? at === 0 : at === journeySteps.length - 1;
@@ -1411,7 +1400,7 @@ export default function PatientJourney() {
                   }}
                 >
                   <svg viewBox="0 0 24 24" width="15" height="15" style={{ fill: "none", stroke: "#4E6274", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round" }}>
-                    <path d={dir < 0 ? "M15 18l-6-6 6-6" : "M9 18l6-6-6-6"} />
+                    <path d={dir < 0 ? "M18 15l-6-6-6 6" : "M6 9l6 6 6-6"} />
                   </svg>
                 </button>
               );
