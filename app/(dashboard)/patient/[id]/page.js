@@ -64,7 +64,10 @@ const LEGACY_JOURNEY_STEPS = [
 const NEW_JOURNEY_STEPS = [
   { key: "booked",                  label: "Appointment Booked" },
   { key: "confirmed",               label: "Appointment Confirmed" },
-  { key: "scanning_done",           label: "Scanning" },
+  // expandable: its panel carries the sets/duration summary and the
+  // scanning video — both of which this model still shows. Without the flag
+  // the card silently refused to open and the uploaded scan was unreachable.
+  { key: "scanning_done",           label: "Scanning",                    expandable: true },
   { key: "provisional_planning",    label: "Provisional Planning",        expandable: true },
   { key: "payment_done",            label: "Full Plan",                   expandable: true },
   { key: "investigation_required",  label: "Investigation Required",      expandable: true },
@@ -1259,13 +1262,18 @@ export default function PatientJourney() {
       <div
         onPointerDown={(e) => {
           if (e.target.closest && e.target.closest("[data-nodrag]")) return;
-          arcDrag.current = { active: true, lastY: e.clientY, moved: 0 };
+          arcDrag.current = { active: true, lastY: e.clientY, startY: e.clientY, moved: 0 };
         }}
         onPointerMove={(e) => {
           if (!arcDrag.current.active) return;
           const dy = e.clientY - arcDrag.current.lastY;
           arcDrag.current.lastY = e.clientY;
-          arcDrag.current.moved += Math.abs(dy);
+          // Net distance from where the finger landed, NOT the summed path.
+          // Summing every micro-move meant an ordinary thumb tap (which
+          // always jitters a few px, and jitters most along this axis now
+          // that the rail is vertical) piled up past the drag threshold and
+          // got swallowed as a drag — so tapping a step did nothing at all.
+          arcDrag.current.moved = Math.abs(e.clientY - arcDrag.current.startY);
           setArcOffset((prev) => Math.max(0, Math.min(journeySteps.length - 1, prev - dy / CARD_SPACING)));
         }}
         onPointerUp={() => {
@@ -1353,7 +1361,12 @@ export default function PatientJourney() {
                 <button
                   key={step.key}
                   onClick={() => {
-                    if (arcDrag.current.moved > 6) { arcDrag.current.moved = 0; return; }
+                    // The rail snaps to the nearest step on release, so any
+                    // gesture shorter than half a step (CARD_SPACING / 2)
+                    // lands back on this same card — meaning it was a tap,
+                    // however shaky. 30px is comfortably inside that and well
+                    // clear of a real swipe, which runs 100px+.
+                    if (arcDrag.current.moved > 30) { arcDrag.current.moved = 0; return; }
                     if (Math.abs(i - arcOffset) > 0.5) { setArcOffset(i); return; }
                     if (locked || !step.expandable) return;
                     setExpandedStep(step.key);
