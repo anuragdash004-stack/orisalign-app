@@ -1262,24 +1262,52 @@ export default function PatientJourney() {
       <div
         onPointerDown={(e) => {
           if (e.target.closest && e.target.closest("[data-nodrag]")) return;
-          arcDrag.current = { active: true, lastY: e.clientY, startY: e.clientY, moved: 0 };
+          arcDrag.current = { active: true, lastY: e.clientY, startY: e.clientY, moved: 0, lastT: e.timeStamp, velocity: 0 };
         }}
         onPointerMove={(e) => {
           if (!arcDrag.current.active) return;
           const dy = e.clientY - arcDrag.current.lastY;
+          // Floored at a realistic frame interval, not 1ms — pointer events
+          // fired back-to-back in the same tick (batched input, some test
+          // harnesses) would otherwise report a near-zero elapsed time and
+          // turn an ordinary movement into a wildly inflated velocity.
+          const dt = Math.max(8, e.timeStamp - arcDrag.current.lastT);
           arcDrag.current.lastY = e.clientY;
+          arcDrag.current.lastT = e.timeStamp;
           // Net distance from where the finger landed, NOT the summed path.
           // Summing every micro-move meant an ordinary thumb tap (which
           // always jitters a few px, and jitters most along this axis now
           // that the rail is vertical) piled up past the drag threshold and
           // got swallowed as a drag — so tapping a step did nothing at all.
           arcDrag.current.moved = Math.abs(e.clientY - arcDrag.current.startY);
+          // Smoothed instantaneous velocity, in steps/ms — carried into
+          // onPointerUp so a fast flick keeps travelling after release
+          // instead of stopping dead where the finger lifted. Blended
+          // rather than taken raw so one noisy sample near release can't
+          // dominate the whole flick.
+          const instVelocity = -dy / CARD_SPACING / dt;
+          arcDrag.current.velocity = arcDrag.current.velocity * 0.7 + instVelocity * 0.3;
           setArcOffset((prev) => Math.max(0, Math.min(journeySteps.length - 1, prev - dy / CARD_SPACING)));
         }}
         onPointerUp={() => {
           if (!arcDrag.current.active) return;
           arcDrag.current.active = false;
-          setArcOffset((prev) => Math.max(0, Math.min(journeySteps.length - 1, Math.round(prev))));
+          // A fast flick keeps coasting for ~260ms of momentum before
+          // settling on the nearest step — covering several steps in one
+          // gesture instead of forcing a discrete swipe per step. A slow
+          // drag has ~zero velocity here and just lands where released,
+          // same as before. Gated on the same 30px the tap check uses: a
+          // tap's own jitter happens fast enough (near-zero elapsed time)
+          // to compute a spuriously huge velocity, which would fling the
+          // rail away from the very card being tapped right as the click
+          // fires — momentum only applies once the gesture is unambiguously
+          // a drag, never to something small enough to still be a tap.
+          // Capped at 6 steps regardless of the computed velocity — a safety
+          // ceiling against any timestamp irregularity producing a runaway
+          // estimate, on top of the physically real fastest flick.
+          const rawMomentum = arcDrag.current.moved > 30 ? arcDrag.current.velocity * 260 : 0;
+          const momentum = Math.max(-6, Math.min(6, rawMomentum));
+          setArcOffset((prev) => Math.max(0, Math.min(journeySteps.length - 1, Math.round(prev + momentum))));
         }}
         onPointerCancel={() => { arcDrag.current.active = false; }}
         onWheel={(e) => {
