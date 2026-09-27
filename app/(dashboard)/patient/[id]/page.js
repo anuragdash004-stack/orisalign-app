@@ -1385,9 +1385,20 @@ export default function PatientJourney() {
               // Smile Correction stays shut until an admin marks it started.
               const locked = !!step.smileLink && !steps[step.key];
               const label = done ? "Completed" : isCurrent ? "In progress" : "Upcoming";
+              // Plan Approval isn't expandable — there's no panel to open —
+              // so once the admin has switched it on, the Approve Plan action
+              // has to live right on the card itself, in place of the usual
+              // status pill, instead of asking the patient to find it
+              // somewhere that doesn't exist. Needs a <div> here instead of
+              // <button>: a real <button> nested inside another <button> is
+              // invalid HTML and browsers silently break its click handling.
+              const isPlanApproval = step.key === "plan_approved";
+              const CardTag = isPlanApproval ? "div" : "button";
               return (
-                <button
+                <CardTag
                   key={step.key}
+                  role={isPlanApproval ? "button" : undefined}
+                  tabIndex={isPlanApproval ? 0 : undefined}
                   onClick={() => {
                     // The rail snaps to the nearest step on release, so any
                     // gesture shorter than half a step (CARD_SPACING / 2)
@@ -1434,17 +1445,40 @@ export default function PatientJourney() {
                         {STEP_BLURB[step.key] || ""}
                       </span>
                     </span>
-                    <span style={{
-                      marginTop: "8px", padding: "6px 16px", borderRadius: "99px", fontSize: "10px", fontWeight: "700",
-                      letterSpacing: "0.06em", textTransform: "uppercase",
-                      background: isCurrent ? "linear-gradient(135deg, #CBA164, #B8893F)" : NEU.surface2,
-                      color: isCurrent ? "#fff" : NEU.slate,
-                      boxShadow: isCurrent ? "-2px -2px 5px rgba(255,255,255,0.5), 3px 3px 8px rgba(150,110,46,0.42)" : NEU.insetSm,
-                    }}>
-                      {label}
-                    </span>
+                    {isPlanApproval && patient.plan_approved ? (
+                      <span style={{
+                        marginTop: "8px", padding: "6px 16px", borderRadius: "99px", fontSize: "10px", fontWeight: "700",
+                        letterSpacing: "0.06em", textTransform: "uppercase",
+                        background: "rgba(22,143,131,0.14)", color: "#168F83", boxShadow: NEU.insetSm,
+                      }}>
+                        ✓ Approved
+                      </span>
+                    ) : isPlanApproval && canApprovePlan ? (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleApprovePlan(); }}
+                        disabled={approving}
+                        style={{
+                          marginTop: "8px", padding: "7px 18px", borderRadius: "99px", border: "none", fontSize: "11px", fontWeight: "700",
+                          letterSpacing: "0.02em", cursor: approving ? "not-allowed" : "pointer", whiteSpace: "nowrap",
+                          background: approving ? "#d4a574" : "linear-gradient(135deg, #CBA164, #B8893F)", color: "#fff",
+                          boxShadow: "-2px -2px 5px rgba(255,255,255,0.5), 3px 3px 8px rgba(150,110,46,0.42)",
+                        }}
+                      >
+                        {approving ? "Approving..." : "Approve Plan"}
+                      </button>
+                    ) : (
+                      <span style={{
+                        marginTop: "8px", padding: "6px 16px", borderRadius: "99px", fontSize: "10px", fontWeight: "700",
+                        letterSpacing: "0.06em", textTransform: "uppercase",
+                        background: isCurrent ? "linear-gradient(135deg, #CBA164, #B8893F)" : NEU.surface2,
+                        color: isCurrent ? "#fff" : NEU.slate,
+                        boxShadow: isCurrent ? "-2px -2px 5px rgba(255,255,255,0.5), 3px 3px 8px rgba(150,110,46,0.42)" : NEU.insetSm,
+                      }}>
+                        {label}
+                      </span>
+                    )}
                   </span>
-                </button>
+                </CardTag>
               );
             })}
           </div>
