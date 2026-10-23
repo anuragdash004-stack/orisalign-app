@@ -238,6 +238,70 @@ export function alignerRangeLabel(nums: number[]): string {
   return `${nums[0]}–${nums[nums.length - 1]}`;
 }
 
+// ── Discounts on the monthly plan ──────────────────────────────────────────
+//
+// Two distinct sources feed the same backward-from-the-last-month discount
+// (applyCouponDiscount above):
+//   - A manual discount an admin sets on the patient's record — a flat
+//     rupee amount, permanent, no expiry.
+//   - Coupons the patient applies themselves — each holds for 60 minutes
+//     from the moment it's applied, then silently stops counting (nothing
+//     has to delete or mark it; every reader here is time-aware). A patient
+//     gets exactly one coupon attempt ever, successful or not — see
+//     hasUsedCoupon below.
+//
+// Every place that needs "how much discount applies right now" should call
+// activeDiscountTotal rather than summing applied_coupons itself — that
+// duplication is exactly what let a coupon quietly out-live its window in
+// one screen while correctly expiring in another.
+
+export const COUPON_HOLD_MS = 60 * 60 * 1000; // 60 minutes
+
+export interface AppliedCoupon {
+  code: string;
+  discount: number;
+  /** ISO timestamp, set by the server at the moment it was applied. Absent
+   *  on coupons applied before this field existed — those count as always
+   *  active rather than being retroactively expired. */
+  applied_at?: string;
+}
+
+/** Milliseconds left on one applied coupon's 60-minute hold; 0 once expired. */
+export function couponMsRemaining(coupon: AppliedCoupon, now: number = Date.now()): number {
+  if (!coupon.applied_at) return Infinity;
+  const appliedAt = new Date(coupon.applied_at).getTime();
+  if (Number.isNaN(appliedAt)) return Infinity;
+  return Math.max(0, COUPON_HOLD_MS - (now - appliedAt));
+}
+
+/** Whether this patient has ever applied a coupon — one attempt per patient, ever, win or lose. */
+export function hasUsedCoupon(paymentData: Record<string, any> | null | undefined): boolean {
+  const coupons = (paymentData?.applied_coupons as AppliedCoupon[] | undefined) || [];
+  return coupons.length > 0;
+}
+
+/** Sum of applied coupons still inside their 60-minute window — an expired one silently drops out. */
+export function activeCouponsTotal(paymentData: Record<string, any> | null | undefined, now: number = Date.now()): number {
+  const coupons = (paymentData?.applied_coupons as AppliedCoupon[] | undefined) || [];
+  return coupons.reduce((sum, c) => {
+    const active = couponMsRemaining(c, now) > 0;
+    return active ? sum + (Number(c.discount) || 0) : sum;
+  }, 0);
+}
+
+/**
+ * The discount actually in effect right now, for the new per-arch model:
+ * the admin's manual discount (always counts, no expiry) plus any applied
+ * coupon still active. The legacy lump-sum model has its own separate
+ * admin discount field (payment_data.discount) and should use
+ * activeCouponsTotal alone instead, to avoid folding manual_discount in
+ * twice under two different names.
+ */
+export function activeDiscountTotal(paymentData: Record<string, any> | null | undefined, now: number = Date.now()): number {
+  const manual = Number(paymentData?.manual_discount) || 0;
+  return manual + activeCouponsTotal(paymentData, now);
+}
+
 /**
  * Per-slot labels for a package (month): while both arches still have an
  * aligner in a given slot they're worn together, so it's labelled as one

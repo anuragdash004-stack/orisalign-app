@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { applyCouponDiscount } from "./monthlyPlan";
+import { applyCouponDiscount, activeDiscountTotal } from "./monthlyPlan";
 import type { MonthlyPlan } from "./monthlyPlan";
 
 /** Both sides of a referral get this much off. */
@@ -177,9 +177,7 @@ export async function qualifyReferralOnPayment(
     if (!plan) return; // no schedule yet, so no package has been bought
 
     const pd = (referee?.payment_data as Record<string, unknown>) || {};
-    const couponsTotal = (Array.isArray(pd.applied_coupons) ? (pd.applied_coupons as { discount?: number }[]) : [])
-      .reduce((sum, c) => sum + (Number(c.discount) || 0), 0);
-    const firstPackage = applyCouponDiscount(plan, couponsTotal).months[0];
+    const firstPackage = applyCouponDiscount(plan, activeDiscountTotal(pd)).months[0];
     if (!firstPackage) return;
 
     // Qualifies only once at least the first aligner package is covered.

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
-import { PROVISIONAL_PLAN_FEE, estimateRange, estimateRangeForPlan, formatMonthsDays, applyCouponDiscount, totalCost, monthSlotLabels, PLAN_CONFIGS } from "@/lib/monthlyPlan";
+import { PROVISIONAL_PLAN_FEE, estimateRange, estimateRangeForPlan, formatMonthsDays, applyCouponDiscount, totalCost, monthSlotLabels, PLAN_CONFIGS, activeDiscountTotal, activeCouponsTotal, couponMsRemaining, COUPON_HOLD_MS } from "@/lib/monthlyPlan";
 import { INVESTIGATION_TYPES, MAX_INVESTIGATION_FILE_SIZE, isInvestigationDone } from "@/lib/investigations";
 import { isNewModelAppointment } from "@/lib/appointmentModel";
 import {
@@ -280,9 +280,7 @@ function deriveSteps(appt) {
   };
 
   if (hasMonthlyPlan) {
-    const couponsTotal = (appt.payment_data?.applied_coupons || [])
-      .reduce((sum, c) => sum + (parseFloat(c.discount) || 0), 0);
-    const discounted = applyCouponDiscount(appt.monthly_plan, couponsTotal);
+    const discounted = applyCouponDiscount(appt.monthly_plan, activeDiscountTotal(appt.payment_data));
     base.aligner_sets = amountPaid >= totalCost(discounted);
   } else {
     // Manufacturing counts as "done" (green, roadmap moves on) once fully
@@ -659,7 +657,18 @@ export default function PatientJourney() {
   const [markingProcedureDone, setMarkingProcedureDone] = useState(null);
   const [uploadingSmileImage, setUploadingSmileImage] = useState(null); // "<setNum>-<type>" currently uploading
   const [paymentMode, setPaymentMode] = useState("down"); // "down" or "full"
-  const [appliedCoupons, setAppliedCoupons] = useState([]); // Array of {code, discount}
+  const [appliedCoupons, setAppliedCoupons] = useState([]); // Array of {code, discount, applied_at}
+  // Ticks once a second only while a timed coupon is actually counting down,
+  // so its countdown display updates live and — once it hits zero — every
+  // activeDiscountTotal/activeCouponsTotal call downstream re-evaluates and
+  // the discount drops out of the total on its own, no removal step needed.
+  const [couponClockTick, setCouponClockTick] = useState(() => Date.now());
+  useEffect(() => {
+    const hasTimedCoupon = appliedCoupons.some((c) => c.applied_at && couponMsRemaining(c) > 0);
+    if (!hasTimedCoupon) return;
+    const iv = setInterval(() => setCouponClockTick(Date.now()), 1000);
+    return () => clearInterval(iv);
+  }, [appliedCoupons]);
   const [couponInput, setCouponInput] = useState("");
   const [couponMessage, setCouponMessage] = useState("");
   const [applyingCoupon, setApplyingCoupon] = useState(false);
@@ -718,80 +727,69 @@ export default function PatientJourney() {
       setCouponMessage("Please enter a coupon code.");
       return;
     }
+    // One coupon attempt per patient, ever — checked again authoritatively
+    // on the server, this just avoids a round-trip for the common case.
+    if (appliedCoupons.length > 0) {
+      setCouponMessage("A coupon has already been used on this patient ID.");
+      return;
+    }
 
     setApplyingCoupon(true);
     setCouponMessage("");
+    const normalized = couponInput.trim().toUpperCase();
 
     try {
-      const { data, error } = await supabase
-        .from("coupons")
-        .select("*")
-        .eq("code", couponInput.trim().toUpperCase())
-        .eq("is_active", true)
-        .single();
+      const res = await fetch("/api/apply-plan-coupon", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ appointmentId: id, code: normalized }),
+      });
+      const json = await res.json().catch(() => ({}));
 
-      if (error || !data) {
-        // Not a coupon — it may be another patient's referral code. The server
-        // validates that (self-referral, already redeemed, already paid) and
-        // applies it, so those rules can't be worked around from here.
-        try {
-          const res = await fetch("/api/referral", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ appointmentId: id, action: "redeem", code: couponInput.trim().toUpperCase() }),
-          });
-          const json = await res.json().catch(() => ({}));
-          if (res.ok && json.success) {
-            const { data: fresh } = await supabase
-              .from("appointments_booking")
-              .select("payment_data")
-              .eq("id", id)
-              .single();
-            const updated = fresh?.payment_data?.applied_coupons || [];
-            setAppliedCoupons(updated);
-            setPatient((prev) => prev && { ...prev, payment_data: fresh?.payment_data || prev.payment_data });
-            setCouponMessage("✓ Referral code applied! Discount: " + fmt(json.discount));
-            setCouponInput("");
-            setApplyingCoupon(false);
-            return;
-          }
-          setCouponMessage(json.error || "No valid coupon found with this code.");
-        } catch {
-          setCouponMessage("No valid coupon found with this code.");
+      if (res.ok && json.success) {
+        const { data: fresh } = await supabase
+          .from("appointments_booking")
+          .select("payment_data")
+          .eq("id", id)
+          .single();
+        const updated = fresh?.payment_data?.applied_coupons || [];
+        setAppliedCoupons(updated);
+        setPatient((prev) => prev && { ...prev, payment_data: fresh?.payment_data || prev.payment_data });
+        setCouponMessage(`✓ Coupon "${json.code}" applied! Discount: ${fmt(json.discount)} — valid for the next 60 minutes.`);
+        setCouponInput("");
+        setApplyingCoupon(false);
+        return;
+      }
+
+      // Not a coupon — it may be another patient's referral code. The server
+      // validates that (self-referral, already redeemed, already paid) and
+      // applies it, so those rules can't be worked around from here.
+      try {
+        const refRes = await fetch("/api/referral", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ appointmentId: id, action: "redeem", code: normalized }),
+        });
+        const refJson = await refRes.json().catch(() => ({}));
+        if (refRes.ok && refJson.success) {
+          const { data: fresh } = await supabase
+            .from("appointments_booking")
+            .select("payment_data")
+            .eq("id", id)
+            .single();
+          const updated = fresh?.payment_data?.applied_coupons || [];
+          setAppliedCoupons(updated);
+          setPatient((prev) => prev && { ...prev, payment_data: fresh?.payment_data || prev.payment_data });
+          setCouponMessage("✓ Referral code applied! Discount: " + fmt(refJson.discount));
+          setCouponInput("");
+          setApplyingCoupon(false);
+          return;
         }
-        setApplyingCoupon(false);
-        return;
+        setCouponMessage(refJson.error || json.error || "No valid coupon found with this code.");
+      } catch {
+        setCouponMessage(json.error || "No valid coupon found with this code.");
       }
-
-      const discountAmount = parseFloat(data.discount_amount) || 0;
-      if (discountAmount <= 0) {
-        setCouponMessage("This coupon has no discount available.");
-        setApplyingCoupon(false);
-        return;
-      }
-
-      if (appliedCoupons.find((c) => c.code === data.code)) {
-        setCouponMessage("This coupon has already been used on this patient ID.");
-        setApplyingCoupon(false);
-        return;
-      }
-
-      const updatedCoupons = [...appliedCoupons, { code: data.code, discount: discountAmount }];
-      const newPaymentData = { ...(patient?.payment_data || {}), applied_coupons: updatedCoupons };
-      const { error: saveError } = await supabase
-        .from("appointments_booking")
-        .update({ payment_data: newPaymentData })
-        .eq("id", id);
-      if (saveError) {
-        setCouponMessage("Couldn't save the coupon. Please try again.");
-        setApplyingCoupon(false);
-        return;
-      }
-
-      setAppliedCoupons(updatedCoupons);
-      setPatient((prev) => prev && { ...prev, payment_data: newPaymentData });
-      setCouponMessage(`✓ Coupon "${data.code}" applied! Discount: ${fmt(discountAmount)}`);
-      setCouponInput("");
+      setApplyingCoupon(false);
     } catch (err) {
       setCouponMessage("Error validating coupon. Please try again.");
     } finally {
@@ -840,8 +838,7 @@ export default function PatientJourney() {
   const completedCount = journeySteps.filter((s) => steps[s.key]).length;
   const progressPct = Math.round((completedCount / journeySteps.length) * 100);
   const pd = patient.payment_data || {};
-  const couponsTotalForMonths = appliedCoupons.reduce((sum, c) => sum + (parseFloat(c.discount) || 0), 0);
-  const discountedMonthlyPlan = patient.monthly_plan ? applyCouponDiscount(patient.monthly_plan, couponsTotalForMonths) : null;
+  const discountedMonthlyPlan = patient.monthly_plan ? applyCouponDiscount(patient.monthly_plan, activeDiscountTotal(patient.payment_data)) : null;
 
   // Number of sets is the same regardless of plan (set by the orthodontist
   // in Provisional Planning, or later confirmed in the Aligner Plan) — only
@@ -849,7 +846,7 @@ export default function PatientJourney() {
   const sets = patient.aligner_total_sets || patient.provisional_sets_orispro || 0;
   const activePlanInfo = PLAN_OPTIONS.find((p) => p.value === selectedPlan) || PLAN_OPTIONS[0];
   const discountAmt = parseFloat(pd.discount) || 0;
-  const couponsTotal = appliedCoupons.reduce((sum, c) => sum + (parseFloat(c.discount) || 0), 0);
+  const couponsTotal = activeCouponsTotal(pd);
   const planGrossAmt = sets * activePlanInfo.pricePerSet;
   const planFinalAmt = Math.max(0, planGrossAmt - discountAmt - couponsTotal);
   const planDownAmt = activePlanInfo.downPayment;
@@ -2377,72 +2374,94 @@ export default function PatientJourney() {
                                   <p style={{ margin: 0, fontSize: "24px", fontWeight: "900", color: "#12706A" }}>{fmt(amountDue)}</p>
                                 </div>
 
-                                {/* Coupon Input Section — only before any payment has been made */}
-                                {!hasPartialPaid && (
-                                  <>
-                                    <div style={{ display: "flex", gap: "8px" }}>
-                                      <input
-                                        type="text"
-                                        placeholder="Enter coupon code"
-                                        value={couponInput}
-                                        onChange={(e) => setCouponInput(e.target.value)}
-                                        onKeyPress={(e) => e.key === "Enter" && applyCoupon()}
-                                        style={{
-                                          flex: 1,
-                                          padding: "10px 12px",
-                                          borderRadius: "8px",
-                                          border: "1px solid rgba(23,59,87,0.14)",
-                                          fontSize: "13px",
-                                          outline: "none",
-                                        }}
-                                      />
-                                      <button
-                                        onClick={applyCoupon}
-                                        disabled={applyingCoupon}
-                                        style={{
-                                          padding: "10px 16px",
-                                          borderRadius: "8px",
-                                          border: "none",
-                                          background: "#b8905a",
-                                          color: "white",
-                                          fontWeight: "700",
-                                          fontSize: "13px",
-                                          cursor: applyingCoupon ? "not-allowed" : "pointer",
-                                          opacity: applyingCoupon ? 0.6 : 1,
-                                        }}
-                                      >
-                                        {applyingCoupon ? "..." : "Apply"}
-                                      </button>
-                                    </div>
-
-                                    {couponMessage && (
-                                      <div style={{
+                                {/* Coupon Input Section — only before any payment has been made,
+                                    and only while this patient hasn't used their one coupon
+                                    attempt yet (the "Coupons Applied" block below takes over,
+                                    and stays visible even once the input itself is gone). */}
+                                {!hasPartialPaid && appliedCoupons.length === 0 && (
+                                  <div style={{ display: "flex", gap: "8px" }}>
+                                    <input
+                                      type="text"
+                                      placeholder="Enter coupon code"
+                                      value={couponInput}
+                                      onChange={(e) => setCouponInput(e.target.value)}
+                                      onKeyPress={(e) => e.key === "Enter" && applyCoupon()}
+                                      style={{
+                                        flex: 1,
                                         padding: "10px 12px",
                                         borderRadius: "8px",
-                                        background: couponMessage.includes("✓") ? "rgba(21,158,145,0.08)" : "#fee2e2",
-                                        border: couponMessage.includes("✓") ? "1px solid rgba(21,158,145,0.40)" : "1px solid #fecaca",
-                                        color: couponMessage.includes("✓") ? "#168F83" : "#dc2626",
+                                        border: "1px solid rgba(23,59,87,0.14)",
                                         fontSize: "13px",
-                                        fontWeight: "600",
-                                      }}>
-                                        {couponMessage}
-                                      </div>
-                                    )}
+                                        outline: "none",
+                                      }}
+                                    />
+                                    <button
+                                      onClick={applyCoupon}
+                                      disabled={applyingCoupon}
+                                      style={{
+                                        padding: "10px 16px",
+                                        borderRadius: "8px",
+                                        border: "none",
+                                        background: "#b8905a",
+                                        color: "white",
+                                        fontWeight: "700",
+                                        fontSize: "13px",
+                                        cursor: applyingCoupon ? "not-allowed" : "pointer",
+                                        opacity: applyingCoupon ? 0.6 : 1,
+                                      }}
+                                    >
+                                      {applyingCoupon ? "..." : "Apply"}
+                                    </button>
+                                  </div>
+                                )}
 
-                                    {appliedCoupons.length > 0 && (
-                                      <div style={{ padding: "10px 12px", background: "#D7EFEB", borderRadius: "8px" }}>
-                                        <p style={{ margin: "0 0 8px", fontSize: "11px", fontWeight: "700", color: "#0F5F58", textTransform: "uppercase" }}>Coupons Applied</p>
-                                        <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                                          {appliedCoupons.map((coupon, idx) => (
-                                            <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 8px", background: "white", borderRadius: "4px" }}>
-                                              <span style={{ fontSize: "13px", fontWeight: "700", color: "#111827" }}>{coupon.code}</span>
-                                              <span style={{ fontSize: "12px", color: "#6b7280" }}>- {fmt(coupon.discount)}</span>
-                                            </div>
-                                          ))}
-                                        </div>
-                                      </div>
+                                {couponMessage && (
+                                  <div style={{
+                                    padding: "10px 12px",
+                                    borderRadius: "8px",
+                                    background: couponMessage.includes("✓") ? "rgba(21,158,145,0.08)" : "#fee2e2",
+                                    border: couponMessage.includes("✓") ? "1px solid rgba(21,158,145,0.40)" : "1px solid #fecaca",
+                                    color: couponMessage.includes("✓") ? "#168F83" : "#dc2626",
+                                    fontSize: "13px",
+                                    fontWeight: "600",
+                                  }}>
+                                    {couponMessage}
+                                  </div>
+                                )}
+
+                                {appliedCoupons.length > 0 && (
+                                  <div style={{ padding: "10px 12px", background: "#D7EFEB", borderRadius: "8px" }}>
+                                    <p style={{ margin: "0 0 8px", fontSize: "11px", fontWeight: "700", color: "#0F5F58", textTransform: "uppercase" }}>Coupons Applied</p>
+                                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                                      {appliedCoupons.map((coupon, idx) => {
+                                        // No applied_at (a referral-sourced entry, or one applied
+                                        // before this field existed) never expires.
+                                        const msLeft = couponMsRemaining(coupon);
+                                        const expired = coupon.applied_at && msLeft <= 0;
+                                        const timed = coupon.applied_at && Number.isFinite(msLeft);
+                                        const mm = String(Math.floor(msLeft / 60000)).padStart(2, "0");
+                                        const ss = String(Math.floor((msLeft % 60000) / 1000)).padStart(2, "0");
+                                        return (
+                                          <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 8px", background: "white", borderRadius: "4px", opacity: expired ? 0.5 : 1 }}>
+                                            <span style={{ fontSize: "13px", fontWeight: "700", color: "#111827" }}>{coupon.code}</span>
+                                            <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                              {expired ? (
+                                                <span style={{ fontSize: "11px", fontWeight: "700", color: "#dc2626" }}>Expired</span>
+                                              ) : timed ? (
+                                                <span style={{ fontSize: "11px", fontWeight: "700", color: "#b8905a", fontVariantNumeric: "tabular-nums" }}>{mm}:{ss} left</span>
+                                              ) : null}
+                                              <span style={{ fontSize: "12px", color: expired ? "#9ca3af" : "#6b7280", textDecoration: expired ? "line-through" : "none" }}>- {fmt(coupon.discount)}</span>
+                                            </span>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                    {appliedCoupons.some((c) => c.applied_at && couponMsRemaining(c) <= 0) && (
+                                      <p style={{ margin: "8px 0 0", fontSize: "11px", color: "#0F5F58", lineHeight: "1.5" }}>
+                                        This coupon's 60-minute window has passed and the discount no longer applies. Each patient can use a coupon only once, so it can't be reapplied.
+                                      </p>
                                     )}
-                                  </>
+                                  </div>
                                 )}
 
                                 {/* Pay Now Button */}

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { autoCreatePaidBatches } from "@/lib/paymentHelper";
-import type { MonthlyPlan } from "@/lib/monthlyPlan";
+import { activeDiscountTotal, type MonthlyPlan } from "@/lib/monthlyPlan";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -43,14 +43,12 @@ export async function POST(req: Request) {
     }
 
     const pd = (appt.payment_data as Record<string, unknown>) || {};
-    const couponsTotal = ((pd.applied_coupons as { discount?: number }[]) || [])
-      .reduce((sum, c) => sum + (Number(c.discount) || 0), 0);
 
     await autoCreatePaidBatches({
       supabase,
       appointmentId,
       monthlyPlan,
-      couponsTotal,
+      couponsTotal: activeDiscountTotal(pd),
       previouslyPaid: 0,
       newTotalPaid: Number(appt.amount_paid) || 0,
       manufacturingData: appt.manufacturing_data as { batches?: Record<string, unknown>[] } | null,

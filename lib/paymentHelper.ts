@@ -7,7 +7,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { logAuditEntry } from "./auditLog";
 import { sendWhatsApp } from "./notifications/aisensy";
 import { sendStepNotification } from "./notifyStep";
-import { applyCouponDiscount, alignerRangeLabel, monthSlotLabels, FINAL_PLAN_FEE, PROVISIONAL_PLAN_FEE, provisionalPaymentBaseline, PLAN_CONFIGS, type MonthlyPlan, type PlanKey, type ProvisionalPaymentChoice } from "./monthlyPlan";
+import { applyCouponDiscount, activeDiscountTotal, alignerRangeLabel, monthSlotLabels, FINAL_PLAN_FEE, PROVISIONAL_PLAN_FEE, provisionalPaymentBaseline, PLAN_CONFIGS, type MonthlyPlan, type PlanKey, type ProvisionalPaymentChoice } from "./monthlyPlan";
 import { isNewModelAppointment } from "./appointmentModel";
 import { qualifyReferralOnPayment } from "./referrals";
 
@@ -259,9 +259,7 @@ export async function recordPaymentReceived(params: RecordPaymentParams): Promis
   const isNewModel = isNewModelAppointment(appt);
   let fullAmount: number;
   if (monthlyPlan) {
-    const couponsTotal = ((pd.applied_coupons as { discount?: number }[]) || [])
-      .reduce((sum, c) => sum + (Number(c.discount) || 0), 0);
-    fullAmount = applyCouponDiscount(monthlyPlan, couponsTotal).months.slice(-1)[0]?.discountedCumulative || FINAL_PLAN_FEE;
+    fullAmount = applyCouponDiscount(monthlyPlan, activeDiscountTotal(pd)).months.slice(-1)[0]?.discountedCumulative || FINAL_PLAN_FEE;
   } else if (isNewModel) {
     // Provisional Planning submitted but Final Plan Review hasn't happened
     // yet — the only chargeable amount right now is whichever the patient
@@ -348,7 +346,7 @@ export async function recordPaymentReceived(params: RecordPaymentParams): Promis
         supabase,
         appointmentId,
         monthlyPlan,
-        couponsTotal: ((pd.applied_coupons as { discount?: number }[]) || []).reduce((sum, c) => sum + (Number(c.discount) || 0), 0),
+        couponsTotal: activeDiscountTotal(pd),
         previouslyPaid,
         newTotalPaid,
         manufacturingData: appt.manufacturing_data as { batches?: Record<string, unknown>[] } | null,
@@ -441,9 +439,7 @@ export async function recordPaymentReceived(params: RecordPaymentParams): Promis
   // skipped — email above is their only patient-facing receipt.
   try {
     if (monthlyPlan && patientPhone) {
-      const couponsTotal = ((pd.applied_coupons as { discount?: number }[]) || [])
-        .reduce((sum, c) => sum + (Number(c.discount) || 0), 0);
-      const crossedMonths = applyCouponDiscount(monthlyPlan, couponsTotal).months.filter(
+      const crossedMonths = applyCouponDiscount(monthlyPlan, activeDiscountTotal(pd)).months.filter(
         (m) => previouslyPaid < m.discountedCumulative && newTotalPaid >= m.discountedCumulative,
       );
       const monthNum = crossedMonths.slice(-1)[0]?.num;

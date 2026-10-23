@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { useParams, useRouter } from "next/navigation";
 import { logAudit } from "@/lib/logAudit";
-import { PROVISIONAL_PLAN_FEE, estimateRangeForPlan, formatMonthsDays, applyCouponDiscount, monthSlotLabels, totalCost, recomputeCumulative, buildMonthlyPlan, PLAN_CONFIGS } from "@/lib/monthlyPlan";
+import { PROVISIONAL_PLAN_FEE, estimateRangeForPlan, formatMonthsDays, applyCouponDiscount, monthSlotLabels, totalCost, recomputeCumulative, buildMonthlyPlan, PLAN_CONFIGS, activeDiscountTotal, activeCouponsTotal, couponMsRemaining } from "@/lib/monthlyPlan";
 import { INVESTIGATION_TYPES, isInvestigationDone, MAX_INVESTIGATION_FILE_SIZE } from "@/lib/investigations";
 import { isNewModelAppointment } from "@/lib/appointmentModel";
 
@@ -288,9 +288,9 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
   // Coupons the patient applied themselves (on their own Plan and Payment
   // page) live in payment_data.applied_coupons — fold that total in here too,
   // so the admin's Final Amount always matches what the patient actually
-  // sees and owes, not just the admin's own manually-entered Discount.
-  const appliedCouponsTotal = (appt?.payment_data?.applied_coupons || [])
-    .reduce((sum, c) => sum + (parseFloat(c.discount) || 0), 0);
+  // sees and owes, not just the admin's own manually-entered Discount. Time-
+  // aware: an expired coupon (past its 60-minute hold) drops out on its own.
+  const appliedCouponsTotal = activeCouponsTotal(appt?.payment_data);
   const finalAmt = Math.max(0, grossAmt - discountAmt - appliedCouponsTotal);
   const downAmt = parseFloat(downPayment) || 0;
   // amount_paid lives outside payment_data, on the row itself, and is the
@@ -750,9 +750,38 @@ function PaymentTab({ appointmentId, initialData, actor, patientEmail }) {
 // ─── New per-arch, month-by-month billing (Payment tab) ───────────────────────
 function MonthlyBillingCards({ appointmentId, appt, setAppt, actor }) {
   const [markingPaid, setMarkingPaid] = useState(null); // "final_fee" | month num
+  const [discountInput, setDiscountInput] = useState(String(appt.payment_data?.manual_discount ?? ""));
+  const [savingDiscount, setSavingDiscount] = useState(false);
+  // appt is a prop, not local state — if it's refetched elsewhere (another
+  // tab, a realtime update) after this component already mounted with its
+  // own typed-but-unsaved value, re-sync once the underlying value actually
+  // changes rather than fighting the admin's in-progress edit every render.
+  const lastSyncedDiscount = useRef(appt.payment_data?.manual_discount);
+  useEffect(() => {
+    if (appt.payment_data?.manual_discount !== lastSyncedDiscount.current) {
+      lastSyncedDiscount.current = appt.payment_data?.manual_discount;
+      setDiscountInput(String(appt.payment_data?.manual_discount ?? ""));
+    }
+  }, [appt.payment_data?.manual_discount]);
 
-  const couponsTotal = (appt.payment_data?.applied_coupons || [])
-    .reduce((sum, c) => sum + (parseFloat(c.discount) || 0), 0);
+  const saveDiscount = async () => {
+    const value = Math.max(0, parseFloat(discountInput) || 0);
+    setSavingDiscount(true);
+    try {
+      const newPaymentData = { ...(appt.payment_data || {}), manual_discount: value };
+      const { error } = await supabase.from("appointments_booking").update({ payment_data: newPaymentData }).eq("id", appointmentId);
+      if (error) { alert("Failed to save discount: " + error.message); return; }
+      logAudit({ appointmentId, actor, action: "Discount Updated", entity: "payment_data", newData: { manual_discount: value } });
+      lastSyncedDiscount.current = value;
+      setAppt((prev) => prev && { ...prev, payment_data: newPaymentData });
+    } catch {
+      alert("Network error. Please try again.");
+    } finally {
+      setSavingDiscount(false);
+    }
+  };
+
+  const couponsTotal = activeDiscountTotal(appt.payment_data);
   const discounted = appt.monthly_plan ? applyCouponDiscount(appt.monthly_plan, couponsTotal) : null;
   const amountPaid = Number(appt.amount_paid) || 0;
   const planCfg = PLAN_CONFIGS[appt.payment_data?.plan] || PLAN_CONFIGS.ORISPRO;
@@ -845,6 +874,51 @@ function MonthlyBillingCards({ appointmentId, appt, setAppt, actor }) {
             Not yet available — the orthodontist hasn&apos;t completed Final Plan Review for this patient.
           </p>
         ) : (
+        <>
+        {/* Discount is deducted from the LAST package backward — a ₹5,000
+            discount on a 10-month, ₹5,000/month plan zeroes out package 10
+            only; a ₹8,000 discount zeroes package 10 and takes ₹3,000 off
+            package 9 — applyCouponDiscount already does exactly this, this
+            is just the admin control for it. Patient-applied coupons stack
+            on top automatically (shown below) and expire on their own
+            60-minute timer; this discount is permanent until changed here. */}
+        <div style={{ display: "flex", alignItems: "flex-end", gap: "10px", marginBottom: "14px", padding: "12px", background: "#fafafa", borderRadius: "8px", border: "1px solid var(--admin-line, #e9e1d0)" }}>
+          <div style={{ flex: 1 }}>
+            <span style={label}>DISCOUNT (₹)</span>
+            <input
+              type="number"
+              min="0"
+              value={discountInput}
+              onChange={(e) => setDiscountInput(e.target.value)}
+              style={{ width: "100%", padding: "8px 10px", borderRadius: "6px", border: "1px solid var(--admin-line, #e9e1d0)", fontSize: "13px" }}
+            />
+          </div>
+          <button
+            onClick={saveDiscount}
+            disabled={savingDiscount || parseFloat(discountInput || "0") === (appt.payment_data?.manual_discount || 0)}
+            style={{ padding: "8px 16px", borderRadius: "6px", border: "none", background: "var(--admin-ink, #1b2a4a)", color: "white", fontWeight: "700", fontSize: "12px", cursor: savingDiscount ? "not-allowed" : "pointer" }}
+          >
+            {savingDiscount ? "Saving..." : "Save"}
+          </button>
+        </div>
+        <div style={{ display: "flex", gap: "16px", marginBottom: "14px", fontSize: "13px" }}>
+          <span style={{ color: "var(--admin-ink2, #837a66)" }}>Total: <strong style={{ color: "var(--admin-ink, #1b2a4a)" }}>{inr(totalCost(applyCouponDiscount(appt.monthly_plan, 0)))}</strong></span>
+          {couponsTotal > 0 && <span style={{ color: "var(--admin-ink2, #837a66)" }}>Discount: <strong style={{ color: "#dc2626" }}>-{inr(couponsTotal)}</strong></span>}
+          <span style={{ color: "var(--admin-ink2, #837a66)" }}>Final: <strong style={{ color: "#168F83" }}>{inr(totalCost(discounted))}</strong></span>
+        </div>
+        {(appt.payment_data?.applied_coupons || []).length > 0 && (
+          <div style={{ marginBottom: "14px", fontSize: "12px", color: "var(--admin-ink2, #837a66)" }}>
+            {(appt.payment_data?.applied_coupons || []).map((c, i) => {
+              const msLeft = couponMsRemaining(c);
+              const expired = c.applied_at && msLeft <= 0;
+              return (
+                <span key={i} style={{ marginRight: "10px" }}>
+                  Coupon <strong>{c.code}</strong> ({inr(c.discount)}){c.applied_at ? (expired ? " — expired" : " — active (patient-applied, 60-min hold)") : ""}
+                </span>
+              );
+            })}
+          </div>
+        )}
         <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
           {discounted.months.map((m) => {
             const isPaid = amountPaid >= m.discountedCumulative;
@@ -874,6 +948,7 @@ function MonthlyBillingCards({ appointmentId, appt, setAppt, actor }) {
             );
           })}
         </div>
+        </>
         )}
       </div>
     </div>
@@ -934,9 +1009,7 @@ function deriveSteps(appt) {
   };
 
   if (hasMonthlyPlan) {
-    const couponsTotal = (appt.payment_data?.applied_coupons || [])
-      .reduce((sum, c) => sum + (parseFloat(c.discount) || 0), 0);
-    base.aligner_sets = amountPaid >= totalCost(applyCouponDiscount(appt.monthly_plan, couponsTotal));
+    base.aligner_sets = amountPaid >= totalCost(applyCouponDiscount(appt.monthly_plan, activeDiscountTotal(appt.payment_data)));
   } else {
     base.manufacturing_started =   js.manufacturing_started   !== undefined ? !!js.manufacturing_started   : false;
     base.manufacturing_completed = js.manufacturing_completed !== undefined ? !!js.manufacturing_completed : false;
@@ -2720,9 +2793,7 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
               {/* Aligner Sets (new per-arch model) — package pricing + production/dispatch,
                   folded in here instead of a separate Manufacturing tab. */}
               {isAdmin && step.key === "aligner_sets" && monthlyPlanState && (() => {
-                const couponsTotal = (appt.payment_data?.applied_coupons || [])
-                  .reduce((sum, c) => sum + (parseFloat(c.discount) || 0), 0);
-                const discounted = applyCouponDiscount(monthlyPlanState, couponsTotal);
+                const discounted = applyCouponDiscount(monthlyPlanState, activeDiscountTotal(appt.payment_data));
                 const amountPaidNow = Number(appt.amount_paid) || 0;
                 return (
                   <div style={subBox}>
