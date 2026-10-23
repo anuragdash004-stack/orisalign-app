@@ -973,7 +973,7 @@ function deriveSteps(appt) {
   const base = {
     booked:                  true,
     confirmed:               appt.status === "confirmed" || appt.status === "completed",
-    scanning_done:           js.scanning_done        !== undefined ? !!js.scanning_done        : !!appt.stl_submitted,
+    scanning_done:           js.scanning_done        !== undefined ? !!js.scanning_done        : (!!appt.stl_submitted || !!appt.scanning_review_link),
     // No pre-aligner procedures selected → nothing to wait on, counts as done.
     prealigner_treatment:    procs.length === 0 ? true : procs.every((p) => !!prealignerDone[p]),
     provisional_planning:    isNewModel

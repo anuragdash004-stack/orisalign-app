@@ -236,7 +236,7 @@ function deriveSteps(appt) {
   const base = {
     booked:                  true,
     confirmed:               appt.status === "confirmed" || appt.status === "completed",
-    scanning_done:           js.scanning_done        !== undefined ? !!js.scanning_done        : !!appt.stl_submitted,
+    scanning_done:           js.scanning_done        !== undefined ? !!js.scanning_done        : (!!appt.stl_submitted || !!appt.scanning_review_link),
     // Provisional Planning now also gates payment: a plan must be picked AND
     // paid for (either "first_month" at the plan's monthly rate, or the flat
     // "full_plan" fee) before it counts as done.
