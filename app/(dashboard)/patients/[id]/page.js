@@ -1507,6 +1507,18 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
     appt.journey_steps = newJourneySteps;
     setPlanChoiceTick((t) => t + 1);
   };
+  // Explicit "nothing needed" marker — mirrors investigation_types' "NONE"
+  // sentinel, but as its own flag since post_aligner_procedures holds real
+  // procedure entries with their own Mark Done buttons.
+  const markPostAlignerNotRequired = async () => {
+    const newVal = !appt.journey_steps?.post_aligner_not_required;
+    const newJourneySteps = { ...(appt.journey_steps || {}), post_aligner_not_required: newVal };
+    const { error } = await supabase.from("appointments_booking").update({ journey_steps: newJourneySteps }).eq("id", appointmentId);
+    if (error) { alert("Failed to save: " + error.message); return; }
+    logAudit({ appointmentId, actor, action: newVal ? "Post Aligner Treatment Marked Not Required" : "Post Aligner Not-Required Undone", entity: "journey_steps", newData: { post_aligner_not_required: newVal } });
+    appt.journey_steps = newJourneySteps;
+    setPlanChoiceTick((t) => t + 1);
+  };
 
   // Aligner Sets (new per-arch model) — package pricing overrides + production/dispatch,
   // folded in here instead of the Manufacturing tab (hidden for these patients).
@@ -2525,8 +2537,20 @@ function JourneyTab({ appointmentId, appt, isAdmin, actor }) {
               {isAdmin && step.key === "post_aligner_treatment" && (() => {
                 const postProcs = appt.journey_steps?.post_aligner_procedures || [];
                 const doneMap = appt.journey_steps?.post_aligner_done || {};
+                const notRequired = !!appt.journey_steps?.post_aligner_not_required;
                 return (
                   <div style={subBox}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px" }}>
+                      <span style={{ fontSize: "11px", fontWeight: "700", color: notRequired ? "#168F83" : "var(--admin-ink2, #837a66)" }}>
+                        {notRequired ? "Marked as Not Required" : "Patient view shows “Upcoming” until flagged or marked not required."}
+                      </span>
+                      <button
+                        onClick={markPostAlignerNotRequired}
+                        style={{ padding: "6px 14px", borderRadius: "8px", border: "none", cursor: "pointer", background: notRequired ? "#fee2e2" : "var(--admin-ink, #1b2a4a)", color: notRequired ? "#dc2626" : "white", fontWeight: "700", fontSize: "12px", flexShrink: 0 }}
+                      >
+                        {notRequired ? "Undo" : "Mark Not Required"}
+                      </button>
+                    </div>
                     {postProcs.length === 0 ? (
                       <p style={{ margin: 0, fontSize: "13px", color: "var(--admin-ink2, #837a66)", fontStyle: "italic" }}>No post-aligner procedures flagged yet.</p>
                     ) : (

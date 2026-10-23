@@ -70,14 +70,12 @@ const NEW_JOURNEY_STEPS = [
   { key: "scanning_done",           label: "Scanning",                    expandable: true },
   { key: "provisional_planning",    label: "Provisional Planning",        expandable: true },
   { key: "payment_done",            label: "Full Plan",                   expandable: true },
-  { key: "investigation_required",  label: "Investigation Required",      expandable: true },
+  { key: "investigation_required",  label: "Investigations",              expandable: true },
   { key: "plan_approved",           label: "Plan Approval", approveAction: true },
   { key: "prealigner_treatment",    label: "Prealigner Treatment",        expandable: true },
   { key: "aligner_sets",            label: "Aligner Sets",                expandable: true },
-  { key: "followup_appointment",    label: "Appointment Book" },
   { key: "aligners_delivered",      label: "Aligners Delivered" },
   { key: "smile_correction",        label: "Smile Correction Started",   expandable: true, smileLink: true },
-  { key: "treatment_completed",     label: "Treatment Completed" },
   { key: "post_aligner_treatment",  label: "Post Aligner Treatment" },
   { key: "feedback_submitted",      label: "Feedback Form Submitted",    expandable: true },
 ];
@@ -839,6 +837,47 @@ export default function PatientJourney() {
   const progressPct = Math.round((completedCount / journeySteps.length) * 100);
   const pd = patient.payment_data || {};
   const discountedMonthlyPlan = patient.monthly_plan ? applyCouponDiscount(patient.monthly_plan, activeDiscountTotal(patient.payment_data)) : null;
+  const patientJs = patient.journey_steps || {};
+  const prealignerProcs = prealignerProcedures(patient);
+  const investigationTypes = patientJs.investigation_types || [];
+  // Replaces the generic Completed/In progress/Upcoming pill with wording
+  // that matches what each step actually represents — a review link once
+  // content exists, a Required/Not Required call once a decision has been
+  // made, the follow-up appointment's own date while Aligners Delivered is
+  // still ahead of it, etc.
+  const stepBadgeLabel = (step, done, isCurrent) => {
+    switch (step.key) {
+      case "booked":
+        return done ? "Done" : isCurrent ? "In progress" : "Upcoming";
+      case "confirmed":
+        return done ? (formatDayLabel(patient.date) || "Confirmed") : isCurrent ? "In progress" : "Upcoming";
+      case "scanning_done":
+      case "provisional_planning":
+      case "payment_done":
+      case "aligner_sets":
+        return done ? "Review" : isCurrent ? "In progress" : "Upcoming";
+      case "investigation_required":
+        if (investigationTypes.length === 0) return "Upcoming";
+        return investigationTypes.includes("NONE") ? "Not Required" : "Required";
+      case "prealigner_treatment":
+        return prealignerProcs.length === 0 ? "Not Required" : "Required";
+      case "aligners_delivered":
+        if (done) return "Aligners Delivered";
+        if (patientJs.followup_appointment && patientJs.followup_appointment_at) {
+          return `Appointment booked on ${formatShortDay(patientJs.followup_appointment_at)}`;
+        }
+        return isCurrent ? "In progress" : "Upcoming";
+      case "smile_correction":
+        return done ? "Completed" : isCurrent ? "Started" : "Upcoming";
+      case "post_aligner_treatment": {
+        if (patientJs.post_aligner_not_required) return "Not Required";
+        const postProcs = patientJs.post_aligner_procedures || [];
+        return postProcs.length === 0 ? "Upcoming" : "Required";
+      }
+      default:
+        return done ? "Completed" : isCurrent ? "In progress" : "Upcoming";
+    }
+  };
 
   // Number of sets is the same regardless of plan (set by the orthodontist
   // in Provisional Planning, or later confirmed in the Aligner Plan) — only
@@ -1381,7 +1420,7 @@ export default function PatientJourney() {
               const isCurrent = i === currentStepIndex;
               // Smile Correction stays shut until an admin marks it started.
               const locked = !!step.smileLink && !steps[step.key];
-              const label = done ? "Completed" : isCurrent ? "In progress" : "Upcoming";
+              const label = stepBadgeLabel(step, done, isCurrent);
               // Plan Approval isn't expandable — there's no panel to open —
               // so once the admin has switched it on, the Approve Plan action
               // has to live right on the card itself, in place of the usual
