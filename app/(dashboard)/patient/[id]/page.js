@@ -2204,6 +2204,88 @@ export default function PatientJourney() {
                         ) : (
                           <p style={{ margin: 0, fontSize: "13px", color: "#9ca3af", fontStyle: "italic" }}>Your aligner plan details will appear here once set by your orthodontist.</p>
                         )}
+                        {patient.monthly_plan?.totalMonths > 0 && discountedMonthlyPlan && (() => {
+                          const rawTotal = patient.monthly_plan.months[patient.monthly_plan.months.length - 1]?.cumulative || 0;
+                          const finalTotal = totalCost(discountedMonthlyPlan);
+                          const totalDiscount = Math.max(0, rawTotal - finalTotal);
+                          return (
+                            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                              <p style={{ margin: 0, fontSize: "12px", fontWeight: "700", color: "#6b7280", letterSpacing: "0.5px", textTransform: "uppercase" }}>Plan Amount</p>
+                              <div style={{ padding: "14px", background: "rgba(255,255,255,0.28)", borderRadius: "10px", border: "1px solid rgba(23,59,87,0.14)" }}>
+                                <ReportRow label="Total Amount" value={fmt(rawTotal)} />
+                                {totalDiscount > 0 && <ReportRow label="Discount" value={`− ${fmt(totalDiscount)}`} />}
+                                <ReportRow label="Final Amount" value={fmt(finalTotal)} last />
+                              </div>
+
+                              {appliedCoupons.length === 0 && (
+                                <div style={{ display: "flex", gap: "8px" }}>
+                                  <input
+                                    type="text"
+                                    placeholder="Enter coupon code"
+                                    value={couponInput}
+                                    onChange={(e) => setCouponInput(e.target.value)}
+                                    onKeyPress={(e) => e.key === "Enter" && applyCoupon()}
+                                    style={{ flex: 1, padding: "10px 12px", borderRadius: "8px", border: "1px solid rgba(23,59,87,0.14)", fontSize: "13px", outline: "none" }}
+                                  />
+                                  <button
+                                    onClick={applyCoupon}
+                                    disabled={applyingCoupon}
+                                    style={{ padding: "10px 16px", borderRadius: "8px", border: "none", background: "#b8905a", color: "white", fontWeight: "700", fontSize: "13px", cursor: applyingCoupon ? "not-allowed" : "pointer", opacity: applyingCoupon ? 0.6 : 1 }}
+                                  >
+                                    {applyingCoupon ? "..." : "Apply"}
+                                  </button>
+                                </div>
+                              )}
+
+                              {couponMessage && (
+                                <div style={{
+                                  padding: "10px 12px",
+                                  borderRadius: "8px",
+                                  background: couponMessage.includes("✓") ? "rgba(21,158,145,0.08)" : "#fee2e2",
+                                  border: couponMessage.includes("✓") ? "1px solid rgba(21,158,145,0.40)" : "1px solid #fecaca",
+                                  color: couponMessage.includes("✓") ? "#168F83" : "#dc2626",
+                                  fontSize: "13px",
+                                  fontWeight: "600",
+                                }}>
+                                  {couponMessage}
+                                </div>
+                              )}
+
+                              {appliedCoupons.length > 0 && (
+                                <div style={{ padding: "10px 12px", background: "#D7EFEB", borderRadius: "8px" }}>
+                                  <p style={{ margin: "0 0 8px", fontSize: "11px", fontWeight: "700", color: "#0F5F58", textTransform: "uppercase" }}>Coupons Applied</p>
+                                  <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                                    {appliedCoupons.map((coupon, idx) => {
+                                      const msLeft = couponMsRemaining(coupon);
+                                      const expired = coupon.applied_at && msLeft <= 0;
+                                      const timed = coupon.applied_at && Number.isFinite(msLeft);
+                                      const mm = String(Math.floor(msLeft / 60000)).padStart(2, "0");
+                                      const ss = String(Math.floor((msLeft % 60000) / 1000)).padStart(2, "0");
+                                      return (
+                                        <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 8px", background: "white", borderRadius: "4px", opacity: expired ? 0.5 : 1 }}>
+                                          <span style={{ fontSize: "13px", fontWeight: "700", color: "#111827" }}>{coupon.code}</span>
+                                          <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                            {expired ? (
+                                              <span style={{ fontSize: "11px", fontWeight: "700", color: "#dc2626" }}>Expired</span>
+                                            ) : timed ? (
+                                              <span style={{ fontSize: "11px", fontWeight: "700", color: "#b8905a", fontVariantNumeric: "tabular-nums" }}>{mm}:{ss} left</span>
+                                            ) : null}
+                                            <span style={{ fontSize: "12px", color: expired ? "#9ca3af" : "#6b7280", textDecoration: expired ? "line-through" : "none" }}>- {fmt(coupon.discount)}</span>
+                                          </span>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                  {appliedCoupons.some((c) => c.applied_at && couponMsRemaining(c) <= 0) && (
+                                    <p style={{ margin: "8px 0 0", fontSize: "11px", color: "#0F5F58", lineHeight: "1.5" }}>
+                                      This coupon's 60-minute window has passed and the discount no longer applies. Each patient can use a coupon only once, so it can't be reapplied.
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
                         {patient.review_link && (
                           <a
                             href={patient.review_link} target="_blank" rel="noopener noreferrer"
